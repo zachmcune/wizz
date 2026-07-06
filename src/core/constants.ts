@@ -17,8 +17,9 @@ export const MAX_UNITS_PER_PLAYER = 90;
 
 /** Input gesture thresholds (screen px / ms). */
 export const TAP_MAX_MS = 250;
-export const MOVE_THRESHOLD = 12;
-export const LONG_PRESS_MS = 250;
+export const MOVE_THRESHOLD = 18;
+export const TAP_SLOP_PX = 28;
+export const LONG_PRESS_MS = 400;
 export const DOUBLE_TAP_MS = 300;
 
 /** Camera zoom clamps. */

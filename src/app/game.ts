@@ -1,6 +1,6 @@
 // In-match orchestrator: wires sim + renderer + input + HUD + audio + loop together.
 // Owns no gameplay rules; it only routes commands in and events out.
-import { TILE } from '../core/constants';
+import { TILE, TAP_SLOP_PX } from '../core/constants';
 import { screenToWorld } from '../core/coords';
 import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
@@ -42,6 +42,7 @@ export class Game {
   private lastPointer = { x: 0, y: 0 };
   private fps = 60;
   private lastFrameTime = 0;
+  private pointerStart = { x: 0, y: 0 };
 
   constructor(
     private host: HTMLElement,
@@ -94,6 +95,9 @@ export class Game {
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
     this.hud.onExit = () => this.exit();
+    this.controller.onHarvestNoRefinery = () => {
+      this.hud.showHint('Tap teal mana nodes to harvest · Build Attunement Spire (MINE) to deposit');
+    };
     this.host.append(this.hud.root, this.boxEl);
 
     this.setupGestures();
@@ -106,7 +110,7 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
-    this.hud.showHint('Select HQ to build · Colored labels show building type · Tap panel headers to collapse');
+    this.hud.showHint('Tap teal nodes to send wisps · Build Attunement Spire (MINE) to deposit mana');
   }
 
   private setupGestures(): void {
@@ -149,23 +153,36 @@ export class Game {
       void lockLandscape();
       const p = rel(e);
       this.lastPointer = p;
+      this.pointerStart = p;
       canvas.setPointerCapture(e.pointerId);
       this.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
     });
     canvas.addEventListener('pointermove', (e) => {
       const p = rel(e);
       this.lastPointer = p;
-      if (this.controller.session.mode === 'build') {
+      const mode = this.controller.session.mode;
+      if (mode === 'build') {
         const w = screenToWorld(p, this.renderer.camera.view());
         this.controller.updateGhost(w);
       }
-      this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
+      if (mode === 'normal' || mode === 'attackMove') {
+        this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
+      }
     });
     const up = (e: PointerEvent) => {
       const p = rel(e);
-      const wasBuild = this.controller.session.mode === 'build';
-      this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
-      // Mobile: finger drift often becomes a pan, not a tap — place on release in build mode.
+      const mode = this.controller.session.mode;
+      const wasBuild = mode === 'build';
+      const wasPan = this.gesture.wasPanning();
+      const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
+      if (mode === 'normal' || mode === 'attackMove' || mode === 'build') {
+        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
+      }
+      // Mobile: small finger drift often becomes a pan — treat as tap for orders/harvest.
+      if (mode === 'normal' && wasPan && drift <= TAP_SLOP_PX) {
+        this.controller.tap(p);
+      }
+      // Build: finger drift often becomes a pan, not a tap — place on release.
       if (wasBuild && this.controller.session.mode === 'build' && this.controller.session.buildGhost?.valid) {
         this.controller.confirmBuild();
       }

@@ -223,6 +223,24 @@ export class Renderer {
     this.overlay.rect(x - w / 2, y, w * frac, 4).fill(col);
   }
 
+  /** Pick a mana node at a world position (generous hit area for touch). */
+  pickResourceNode(state: GameState, wx: number, wy: number): Entity | null {
+    let best: Entity | null = null;
+    let bestD = Infinity;
+    for (const e of state.entities.values()) {
+      if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
+      const dx = wx - e.pos.x;
+      const dy = wy - e.pos.y;
+      const r = e.radius + 14;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= r * r && d2 < bestD) {
+        bestD = d2;
+        best = e;
+      }
+    }
+    return best;
+  }
+
   /** Pick the topmost entity at a world position (units preferred over buildings). */
   pickEntity(state: GameState, wx: number, wy: number): Entity | null {
     let best: Entity | null = null;

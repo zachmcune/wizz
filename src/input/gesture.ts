@@ -103,8 +103,17 @@ export class GestureRecognizer {
     const cur = { x, y };
 
     if (this.state === 'pinch') {
-      if (this.pointers.size < 2) this.state = this.pointers.size === 1 ? 'pan' : 'idle';
-      if (this.state === 'pan') this.h.onPanStart?.();
+      if (this.pointers.size < 2) {
+        if (this.pointers.size === 1) {
+          const pt = [...this.pointers.values()][0]!;
+          this.state = 'pan';
+          this.startPt = { ...pt };
+          this.lastPt = { ...pt };
+          this.h.onPanStart?.();
+        } else {
+          this.state = 'idle';
+        }
+      }
       return;
     }
     if (this.state === 'pan') {
@@ -134,12 +143,17 @@ export class GestureRecognizer {
     }
   }
 
-  /** Call each frame with wall-clock ms to promote a held press into a box-select. */
+  /** Call each frame with wall-clock ms to promote a held press into a box-select (select mode only). */
   update(now: number): void {
+    if (!this.dragToSelect) return;
     if (this.state === 'pending' && now - this.startTime >= LONG_PRESS_MS && this.dist(this.startPt, this.lastPt) <= MOVE_THRESHOLD) {
       this.state = 'box';
       this.h.onBoxStart?.(this.startPt);
       this.h.onBoxMove?.(this.lastPt);
     }
+  }
+
+  wasPanning(): boolean {
+    return this.state === 'pan';
   }
 }

@@ -45,15 +45,22 @@ describe('gesture FSM', () => {
     expect(h.onTap).not.toHaveBeenCalled();
   });
 
-  it('held still past LONG_PRESS then drag = box select', () => {
+  it('held still past LONG_PRESS then drag = box select (select mode only)', () => {
+    const { g, h } = make('select');
+    g.pointerDown(1, 100, 100, 0);
+    g.update(500);
+    expect(h.onBoxStart).toHaveBeenCalledTimes(1);
+    g.pointerMove(1, 160, 160, 520);
+    expect(h.onBoxMove).toHaveBeenCalled();
+    g.pointerUp(1, 160, 160, 540);
+    expect(h.onBoxEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('held still in pan mode does not start box select', () => {
     const { g, h } = make('pan');
     g.pointerDown(1, 100, 100, 0);
-    g.update(300); // exceed LONG_PRESS_MS while still
-    expect(h.onBoxStart).toHaveBeenCalledTimes(1);
-    g.pointerMove(1, 160, 160, 320);
-    expect(h.onBoxMove).toHaveBeenCalled();
-    g.pointerUp(1, 160, 160, 340);
-    expect(h.onBoxEnd).toHaveBeenCalledTimes(1);
+    g.update(500);
+    expect(h.onBoxStart).not.toHaveBeenCalled();
   });
 
   it('drag=select mode makes a one-finger drag a box', () => {

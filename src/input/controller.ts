@@ -12,6 +12,7 @@ import { createSession, type SessionState, type InputMode } from './session';
 
 export class InputController {
   session: SessionState = createSession();
+  onHarvestNoRefinery: (() => void) | null = null;
 
   constructor(
     private getState: () => GameState,
@@ -40,8 +41,34 @@ export class InputController {
 
   private ownCombatSelected(): EntityId[] {
     return this.selectionEntities()
-      .filter((e) => e.owner === this.playerId && e.kind === 'unit')
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && e.carryMax === undefined)
       .map((e) => e.id);
+  }
+
+  private allOwnWisps(): EntityId[] {
+    const st = this.getState();
+    const out: EntityId[] = [];
+    for (const e of st.entities.values()) {
+      if (e.owner === this.playerId && e.kind === 'unit' && e.carryMax !== undefined && isAlive(e)) out.push(e.id);
+    }
+    return out;
+  }
+
+  private hasRefinery(): boolean {
+    const st = this.getState();
+    for (const b of st.entities.values()) {
+      if (b.owner !== this.playerId || b.kind !== 'building' || !isAlive(b) || b.buildProgress !== undefined) continue;
+      if (this.registry.buildings.get(b.defId)?.isRefinery) return true;
+    }
+    return false;
+  }
+
+  private issueHarvest(node: Entity, wispIds: EntityId[]): void {
+    if (!wispIds.length) return;
+    this.setSelection(wispIds);
+    this.emit({ type: 'harvest', playerId: this.playerId, entityIds: wispIds, nodeId: node.id });
+    this.onOrderFeedback('harvest', node.pos);
+    if (!this.hasRefinery()) this.onHarvestNoRefinery?.();
   }
 
   private ownWispsSelected(): EntityId[] {
@@ -72,23 +99,33 @@ export class InputController {
     }
 
     const st = this.getState();
-    const picked = this.renderer.pickEntity(st, world.x, world.y);
-    const units = this.ownCombatSelected();
+    const node = this.renderer.pickResourceNode(st, world.x, world.y);
+    const picked = node ?? this.renderer.pickEntity(st, world.x, world.y);
+    const combatUnits = this.ownCombatSelected();
     const wisps = this.ownWispsSelected();
+    const harvesters = wisps.length ? wisps : this.allOwnWisps();
+
+    if (node && harvesters.length) {
+      this.issueHarvest(node, harvesters);
+      return;
+    }
 
     if (picked) {
       if (picked.owner === this.playerId && this.session.selection.has(picked.id)) {
         this.setSelection([...this.session.selection].filter((id) => id !== picked.id));
         return;
       }
-      if (isEnemy(st, this.playerId, picked.owner) && units.length) {
-        this.emit({ type: 'attack', playerId: this.playerId, entityIds: units, targetId: picked.id });
+      if (isEnemy(st, this.playerId, picked.owner) && combatUnits.length) {
+        this.emit({ type: 'attack', playerId: this.playerId, entityIds: combatUnits, targetId: picked.id });
         this.onOrderFeedback('attack', picked.pos);
         return;
       }
-      if (picked.kind === 'resource_node' && wisps.length) {
-        this.emit({ type: 'harvest', playerId: this.playerId, entityIds: wisps, nodeId: picked.id });
-        this.onOrderFeedback('harvest', picked.pos);
+      if (picked.kind === 'resource_node' && harvesters.length) {
+        this.issueHarvest(picked, harvesters);
+        return;
+      }
+      if (picked.kind === 'unit' && picked.carryMax !== undefined && picked.owner === this.playerId) {
+        this.setSelection([picked.id]);
         return;
       }
       this.setSelection([picked.id]);
@@ -96,8 +133,11 @@ export class InputController {
     }
 
     // empty ground
-    if (units.length) {
-      this.emit({ type: 'move', playerId: this.playerId, entityIds: units, x: world.x, y: world.y });
+    const movable = this.selectionEntities()
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit')
+      .map((e) => e.id);
+    if (movable.length) {
+      this.emit({ type: 'move', playerId: this.playerId, entityIds: movable, x: world.x, y: world.y });
       this.onOrderFeedback('move', world);
       return;
     }
