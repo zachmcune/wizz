@@ -1,0 +1,26 @@
+{
+  "id": "storm_caster",
+  "name": "Storm Caster",
+  "kind": "unit",
+  "role": "aoe_ranged",
+  "cost": 500,
+  "buildTime": 12,
+  "hp": 160,
+  "armor": "light",
+  "speed": 52,
+  "sight": 180,
+  "radius": 10,
+  "weapon": {
+    "damage": 30,
+    "range": 142,
+    "cooldownTicks": 30,
+    "projectile": "storm_orb",
+    "splashRadius": 42,
+    "targetsAir": true,
+    "vs": { "light": 1.3, "heavy": 0.9, "building": 0.7 }
+  },
+  "producedBy": "arcane_nexus",
+  "requires": ["arcane_nexus"],
+  "art": { "shape": "diamond", "size": 20, "accent": "#ffd166" },
+  "sfx": { "select": "storm_select", "move": "storm_move", "attack": "storm_fire", "die": "unit_die" }
+}

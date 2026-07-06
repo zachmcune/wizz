@@ -1,0 +1,24 @@
+{
+  "id": "rift_familiar",
+  "name": "Rift Familiar",
+  "kind": "unit",
+  "role": "fast_scout",
+  "cost": 90,
+  "buildTime": 4,
+  "hp": 60,
+  "armor": "light",
+  "speed": 124,
+  "sight": 210,
+  "radius": 7,
+  "weapon": {
+    "damage": 8,
+    "range": 18,
+    "cooldownTicks": 10,
+    "projectile": null,
+    "vs": { "light": 1.1, "heavy": 0.4, "building": 0.3 }
+  },
+  "producedBy": "summoning_circle",
+  "requires": ["summoning_circle"],
+  "art": { "shape": "triangle", "size": 14, "accent": "#5cffb0" },
+  "sfx": { "select": "familiar_select", "move": "familiar_move", "attack": "melee_hit", "die": "unit_die" }
+}

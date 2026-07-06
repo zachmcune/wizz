@@ -1,0 +1,10 @@
+{
+  "mapId": "duel_glade",
+  "seed": 777,
+  "players": [
+    { "id": "player0", "controller": "human", "team": 0, "color": "#4f9dff", "startIndex": 0 },
+    { "id": "player1", "controller": "ai", "team": 1, "color": "#ff5d5d", "startIndex": 1, "aiDifficulty": "normal" },
+    { "id": "player2", "controller": "ai", "team": 2, "color": "#5dff8f", "startIndex": 2, "aiDifficulty": "easy" },
+    { "id": "player3", "controller": "ai", "team": 3, "color": "#ffd166", "startIndex": 3, "aiDifficulty": "hard" }
+  ]
+}

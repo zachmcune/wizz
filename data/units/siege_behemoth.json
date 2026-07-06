@@ -1,0 +1,25 @@
+{
+  "id": "siege_behemoth",
+  "name": "Siege Behemoth",
+  "kind": "unit",
+  "role": "siege",
+  "cost": 700,
+  "buildTime": 18,
+  "hp": 500,
+  "armor": "heavy",
+  "speed": 34,
+  "sight": 170,
+  "radius": 14,
+  "weapon": {
+    "damage": 60,
+    "range": 155,
+    "cooldownTicks": 40,
+    "projectile": "siege_shard",
+    "splashRadius": 32,
+    "vs": { "light": 0.8, "heavy": 1.2, "building": 2.5 }
+  },
+  "producedBy": "golem_forge",
+  "requires": ["ley_conduit", "golem_forge"],
+  "art": { "shape": "hexagon", "size": 26, "accent": "#b06a3a" },
+  "sfx": { "select": "behemoth_select", "move": "behemoth_move", "attack": "siege_fire", "die": "unit_die_heavy" }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "imp_swarmling",
+  "name": "Imp Swarmling",
+  "kind": "unit",
+  "role": "light_melee",
+  "cost": 100,
+  "buildTime": 4,
+  "hp": 90,
+  "armor": "light",
+  "speed": 88,
+  "sight": 150,
+  "radius": 8,
+  "weapon": {
+    "damage": 12,
+    "range": 18,
+    "cooldownTicks": 8,
+    "projectile": null,
+    "vs": { "light": 1.0, "heavy": 0.6, "building": 0.5 }
+  },
+  "producedBy": "summoning_circle",
+  "requires": ["summoning_circle"],
+  "art": { "shape": "triangle", "size": 16, "accent": "#ff8a5c" },
+  "sfx": { "select": "imp_select", "move": "imp_move", "attack": "melee_hit", "die": "unit_die" }
+}

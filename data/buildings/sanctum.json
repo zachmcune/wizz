@@ -1,0 +1,15 @@
+{
+  "id": "sanctum",
+  "name": "Sanctum",
+  "kind": "building",
+  "cost": 0,
+  "buildTime": 1,
+  "hp": 2000,
+  "armor": "building",
+  "sight": 220,
+  "footprint": 3,
+  "requires": [],
+  "isConstructionYard": true,
+  "powerProduced": 20,
+  "art": { "shape": "building", "size": 88, "accent": "#6b5bd6" }
+}

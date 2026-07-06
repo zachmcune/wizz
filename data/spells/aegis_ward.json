@@ -1,0 +1,16 @@
+{
+  "id": "aegis_ward",
+  "name": "Aegis Ward",
+  "kind": "spell",
+  "cooldownTicks": 1200,
+  "requiresConfirm": false,
+  "targeting": "group",
+  "aoeRadius": 0,
+  "effect": {
+    "kind": "buff",
+    "buff": "aegis",
+    "radius": 0,
+    "durationTicks": 200
+  },
+  "requires": ["arcane_nexus"]
+}

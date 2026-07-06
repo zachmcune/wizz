@@ -1,0 +1,20 @@
+{
+  "id": "wisp",
+  "name": "Wisp",
+  "kind": "unit",
+  "role": "harvester",
+  "cost": 120,
+  "buildTime": 5,
+  "hp": 120,
+  "armor": "light",
+  "speed": 72,
+  "sight": 140,
+  "radius": 9,
+  "weapon": null,
+  "producedBy": "attunement_spire",
+  "requires": ["attunement_spire"],
+  "carry": 100,
+  "isHarvester": true,
+  "art": { "shape": "circle", "size": 18, "accent": "#7fe3ff" },
+  "sfx": { "select": "wisp_select", "move": "wisp_move", "ready": "unit_ready" }
+}

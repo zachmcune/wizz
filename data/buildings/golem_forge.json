@@ -1,0 +1,15 @@
+{
+  "id": "golem_forge",
+  "name": "Golem Forge",
+  "kind": "building",
+  "cost": 600,
+  "buildTime": 12,
+  "hp": 900,
+  "armor": "building",
+  "sight": 130,
+  "footprint": 3,
+  "requires": ["ley_conduit"],
+  "producesUnits": ["stone_golem", "siege_behemoth"],
+  "powerUsed": 40,
+  "art": { "shape": "building", "size": 88, "accent": "#9a6a3a" }
+}
