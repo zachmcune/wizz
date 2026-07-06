@@ -5,6 +5,7 @@ import type { MatchConfig } from '../sim/types';
 const DEFAULT_BALANCE: BalanceData = {
   startingMana: 1500,
   siphonPerSecond: 40,
+  manaNodeCapacity: 5000,
   ai: {
     easy: { interval: 20, wispTarget: 3, armyThreshold: 8 },
     normal: { interval: 15, wispTarget: 4, armyThreshold: 12 },

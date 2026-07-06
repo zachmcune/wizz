@@ -127,6 +127,7 @@ const aiParamsSchema = z.object({
 export const balanceSchema = z.object({
   startingMana: z.number().nonnegative(),
   siphonPerSecond: z.number().positive(),
+  manaNodeCapacity: z.number().positive(),
   ai: z.object({ easy: aiParamsSchema, normal: aiParamsSchema, hard: aiParamsSchema }),
 });
 

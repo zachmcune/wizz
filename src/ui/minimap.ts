@@ -60,8 +60,12 @@ export class Minimap {
 
     for (const e of state.entities.values()) {
       if (e.kind === 'projectile') continue;
-      if (e.kind === 'resource_node') c.fillStyle = '#39d0c0';
-      else c.fillStyle = this.colorByOwner.get(e.owner) ?? '#ffffff';
+      if (e.kind === 'resource_node') {
+        const max = e.amountMax ?? e.amount ?? 1;
+        const frac = Math.max(0, (e.amount ?? 0) / max);
+        const g = Math.round(160 + 57 * frac);
+        c.fillStyle = frac <= 0 ? '#444455' : `rgb(57, ${g}, 192)`;
+      } else c.fillStyle = this.colorByOwner.get(e.owner) ?? '#ffffff';
       const size = e.kind === 'building' ? 4 : e.kind === 'resource_node' ? 3 : 2;
       c.fillRect(e.pos.x * s - size / 2, e.pos.y * s - size / 2, size, size);
     }

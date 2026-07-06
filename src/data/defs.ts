@@ -106,6 +106,7 @@ export interface AiParams {
 export interface BalanceData {
   startingMana: number;
   siphonPerSecond: number;
+  manaNodeCapacity: number;
   ai: Record<'easy' | 'normal' | 'hard', AiParams>;
 }
 

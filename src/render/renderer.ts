@@ -9,8 +9,13 @@ import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
 
-const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#0b3b3b' };
+const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
+const NODE_DEPLETED_COLOR = '#4a4a5a';
+
+function hexToNumber(hex: string): number {
+  return Number.parseInt(hex.replace('#', ''), 16);
+}
 
 export interface RenderOverlay {
   ghost?: { x: number; y: number; size: number; valid: boolean };
@@ -96,33 +101,53 @@ export class Renderer {
     if (e.kind === 'unit') return { art: this.registry.unit(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
     if (e.kind === 'building') {
       const b = this.registry.building(e.defId);
-      return { art: b.art, color: b.art.accent };
+      return { art: b.art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
     }
     if (e.kind === 'projectile') {
       const a = this.registry.projectile(e.defId).art;
       return { art: a, color: a.accent };
     }
-    return { art: NODE_ART, color: NEUTRAL_COLOR };
+    const max = e.amountMax ?? e.amount ?? 1;
+    const frac = Math.max(0, (e.amount ?? 0) / max);
+    return { art: NODE_ART, color: frac <= 0 ? NODE_DEPLETED_COLOR : NEUTRAL_COLOR };
   }
 
   private ensureBuildingLabel(n: RenderNode, e: Entity): void {
-    if (e.kind !== 'building') {
+    if (e.kind !== 'building' && e.kind !== 'resource_node') {
       if (n.label) {
         n.label.destroy();
         n.label = undefined;
       }
       return;
     }
-    const b = this.registry.building(e.defId);
+    if (e.kind === 'building') {
+      const b = this.registry.building(e.defId);
+      if (!n.label) {
+        n.label = new Text({
+          text: b.shortLabel,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#ffffff' },
+        });
+        n.label.anchor.set(0.5, 0);
+        this.labelLayer.addChild(n.label);
+      } else if (n.label.text !== b.shortLabel) {
+        n.label.text = b.shortLabel;
+      }
+      return;
+    }
+    const max = e.amountMax ?? e.amount ?? 1;
+    const frac = Math.max(0, (e.amount ?? 0) / max);
+    const pct = Math.round(frac * 100);
+    const text = frac <= 0 ? 'Empty' : `${pct}%`;
     if (!n.label) {
       n.label = new Text({
-        text: b.shortLabel,
-        style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#ffffff' },
+        text,
+        style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: frac <= 0 ? '#888899' : '#7fe3ff' },
       });
       n.label.anchor.set(0.5, 0);
       this.labelLayer.addChild(n.label);
-    } else if (n.label.text !== b.shortLabel) {
-      n.label.text = b.shortLabel;
+    } else {
+      n.label.text = text;
+      n.label.style.fill = frac <= 0 ? '#888899' : '#7fe3ff';
     }
   }
 
@@ -173,14 +198,22 @@ export class Renderer {
 
       if (n.label) {
         n.label.position.set(x, y + e.radius + 4);
-        n.label.alpha = e.owner === this.humanOwner ? 1 : 0.75;
+        n.label.alpha = e.kind === 'building' && e.owner !== this.humanOwner ? 0.75 : 1;
       }
 
-      // colored ring for buildings
+      if (e.kind === 'resource_node') {
+        this.drawNodeReserve(x, y, e);
+        n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
+      } else {
+        n.sprite.alpha = 1;
+      }
+
+      // owner-colored ring for buildings
       if (e.kind === 'building') {
-        const accent = this.registry.building(e.defId).art.accent;
-        const ring = Number.parseInt(accent.slice(1), 16);
-        this.overlay.circle(x, y, e.radius + 3).stroke({ width: 2, color: ring, alpha: 0.85 });
+        const ownerCol = this.colorByOwner.get(e.owner);
+        if (ownerCol) {
+          this.overlay.circle(x, y, e.radius + 3).stroke({ width: 2, color: hexToNumber(ownerCol), alpha: 0.9 });
+        }
       }
 
       // selection ring
@@ -213,6 +246,29 @@ export class Renderer {
       this.overlay.circle(overlay.confirm.x, overlay.confirm.y, 12).stroke({ width: 3, color: 0xffd166 });
     }
     this.effects.update();
+  }
+
+  private drawNodeReserve(x: number, y: number, e: Entity): void {
+    const max = e.amountMax ?? e.amount ?? 1;
+    const frac = Math.max(0, Math.min(1, (e.amount ?? 0) / max));
+    const ringR = e.radius + 6;
+    const track = 0x1a1826;
+    const fill = frac <= 0 ? 0x555566 : 0x39d0c0;
+
+    this.overlay.circle(x, y, ringR).stroke({ width: 4, color: track, alpha: 0.9 });
+    if (frac > 0) {
+      const start = -Math.PI / 2;
+      const end = start + Math.PI * 2 * frac;
+      this.overlay.arc(x, y, ringR, start, end).stroke({ width: 4, color: fill, alpha: 0.95 });
+    }
+    // inner fill level (vertical bar inside hex)
+    const barW = Math.max(12, e.radius * 1.2);
+    const barH = 5;
+    const barY = y + e.radius * 0.55;
+    this.overlay.rect(x - barW / 2, barY, barW, barH).fill({ color: 0x000000, alpha: 0.55 });
+    if (frac > 0) {
+      this.overlay.rect(x - barW / 2, barY, barW * frac, barH).fill({ color: fill, alpha: 0.9 });
+    }
   }
 
   private drawHpBar(x: number, y: number, e: Entity): void {

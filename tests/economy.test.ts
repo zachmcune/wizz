@@ -54,4 +54,18 @@ describe('economy & production (data-driven)', () => {
     for (let i = 0; i < 1200; i++) sim.step();
     expect(p.mana).toBeGreaterThan(manaBefore); // deposits happened
   });
+
+  it('mana nodes deplete as wisps harvest', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+    const nodes = [...state.entities.values()].filter((e) => e.kind === 'resource_node');
+    const node = nodes[0]!;
+    const start = node.amount ?? 0;
+    expect(start).toBe(reg.balance.manaNodeCapacity);
+    const wisps = ownedBy(state, 'player0').filter((e) => e.defId === 'wisp').map((e) => e.id);
+    sim.enqueueNow([{ type: 'harvest', playerId: 'player0', entityIds: wisps, nodeId: node.id }]);
+    for (let i = 0; i < 800; i++) sim.step();
+    expect(node.amount ?? 0).toBeLessThan(start);
+  });
 });

@@ -118,8 +118,10 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
   };
 
   // Mana nodes (neutral resource entities).
+  const nodeCap = registry.balance.manaNodeCapacity;
   for (const node of map.manaNodes) {
     const id = state.nextEntityId++;
+    const amount = Math.min(node.amount, nodeCap);
     const e: Entity = {
       id,
       owner: 'neutral',
@@ -136,8 +138,8 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
       stance: 'hold',
       cooldowns: {},
       buffs: [],
-      amount: node.amount,
-      amountMax: node.amount,
+      amount,
+      amountMax: amount,
     };
     state.entities.set(id, e);
   }
