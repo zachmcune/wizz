@@ -11,6 +11,7 @@ import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
 import { InputController } from '../input/controller';
 import { lockLandscape } from '../ui/orientation';
+import { initViewport } from '../ui/viewport';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { AudioManager } from '../audio/audio';
@@ -43,6 +44,11 @@ export class Game {
   private fps = 60;
   private lastFrameTime = 0;
   private pointerStart = { x: 0, y: 0 };
+  private onVisibilityResume = (): void => {
+    if (document.visibilityState !== 'visible' || this.disposed) return;
+    initViewport();
+    this.renderer.handleResume();
+  };
 
   constructor(
     private host: HTMLElement,
@@ -103,6 +109,8 @@ export class Game {
     this.setupGestures();
     this.setupPointer();
     this.setupKeyboard();
+    document.addEventListener('visibilitychange', this.onVisibilityResume);
+    window.addEventListener('pageshow', this.onVisibilityResume);
 
     this.renderer.syncTick(this.state);
     this.loop = new GameLoop(
@@ -273,6 +281,8 @@ export class Game {
   exit(): void {
     if (this.disposed) return;
     this.disposed = true;
+    document.removeEventListener('visibilitychange', this.onVisibilityResume);
+    window.removeEventListener('pageshow', this.onVisibilityResume);
     this.loop?.stop();
     void saveGame(this.state);
     this.renderer.destroy();

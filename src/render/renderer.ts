@@ -78,6 +78,19 @@ export class Renderer {
     this.app.renderer.on('resize', () => this.camera.setViewport(this.app.screen.width, this.app.screen.height));
   }
 
+  /** Re-sync canvas size and clear stale vector paths after app background/resume. */
+  handleResume(): void {
+    const parent = this.app.canvas.parentElement;
+    if (parent) {
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      if (w > 0 && h > 0) this.app.renderer.resize(w, h);
+    }
+    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
+    this.overlay.clear();
+    this.effects.reset();
+  }
+
   setOwnerColors(state: GameState): void {
     for (const p of state.players) this.colorByOwner.set(p.id, p.color);
     const human = state.players.find((p) => p.controller === 'human');
@@ -212,13 +225,13 @@ export class Renderer {
       if (e.kind === 'building') {
         const ownerCol = this.colorByOwner.get(e.owner);
         if (ownerCol) {
-          this.overlay.circle(x, y, e.radius + 3).stroke({ width: 2, color: hexToNumber(ownerCol), alpha: 0.9 });
+          this.strokeRing(x, y, e.radius + 3, 2, hexToNumber(ownerCol), 0.9);
         }
       }
 
       // selection ring
       if (selected.has(id)) {
-        this.overlay.circle(x, y, e.radius + 6).stroke({ width: 2, color: 0xffffff, alpha: 0.9 });
+        this.strokeRing(x, y, e.radius + 6, 2, 0xffffff, 0.9);
       }
       // hp bar for damaged combatants + selected
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
@@ -226,24 +239,27 @@ export class Renderer {
       }
       // construction shimmer
       if (e.buildProgress !== undefined) {
-        this.overlay.rect(x - e.radius, y + e.radius + 3, e.radius * 2 * e.buildProgress, 3).fill(0x7fe3ff);
+        this.fillRect(x - e.radius, y + e.radius + 3, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
       }
       // carry indicator for wisps
       if (e.carry !== undefined && e.carry > 0) {
-        this.overlay.circle(x, y - e.radius - 4, 3).fill(0x7fe3ff);
+        this.fillDot(x, y - e.radius - 4, 3, 0x7fe3ff);
       }
     }
 
     if (overlay?.ghost) {
       const gh = overlay.ghost;
       const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-      this.overlay.rect(gh.x - gh.size / 2, gh.y - gh.size / 2, gh.size, gh.size).fill({ color: col, alpha: 0.28 }).stroke({ width: 2, color: col });
+      const gx = gh.x - gh.size / 2;
+      const gy = gh.y - gh.size / 2;
+      this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
+      this.overlay.moveTo(gx, gy).rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
     }
     if (overlay?.spell) {
-      this.overlay.circle(overlay.spell.x, overlay.spell.y, overlay.spell.radius).stroke({ width: 2, color: 0xffd166, alpha: 0.9 });
+      this.strokeRing(overlay.spell.x, overlay.spell.y, overlay.spell.radius, 2, 0xffd166, 0.9);
     }
     if (overlay?.confirm) {
-      this.overlay.circle(overlay.confirm.x, overlay.confirm.y, 12).stroke({ width: 3, color: 0xffd166 });
+      this.strokeRing(overlay.confirm.x, overlay.confirm.y, 12, 3, 0xffd166, 1);
     }
     this.effects.update();
   }
@@ -255,28 +271,41 @@ export class Renderer {
     const track = 0x1a1826;
     const fill = frac <= 0 ? 0x555566 : 0x39d0c0;
 
-    this.overlay.circle(x, y, ringR).stroke({ width: 4, color: track, alpha: 0.9 });
+    this.strokeRing(x, y, ringR, 4, track, 0.9);
     if (frac > 0) {
       const start = -Math.PI / 2;
       const end = start + Math.PI * 2 * frac;
-      this.overlay.arc(x, y, ringR, start, end).stroke({ width: 4, color: fill, alpha: 0.95 });
+      this.strokeRing(x, y, ringR, 4, fill, 0.95, start, end);
     }
-    // inner fill level (vertical bar inside hex)
     const barW = Math.max(12, e.radius * 1.2);
     const barH = 5;
     const barY = y + e.radius * 0.55;
-    this.overlay.rect(x - barW / 2, barY, barW, barH).fill({ color: 0x000000, alpha: 0.55 });
-    if (frac > 0) {
-      this.overlay.rect(x - barW / 2, barY, barW * frac, barH).fill({ color: fill, alpha: 0.9 });
-    }
+    const barX = x - barW / 2;
+    this.fillRect(barX, barY, barW, barH, 0x000000, 0.55);
+    if (frac > 0) this.fillRect(barX, barY, barW * frac, barH, fill, 0.9);
   }
 
   private drawHpBar(x: number, y: number, e: Entity): void {
     const w = Math.max(16, e.radius * 2);
     const frac = Math.max(0, e.hp / e.maxHp);
     const col = frac > 0.5 ? 0x5dff8f : frac > 0.25 ? 0xffd166 : 0xff5d5d;
-    this.overlay.rect(x - w / 2, y, w, 4).fill({ color: 0x000000, alpha: 0.6 });
-    this.overlay.rect(x - w / 2, y, w * frac, 4).fill(col);
+    this.fillRect(x - w / 2, y, w, 4, 0x000000, 0.6);
+    if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
+  }
+
+  /** Isolated ring stroke — avoids Pixi connecting paths with lines to (0,0). */
+  private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
+    const sx = cx + Math.cos(start) * r;
+    const sy = cy + Math.sin(start) * r;
+    this.overlay.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
+  }
+
+  private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+    this.overlay.moveTo(x, y).rect(x, y, w, h).fill({ color, alpha });
+  }
+
+  private fillDot(cx: number, cy: number, r: number, color: number, alpha = 1): void {
+    this.overlay.moveTo(cx + r, cy).arc(cx, cy, r, 0, Math.PI * 2).fill({ color, alpha });
   }
 
   /** Pick a mana node at a world position (generous hit area for touch). */

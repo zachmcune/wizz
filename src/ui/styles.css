@@ -177,6 +177,20 @@ body {
   min-width: 0;
   flex: 1 1 100%;
 }
+.build-btn.unaffordable {
+  opacity: 0.5;
+  border-left-color: var(--panel-border);
+}
+.build-btn.unaffordable .btn-sub {
+  opacity: 1;
+  color: #ff9a9a;
+}
+.build-btn.locked-out {
+  opacity: 0.38;
+}
+.build-btn.locked-out .btn-sub {
+  opacity: 0.65;
+}
 .produce-btn {
   min-width: 0;
   flex: 1 1 100%;

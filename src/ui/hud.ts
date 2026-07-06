@@ -338,11 +338,15 @@ export class Hud {
 
     for (const btn of this.buildRow.querySelectorAll<HTMLButtonElement>('.build-btn')) {
       const def = this.registry.buildings.get(btn.dataset.def!)!;
-      const ok = def.requires.every((r) => p.unlockedTech.includes(r)) && p.mana >= def.cost;
+      const unlocked = def.requires.every((r) => p.unlockedTech.includes(r));
+      const affordable = p.mana >= def.cost;
+      const ok = unlocked && affordable;
       btn.disabled = !ok;
       btn.classList.toggle('active', session.buildDefId === btn.dataset.def);
+      btn.classList.toggle('unaffordable', unlocked && !affordable);
+      btn.classList.toggle('locked-out', !unlocked);
       const sub = btn.querySelector('.btn-sub');
-      if (sub) sub.textContent = ok ? `${def.cost} mana` : 'Locked';
+      if (sub) sub.textContent = !unlocked ? 'Locked' : `${def.cost} mana`;
     }
 
     const selIds = [...session.selection];
