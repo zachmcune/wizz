@@ -33,6 +33,11 @@ export function buildingsOf(state: GameState, owner: PlayerId): Entity[] {
   return ownedBy(state, owner).filter((e) => e.kind === 'building' && e.state !== 'dead');
 }
 
+/** True if the player still has a living HQ (Sanctum). */
+export function hasSanctum(state: GameState, owner: PlayerId): boolean {
+  return buildingsOf(state, owner).some((b) => b.defId === 'sanctum');
+}
+
 export function isAlive(e: Entity | undefined | null): e is Entity {
   return !!e && e.state !== 'dead' && e.hp > 0;
 }
