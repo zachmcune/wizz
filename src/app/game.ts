@@ -104,7 +104,7 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
-    this.hud.showHint('Drag to pan · Pinch to zoom · Tap to command · Long-press then drag to box-select');
+    this.hud.showHint('Drag to pan · Pinch to zoom · Tap unit again or Deselect to clear · Release to place buildings');
   }
 
   private setupGestures(): void {
@@ -160,7 +160,12 @@ export class Game {
     });
     const up = (e: PointerEvent) => {
       const p = rel(e);
+      const wasBuild = this.controller.session.mode === 'build';
       this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
+      // Mobile: finger drift often becomes a pan, not a tap — place on release in build mode.
+      if (wasBuild && this.controller.session.mode === 'build' && this.controller.session.buildGhost?.valid) {
+        this.controller.confirmBuild();
+      }
     };
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);

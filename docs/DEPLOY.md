@@ -10,9 +10,8 @@ assets, and data JSON. There is **no backend in V1**.
 - `wrangler.toml` — tells Cloudflare Pages to publish `./dist` (not the repo root). Requires
   **Build System V2+** in the Pages dashboard.
 - `.node-version` — pins Node 22 for consistent CI/builds.
-- `.github/workflows/deploy-cloudflare-pages.yml` — optional GitHub Actions deploy (runs
-  `npm run build` then `wrangler pages deploy`). Use this if dashboard builds keep serving
-  source files (blank page with `/src/main.ts` in `index.html`).
+- `wrangler.toml` — tells Cloudflare Pages to publish `./dist` (not the repo root). Requires
+  **Build System V2+** in the Pages dashboard.
 
 ### Dashboard setup (Git integration)
 
@@ -23,20 +22,10 @@ assets, and data JSON. There is **no backend in V1**.
 5. `git push` publishes. Automatic HTTPS (required for service worker / PWA install) and custom
    domains are included.
 
-### GitHub Actions deploy (recommended if the site is blank)
+### GitHub Actions deploy (optional)
 
-If https://your-project.pages.dev still serves `<script src="/src/main.ts">`, the build never
-ran. Add these repository secrets, then push to `main`:
-
-| Secret | Where to get it |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare dashboard → My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template (includes Pages) |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages → right sidebar |
-
-The workflow builds locally in GitHub and uploads `dist/` via Wrangler, bypassing misconfigured
-dashboard build settings.
-
-### Cache headers
+The repo no longer runs a GitHub Actions deploy by default. Cloudflare Pages git integration
+builds on push. Only add a Actions workflow if you want CI deploy with API token secrets.
 
 3. `public/_headers` (copied to `dist/`) sets the critical cache rules:
    - `index.html`, `sw.js`, `registerSW.js`, `manifest.webmanifest` → `no-cache` (revalidate),

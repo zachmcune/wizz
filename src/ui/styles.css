@@ -99,6 +99,7 @@ body {
   min-height: 44px;
   min-width: 44px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 .btn:active {
   transform: translateY(1px);
@@ -168,16 +169,22 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-.spell-confirm {
   position: absolute;
   left: 50%;
-  bottom: 90px;
+  bottom: max(90px, calc(10px + env(safe-area-inset-bottom)));
   transform: translateX(-50%);
   background: var(--panel);
   border: 1px solid var(--accent);
   border-radius: 10px;
   padding: 8px 12px;
+  z-index: 12;
+}
+.spell-confirm {
+  bottom: max(90px, calc(10px + env(safe-area-inset-bottom)));
+}
+.build-confirm .btn {
+  min-width: 72px;
+  min-height: 44px;
 }
 .confirm-label {
   font-size: 13px;

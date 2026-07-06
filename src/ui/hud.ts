@@ -60,14 +60,14 @@ export class Hud {
     minimapWrap.appendChild(minimap.canvas);
 
     const cmdCard = el('div', 'cmd-card');
-    cmdCard.append(this.selInfo, this.stanceRow, this.produceRow, this.buildRow, this.buildConfirm);
+    cmdCard.append(this.selInfo, this.stanceRow, this.produceRow, this.buildRow);
 
     this.buildConfirmBtn.addEventListener('click', () => this.controller.confirmBuild());
     this.buildCancelBtn.addEventListener('click', () => this.controller.setMode('normal'));
     this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
     this.buildConfirm.style.display = 'none';
 
-    this.root.append(top, minimapWrap, cmdCard, this.spellConfirm, this.debugEl, this.hintEl, this.result);
+    this.root.append(top, minimapWrap, cmdCard, this.buildConfirm, this.spellConfirm, this.debugEl, this.hintEl, this.result);
     this.buildBuildButtons();
     this.buildStanceButtons();
     this.buildSpellButtons();
@@ -102,6 +102,8 @@ export class Hud {
   }
 
   private buildStanceButtons(): void {
+    const deselect = el('button', 'btn', 'Deselect');
+    deselect.addEventListener('click', () => this.controller.clearSelection());
     const am = el('button', 'btn', 'Attack-Move');
     am.addEventListener('click', () => this.controller.setMode('attackMove'));
     const stop = el('button', 'btn', 'Stop');
@@ -110,7 +112,7 @@ export class Hud {
     hold.addEventListener('click', () => this.controller.setStance('hold'));
     const aggr = el('button', 'btn', 'Aggressive');
     aggr.addEventListener('click', () => this.controller.setStance('aggressive'));
-    this.stanceRow.append(am, stop, hold, aggr);
+    this.stanceRow.append(deselect, am, stop, hold, aggr);
   }
 
   private clearProduceRow(): void {
