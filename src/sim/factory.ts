@@ -69,14 +69,14 @@ export function unlockTech(state: GameState, owner: PlayerId, defId: string): vo
   if (player && !player.unlockedTech.includes(defId)) player.unlockedTech.push(defId);
 }
 
-function makePlayer(cfg: MatchConfig['players'][number]): Player {
+function makePlayer(cfg: MatchConfig['players'][number], startingMana: number): Player {
   return {
     id: cfg.id,
     controller: cfg.controller,
     aiDifficulty: cfg.aiDifficulty,
     team: cfg.team,
     color: cfg.color,
-    mana: 1500,
+    mana: startingMana,
     power: 0,
     powerUsed: 0,
     unlockedTech: [],
@@ -95,7 +95,7 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
   const nav = new NavGrid(map);
   const services = createServices(registry, nav);
 
-  const players = config.players.map(makePlayer);
+  const players = config.players.map((c) => makePlayer(c, registry.balance.startingMana));
   const relations: Record<PlayerId, Record<PlayerId, Relation>> = {};
   for (const a of players) {
     const row: Record<PlayerId, Relation> = {};

@@ -5,8 +5,6 @@ import type { GameState, Entity } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { len, normalize } from '../math';
 
-const SIPHON_PER_SEC = 40;
-
 function moveToward(e: Entity, tx: number, ty: number, speed: number, nav: StepContext['services']['nav']): number {
   const dx = tx - e.pos.x;
   const dy = ty - e.pos.y;
@@ -95,7 +93,8 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx.services.nav);
     if (d <= node.radius + e.radius + 4) {
       const room = e.carryMax - carry;
-      const take = Math.min(SIPHON_PER_SEC / TICK_HZ, room, node.amount ?? 0);
+      const siphonPerSec = ctx.services.registry.balance.siphonPerSecond;
+      const take = Math.min(siphonPerSec / TICK_HZ, room, node.amount ?? 0);
       e.carry = carry + take;
       node.amount = (node.amount ?? 0) - take;
       if ((e.carry ?? 0) >= e.carryMax) e.state = 'returning';

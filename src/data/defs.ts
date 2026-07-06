@@ -95,6 +95,18 @@ export interface ProjectileDef {
   art: ArtDef;
 }
 
+export interface AiParams {
+  interval: number; // ticks between decision passes
+  wispTarget: number; // desired harvester count
+  armyThreshold: number; // army size before attacking
+}
+
+export interface BalanceData {
+  startingMana: number;
+  siphonPerSecond: number;
+  ai: Record<'easy' | 'normal' | 'hard', AiParams>;
+}
+
 export interface MapData {
   id: string;
   name: string;

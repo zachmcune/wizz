@@ -116,6 +116,18 @@ export const mapSchema = z.object({
   manaNodes: z.array(z.object({ x: z.number(), y: z.number(), amount: z.number().positive() })),
 });
 
+const aiParamsSchema = z.object({
+  interval: z.number().int().positive(),
+  wispTarget: z.number().int().nonnegative(),
+  armyThreshold: z.number().int().positive(),
+});
+
+export const balanceSchema = z.object({
+  startingMana: z.number().nonnegative(),
+  siphonPerSecond: z.number().positive(),
+  ai: z.object({ easy: aiParamsSchema, normal: aiParamsSchema, hard: aiParamsSchema }),
+});
+
 export const matchConfigSchema = z.object({
   mapId: z.string(),
   seed: z.number().int(),

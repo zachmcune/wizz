@@ -8,9 +8,10 @@ import {
   projectileSchema,
   mapSchema,
   matchConfigSchema,
+  balanceSchema,
 } from './schemas';
 import type { z, ZodTypeAny } from 'zod';
-import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData } from './defs';
+import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData, BalanceData } from './defs';
 import type { MatchConfig } from '../sim/types';
 
 const modules = import.meta.glob('/data/**/*.json', { eager: true, import: 'default' }) as Record<
@@ -31,7 +32,9 @@ function validate<T extends ZodTypeAny>(schema: T, raw: unknown, path: string): 
 export function loadRegistry(): Registry {
   const reg = new Registry();
   for (const [path, raw] of Object.entries(modules)) {
-    if (path.includes('/units/')) {
+    if (path.endsWith('/balance.json')) {
+      reg.balance = validate(balanceSchema, raw, path) as BalanceData;
+    } else if (path.includes('/units/')) {
       const d = validate(unitSchema, raw, path) as UnitDef;
       reg.units.set(d.id, d);
     } else if (path.includes('/buildings/')) {

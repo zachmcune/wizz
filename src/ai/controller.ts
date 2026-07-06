@@ -5,18 +5,7 @@ import type { SimServices } from '../sim/context';
 import type { GameState, Command, Entity, Player, PlayerId } from '../sim/types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { len } from '../sim/math';
-
-interface Difficulty {
-  interval: number;
-  wispTarget: number;
-  armyThreshold: number;
-}
-
-const DIFFS: Record<string, Difficulty> = {
-  easy: { interval: 20, wispTarget: 3, armyThreshold: 8 },
-  normal: { interval: 15, wispTarget: 4, armyThreshold: 12 },
-  hard: { interval: 10, wispTarget: 5, armyThreshold: 16 },
-};
+import type { AiParams } from '../data/defs';
 
 // Ordered tech/economy build goals the AI works through.
 const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'summoning_circle', 'golem_forge', 'arcane_nexus'];
@@ -27,7 +16,7 @@ export function aiStep(state: GameState, services: SimServices): Command[] {
   for (const p of state.players) {
     const playerIndex = idx++;
     if (p.controller !== 'ai' || p.defeated) continue;
-    const diff = DIFFS[p.aiDifficulty ?? 'normal']!;
+    const diff = services.registry.balance.ai[p.aiDifficulty ?? 'normal'];
     // stagger players so they don't all act on the same tick
     if ((state.tick + playerIndex) % diff.interval !== 0) continue;
     decideForPlayer(state, services, p, diff, cmds);
@@ -62,7 +51,7 @@ function findPlacement(services: SimServices, cx: number, cy: number, footprint:
   return null;
 }
 
-function decideForPlayer(state: GameState, services: SimServices, p: Player, diff: Difficulty, cmds: Command[]): void {
+function decideForPlayer(state: GameState, services: SimServices, p: Player, diff: AiParams, cmds: Command[]): void {
   const reg = services.registry;
   const sanctum = findSanctum(state, p.id);
   if (!sanctum) return;

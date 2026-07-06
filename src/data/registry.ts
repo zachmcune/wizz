@@ -1,6 +1,16 @@
 // Typed registries: definitions loaded from data files, looked up by id at runtime.
-import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData } from './defs';
+import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData, BalanceData } from './defs';
 import type { MatchConfig } from '../sim/types';
+
+const DEFAULT_BALANCE: BalanceData = {
+  startingMana: 1500,
+  siphonPerSecond: 40,
+  ai: {
+    easy: { interval: 20, wispTarget: 3, armyThreshold: 8 },
+    normal: { interval: 15, wispTarget: 4, armyThreshold: 12 },
+    hard: { interval: 10, wispTarget: 5, armyThreshold: 16 },
+  },
+};
 
 export class Registry {
   units = new Map<string, UnitDef>();
@@ -9,6 +19,7 @@ export class Registry {
   projectiles = new Map<string, ProjectileDef>();
   maps = new Map<string, MapData>();
   matches = new Map<string, MatchConfig>();
+  balance: BalanceData = DEFAULT_BALANCE;
 
   unit(id: string): UnitDef {
     const d = this.units.get(id);
