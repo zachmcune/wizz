@@ -11,6 +11,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Arcane Dominion',
@@ -31,6 +32,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

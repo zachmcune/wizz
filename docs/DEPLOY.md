@@ -31,7 +31,8 @@ builds on push. Only add a Actions workflow if you want CI deploy with API token
    - `index.html`, `sw.js`, `registerSW.js`, `manifest.webmanifest` → `no-cache` (revalidate),
    - `/assets/*` (content-hashed by Vite) → `immutable`, long-cached.
    This prevents players getting stuck on a stale build while letting hashed assets cache forever.
-   `vite-plugin-pwa` (Workbox, `registerType: 'autoUpdate'`) drives the update flow.
+   `vite-plugin-pwa` (Workbox, `registerType: 'autoUpdate'`) registers via `src/pwa.ts`,
+   polls for updates on focus/visibility, and reloads when a new build is available.
 
 **Cost:** effectively $0 (Pages serves static sites with unmetered bandwidth). Only a custom
 domain registration costs money; the free `*.pages.dev` subdomain is $0.
