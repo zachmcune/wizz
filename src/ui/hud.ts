@@ -25,6 +25,9 @@ export class Hud {
   private spellRow = el('div', 'spell-row');
   private spellConfirm = el('div', 'spell-confirm');
   private result = el('div', 'result-overlay');
+  private debugEl = el('div', 'debug-overlay');
+  private hintEl = el('div', 'hint-banner');
+  private debugOn = false;
   onExit: (() => void) | null = null;
 
   constructor(
@@ -39,9 +42,15 @@ export class Hud {
     mana.append(el('span', 'stat-label', 'Mana '), this.manaEl);
     const power = el('div', 'stat');
     power.append(el('span', 'stat-label', 'Power '), this.powerEl);
+    const dbgBtn = el('button', 'btn dbg-btn', '·');
+    dbgBtn.title = 'Toggle debug overlay';
+    dbgBtn.addEventListener('click', () => {
+      this.debugOn = !this.debugOn;
+      this.debugEl.style.display = this.debugOn ? 'block' : 'none';
+    });
     const menuBtn = el('button', 'btn menu-btn', 'Menu');
     menuBtn.addEventListener('click', () => this.toggleMenu());
-    top.append(mana, power, this.spellRow, menuBtn);
+    top.append(mana, power, this.spellRow, dbgBtn, menuBtn);
 
     const minimapWrap = el('div', 'minimap-wrap');
     minimapWrap.appendChild(minimap.canvas);
@@ -49,12 +58,31 @@ export class Hud {
     const cmdCard = el('div', 'cmd-card');
     cmdCard.append(this.selInfo, this.stanceRow, this.produceRow, this.buildRow, this.buildConfirm);
 
-    this.root.append(top, minimapWrap, cmdCard, this.spellConfirm, this.result);
+    this.root.append(top, minimapWrap, cmdCard, this.spellConfirm, this.debugEl, this.hintEl, this.result);
     this.buildBuildButtons();
     this.buildStanceButtons();
     this.buildSpellButtons();
     this.result.style.display = 'none';
     this.spellConfirm.style.display = 'none';
+    this.debugEl.style.display = 'none';
+    this.hintEl.style.display = 'none';
+  }
+
+  showHint(text: string): void {
+    this.hintEl.textContent = text;
+    this.hintEl.style.display = 'block';
+    const dismiss = () => {
+      this.hintEl.style.display = 'none';
+      this.hintEl.removeEventListener('pointerdown', dismiss);
+    };
+    this.hintEl.addEventListener('pointerdown', dismiss);
+    setTimeout(dismiss, 9000);
+  }
+
+  setDebug(fps: number, tick: number, entities: number): void {
+    if (!this.debugOn) return;
+    const sel = this.controller.session.selection.size;
+    this.debugEl.textContent = `${fps.toFixed(0)} fps · tick ${tick} · entities ${entities} · sel ${sel}`;
   }
 
   private buildBuildButtons(): void {

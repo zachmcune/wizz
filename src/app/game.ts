@@ -39,6 +39,8 @@ export class Game {
   private tickCounter = 0;
   private disposed = false;
   private lastPointer = { x: 0, y: 0 };
+  private fps = 60;
+  private lastFrameTime = 0;
 
   constructor(
     private host: HTMLElement,
@@ -101,6 +103,7 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
+    this.hud.showHint('Drag to pan · Pinch to zoom · Tap to command · Long-press then drag to box-select');
   }
 
   private setupGestures(): void {
@@ -201,11 +204,19 @@ export class Game {
   }
 
   private frame(alpha: number): void {
-    this.gesture.update(performance.now());
+    const now = performance.now();
+    if (this.lastFrameTime) {
+      const dt = now - this.lastFrameTime;
+      if (dt > 0) this.fps = this.fps * 0.9 + (1000 / dt) * 0.1; // smoothed
+    }
+    this.lastFrameTime = now;
+
+    this.gesture.update(now);
     const overlay = this.buildOverlay();
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay);
     this.minimap.render(this.state);
     this.hud.update();
+    this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);
   }
 
   private buildOverlay() {

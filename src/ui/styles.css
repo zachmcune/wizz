@@ -231,6 +231,36 @@ body {
   width: 100%;
   font-size: 16px;
 }
+.dbg-btn {
+  min-width: 44px;
+  opacity: 0.7;
+}
+.debug-overlay {
+  position: absolute;
+  top: 64px;
+  left: 12px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: #7fe3ff;
+  background: rgba(10, 8, 18, 0.7);
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.hint-banner {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 16px;
+}
 .box-select {
   position: absolute;
   border: 1.5px solid #7fe3ff;
