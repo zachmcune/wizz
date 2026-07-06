@@ -1,6 +1,8 @@
 {
   "id": "ley_conduit",
   "name": "Ley Conduit",
+  "shortLabel": "PWR",
+  "description": "Generates power so you can support more buildings and units.",
   "kind": "building",
   "cost": 300,
   "buildTime": 6,

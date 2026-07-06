@@ -52,6 +52,8 @@ export interface UnitDef {
 export interface BuildingDef {
   id: string;
   name: string;
+  shortLabel: string; // 2–4 char map label
+  description: string; // shown in HUD when selected / building
   kind: 'building';
   cost: number;
   buildTime: number; // seconds

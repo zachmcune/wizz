@@ -10,6 +10,7 @@ import { Simulation } from '../sim/simulation';
 import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
 import { InputController } from '../input/controller';
+import { lockLandscape } from '../ui/orientation';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { AudioManager } from '../audio/audio';
@@ -104,7 +105,7 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
-    this.hud.showHint('Drag to pan · Pinch to zoom · Tap unit again or Deselect to clear · Release to place buildings');
+    this.hud.showHint('Select HQ to build · Colored labels show building type · Tap panel headers to collapse');
   }
 
   private setupGestures(): void {
@@ -144,6 +145,7 @@ export class Game {
     };
     canvas.addEventListener('pointerdown', (e) => {
       this.audio.unlock();
+      void lockLandscape();
       const p = rel(e);
       this.lastPointer = p;
       canvas.setPointerCapture(e.pointerId);

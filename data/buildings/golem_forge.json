@@ -1,6 +1,8 @@
 {
   "id": "golem_forge",
   "name": "Golem Forge",
+  "shortLabel": "FORGE",
+  "description": "Trains heavy units: stone golems and siege behemoths. Requires Ley Conduit.",
   "kind": "building",
   "cost": 600,
   "buildTime": 12,

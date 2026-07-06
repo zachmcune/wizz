@@ -1,6 +1,8 @@
 {
   "id": "ward_turret",
   "name": "Ward Turret",
+  "shortLabel": "TWR",
+  "description": "Defensive tower. Automatically attacks enemies in range.",
   "kind": "building",
   "cost": 250,
   "buildTime": 5,

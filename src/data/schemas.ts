@@ -56,6 +56,8 @@ export const unitSchema = z.object({
 export const buildingSchema = z.object({
   id: z.string(),
   name: z.string(),
+  shortLabel: z.string().min(1).max(6),
+  description: z.string().min(1),
   kind: z.literal('building'),
   cost: z.number().nonnegative(),
   buildTime: z.number().positive(),

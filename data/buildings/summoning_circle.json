@@ -1,6 +1,8 @@
 {
   "id": "summoning_circle",
   "name": "Summoning Circle",
+  "shortLabel": "SUM",
+  "description": "Trains light infantry: swarmlings, archers, and familiars.",
   "kind": "building",
   "cost": 400,
   "buildTime": 8,

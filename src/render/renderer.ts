@@ -1,5 +1,5 @@
 // PixiJS renderer. Reads interpolated sim state and draws it. NEVER mutates the sim.
-import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { lerp } from '../sim/math';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
@@ -20,6 +20,7 @@ export interface RenderOverlay {
 
 interface RenderNode {
   sprite: Sprite;
+  label?: Text;
   prevX: number;
   prevY: number;
   curX: number;
@@ -34,11 +35,13 @@ export class Renderer {
   private world = new Container();
   private terrainLayer = new Container();
   private entityLayer = new Container();
+  private labelLayer = new Container();
   private overlayLayer = new Container();
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
   private overlay = new Graphics();
   private colorByOwner = new Map<PlayerId, string>();
+  private humanOwner: PlayerId = '';
 
   constructor(
     private registry: Registry,
@@ -58,7 +61,7 @@ export class Renderer {
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
 
-    this.world.addChild(this.terrainLayer, this.entityLayer, this.effects.container, this.overlayLayer);
+    this.world.addChild(this.terrainLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
     this.overlayLayer.addChild(this.overlay);
     this.app.stage.addChild(this.world);
 
@@ -72,6 +75,8 @@ export class Renderer {
 
   setOwnerColors(state: GameState): void {
     for (const p of state.players) this.colorByOwner.set(p.id, p.color);
+    const human = state.players.find((p) => p.controller === 'human');
+    if (human) this.humanOwner = human.id;
   }
 
   private buildTerrain(): void {
@@ -89,12 +94,36 @@ export class Renderer {
 
   private artOf(e: Entity): { art: ArtDef; color: string } {
     if (e.kind === 'unit') return { art: this.registry.unit(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
-    if (e.kind === 'building') return { art: this.registry.building(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
+    if (e.kind === 'building') {
+      const b = this.registry.building(e.defId);
+      return { art: b.art, color: b.art.accent };
+    }
     if (e.kind === 'projectile') {
       const a = this.registry.projectile(e.defId).art;
       return { art: a, color: a.accent };
     }
     return { art: NODE_ART, color: NEUTRAL_COLOR };
+  }
+
+  private ensureBuildingLabel(n: RenderNode, e: Entity): void {
+    if (e.kind !== 'building') {
+      if (n.label) {
+        n.label.destroy();
+        n.label = undefined;
+      }
+      return;
+    }
+    const b = this.registry.building(e.defId);
+    if (!n.label) {
+      n.label = new Text({
+        text: b.shortLabel,
+        style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#ffffff' },
+      });
+      n.label.anchor.set(0.5, 0);
+      this.labelLayer.addChild(n.label);
+    } else if (n.label.text !== b.shortLabel) {
+      n.label.text = b.shortLabel;
+    }
   }
 
   /** Called once per sim tick: add/remove sprites and shift interpolation targets. */
@@ -114,12 +143,16 @@ export class Renderer {
         n.curX = e.pos.x;
         n.curY = e.pos.y;
         n.facing = e.facing;
+        const { art, color } = this.artOf(e);
+        n.sprite.texture = this.provider.texture(art, color);
       }
+      this.ensureBuildingLabel(n, e);
     }
     // remove sprites whose entity is gone
     for (const [id, n] of this.nodes) {
       if (!state.entities.has(id)) {
         n.sprite.destroy();
+        n.label?.destroy();
         this.nodes.delete(id);
       }
     }
@@ -137,6 +170,18 @@ export class Renderer {
       const y = lerp(n.prevY, n.curY, alpha);
       n.sprite.position.set(x, y);
       if (e.kind === 'unit' || e.kind === 'projectile') n.sprite.rotation = n.facing + Math.PI / 2;
+
+      if (n.label) {
+        n.label.position.set(x, y + e.radius + 4);
+        n.label.alpha = e.owner === this.humanOwner ? 1 : 0.75;
+      }
+
+      // colored ring for buildings
+      if (e.kind === 'building') {
+        const accent = this.registry.building(e.defId).art.accent;
+        const ring = Number.parseInt(accent.slice(1), 16);
+        this.overlay.circle(x, y, e.radius + 3).stroke({ width: 2, color: ring, alpha: 0.85 });
+      }
 
       // selection ring
       if (selected.has(id)) {

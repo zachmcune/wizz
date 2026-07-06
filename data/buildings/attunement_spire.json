@@ -1,6 +1,8 @@
 {
   "id": "attunement_spire",
   "name": "Attunement Spire",
+  "shortLabel": "MINE",
+  "description": "Harvests mana. Trains Wisps and provides a drop-off point for harvesters.",
   "kind": "building",
   "cost": 500,
   "buildTime": 8,

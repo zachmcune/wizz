@@ -1,6 +1,8 @@
 {
   "id": "sanctum",
   "name": "Sanctum",
+  "shortLabel": "HQ",
+  "description": "Your command center. Build new structures from here. Lose it and you lose the match.",
   "kind": "building",
   "cost": 0,
   "buildTime": 1,
