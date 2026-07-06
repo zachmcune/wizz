@@ -78,7 +78,8 @@ export class Game {
     this.renderer.camera.centerOn(sanctum?.pos.x ?? start.x, sanctum?.pos.y ?? start.y);
     void human;
 
-    this.minimap = new Minimap(this.registry.map(this.state.mapId), this.renderer.camera, this.colorByOwner);
+    const mapSize = Math.max(72, Math.min(112, Math.floor(window.innerHeight * 0.26)));
+    this.minimap = new Minimap(this.registry.map(this.state.mapId), this.renderer.camera, this.colorByOwner, mapSize);
 
     this.controller = new InputController(
       () => this.state,

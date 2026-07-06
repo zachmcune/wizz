@@ -1,6 +1,7 @@
 // App entry point. Boots data, manages the menu <-> match lifecycle, wires global settings.
 import './ui/styles.css';
 import { initOrientation } from './ui/orientation';
+import { initViewport } from './ui/viewport';
 import { initPwaUpdates } from './pwa';
 import { loadRegistry } from './data/loader';
 import { initMatch } from './sim/factory';
@@ -12,6 +13,7 @@ import { loadGame, hasSave, clearSave } from './storage/save';
 
 async function boot(): Promise<void> {
   initPwaUpdates();
+  initViewport();
   initOrientation();
   const app = document.getElementById('app')!;
   const registry = loadRegistry();

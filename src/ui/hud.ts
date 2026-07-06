@@ -98,20 +98,26 @@ export class Hud {
 
     const selBlock = el('div', 'sel-block');
     selBlock.append(this.selName, this.selDesc, this.selMeta);
+    const compact = window.innerHeight < 420 || window.innerWidth < 740;
     this.infoPanel = new Collapsible('Selection', true);
     this.infoPanel.body.append(selBlock);
 
     this.unitPanel = new Collapsible('Unit orders', false);
     this.unitPanel.body.append(this.stanceRow);
 
-    this.trainPanel = new Collapsible('Train units', true);
+    this.trainPanel = new Collapsible('Train units', !compact);
     this.trainPanel.body.append(this.produceRow);
 
-    this.buildPanel = new Collapsible('Build structures', true);
+    this.buildPanel = new Collapsible('Build structures', !compact);
     this.buildPanel.body.append(this.buildRow);
 
     const cmdCard = el('div', 'cmd-card');
     cmdCard.append(this.infoPanel.root, this.unitPanel.root, this.trainPanel.root, this.buildPanel.root);
+    // Keep touch scrolling inside the panel (canvas uses touch-action: none).
+    const keepScroll = (e: Event) => e.stopPropagation();
+    for (const node of [cmdCard, this.buildRow, this.produceRow, this.stanceRow]) {
+      node.addEventListener('touchmove', keepScroll, { passive: true });
+    }
 
     const minimapWrap = el('div', 'minimap-wrap');
     minimapWrap.appendChild(minimap.canvas);

@@ -1,10 +1,15 @@
 :root {
   --bg: #12101c;
-  --panel: rgba(24, 21, 38, 0.86);
+  --panel: rgba(24, 21, 38, 0.92);
   --panel-border: #3a3358;
   --text: #e8e4f6;
   --accent: #8b6cff;
   --danger: #ff5d5d;
+  --topbar-h: 38px;
+  --app-h: 100dvh;
+  --app-w: 100dvw;
+  --vv-top: 0px;
+  --hud-gap: 4px;
 }
 
 * {
@@ -17,18 +22,30 @@
 html,
 body {
   margin: 0;
-  height: 100%;
+  width: var(--app-w);
+  height: var(--app-h);
+  min-height: var(--app-h);
+  max-height: var(--app-h);
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  touch-action: none;
   overscroll-behavior: none;
+}
+
+body {
+  touch-action: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #app {
   position: fixed;
-  inset: 0;
+  top: var(--vv-top);
+  left: 0;
+  width: var(--app-w);
+  height: var(--app-h);
+  max-height: var(--app-h);
+  overflow: hidden;
 }
 
 .game-canvas-host {
@@ -49,8 +66,17 @@ body {
 .hud .topbar,
 .hud .build-confirm,
 .hud .spell-confirm,
-.hud .result-overlay {
+.hud .result-overlay,
+.hud .menu-screen {
   pointer-events: auto;
+}
+
+.hud-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .topbar {
@@ -58,12 +84,14 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  z-index: 12;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  padding-top: max(8px, env(safe-area-inset-top));
-  background: linear-gradient(180deg, rgba(10, 8, 18, 0.9), rgba(10, 8, 18, 0));
+  gap: 6px;
+  min-height: var(--topbar-h);
+  max-height: var(--topbar-h);
+  padding: 0 6px;
+  background: linear-gradient(180deg, rgba(10, 8, 18, 0.95), rgba(10, 8, 18, 0));
 }
 .stat {
   font-size: 13px;
@@ -92,8 +120,12 @@ body {
   display: flex;
   gap: 4px;
   margin-left: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+  max-width: min(38vw, 220px);
+  -webkit-overflow-scrolling: touch;
 }
 .compact-btn {
   font-size: 11px;
@@ -105,11 +137,11 @@ body {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-  min-height: 40px;
-  min-width: 40px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  min-height: 36px;
+  min-width: 36px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -132,10 +164,12 @@ body {
 }
 .build-btn {
   border-left: 4px solid var(--accent);
-  min-width: min(44vw, 160px);
+  min-width: 0;
+  flex: 1 1 100%;
 }
 .produce-btn {
-  min-width: min(40vw, 140px);
+  min-width: 0;
+  flex: 1 1 100%;
 }
 .btn:active {
   transform: translateY(1px);
@@ -167,9 +201,10 @@ body {
 }
 .minimap-panel {
   position: absolute;
-  left: max(8px, env(safe-area-inset-left));
-  bottom: max(8px, env(safe-area-inset-bottom));
-  width: min(34vw, 200px);
+  top: calc(var(--topbar-h) + var(--hud-gap));
+  left: var(--hud-gap);
+  bottom: auto;
+  width: min(24vw, 112px);
   z-index: 11;
 }
 .minimap-canvas {
@@ -182,15 +217,21 @@ body {
 
 .cmd-card {
   position: absolute;
-  right: max(8px, env(safe-area-inset-right));
-  bottom: max(8px, env(safe-area-inset-bottom));
-  width: min(46vw, 320px);
-  max-height: min(72vh, 100%);
-  overflow-y: auto;
+  top: calc(var(--topbar-h) + var(--hud-gap));
+  right: var(--hud-gap);
+  bottom: var(--hud-gap);
+  left: auto;
+  width: min(44vw, 260px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: stretch;
+  z-index: 11;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 .panel {
@@ -219,7 +260,14 @@ body {
   font-size: 11px;
 }
 .panel-body {
-  padding: 6px;
+  padding: 4px;
+  max-height: none;
+}
+.panel-body .card-row {
+  max-height: 28vh;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .panel.collapsed .panel-body {
   display: none;
@@ -251,27 +299,25 @@ body {
 .build-confirm,
 .spell-confirm {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   position: absolute;
-  left: 50%;
-  bottom: max(90px, calc(10px + env(safe-area-inset-bottom)));
-  transform: translateX(-50%);
+  left: var(--hud-gap);
+  bottom: var(--hud-gap);
   background: var(--panel);
   border: 1px solid var(--accent);
   border-radius: 10px;
-  padding: 8px 12px;
-  z-index: 12;
-}
-.spell-confirm {
-  bottom: max(90px, calc(10px + env(safe-area-inset-bottom)));
+  padding: 6px 10px;
+  z-index: 13;
+  max-width: calc(var(--app-w) - min(44vw, 260px) - var(--hud-gap) * 4);
 }
 .build-confirm .btn {
-  min-width: 72px;
-  min-height: 44px;
+  min-width: 64px;
+  min-height: 36px;
 }
 .confirm-label {
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .result-overlay {
@@ -298,15 +344,19 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  touch-action: pan-y;
   background: radial-gradient(circle at 50% 30%, #1c1830, #0c0a14);
   z-index: 20;
 }
 .menu-title {
-  font-size: 44px;
+  font-size: clamp(28px, 8vw, 44px);
   margin: 0;
   color: var(--text);
   text-shadow: 0 0 24px rgba(139, 108, 255, 0.6);
+  text-align: center;
 }
 .menu-sub {
   opacity: 0.6;
@@ -340,18 +390,20 @@ body {
 }
 .hint-banner {
   position: absolute;
-  top: 60px;
+  top: calc(var(--topbar-h) + 4px);
   left: 50%;
   transform: translateX(-50%);
-  max-width: 90vw;
+  max-width: min(70vw, 360px);
   text-align: center;
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.35;
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--accent);
-  border-radius: 10px;
-  padding: 10px 16px;
+  border-radius: 8px;
+  padding: 6px 10px;
   pointer-events: none;
+  z-index: 9;
 }
 .box-select {
   position: absolute;
@@ -390,18 +442,52 @@ body {
   line-height: 1.4;
 }
 
+/* Short landscape phones (iPhone SE, small Android) */
+.compact-ui {
+  --topbar-h: 34px;
+  --hud-gap: 3px;
+}
+.compact-ui .btn {
+  min-height: 32px;
+  font-size: 10px;
+  padding: 4px 6px;
+}
+.compact-ui .btn-title {
+  font-size: 10px;
+}
+.compact-ui .btn-sub {
+  font-size: 9px;
+}
+.compact-ui .sel-name {
+  font-size: 11px;
+}
+.compact-ui .sel-desc,
+.compact-ui .sel-meta {
+  font-size: 9px;
+}
+.compact-ui .panel-head {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+.compact-ui .cmd-card {
+  width: min(48vw, 240px);
+}
+.compact-ui .minimap-panel {
+  width: min(20vw, 96px);
+}
+.compact-ui .panel-body .card-row {
+  max-height: 22vh;
+}
+.compact-ui .build-confirm,
+.compact-ui .spell-confirm {
+  max-width: calc(var(--app-w) - min(48vw, 240px) - var(--hud-gap) * 4);
+}
+
 @media (max-height: 420px) {
-  .topbar {
-    padding: 4px 8px;
-    gap: 6px;
+  :root {
+    --topbar-h: 32px;
   }
-  .cmd-card {
-    width: min(50vw, 280px);
-    max-height: 68vh;
-  }
-  .build-confirm,
-  .spell-confirm {
-    bottom: max(72px, calc(8px + env(safe-area-inset-bottom)));
-    font-size: 12px;
+  .result-title {
+    font-size: 32px;
   }
 }
