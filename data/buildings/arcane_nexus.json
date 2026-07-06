@@ -1,0 +1,16 @@
+{
+  "id": "arcane_nexus",
+  "name": "Arcane Nexus",
+  "kind": "building",
+  "cost": 800,
+  "buildTime": 14,
+  "hp": 800,
+  "armor": "building",
+  "sight": 170,
+  "footprint": 2,
+  "requires": ["golem_forge"],
+  "producesUnits": ["storm_caster"],
+  "unlocksSpells": ["meteor_storm", "aegis_ward", "blink_gate"],
+  "powerUsed": 50,
+  "art": { "shape": "building", "size": 60, "accent": "#ffd166" }
+}

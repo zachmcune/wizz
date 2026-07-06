@@ -1,0 +1,14 @@
+{
+  "id": "ley_conduit",
+  "name": "Ley Conduit",
+  "kind": "building",
+  "cost": 300,
+  "buildTime": 6,
+  "hp": 500,
+  "armor": "building",
+  "sight": 110,
+  "footprint": 2,
+  "requires": ["sanctum"],
+  "powerProduced": 60,
+  "art": { "shape": "building", "size": 60, "accent": "#e0c24a" }
+}

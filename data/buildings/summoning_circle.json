@@ -1,0 +1,15 @@
+{
+  "id": "summoning_circle",
+  "name": "Summoning Circle",
+  "kind": "building",
+  "cost": 400,
+  "buildTime": 8,
+  "hp": 700,
+  "armor": "building",
+  "sight": 130,
+  "footprint": 2,
+  "requires": ["sanctum"],
+  "producesUnits": ["imp_swarmling", "arcane_archer", "rift_familiar"],
+  "powerUsed": 20,
+  "art": { "shape": "building", "size": 60, "accent": "#c96ad0" }
+}

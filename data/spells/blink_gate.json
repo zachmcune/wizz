@@ -1,0 +1,11 @@
+{
+  "id": "blink_gate",
+  "name": "Blink Gate",
+  "kind": "spell",
+  "cooldownTicks": 900,
+  "requiresConfirm": false,
+  "targeting": "group",
+  "aoeRadius": 40,
+  "effect": { "kind": "blink" },
+  "requires": ["arcane_nexus"]
+}

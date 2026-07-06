@@ -1,0 +1,24 @@
+{
+  "id": "stone_golem",
+  "name": "Stone Golem",
+  "kind": "unit",
+  "role": "heavy_melee",
+  "cost": 400,
+  "buildTime": 14,
+  "hp": 600,
+  "armor": "heavy",
+  "speed": 42,
+  "sight": 150,
+  "radius": 13,
+  "weapon": {
+    "damage": 40,
+    "range": 26,
+    "cooldownTicks": 20,
+    "projectile": null,
+    "vs": { "light": 1.0, "heavy": 0.8, "building": 1.5 }
+  },
+  "producedBy": "golem_forge",
+  "requires": ["ley_conduit", "golem_forge"],
+  "art": { "shape": "square", "size": 24, "accent": "#8a8a8a" },
+  "sfx": { "select": "golem_select", "move": "golem_move", "attack": "melee_heavy", "die": "unit_die_heavy" }
+}
