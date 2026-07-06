@@ -5,9 +5,39 @@
 The whole single-player game is the static output of `npm run build` (`dist/`): HTML, JS,
 assets, and data JSON. There is **no backend in V1**.
 
-1. Connect the repo to Cloudflare Pages. Build command: `npm run build`. Output dir: `dist`.
-2. `git push` publishes. Automatic HTTPS (required for service worker / PWA install) and custom
+### Repo config (checked in)
+
+- `wrangler.toml` — tells Cloudflare Pages to publish `./dist` (not the repo root). Requires
+  **Build System V2+** in the Pages dashboard.
+- `.node-version` — pins Node 22 for consistent CI/builds.
+- `.github/workflows/deploy-cloudflare-pages.yml` — optional GitHub Actions deploy (runs
+  `npm run build` then `wrangler pages deploy`). Use this if dashboard builds keep serving
+  source files (blank page with `/src/main.ts` in `index.html`).
+
+### Dashboard setup (Git integration)
+
+1. Connect the repo to Cloudflare Pages.
+2. **Settings → Builds**: enable **Build System V2** (or V3).
+3. Build command: `npm run build`. Output directory: `dist` (also set in `wrangler.toml`).
+4. Framework preset: **Vite** or **None**.
+5. `git push` publishes. Automatic HTTPS (required for service worker / PWA install) and custom
    domains are included.
+
+### GitHub Actions deploy (recommended if the site is blank)
+
+If https://your-project.pages.dev still serves `<script src="/src/main.ts">`, the build never
+ran. Add these repository secrets, then push to `main`:
+
+| Secret | Where to get it |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare dashboard → My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template (includes Pages) |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → Workers & Pages → right sidebar |
+
+The workflow builds locally in GitHub and uploads `dist/` via Wrangler, bypassing misconfigured
+dashboard build settings.
+
+### Cache headers
+
 3. `public/_headers` (copied to `dist/`) sets the critical cache rules:
    - `index.html`, `sw.js`, `registerSW.js`, `manifest.webmanifest` → `no-cache` (revalidate),
    - `/assets/*` (content-hashed by Vite) → `immutable`, long-cached.

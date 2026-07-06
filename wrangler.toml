@@ -1,0 +1,6 @@
+# Cloudflare Pages configuration.
+# Requires Build System V2+ in the Pages dashboard (Settings → Builds).
+# Build command is still set in the dashboard or via the GitHub Actions workflow.
+name = "wizz-aw8"
+compatibility_date = "2026-07-06"
+pages_build_output_dir = "./dist"
