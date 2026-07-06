@@ -96,6 +96,7 @@ export class Game {
 
     this.setupGestures();
     this.setupPointer();
+    this.setupKeyboard();
 
     this.renderer.syncTick(this.state);
     this.loop = new GameLoop(
@@ -152,7 +153,7 @@ export class Game {
       const p = rel(e);
       this.lastPointer = p;
       if (this.controller.session.mode === 'build') {
-        const w = screenToWorld({ x: p.x, y: p.y - 40 }, this.renderer.camera.view());
+        const w = screenToWorld(p, this.renderer.camera.view());
         this.controller.updateGhost(w);
       }
       this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
@@ -163,6 +164,12 @@ export class Game {
     };
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);
+  }
+
+  private setupKeyboard(): void {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.controller.clearSelection();
+    });
   }
 
   private step(): void {

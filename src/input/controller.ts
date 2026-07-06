@@ -55,6 +55,7 @@ export class InputController {
     const world = this.toWorld(screen);
     if (this.session.mode === 'build') {
       this.updateGhost(world);
+      if (this.session.buildGhost?.valid) this.confirmBuild();
       return;
     }
     if (this.session.mode === 'attackMove') {
@@ -77,6 +78,10 @@ export class InputController {
     const wisps = this.ownWispsSelected();
 
     if (picked) {
+      if (picked.owner === this.playerId && this.session.selection.has(picked.id)) {
+        this.setSelection([...this.session.selection].filter((id) => id !== picked.id));
+        return;
+      }
       if (isEnemy(st, this.playerId, picked.owner) && units.length) {
         this.emit({ type: 'attack', playerId: this.playerId, entityIds: units, targetId: picked.id });
         this.onOrderFeedback('attack', picked.pos);
@@ -259,5 +264,13 @@ export class InputController {
 
   surrender(): void {
     this.emit({ type: 'surrender', playerId: this.playerId });
+  }
+
+  clearSelection(): void {
+    this.setSelection([]);
+    if (this.session.mode === 'build' || this.session.mode === 'spell' || this.session.mode === 'attackMove') {
+      this.setMode('normal');
+    }
+    this.session.pendingConfirm = null;
   }
 }

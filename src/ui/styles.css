@@ -260,6 +260,7 @@ body {
   border: 1px solid var(--accent);
   border-radius: 10px;
   padding: 10px 16px;
+  pointer-events: none;
 }
 .box-select {
   position: absolute;

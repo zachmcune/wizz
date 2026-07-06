@@ -22,12 +22,16 @@ export class Hud {
   private produceRow = el('div', 'card-row produce-row');
   private stanceRow = el('div', 'card-row stance-row');
   private buildConfirm = el('div', 'build-confirm');
+  private buildConfirmLabel = el('span', 'confirm-label');
+  private buildConfirmBtn = el('button', 'btn confirm', 'Place');
+  private buildCancelBtn = el('button', 'btn', 'Cancel');
   private spellRow = el('div', 'spell-row');
   private spellConfirm = el('div', 'spell-confirm');
   private result = el('div', 'result-overlay');
   private debugEl = el('div', 'debug-overlay');
   private hintEl = el('div', 'hint-banner');
   private debugOn = false;
+  private produceBuildingId: number | null = null;
   onExit: (() => void) | null = null;
 
   constructor(
@@ -58,6 +62,11 @@ export class Hud {
     const cmdCard = el('div', 'cmd-card');
     cmdCard.append(this.selInfo, this.stanceRow, this.produceRow, this.buildRow, this.buildConfirm);
 
+    this.buildConfirmBtn.addEventListener('click', () => this.controller.confirmBuild());
+    this.buildCancelBtn.addEventListener('click', () => this.controller.setMode('normal'));
+    this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
+    this.buildConfirm.style.display = 'none';
+
     this.root.append(top, minimapWrap, cmdCard, this.spellConfirm, this.debugEl, this.hintEl, this.result);
     this.buildBuildButtons();
     this.buildStanceButtons();
@@ -71,12 +80,9 @@ export class Hud {
   showHint(text: string): void {
     this.hintEl.textContent = text;
     this.hintEl.style.display = 'block';
-    const dismiss = () => {
+    setTimeout(() => {
       this.hintEl.style.display = 'none';
-      this.hintEl.removeEventListener('pointerdown', dismiss);
-    };
-    this.hintEl.addEventListener('pointerdown', dismiss);
-    setTimeout(dismiss, 9000);
+    }, 9000);
   }
 
   setDebug(fps: number, tick: number, entities: number): void {
@@ -105,6 +111,35 @@ export class Hud {
     const aggr = el('button', 'btn', 'Aggressive');
     aggr.addEventListener('click', () => this.controller.setStance('aggressive'));
     this.stanceRow.append(am, stop, hold, aggr);
+  }
+
+  private clearProduceRow(): void {
+    if (this.produceBuildingId === null) return;
+    this.produceRow.innerHTML = '';
+    this.produceBuildingId = null;
+  }
+
+  private rebuildProduceRow(building: { id: number; defId: string }): void {
+    this.produceRow.innerHTML = '';
+    this.produceBuildingId = building.id;
+    const bdef = this.registry.building(building.defId);
+    for (const uid of bdef.producesUnits ?? []) {
+      const udef = this.registry.unit(uid);
+      const btn = el('button', 'btn produce-btn', udef.name);
+      btn.dataset.unit = uid;
+      btn.addEventListener('click', () => this.controller.produce(building.id, uid));
+      this.produceRow.appendChild(btn);
+    }
+  }
+
+  private updateProduceButtons(p: { mana: number; unlockedTech: string[] }): void {
+    for (const btn of this.produceRow.querySelectorAll<HTMLButtonElement>('.produce-btn')) {
+      const uid = btn.dataset.unit!;
+      const udef = this.registry.unit(uid);
+      const ok = udef.requires.every((r) => p.unlockedTech.includes(r)) && p.mana >= udef.cost;
+      btn.disabled = !ok;
+      btn.textContent = `${udef.name} (${udef.cost})`;
+    }
   }
 
   private buildSpellButtons(): void {
@@ -167,44 +202,37 @@ export class Hud {
     }
 
     // selection info + produce row
-    this.produceRow.innerHTML = '';
     const selIds = [...session.selection];
     const sel = selIds.map((id) => st.entities.get(id)).filter((e) => e && e.state !== 'dead');
     if (sel.length === 0) {
       this.selInfo.textContent = '';
+      this.clearProduceRow();
     } else if (sel.length === 1) {
       const e = sel[0]!;
       const def = this.registry.units.get(e.defId) ?? this.registry.buildings.get(e.defId);
       this.selInfo.textContent = `${def?.name ?? e.defId}  ${Math.ceil(e.hp)}/${e.maxHp}`;
       if (e.owner === this.playerId && e.kind === 'building' && e.productionQueue) {
-        const bdef = this.registry.building(e.defId);
-        for (const uid of bdef.producesUnits ?? []) {
-          const udef = this.registry.unit(uid);
-          const btn = el('button', 'btn produce-btn', `${udef.name} (${udef.cost})`);
-          const ok = udef.requires.every((r) => p.unlockedTech.includes(r)) && p.mana >= udef.cost;
-          btn.disabled = !ok;
-          btn.addEventListener('click', () => this.controller.produce(e.id, uid));
-          this.produceRow.appendChild(btn);
-        }
+        if (this.produceBuildingId !== e.id) this.rebuildProduceRow(e);
+        this.updateProduceButtons(p);
         const q = e.productionQueue.length;
         if (q > 0) this.selInfo.textContent += `  [queue ${q}]`;
+      } else {
+        this.clearProduceRow();
       }
     } else {
       this.selInfo.textContent = `${sel.length} units`;
+      this.clearProduceRow();
     }
 
-    // build confirm
-    this.buildConfirm.innerHTML = '';
-    if (session.mode === 'build' && session.buildGhost) {
-      const def = this.registry.buildings.get(session.buildDefId!)!;
+    // build confirm (stable DOM — do not recreate buttons each frame)
+    if (session.mode === 'build' && session.buildGhost && session.buildDefId) {
+      const def = this.registry.buildings.get(session.buildDefId)!;
       const ok = session.buildGhost.valid;
-      const label = el('span', 'confirm-label', `${def.name} (${def.cost}) ${ok ? '' : '— blocked'}`);
-      const confirm = el('button', 'btn confirm', 'Place');
-      confirm.disabled = !ok;
-      confirm.addEventListener('click', () => this.controller.confirmBuild());
-      const cancel = el('button', 'btn', 'Cancel');
-      cancel.addEventListener('click', () => this.controller.setMode('normal'));
-      this.buildConfirm.append(label, confirm, cancel);
+      this.buildConfirm.style.display = 'flex';
+      this.buildConfirmLabel.textContent = `${def.name} (${def.cost}) ${ok ? '' : '— blocked'}`;
+      this.buildConfirmBtn.disabled = !ok;
+    } else {
+      this.buildConfirm.style.display = 'none';
     }
 
     // spell confirm overlay
