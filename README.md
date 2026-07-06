@@ -41,6 +41,7 @@ node scripts/gen-map.mjs     # data/maps/duel_glade.json
 - [DATA_SCHEMA.md](docs/DATA_SCHEMA.md) — content format.
 - [CONVENTIONS.md](docs/CONVENTIONS.md) — stack, scripts, naming.
 - [GLOSSARY.md](docs/GLOSSARY.md) — canonical names.
+- [DEPLOY.md](docs/DEPLOY.md) — Cloudflare Pages (V1) + Workers/DO relay (V2).
 
 ## Hosting
 
