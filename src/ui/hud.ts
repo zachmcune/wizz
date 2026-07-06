@@ -455,7 +455,9 @@ export class Hud {
       const def = this.registry.buildings.get(session.buildDefId)!;
       const ok = session.buildGhost.valid;
       this.buildConfirm.style.display = 'flex';
-      this.buildConfirmLabel.textContent = `${def.name} (${def.cost}) ${ok ? '· release to place' : '· blocked'}`;
+      const hint =
+        ok ? '· tap Place to confirm' : session.buildGhost.issue === 'range' ? '· too far from base' : '· blocked';
+      this.buildConfirmLabel.textContent = `${def.name} (${def.cost}) ${hint}`;
       this.buildConfirmBtn.disabled = !ok;
     } else {
       this.buildConfirm.style.display = 'none';

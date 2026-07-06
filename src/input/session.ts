@@ -7,7 +7,7 @@ export interface SessionState {
   selection: Set<EntityId>;
   mode: InputMode;
   buildDefId: string | null;
-  buildGhost: { x: number; y: number; valid: boolean } | null;
+  buildGhost: { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } | null;
   spellId: string | null;
   pendingConfirm: { spellId: string; x: number; y: number } | null;
   boxRect: { a: { x: number; y: number }; b: { x: number; y: number } } | null;

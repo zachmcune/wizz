@@ -22,6 +22,7 @@ export interface RenderOverlay {
   ghost?: { x: number; y: number; size: number; valid: boolean };
   spell?: { x: number; y: number; radius: number };
   confirm?: { x: number; y: number } | null;
+  buildZones?: { x: number; y: number; r: number }[];
 }
 
 interface RenderNode {
@@ -251,6 +252,11 @@ export class Renderer {
       }
     }
 
+    if (overlay?.buildZones?.length) {
+      for (const z of overlay.buildZones) {
+        this.strokeRing(z.x, z.y, z.r, 1.5, 0x5dff8f, 0.22);
+      }
+    }
     if (overlay?.ghost) {
       const gh = overlay.ghost;
       const col = gh.valid ? 0x5dff8f : 0xff5d5d;
