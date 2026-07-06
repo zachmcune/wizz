@@ -19,23 +19,24 @@
   -webkit-user-select: none;
 }
 
-html,
+html {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
 body {
   margin: 0;
-  width: var(--app-w);
-  height: var(--app-h);
-  min-height: var(--app-h);
-  max-height: var(--app-h);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   overscroll-behavior: none;
-}
-
-body {
-  touch-action: none;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  touch-action: manipulation;
 }
 
 #app {
@@ -46,17 +47,21 @@ body {
   height: var(--app-h);
   max-height: var(--app-h);
   overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing: border-box;
 }
 
 .game-canvas-host {
   position: absolute;
   inset: 0;
+  touch-action: none;
 }
 
 /* ---- HUD ---- */
 .hud {
   position: absolute;
   inset: 0;
+  height: 100%;
   pointer-events: none;
   z-index: 10;
 }
@@ -87,13 +92,15 @@ body {
   z-index: 12;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-height: var(--topbar-h);
   max-height: var(--topbar-h);
-  padding: 0 6px;
+  padding: 0 4px;
+  overflow: hidden;
   background: linear-gradient(180deg, rgba(10, 8, 18, 0.95), rgba(10, 8, 18, 0));
 }
 .stat {
+  flex-shrink: 0;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   background: var(--panel);
@@ -103,7 +110,7 @@ body {
 }
 .compact-stat {
   font-size: 12px;
-  padding: 4px 7px;
+  padding: 4px 6px;
 }
 .stat-label {
   opacity: 0.6;
@@ -118,19 +125,22 @@ body {
 }
 .spell-row {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   margin-left: auto;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
   touch-action: pan-x;
-  max-width: min(38vw, 220px);
   -webkit-overflow-scrolling: touch;
 }
 .compact-btn {
-  font-size: 11px;
-  padding: 6px 8px;
-  min-height: 36px;
+  font-size: 10px;
+  padding: 4px 6px;
+  min-height: 32px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn {
@@ -190,7 +200,8 @@ body {
   padding: 14px 22px;
 }
 .menu-btn {
-  margin-left: 6px;
+  flex-shrink: 0;
+  margin-left: 2px;
 }
 
 .minimap-wrap {
@@ -204,7 +215,7 @@ body {
   top: calc(var(--topbar-h) + var(--hud-gap));
   left: var(--hud-gap);
   bottom: auto;
-  width: min(24vw, 112px);
+  width: min(22vw, 100px);
   z-index: 11;
 }
 .minimap-canvas {
@@ -219,9 +230,9 @@ body {
   position: absolute;
   top: calc(var(--topbar-h) + var(--hud-gap));
   right: var(--hud-gap);
-  bottom: var(--hud-gap);
-  left: auto;
-  width: min(44vw, 260px);
+  width: min(42vw, 248px);
+  height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
+  max-height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -234,11 +245,14 @@ body {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+.cmd-card > .panel {
+  flex-shrink: 0;
+}
 .panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 .panel-head {
   width: 100%;
@@ -258,16 +272,15 @@ body {
 .panel-chevron {
   opacity: 0.7;
   font-size: 11px;
+  flex-shrink: 0;
+}
+.panel-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .panel-body {
   padding: 4px;
-  max-height: none;
-}
-.panel-body .card-row {
-  max-height: 28vh;
-  overflow-y: auto;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
 }
 .panel.collapsed .panel-body {
   display: none;
@@ -309,7 +322,7 @@ body {
   border-radius: 10px;
   padding: 6px 10px;
   z-index: 13;
-  max-width: calc(var(--app-w) - min(44vw, 260px) - var(--hud-gap) * 4);
+  max-width: calc(100% - min(42vw, 248px) - var(--hud-gap) * 4);
 }
 .build-confirm .btn {
   min-width: 64px;
@@ -373,7 +386,8 @@ body {
   font-size: 16px;
 }
 .dbg-btn {
-  min-width: 44px;
+  flex-shrink: 0;
+  min-width: 32px;
   opacity: 0.7;
 }
 .debug-overlay {
@@ -442,13 +456,16 @@ body {
   line-height: 1.4;
 }
 
-/* Short landscape phones (iPhone SE, small Android) */
+/* Short landscape phones */
 .compact-ui {
-  --topbar-h: 34px;
+  --topbar-h: 32px;
   --hud-gap: 3px;
 }
+.compact-ui .dbg-btn {
+  display: none;
+}
 .compact-ui .btn {
-  min-height: 32px;
+  min-height: 30px;
   font-size: 10px;
   padding: 4px 6px;
 }
@@ -470,22 +487,19 @@ body {
   padding: 4px 8px;
 }
 .compact-ui .cmd-card {
-  width: min(48vw, 240px);
+  width: min(46vw, 228px);
 }
 .compact-ui .minimap-panel {
-  width: min(20vw, 96px);
-}
-.compact-ui .panel-body .card-row {
-  max-height: 22vh;
+  width: min(18vw, 88px);
 }
 .compact-ui .build-confirm,
 .compact-ui .spell-confirm {
-  max-width: calc(var(--app-w) - min(48vw, 240px) - var(--hud-gap) * 4);
+  max-width: calc(100% - min(46vw, 228px) - var(--hud-gap) * 4);
 }
 
 @media (max-height: 420px) {
   :root {
-    --topbar-h: 32px;
+    --topbar-h: 30px;
   }
   .result-title {
     font-size: 32px;

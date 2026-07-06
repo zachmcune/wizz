@@ -71,6 +71,7 @@ export class Hud {
   private trainPanel: Collapsible;
   private buildPanel: Collapsible;
   private minimapPanel: Collapsible;
+  private panelContext = '';
 
   onExit: (() => void) | null = null;
 
@@ -98,24 +99,25 @@ export class Hud {
 
     const selBlock = el('div', 'sel-block');
     selBlock.append(this.selName, this.selDesc, this.selMeta);
-    const compact = window.innerHeight < 420 || window.innerWidth < 740;
-    this.infoPanel = new Collapsible('Selection', true);
+    const compact = window.innerHeight < 460 || window.innerWidth < 820;
+    this.infoPanel = new Collapsible('Selection', !compact);
     this.infoPanel.body.append(selBlock);
 
     this.unitPanel = new Collapsible('Unit orders', false);
     this.unitPanel.body.append(this.stanceRow);
 
-    this.trainPanel = new Collapsible('Train units', !compact);
+    this.trainPanel = new Collapsible('Train units', false);
     this.trainPanel.body.append(this.produceRow);
 
-    this.buildPanel = new Collapsible('Build structures', !compact);
+    this.buildPanel = new Collapsible('Build structures', false);
     this.buildPanel.body.append(this.buildRow);
 
-    const cmdCard = el('div', 'cmd-card');
+    const cmdCard = el('div', 'cmd-card hud-scroll');
     cmdCard.append(this.infoPanel.root, this.unitPanel.root, this.trainPanel.root, this.buildPanel.root);
-    // Keep touch scrolling inside the panel (canvas uses touch-action: none).
+    // Keep touch scrolling inside HUD (canvas uses touch-action: none).
     const keepScroll = (e: Event) => e.stopPropagation();
-    for (const node of [cmdCard, this.buildRow, this.produceRow, this.stanceRow]) {
+    for (const node of [cmdCard, this.spellRow, this.buildRow, this.produceRow, this.stanceRow]) {
+      node.addEventListener('touchstart', keepScroll, { passive: true });
       node.addEventListener('touchmove', keepScroll, { passive: true });
     }
 
@@ -219,7 +221,8 @@ export class Hud {
 
   private buildSpellButtons(): void {
     for (const [id, def] of this.registry.spells) {
-      const b = el('button', 'btn spell-btn compact-btn', def.name);
+      const short = def.name.split(' ').map((w) => w[0]).join('');
+      const b = el('button', 'btn spell-btn compact-btn', short);
       b.dataset.spell = id;
       b.title = def.name;
       b.addEventListener('click', () => this.controller.startSpell(id));
@@ -251,6 +254,67 @@ export class Hud {
     panel.root.style.display = visible ? '' : 'none';
   }
 
+  /** Open one primary panel when context changes so small screens stay usable. */
+  private syncPanelLayout(
+    inBuildMode: boolean,
+    showBuildPanel: boolean,
+    showTrainPanel: boolean,
+    showUnitPanel: boolean,
+    ownBuilding: BuildingDef | null | undefined,
+    selectionLabel: string,
+    multiSelect: boolean,
+  ): void {
+    const key = [
+      inBuildMode ? 'build' : 'play',
+      showBuildPanel ? 'yard' : '',
+      showTrainPanel ? 'train' : '',
+      showUnitPanel ? 'units' : '',
+      selectionLabel,
+    ].join('|');
+    if (key === this.panelContext) return;
+    this.panelContext = key;
+
+    if (inBuildMode) {
+      this.infoPanel.setTitle('Placing');
+      this.infoPanel.setOpen(true);
+      this.buildPanel.setOpen(false);
+      this.trainPanel.setOpen(false);
+      this.unitPanel.setOpen(false);
+      return;
+    }
+    if (showBuildPanel && ownBuilding) {
+      this.buildPanel.setTitle(`Build — ${ownBuilding.name}`);
+      this.buildPanel.setOpen(true);
+      this.infoPanel.setTitle(ownBuilding.name);
+      this.infoPanel.setOpen(false);
+      this.trainPanel.setOpen(false);
+      this.unitPanel.setOpen(false);
+      return;
+    }
+    if (showTrainPanel && ownBuilding) {
+      this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
+      this.trainPanel.setOpen(true);
+      this.infoPanel.setTitle(ownBuilding.name);
+      this.infoPanel.setOpen(false);
+      this.buildPanel.setOpen(false);
+      this.unitPanel.setOpen(false);
+      return;
+    }
+    if (showUnitPanel) {
+      this.unitPanel.setOpen(true);
+      this.buildPanel.setOpen(false);
+      this.trainPanel.setOpen(false);
+      this.infoPanel.setTitle(selectionLabel);
+      this.infoPanel.setOpen(!multiSelect);
+      return;
+    }
+    this.buildPanel.setOpen(false);
+    this.trainPanel.setOpen(false);
+    this.unitPanel.setOpen(false);
+    this.infoPanel.setTitle('Selection');
+    this.infoPanel.setOpen(true);
+  }
+
   update(): void {
     const st = this.state();
     const p = st.players.find((pl) => pl.id === this.playerId);
@@ -268,7 +332,8 @@ export class Hud {
       const cd = p.spellCooldowns[sid] ?? 0;
       btn.disabled = !unlocked || cd > 0;
       btn.classList.toggle('active', session.spellId === sid);
-      btn.textContent = cd > 0 ? `${def.name.slice(0, 6)}…` : def.name.slice(0, 8);
+      const short = def.name.split(' ').map((w) => w[0]).join('');
+      btn.textContent = cd > 0 ? `${short}…` : short;
     }
 
     for (const btn of this.buildRow.querySelectorAll<HTMLButtonElement>('.build-btn')) {
@@ -317,7 +382,6 @@ export class Hud {
         this.selMeta.textContent = meta.join(' · ');
         if (showTrainPanel) {
           this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
-          this.trainPanel.setOpen(true);
           if (this.produceBuildingId !== single.id) this.rebuildProduceRow(single);
           this.updateProduceButtons(p);
         } else {
@@ -343,6 +407,24 @@ export class Hud {
       this.selMeta.textContent = 'Labels on map match building colors.';
       this.clearProduceRow();
     }
+
+    const selectionLabel =
+      inBuildMode && session.buildDefId
+        ? this.registry.buildings.get(session.buildDefId)!.name
+        : single
+          ? (this.registry.units.get(single.defId) ?? this.registry.buildings.get(single.defId))?.name ?? single.defId
+          : sel.length > 1
+            ? `${sel.length} units`
+            : 'none';
+    this.syncPanelLayout(
+      inBuildMode,
+      showBuildPanel,
+      showTrainPanel,
+      showUnitPanel,
+      ownBuilding,
+      selectionLabel,
+      sel.length > 1,
+    );
 
     if (session.mode === 'build' && session.buildGhost && session.buildDefId) {
       const def = this.registry.buildings.get(session.buildDefId)!;

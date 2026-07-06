@@ -8,12 +8,13 @@ export function initViewport(): void {
     root.style.setProperty('--app-h', `${h}px`);
     root.style.setProperty('--app-w', `${w}px`);
     root.style.setProperty('--vv-top', `${vv?.offsetTop ?? 0}px`);
-    root.classList.toggle('compact-ui', h < 420 || w < 740);
+    // Short landscape phones and typical mobile landscape widths.
+    root.classList.toggle('compact-ui', h < 460 || w < 820);
   };
 
   apply();
   window.visualViewport?.addEventListener('resize', apply);
   window.visualViewport?.addEventListener('scroll', apply);
   window.addEventListener('resize', apply);
-  window.addEventListener('orientationchange', () => window.setTimeout(apply, 150));
+  window.addEventListener('orientationchange', () => window.setTimeout(apply, 200));
 }
