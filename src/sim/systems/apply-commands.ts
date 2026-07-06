@@ -6,6 +6,7 @@ import type { GameState, Command, Entity, EntityId, PlayerId } from '../types';
 import { getPlayer, isAlive, relationBetween } from '../queries';
 import { buildingHasPower } from '../power';
 import { spawnEntity, recomputePower } from '../factory';
+import { canBuildNearBase } from '../build-zone';
 import { applyDamage } from '../combat-util';
 import type { BuildingDef } from '../../data/defs';
 
@@ -117,6 +118,10 @@ function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, {
   const ty = Math.floor((cmd.y - (def.footprint * TILE) / 2) / TILE);
   if (!ctx.services.nav.canPlace(tx, ty, def.footprint)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
+    return;
+  }
+  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, def.footprint)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
     return;
   }
   player.mana -= def.cost;

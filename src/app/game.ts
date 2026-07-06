@@ -17,6 +17,7 @@ import { Minimap } from '../ui/minimap';
 import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
+import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -97,6 +98,7 @@ export class Game {
       (cmd: Command) => this.sim.enqueueNow([cmd]),
       (kind, world) => this.renderer.effects.spawn('ring', world.x, world.y, ORDER_COLORS[kind] ?? 0xffffff, 14),
       (tx, ty, fp) => this.services.nav.canPlace(tx, ty, fp),
+      (tx, ty, fp) => canBuildNearBase(this.state, this.services, this.humanId, tx, ty, fp),
     );
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
@@ -180,7 +182,6 @@ export class Game {
     const up = (e: PointerEvent) => {
       const p = rel(e);
       const mode = this.controller.session.mode;
-      const wasBuild = mode === 'build';
       const wasPan = this.gesture.wasPanning();
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build') {
@@ -189,10 +190,6 @@ export class Game {
       // Mobile: small finger drift often becomes a pan — treat as tap for orders/harvest.
       if (mode === 'normal' && wasPan && drift <= TAP_SLOP_PX) {
         this.controller.tap(p);
-      }
-      // Build: finger drift often becomes a pan, not a tap — place on release.
-      if (wasBuild && this.controller.session.mode === 'build' && this.controller.session.buildGhost?.valid) {
-        this.controller.confirmBuild();
       }
     };
     canvas.addEventListener('pointerup', up);
@@ -275,7 +272,9 @@ export class Game {
       }
     }
     const confirm = s.pendingConfirm ? { x: s.pendingConfirm.x, y: s.pendingConfirm.y } : null;
-    return { ghost, spell, confirm };
+    const buildZones =
+      s.mode === 'build' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
+    return { ghost, spell, confirm, buildZones };
   }
 
   exit(): void {

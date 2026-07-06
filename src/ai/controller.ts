@@ -5,6 +5,7 @@ import type { SimServices } from '../sim/context';
 import type { GameState, Command, Entity, Player, PlayerId } from '../sim/types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { isPowerShort, buildingHasPower } from '../sim/power';
+import { canBuildNearBase } from '../sim/build-zone';
 import { len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
@@ -33,7 +34,14 @@ function findSanctum(state: GameState, owner: PlayerId): Entity | null {
   return buildingsOf(state, owner).find((b) => b.defId === 'sanctum') ?? null;
 }
 
-function findPlacement(services: SimServices, cx: number, cy: number, footprint: number): { x: number; y: number } | null {
+function findPlacement(
+  state: GameState,
+  services: SimServices,
+  owner: PlayerId,
+  cx: number,
+  cy: number,
+  footprint: number,
+): { x: number; y: number } | null {
   const nav = services.nav;
   const ctx = Math.floor(cx / TILE);
   const cty = Math.floor(cy / TILE);
@@ -43,7 +51,7 @@ function findPlacement(services: SimServices, cx: number, cy: number, footprint:
         if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
         const tx = ctx + dx;
         const ty = cty + dy;
-        if (nav.canPlace(tx, ty, footprint)) {
+        if (nav.canPlace(tx, ty, footprint) && canBuildNearBase(state, services, owner, tx, ty, footprint)) {
           return { x: (tx + footprint / 2) * TILE, y: (ty + footprint / 2) * TILE };
         }
       }
@@ -72,7 +80,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   if (isPowerShort(state, p.id)) {
     const leyDef = reg.buildings.get('ley_conduit');
     if (leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
-      const spot = findPlacement(services, sanctum.pos.x, sanctum.pos.y, leyDef.footprint);
+      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, leyDef.footprint);
       if (spot) {
         cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
         return;
@@ -87,7 +95,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     if (!bdef) continue;
     if (!bdef.requires.every((r) => p.unlockedTech.includes(r))) break;
     if (p.mana < bdef.cost) return; // save up; don't skip ahead
-    const spot = findPlacement(services, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
+    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
     if (spot) cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
     return; // one build goal at a time
   }

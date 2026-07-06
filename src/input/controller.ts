@@ -23,6 +23,7 @@ export class InputController {
     private emit: (cmd: Command) => void,
     private onOrderFeedback: (kind: string, world: Vec2) => void,
     private canPlace: (tx: number, ty: number, footprint: number) => boolean,
+    private canBuildNear: (tx: number, ty: number, footprint: number) => boolean,
   ) {}
 
   private toWorld(p: Vec2): Vec2 {
@@ -228,8 +229,11 @@ export class InputController {
     const ty = Math.floor((world.y - (def.footprint * TILE) / 2) / TILE);
     const cx = (tx + def.footprint / 2) * TILE;
     const cy = (ty + def.footprint / 2) * TILE;
-    const valid = this.canPlace(tx, ty, def.footprint);
-    this.session.buildGhost = { x: cx, y: cy, valid };
+    const navOk = this.canPlace(tx, ty, def.footprint);
+    const zoneOk = this.canBuildNear(tx, ty, def.footprint);
+    const valid = navOk && zoneOk;
+    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
+    this.session.buildGhost = { x: cx, y: cy, valid, issue };
   }
 
   confirmBuild(): void {
