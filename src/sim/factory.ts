@@ -174,3 +174,31 @@ export function recomputePower(state: GameState, services: SimServices): void {
     p.powerUsed += b.powerUsed ?? 0;
   }
 }
+
+/** Remove all of a defeated player's units and buildings (not resource nodes). */
+export function purgePlayer(state: GameState, services: SimServices, playerId: PlayerId): void {
+  const toRemove: number[] = [];
+  for (const [id, e] of state.entities) {
+    if (e.owner === playerId && e.kind !== 'resource_node') toRemove.push(id);
+  }
+  toRemove.sort((a, b) => a - b);
+  let buildingsRemoved = false;
+  for (const id of toRemove) {
+    const e = state.entities.get(id);
+    if (!e) continue;
+    if (e.kind === 'building') {
+      const b = services.registry.buildings.get(e.defId);
+      if (b) {
+        const tx = Math.floor((e.pos.x - (b.footprint * TILE) / 2) / TILE);
+        const ty = Math.floor((e.pos.y - (b.footprint * TILE) / 2) / TILE);
+        services.nav.setBuildingBlock(tx, ty, b.footprint, false);
+        buildingsRemoved = true;
+      }
+    }
+    state.entities.delete(id);
+  }
+  if (buildingsRemoved) {
+    services.flow.invalidate();
+    recomputePower(state, services);
+  }
+}
