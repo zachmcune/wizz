@@ -3,6 +3,7 @@ import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
+import { buildingHasPower } from '../power';
 import { len, normalize } from '../math';
 
 function moveToward(e: Entity, tx: number, ty: number, speed: number, nav: StepContext['services']['nav']): number {
@@ -68,6 +69,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
       }
       const d = moveToward(e, spire.pos.x, spire.pos.y, udef.speed, ctx.services.nav);
       if (d <= spire.radius + e.radius + 4) {
+        if (!buildingHasPower(state, ctx.services.registry, spire)) continue;
         const player = state.players.find((p) => p.id === e.owner)!;
         player.mana += carry;
         ctx.events.push({ type: 'manaDeposited', playerId: player.id, amount: carry, x: spire.pos.x, y: spire.pos.y });

@@ -2,6 +2,7 @@
 import type { GameState, PlayerId, Entity } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { BuildingDef } from '../data/defs';
+import { isPowerShort, powerDeficit, buildingHasPower } from '../sim/power';
 import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
 
@@ -48,6 +49,7 @@ export class Hud {
   root = el('div', 'hud');
   private manaEl = el('span', 'stat-mana', '0');
   private powerEl = el('span', 'stat-power', '0');
+  private powerStat = el('div', 'stat compact-stat power-stat');
   private selName = el('div', 'sel-name');
   private selDesc = el('div', 'sel-desc');
   private selMeta = el('div', 'sel-meta');
@@ -85,8 +87,7 @@ export class Hud {
     const top = el('div', 'topbar');
     const mana = el('div', 'stat compact-stat');
     mana.append(el('span', 'stat-label', 'Mana '), this.manaEl);
-    const power = el('div', 'stat compact-stat');
-    power.append(el('span', 'stat-label', 'Pwr '), this.powerEl);
+    this.powerStat.append(el('span', 'stat-label', 'Pwr '), this.powerEl);
     const dbgBtn = el('button', 'btn dbg-btn', '·');
     dbgBtn.title = 'Debug';
     dbgBtn.addEventListener('click', () => {
@@ -95,7 +96,7 @@ export class Hud {
     });
     const menuBtn = el('button', 'btn menu-btn', 'Menu');
     menuBtn.addEventListener('click', () => this.toggleMenu());
-    top.append(mana, power, this.spellRow, dbgBtn, menuBtn);
+    top.append(mana, this.powerStat, this.spellRow, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
     selBlock.append(this.selName, this.selDesc, this.selMeta);
@@ -171,7 +172,10 @@ export class Hud {
   private buildBtnLabel(def: BuildingDef): HTMLElement {
     const wrap = el('div', 'btn-stack');
     const title = el('span', 'btn-title', def.name);
-    const sub = el('span', 'btn-sub', `${def.cost} mana`);
+    const costParts = [`${def.cost} mana`];
+    if (def.powerUsed) costParts.push(`${def.powerUsed} pwr`);
+    if (def.powerProduced) costParts.push(`+${def.powerProduced} pwr`);
+    const sub = el('span', 'btn-sub', costParts.join(' · '));
     wrap.append(title, sub);
     return wrap;
   }
@@ -208,14 +212,24 @@ export class Hud {
     }
   }
 
-  private updateProduceButtons(p: { mana: number; unlockedTech: string[] }): void {
+  private updateProduceButtons(p: { mana: number; unlockedTech: string[] }, building: Entity): void {
+    const st = this.state();
+    const offline = !buildingHasPower(st, this.registry, building);
     for (const btn of this.produceRow.querySelectorAll<HTMLButtonElement>('.produce-btn')) {
       const uid = btn.dataset.unit!;
       const udef = this.registry.unit(uid);
-      const ok = udef.requires.every((r) => p.unlockedTech.includes(r)) && p.mana >= udef.cost;
+      const unlocked = udef.requires.every((r) => p.unlockedTech.includes(r));
+      const affordable = p.mana >= udef.cost;
+      const ok = unlocked && affordable && !offline;
       btn.disabled = !ok;
+      btn.classList.toggle('no-power', offline);
       const sub = btn.querySelector('.btn-sub');
-      if (sub) sub.textContent = `${udef.role} · ${udef.cost} mana`;
+      if (sub) {
+        if (offline) sub.textContent = 'No power';
+        else if (!affordable) sub.textContent = `${udef.cost} mana`;
+        else if (!unlocked) sub.textContent = 'Locked';
+        else sub.textContent = `${udef.role} · ${udef.cost} mana`;
+      }
     }
   }
 
@@ -320,8 +334,12 @@ export class Hud {
     const p = st.players.find((pl) => pl.id === this.playerId);
     if (!p) return;
     this.manaEl.textContent = Math.floor(p.mana).toString();
-    this.powerEl.textContent = `${p.powerUsed}/${p.power}`;
-    this.powerEl.classList.toggle('low', p.powerUsed > p.power);
+    const short = isPowerShort(st, this.playerId);
+    const deficit = powerDeficit(st, this.playerId);
+    this.powerEl.textContent = short ? `${p.powerUsed}/${p.power} (−${deficit})` : `${p.powerUsed}/${p.power}`;
+    this.powerEl.classList.toggle('low', short);
+    this.powerStat.classList.toggle('power-short', short);
+    this.powerStat.title = short ? 'Low power — production and defenses offline. Build Ley Conduit (+60 pwr).' : '';
 
     const session = this.controller.session;
 
@@ -382,12 +400,13 @@ export class Hud {
         const meta: string[] = [`${Math.ceil(single.hp)}/${single.maxHp} HP`];
         if (ownBuilding.powerUsed) meta.push(`uses ${ownBuilding.powerUsed} power`);
         if (ownBuilding.powerProduced) meta.push(`+${ownBuilding.powerProduced} power`);
+        if (!buildingHasPower(st, this.registry, single)) meta.unshift('⚡ OFFLINE — low power');
         if (single.productionQueue?.length) meta.push(`queue ${single.productionQueue.length}`);
         this.selMeta.textContent = meta.join(' · ');
         if (showTrainPanel) {
           this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
           if (this.produceBuildingId !== single.id) this.rebuildProduceRow(single);
-          this.updateProduceButtons(p);
+          this.updateProduceButtons(p, single);
         } else {
           this.clearProduceRow();
         }
@@ -408,7 +427,9 @@ export class Hud {
     } else {
       this.selName.textContent = 'Nothing selected';
       this.selDesc.textContent = 'Tap your HQ (purple) to build. Tap colored buildings to train or view info.';
-      this.selMeta.textContent = 'Labels on map match building colors.';
+      this.selMeta.textContent = short
+        ? `Low power (−${deficit}) — build Ley Conduit or destroy structures`
+        : 'Labels on map match building colors.';
       this.clearProduceRow();
     }
 

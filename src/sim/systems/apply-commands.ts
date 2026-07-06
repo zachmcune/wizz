@@ -4,6 +4,7 @@ import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Command, Entity, EntityId, PlayerId } from '../types';
 import { getPlayer, isAlive, relationBetween } from '../queries';
+import { buildingHasPower } from '../power';
 import { spawnEntity, recomputePower } from '../factory';
 import { applyDamage } from '../combat-util';
 import type { BuildingDef } from '../../data/defs';
@@ -135,6 +136,10 @@ function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command,
   const bdef = ctx.services.registry.buildings.get(b.defId) as BuildingDef | undefined;
   const udef = ctx.services.registry.units.get(cmd.defId);
   if (!bdef || !udef || !bdef.producesUnits?.includes(cmd.defId)) return;
+  if (!buildingHasPower(state, ctx.services.registry, b)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'power' });
+    return;
+  }
   if (!requirementsMet(player, udef.requires)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
     return;

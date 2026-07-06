@@ -3,6 +3,7 @@ import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
+import { buildingHasPower } from '../power';
 import { len, normalize, distSq } from '../math';
 import { applyDamage } from '../combat-util';
 import type { WeaponDef } from '../../data/defs';
@@ -77,6 +78,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
   const dt = 1 / TICK_HZ;
   for (const e of entitiesSorted(state)) {
     if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') continue;
+    if (e.kind === 'building' && !buildingHasPower(state, ctx.services.registry, e)) continue;
     if (e.cooldowns.attack && e.cooldowns.attack > 0) e.cooldowns.attack--;
     const w = weaponOf(ctx, e);
     if (!w) continue;

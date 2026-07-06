@@ -122,6 +122,26 @@ body {
 }
 .stat-power.low {
   color: var(--danger);
+  font-weight: 700;
+}
+.power-stat.power-short {
+  border-color: var(--danger);
+  animation: power-pulse 1.2s ease-in-out infinite;
+}
+.power-stat.power-short .stat-label {
+  color: var(--danger);
+}
+@keyframes power-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 93, 93, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(255, 93, 93, 0.15);
+  }
+}
+.produce-btn.no-power .btn-sub {
+  color: #ff9a9a;
 }
 .spell-row {
   display: flex;

@@ -5,6 +5,7 @@ import { lerp } from '../sim/math';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
+import { buildingHasPower, buildingPowerUse } from '../sim/power';
 import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
@@ -217,6 +218,9 @@ export class Renderer {
       if (e.kind === 'resource_node') {
         this.drawNodeReserve(x, y, e);
         n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
+      } else if (e.kind === 'building' && buildingPowerUse(this.registry, e.defId) > 0 && !buildingHasPower(state, this.registry, e)) {
+        n.sprite.alpha = 0.42;
+        this.drawPowerOffline(x, y, e.radius);
       } else {
         n.sprite.alpha = 1;
       }
@@ -262,6 +266,17 @@ export class Renderer {
       this.strokeRing(overlay.confirm.x, overlay.confirm.y, 12, 3, 0xffd166, 1);
     }
     this.effects.update();
+  }
+
+  private drawPowerOffline(x: number, y: number, radius: number): void {
+    this.strokeRing(x, y, radius + 4, 2, 0xff5d5d, 0.85);
+    const s = radius * 0.35;
+    this.overlay
+      .moveTo(x - s, y - s)
+      .lineTo(x + s, y + s)
+      .moveTo(x + s, y - s)
+      .lineTo(x - s, y + s)
+      .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
   }
 
   private drawNodeReserve(x: number, y: number, e: Entity): void {

@@ -4,6 +4,7 @@ import { TILE } from '../core/constants';
 import type { SimServices } from '../sim/context';
 import type { GameState, Command, Entity, Player, PlayerId } from '../sim/types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
+import { isPowerShort, buildingHasPower } from '../sim/power';
 import { len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
@@ -67,7 +68,19 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     }
   }
 
-  // 2) Build the next economy/tech structure we can afford and don't yet have.
+  // 2) Expand power when short (build extra Ley Conduits).
+  if (isPowerShort(state, p.id)) {
+    const leyDef = reg.buildings.get('ley_conduit');
+    if (leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
+      const spot = findPlacement(services, sanctum.pos.x, sanctum.pos.y, leyDef.footprint);
+      if (spot) {
+        cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
+        return;
+      }
+    }
+  }
+
+  // 3) Build the next economy/tech structure we can afford and don't yet have.
   for (const defId of BUILD_ORDER) {
     if (hasBuilding(state, p.id, defId)) continue;
     const bdef = reg.buildings.get(defId);
@@ -79,9 +92,9 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     return; // one build goal at a time
   }
 
-  // 3) Train more wisps if below target.
+  // 4) Train more wisps if below target.
   const spire = buildingsOf(state, p.id).find((b) => b.defId === 'attunement_spire' && b.buildProgress === undefined);
-  if (spire && wisps.length < diff.wispTarget) {
+  if (spire && buildingHasPower(state, reg, spire) && wisps.length < diff.wispTarget) {
     const q = spire.productionQueue?.length ?? 0;
     const wdef = reg.units.get('wisp');
     if (q === 0 && wdef && p.mana >= wdef.cost) {
@@ -89,10 +102,10 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     }
   }
 
-  // 4) Military production from available producers.
+  // 5) Military production from available producers.
   produceArmy(state, services, p, cmds);
 
-  // 5) Attack when the army is big enough: send idle combat units at the nearest enemy building.
+  // 6) Attack when the army is big enough: send idle combat units at the nearest enemy building.
   if (combat.length >= diff.armyThreshold) {
     const target = nearestEnemyBuilding(state, p.id, sanctum.pos);
     if (target) {
@@ -109,7 +122,7 @@ function produceArmy(state: GameState, services: SimServices, p: Player, cmds: C
   const circle = buildingsOf(state, p.id).find((b) => b.defId === 'summoning_circle' && b.buildProgress === undefined);
   const forge = buildingsOf(state, p.id).find((b) => b.defId === 'golem_forge' && b.buildProgress === undefined);
   const pick = (building: Entity | undefined, options: string[]) => {
-    if (!building) return;
+    if (!building || !buildingHasPower(state, reg, building)) return;
     const q = building.productionQueue?.length ?? 0;
     if (q >= 2) return;
     // rotate choice deterministically by tick

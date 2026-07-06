@@ -3,6 +3,7 @@ import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted } from '../queries';
+import { buildingHasPower } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
 
 export function productionSystem(state: GameState, ctx: StepContext): void {
@@ -18,11 +19,11 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
     if (e.kind !== 'building' || e.state === 'dead') continue;
     const player = state.players.find((p) => p.id === e.owner);
     if (!player) continue;
-    const rate = player.power >= player.powerUsed ? 1 : 0.5; // soft power throttle
+    const bdef = ctx.services.registry.building(e.defId);
+    const rate = buildingHasPower(state, ctx.services.registry, e) ? 1 : 0;
 
     // Construction of the building itself.
     if (e.buildProgress !== undefined) {
-      const bdef = ctx.services.registry.building(e.defId);
       const perTick = 1 / Math.max(1, bdef.buildTime * 20);
       e.buildProgress += perTick * rate;
       e.hp = Math.min(e.maxHp, Math.max(1, e.maxHp * e.buildProgress));

@@ -68,4 +68,35 @@ describe('economy & production (data-driven)', () => {
     for (let i = 0; i < 800; i++) sim.step();
     expect(node.amount ?? 0).toBeLessThan(start);
   });
+
+  it('low power disables training in power-consuming buildings', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+    const p = state.players.find((pl) => pl.id === 'player0')!;
+
+    // HQ (20 pwr) + spire (10 use) = balanced
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
+    sim.step();
+    for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
+
+    // Summoning circle (+20 use) -> 30 used / 20 produced = low power
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 520, y: 240 }]);
+    sim.step();
+    for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 5; i++) sim.step();
+
+    expect(p.powerUsed).toBeGreaterThan(p.power);
+
+    const circle = ownedBy(state, 'player0').find((e) => e.defId === 'summoning_circle')!;
+    const queueBefore = circle.productionQueue?.length ?? 0;
+    p.mana = 9999;
+    sim.enqueueNow([{ type: 'produce', playerId: 'player0', buildingId: circle.id, defId: 'imp_swarmling' }]);
+    sim.step();
+    expect(circle.productionQueue?.length ?? 0).toBe(queueBefore);
+
+    p.mana = 9999;
+    sim.enqueueNow([{ type: 'produce', playerId: 'player0', buildingId: circle.id, defId: 'imp_swarmling' }]);
+    for (let i = 0; i < 40; i++) sim.step();
+    expect(circle.productionQueue?.[0]?.progress ?? 0).toBe(0);
+  });
 });
