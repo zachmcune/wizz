@@ -7,12 +7,12 @@ export interface Settings {
   volume: number;
   muted: boolean;
   dragMode: 'pan' | 'select';
-  /** Classic top-down (ortho) vs RA2-style oblique view. */
+  /** @deprecated View mode is chosen in the match lobby; kept for URL dev override only. */
   projectionMode: ProjectionModeSetting;
 }
 
 const KEY = 'arcane:settings';
-const DEFAULTS: Settings = { volume: 0.6, muted: false, dragMode: 'select', projectionMode: 'oblique' };
+const DEFAULTS: Settings = { volume: 0.6, muted: false, dragMode: 'select', projectionMode: 'ortho' };
 
 export async function loadSettings(): Promise<Settings> {
   try {

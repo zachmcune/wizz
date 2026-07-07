@@ -18,6 +18,8 @@ export interface LobbyStateWire {
   factionId: string;
   slots: LobbySlotWire[];
   deadSpectatorReveal?: boolean;
+  /** Classic 2D (ortho) or oblique 2.5D — locked when the match starts. */
+  projectionMode?: 'ortho' | 'oblique';
 }
 
 export type ClientMessage =

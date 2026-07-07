@@ -12,8 +12,9 @@ import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { ZoomSlider } from '../ui/zoom-slider';
 import type { AudioManager } from '../audio/audio';
-import { resolveProjectionMode, setProjectionMode, getProjectionMode } from '../core/projection';
-import { saveSettings, type Settings } from '../storage/settings';
+import type { ProjectionMode } from '../core/projection';
+import { setProjectionMode } from '../core/projection';
+import type { Settings } from '../storage/settings';
 import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { shouldRevealAllForViewer } from '../sim/views';
@@ -65,6 +66,7 @@ export class Game {
   private readonly relayTransport: WebSocketTransport | null;
   private readonly useWorker: boolean;
   private readonly deadSpectatorReveal: boolean;
+  private readonly matchProjectionMode: ProjectionMode;
   private onKeyDown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') this.controller.clearSelection();
   };
@@ -88,6 +90,7 @@ export class Game {
       matchId?: string;
       localPlayerId?: PlayerId;
       deadSpectatorReveal?: boolean;
+      matchProjectionMode?: ProjectionMode;
       onDesync?: (tick: number, peers: string[], replay: Replay) => void;
       relayTransport?: WebSocketTransport;
     },
@@ -97,6 +100,7 @@ export class Game {
     this.onDesync = opts?.onDesync ?? null;
     this.relayTransport = opts?.relayTransport ?? null;
     this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
+    this.matchProjectionMode = opts?.matchProjectionMode ?? 'ortho';
     const wantWorker = opts?.useWorker ?? workerSupported();
     this.useWorker = wantWorker && !this.lockstep && workerSupported();
 
@@ -145,9 +149,8 @@ export class Game {
     this.boxEl.style.pointerEvents = 'none';
     canvasHost.appendChild(this.boxEl);
     await this.renderer.init(canvasHost);
-    const projMode = resolveProjectionMode(this.settings.projectionMode);
-    setProjectionMode(projMode);
-    this.renderer.setProjectionMode(projMode);
+    setProjectionMode(this.matchProjectionMode);
+    this.renderer.setProjectionMode(this.matchProjectionMode);
     this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state, this.humanId);
 
@@ -175,10 +178,6 @@ export class Game {
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
     this.hud.onExit = () => this.exit();
-    this.hud.onProjectionToggle = () => {
-      void this.toggleProjectionMode();
-    };
-    this.hud.setProjectionMode(projMode);
     if (this.relayTransport) {
       this.relayTransport.onError = (message) => {
         if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);
@@ -230,17 +229,6 @@ export class Game {
     );
     this.loop.start();
     this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
-  }
-
-  private async toggleProjectionMode(): Promise<void> {
-    const next = getProjectionMode() === 'ortho' ? 'oblique' : 'ortho';
-    setProjectionMode(next);
-    this.renderer.setProjectionMode(next);
-    this.settings.projectionMode = next;
-    await saveSettings(this.settings);
-    this.renderer.syncTick(this.state);
-    this.hud.setProjectionMode(next);
-    this.hud.showHint(next === 'oblique' ? 'Oblique view (RA2-style)' : 'Classic 2D view');
   }
 
   private setupGestures(): void {

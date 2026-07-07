@@ -90,6 +90,7 @@ export function defaultLobbyState(mapId = 'duel_glade', factionId = 'arcane'): L
   return {
     mapId,
     factionId,
+    projectionMode: 'ortho',
     slots: [
       { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId, claimedBy: 'local', ready: true },
       { id: 'player1', kind: 'ai', team: 'b', color: '#ff5d5d', startIndex: null, factionId, aiDifficulty: 'normal' },
@@ -104,6 +105,7 @@ export function defaultOnlineLobbyState(mapId = 'duel_glade', factionId = 'arcan
   return {
     mapId,
     factionId,
+    projectionMode: 'ortho',
     slots: [
       { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId, claimedBy: null, ready: false },
       { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: null, factionId, claimedBy: null, ready: false },

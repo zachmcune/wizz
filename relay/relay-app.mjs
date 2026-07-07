@@ -13,6 +13,7 @@ const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
   factionId: 'arcane',
   deadSpectatorReveal: false,
+  projectionMode: 'ortho',
   slots: [
     { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
     { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },

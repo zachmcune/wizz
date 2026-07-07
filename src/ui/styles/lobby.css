@@ -89,6 +89,17 @@
 .lobby-toggle input:disabled + .lobby-toggle-label {
   opacity: 0.55;
 }
+.lobby-view-warning {
+  width: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  background: rgba(255, 209, 102, 0.08);
+  color: #ffd166;
+  font-size: 11px;
+  line-height: 1.35;
+}
 .lobby-players {
   display: flex;
   flex-direction: column;
