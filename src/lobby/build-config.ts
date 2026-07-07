@@ -97,3 +97,17 @@ export function defaultLobbyState(mapId = 'duel_glade', factionId = 'arcane'): L
     ],
   };
 }
+
+/** Default lobby for online host: one human slot plus three open guest slots. */
+export function defaultOnlineLobbyState(mapId = 'duel_glade', factionId = 'arcane'): LobbyState {
+  return {
+    mapId,
+    factionId,
+    slots: [
+      { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId, claimedBy: null, ready: false },
+      { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: null, factionId, claimedBy: null, ready: false },
+      { id: 'player2', kind: 'open', team: 'c', color: '#5dff8f', startIndex: null, factionId, claimedBy: null, ready: false },
+      { id: 'player3', kind: 'open', team: 'd', color: '#ffd166', startIndex: null, factionId, claimedBy: null, ready: false },
+    ],
+  };
+}

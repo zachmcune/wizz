@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
-import { buildMatchConfig, validateLobby, defaultLobbyState } from '../src/lobby/build-config';
+import { buildMatchConfig, validateLobby, defaultLobbyState, defaultOnlineLobbyState } from '../src/lobby/build-config';
 import { getLobbyTemplates } from '../src/lobby/templates';
 import { teamLabelToId, teamIdToLabel } from '../src/lobby/teams';
 import { runHeadless } from '../src/sim/headless';
@@ -70,6 +70,29 @@ describe('lobby config', () => {
 
     lobby.slots[1]!.ready = true;
     expect(validateLobby(lobby, 'host', map).valid).toBe(true);
+  });
+
+  it('default online lobby opens three guest slots', () => {
+    const lobby = defaultOnlineLobbyState();
+    expect(lobby.slots[0]!.kind).toBe('human');
+    expect(lobby.slots.slice(1).every((s) => s.kind === 'open')).toBe(true);
+    const map = reg.map(lobby.mapId);
+    expect(validateLobby(lobby, 'host', map).valid).toBe(false);
+  });
+
+  it('builds 3- and 4-player human match configs from online lobby', () => {
+    const three = defaultOnlineLobbyState();
+    three.slots[3]!.kind = 'closed';
+    for (let i = 0; i < 3; i++) three.slots[i]!.startIndex = i;
+    const threeCfg = buildMatchConfig(three);
+    expect(threeCfg.players).toHaveLength(3);
+    expect(threeCfg.players.every((p) => p.controller === 'human')).toBe(true);
+
+    const four = defaultOnlineLobbyState();
+    for (let i = 0; i < 4; i++) four.slots[i]!.startIndex = i;
+    const fourCfg = buildMatchConfig(four);
+    expect(fourCfg.players).toHaveLength(4);
+    expect(fourCfg.players.every((p) => p.controller === 'human')).toBe(true);
   });
 
   it('builds a deterministic 4-player 2v2 AI match from lobby template', () => {
