@@ -1,6 +1,6 @@
 // In-match orchestrator: wires sim + renderer + input + HUD + audio + loop together.
 // Owns no gameplay rules; it only routes commands in and events out.
-import { TILE, TAP_SLOP_PX } from '../core/constants';
+import { TILE, TAP_SLOP_PX, TICK_MS } from '../core/constants';
 import { screenToWorld } from '../core/coords';
 import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
@@ -67,6 +67,7 @@ export class Game {
   private lastPointer = { x: 0, y: 0 };
   private fps = 60;
   private lastFrameTime = 0;
+  private lastSimSyncMs = 0;
   private pointerStart = { x: 0, y: 0 };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
@@ -169,12 +170,16 @@ export class Game {
         this.worker = null;
         this.sim = new Simulation(this.state, this.services);
         this.renderer.syncTick(this.state);
+        this.renderer.snapDisplay();
       }
     } else {
       this.renderer.syncTick(this.state);
+      this.renderer.snapDisplay();
     }
 
     if (this.lockstep) this.catchUpLockstep();
+
+    this.lastSimSyncMs = performance.now();
 
     this.loop = new GameLoop(
       () => this.step(),
@@ -281,49 +286,53 @@ export class Game {
     });
   }
 
-  private step(): void {
-    if (this.state.ended) return;
+  private step(): boolean {
+    if (this.state.ended) return false;
 
-    if (this.lockstep) {
-      this.runLockstepStep();
-      return;
-    }
+    if (this.lockstep) return this.advanceLockstepSim(true);
 
-    if (this.worker) {
-      this.worker.requestStep();
-      return;
-    }
+    if (this.worker) return this.worker.requestStep();
 
     const res = this.sim!.step();
     for (const ev of res.events) this.handleEvent(ev);
     this.renderer.syncTick(this.state);
+    this.markSimSynced();
     this.tickCounter++;
     if (this.tickCounter % 200 === 0) void saveGame(this.state);
+    return true;
   }
 
-  /** Process one confirmed lockstep tick (used by the main loop and startup catch-up). */
-  private runLockstepStep(): void {
+  /** Process one confirmed lockstep tick. */
+  private advanceLockstepSim(syncRender: boolean): boolean {
     const tick = this.state.tick;
-    if (!this.lockstep?.isTickReady(tick)) return;
+    if (!this.lockstep?.isTickReady(tick)) return false;
     const cmds = this.lockstep.commandsForTick(tick) ?? [];
     this.sim!.enqueue(tick, cmds);
     const res = this.sim!.step();
     for (const ev of res.events) this.handleEvent(ev);
-    this.renderer.syncTick(this.state);
+    if (syncRender) {
+      this.renderer.syncTick(this.state);
+      this.markSimSynced();
+    }
     this.tickCounter++;
     if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
     if (this.tickCounter % 200 === 0) void saveGame(this.state);
     this.lockstep.pruneBefore(Math.max(0, tick - 120));
+    return true;
   }
 
   /** Fast-forward through relay ticks buffered during match load. */
   private catchUpLockstep(): void {
     if (!this.lockstep) return;
     let safety = 0;
-    while (this.lockstep.isTickReady(this.state.tick) && safety < 10_000) {
-      this.runLockstepStep();
-      safety++;
-    }
+    while (this.advanceLockstepSim(false) && safety < 10_000) safety++;
+    this.renderer.syncTick(this.state);
+    this.renderer.snapDisplay();
+    this.markSimSynced();
+  }
+
+  private markSimSynced(): void {
+    this.lastSimSyncMs = performance.now();
   }
 
   private waitForWorkerReady(): Promise<boolean> {
@@ -337,6 +346,8 @@ export class Game {
         applyTransferState(this.state, transfer);
         rebuildBuildingNav(this.state, this.services, this.registry);
         this.renderer.syncTick(this.state);
+        this.renderer.snapDisplay();
+        this.markSimSynced();
         resolve(true);
       };
       worker.onTick = ({ state, events }) => {
@@ -344,6 +355,7 @@ export class Game {
         rebuildBuildingNav(this.state, this.services, this.registry);
         for (const ev of events) this.handleEvent(ev);
         this.renderer.syncTick(this.state);
+        this.markSimSynced();
         this.tickCounter++;
         if (this.tickCounter % 200 === 0) void saveGame(this.state);
       };
@@ -409,17 +421,19 @@ export class Game {
     }
   }
 
-  private frame(alpha: number): void {
+  private frame(_loopAlpha: number): void {
     const now = performance.now();
-    if (this.lastFrameTime) {
-      const dt = now - this.lastFrameTime;
-      if (dt > 0) this.fps = this.fps * 0.9 + (1000 / dt) * 0.1;
+    const dt = this.lastFrameTime ? now - this.lastFrameTime : 16;
+    if (this.lastFrameTime && dt > 0) {
+      this.fps = this.fps * 0.9 + (1000 / dt) * 0.1;
     }
     this.lastFrameTime = now;
 
+    const renderAlpha = Math.min(1, (now - this.lastSimSyncMs) / TICK_MS);
+
     this.gesture.update(now);
     const overlay = this.buildOverlay();
-    this.renderer.render(this.state, alpha, this.controller.session.selection, overlay);
+    this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt);
     this.minimap.render(this.state, this.humanId, this.services.nav, this.registry);
     this.zoomSlider.syncFromCamera();
     this.hud.update();

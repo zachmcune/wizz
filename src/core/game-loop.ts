@@ -2,7 +2,7 @@
 // Uses wall-clock ONLY here (outside the sim) to decide how many ticks to run.
 import { TICK_MS } from './constants';
 
-export type StepFn = () => void;
+export type StepFn = () => boolean;
 export type RenderFn = (alpha: number) => void;
 
 export class GameLoop {
@@ -29,7 +29,7 @@ export class GameLoop {
       this.accumulator += delta;
       let steps = 0;
       while (this.accumulator >= TICK_MS && steps < this.maxCatchUp) {
-        this.step();
+        if (!this.step()) break;
         this.accumulator -= TICK_MS;
         steps++;
       }

@@ -36,8 +36,13 @@ interface RenderNode {
   prevY: number;
   curX: number;
   curY: number;
+  dispX: number;
+  dispY: number;
   facing: number;
 }
+
+/** Exponential smoothing for unit/projectile display positions (per second). */
+const DISPLAY_SMOOTH_HZ = 18;
 
 export class Renderer {
   app: Application;
@@ -191,7 +196,7 @@ export class Renderer {
         const sprite = new Sprite(this.provider.texture(art, color));
         sprite.anchor.set(0.5);
         this.entityLayer.addChild(sprite);
-        n = { sprite, prevX: e.pos.x, prevY: e.pos.y, curX: e.pos.x, curY: e.pos.y, facing: e.facing };
+        n = { sprite, prevX: e.pos.x, prevY: e.pos.y, curX: e.pos.x, curY: e.pos.y, dispX: e.pos.x, dispY: e.pos.y, facing: e.facing };
         this.nodes.set(id, n);
       } else {
         n.prevX = n.curX;
@@ -214,7 +219,15 @@ export class Renderer {
     }
   }
 
-  render(state: GameState, alpha: number, selected: Set<EntityId>, overlay?: RenderOverlay): void {
+  /** Snap display positions to sim (after lockstep catch-up). */
+  snapDisplay(): void {
+    for (const n of this.nodes.values()) {
+      n.dispX = n.curX;
+      n.dispY = n.curY;
+    }
+  }
+
+  render(state: GameState, alpha: number, selected: Set<EntityId>, overlay?: RenderOverlay, dtMs = 16): void {
     this.world.scale.set(this.camera.zoom);
     this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
 
@@ -242,8 +255,20 @@ export class Renderer {
       if (n.label) n.label.visible = liveVisible && !showAsGhost;
       if (!liveVisible && !showAsGhost) continue;
       if (showAsGhost) continue;
-      const x = lerp(n.prevX, n.curX, alpha);
-      const y = lerp(n.prevY, n.curY, alpha);
+      const targetX = lerp(n.prevX, n.curX, alpha);
+      const targetY = lerp(n.prevY, n.curY, alpha);
+      let x = targetX;
+      let y = targetY;
+      if (e.kind === 'unit' || e.kind === 'projectile') {
+        const k = 1 - Math.exp(-DISPLAY_SMOOTH_HZ * (dtMs / 1000));
+        n.dispX += (targetX - n.dispX) * k;
+        n.dispY += (targetY - n.dispY) * k;
+        x = n.dispX;
+        y = n.dispY;
+      } else {
+        n.dispX = targetX;
+        n.dispY = targetY;
+      }
       n.sprite.position.set(x, y);
       if (e.kind === 'unit' || e.kind === 'projectile') n.sprite.rotation = n.facing + Math.PI / 2;
 
@@ -376,7 +401,7 @@ export class Renderer {
         });
         label.anchor.set(0.5, 0);
         this.labelLayer.addChild(label);
-        n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, facing: 0 };
+        n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, dispX: known.x, dispY: known.y, facing: 0 };
         this.ghostNodes.set(known.id, n);
       } else {
         n.sprite.texture = this.provider.texture(b.art, color);
