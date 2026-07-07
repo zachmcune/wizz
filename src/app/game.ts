@@ -19,7 +19,7 @@ import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
-import { isWorldPointVisible } from '../sim/fog';
+import { isWorldPointVisible } from '../sim/views';
 import { applyTransferState, packState } from '../sim/state-transfer';
 import { rebuildBuildingNav } from '../sim/building-nav';
 import { ReplayRecorder } from '../sim/replay';

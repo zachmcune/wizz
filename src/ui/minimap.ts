@@ -5,8 +5,7 @@ import type { GameState, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
-import { getPlayer } from '../sim/queries';
-import { radarActive, isMinimapTileFogged, isVisibleOnMinimap, listBuildingGhosts } from '../sim/fog';
+import { getPlayer, radarActive, isMinimapTileFogged, isVisibleOnMinimap, listBuildingGhosts } from '../sim/views';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {

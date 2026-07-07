@@ -1,23 +1,28 @@
 // Translates the tick's command list into state changes. Commands are the ONLY entry point
 // for mutating gameplay state (from human input, UI, AI, or the network).
-import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
-import type { GameState, Command, Entity, EntityId, PlayerId } from '../types';
-import { getPlayer, isAlive, entitiesSorted } from '../queries';
-import { spawnEntity, recomputePower } from '../factory';
-import { canBuildNearBase } from '../build-zone';
-import { applyDamage } from '../combat-util';
-import { clearBuildingNav } from '../building-nav';
-import type { BuildingDef } from '../../data/defs';
-
-function ownedAliveUnits(state: GameState, playerId: PlayerId, ids: EntityId[]): Entity[] {
-  const out: Entity[] = [];
-  for (const id of ids) {
-    const e = state.entities.get(id);
-    if (e && e.owner === playerId && isAlive(e) && e.kind === 'unit') out.push(e);
-  }
-  return out;
-}
+import type { GameState, Command } from '../types';
+import { getPlayer } from '../queries';
+import {
+  handleMove,
+  handleAttackMove,
+  handleAttack,
+  handleHarvest,
+  handleStop,
+  handleSetStance,
+} from './commands/orders';
+import {
+  handleBuild,
+  handleDeploy,
+  handlePack,
+  handleSetRally,
+  handleSellBuilding,
+  handleSetRepair,
+} from './commands/build';
+import { handleProduce, handleCancelProduce } from './commands/production';
+import { handleChannel } from './commands/channel';
+import { handleSpell } from './commands/spell';
+import { handleSurrender } from './commands/surrender';
 
 export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[]): void {
   for (const cmd of cmds) {
@@ -25,62 +30,22 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
     if (!player || player.defeated) continue;
     switch (cmd.type) {
       case 'move':
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-          e.channeling = false;
-          e.channelTicks = undefined;
-          e.orders = [{ type: 'move', x: cmd.x, y: cmd.y }];
-          e.targetId = undefined;
-          e.state = 'moving';
-        }
-        ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'move', x: cmd.x, y: cmd.y });
+        handleMove(state, ctx, cmd);
         break;
       case 'attackMove':
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-          e.channeling = false;
-          e.channelTicks = undefined;
-          e.orders = [{ type: 'attackMove', x: cmd.x, y: cmd.y }];
-          e.targetId = undefined;
-          e.state = 'moving';
-        }
-        ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'attackMove', x: cmd.x, y: cmd.y });
+        handleAttackMove(state, ctx, cmd);
         break;
-      case 'attack': {
-        const target = state.entities.get(cmd.targetId);
-        if (!isAlive(target)) break;
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-          e.channeling = false;
-          e.channelTicks = undefined;
-          e.orders = [{ type: 'attack', targetId: cmd.targetId }];
-          e.targetId = cmd.targetId;
-          e.state = 'attacking';
-        }
-        ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'attack', x: target.pos.x, y: target.pos.y });
+      case 'attack':
+        handleAttack(state, ctx, cmd);
         break;
-      }
-      case 'harvest': {
-        const node = state.entities.get(cmd.nodeId);
-        if (!isAlive(node) || node.kind !== 'resource_node') break;
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-          if (e.carryMax === undefined) continue; // only harvesters
-          e.orders = [{ type: 'harvest', nodeId: cmd.nodeId }];
-          e.state = 'harvesting';
-        }
-        ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'harvest', x: node.pos.x, y: node.pos.y });
+      case 'harvest':
+        handleHarvest(state, ctx, cmd);
         break;
-      }
       case 'stop':
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-          if (e.morphProgress !== undefined) continue;
-          e.channeling = false;
-          e.channelTicks = undefined;
-          e.orders = [];
-          e.targetId = undefined;
-          e.vel = { x: 0, y: 0 };
-          e.state = 'idle';
-        }
+        handleStop(state, ctx, cmd);
         break;
       case 'setStance':
-        for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) e.stance = cmd.stance;
+        handleSetStance(state, ctx, cmd);
         break;
       case 'build':
         handleBuild(state, ctx, cmd);
@@ -95,7 +60,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         handleProduce(state, ctx, cmd);
         break;
       case 'cancelProduce':
-        handleCancel(state, ctx, cmd);
+        handleCancelProduce(state, ctx, cmd);
         break;
       case 'setRally':
         handleSetRally(state, ctx, cmd);
@@ -113,251 +78,8 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         handleSpell(state, ctx, cmd);
         break;
       case 'surrender':
-        player.defeated = true;
-        ctx.events.push({ type: 'playerDefeated', playerId: player.id });
+        handleSurrender(state, ctx, cmd);
         break;
     }
   }
-}
-
-function requirementsMet(player: { unlockedTech: string[] }, requires: string[]): boolean {
-  return requires.every((r) => player.unlockedTech.includes(r));
-}
-
-function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
-  const player = getPlayer(state, cmd.playerId)!;
-  const def = ctx.services.registry.buildings.get(cmd.defId);
-  if (!def) return;
-  if (!requirementsMet(player, def.requires)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
-    return;
-  }
-  if (player.mana < def.cost) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
-    return;
-  }
-  const tx = Math.floor((cmd.x - (def.footprint * TILE) / 2) / TILE);
-  const ty = Math.floor((cmd.y - (def.footprint * TILE) / 2) / TILE);
-  if (!ctx.services.nav.canPlace(tx, ty, def.footprint)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
-    return;
-  }
-  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, def.footprint)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
-    return;
-  }
-  player.mana -= def.cost;
-  const cx = (tx + def.footprint / 2) * TILE;
-  const cy = (ty + def.footprint / 2) * TILE;
-  const e = spawnEntity(state, ctx.services, ctx, def.id, cmd.playerId, cx, cy);
-  e.buildProgress = 0; // under construction; ProductionSystem completes it
-  e.hp = Math.max(1, Math.floor(def.hp * 0.1));
-  ctx.events.push({ type: 'buildingPlaced', id: e.id, defId: def.id, owner: cmd.playerId });
-  ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
-}
-
-function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'deploy' }>): void {
-  const unit = state.entities.get(cmd.entityId);
-  if (!unit || unit.owner !== cmd.playerId || unit.kind !== 'unit' || !isAlive(unit)) return;
-  if (unit.morphProgress !== undefined || unit.orders.length > 0 || unit.state !== 'idle') {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-  const udef = ctx.services.registry.units.get(unit.defId);
-  if (!udef?.deploysAs) return;
-  const bdef = ctx.services.registry.buildings.get(udef.deploysAs);
-  if (!bdef) return;
-
-  const tx = Math.floor((cmd.x - (bdef.footprint * TILE) / 2) / TILE);
-  const ty = Math.floor((cmd.y - (bdef.footprint * TILE) / 2) / TILE);
-  if (!ctx.services.nav.canPlace(tx, ty, bdef.footprint)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
-    return;
-  }
-  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, bdef.footprint)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
-    return;
-  }
-
-  const cx = (tx + bdef.footprint / 2) * TILE;
-  const cy = (ty + bdef.footprint / 2) * TILE;
-  unit.morphProgress = 0;
-  unit.morphAction = 'deploy';
-  unit.morphTargetPos = { x: cx, y: cy };
-  unit.morphTargetDefId = udef.deploysAs;
-  unit.state = 'building';
-  unit.orders = [];
-  unit.vel = { x: 0, y: 0 };
-  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'deploy', x: cx, y: cy });
-}
-
-function handlePack(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'pack' }>): void {
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-  const bdef = ctx.services.registry.buildings.get(b.defId);
-  if (!bdef?.packsInto) return;
-  if (b.productionQueue && b.productionQueue.length > 0) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-
-  b.morphProgress = 0;
-  b.morphAction = 'pack';
-  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'pack', x: b.pos.x, y: b.pos.y });
-}
-
-function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'produce' }>): void {
-  const player = getPlayer(state, cmd.playerId)!;
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || b.buildProgress !== undefined || b.morphProgress !== undefined) return;
-  const bdef = ctx.services.registry.buildings.get(b.defId) as BuildingDef | undefined;
-  const udef = ctx.services.registry.units.get(cmd.defId);
-  if (!bdef || !udef || !bdef.producesUnits?.includes(cmd.defId)) return;
-  if (!requirementsMet(player, udef.requires)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
-    return;
-  }
-  if (player.mana < udef.cost) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
-    return;
-  }
-  player.mana -= udef.cost;
-  b.productionQueue ??= [];
-  b.productionQueue.push({ defId: cmd.defId, progress: 0, required: Math.round(udef.buildTime * 20) });
-  ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
-}
-
-function handleSetRally(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRally' }>): void {
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) return;
-  const bdef = ctx.services.registry.buildings.get(b.defId);
-  if (!bdef?.producesUnits?.length) return;
-  b.rally = { x: cmd.x, y: cmd.y };
-  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'rally', x: cmd.x, y: cmd.y });
-}
-
-function removeBuildingFromWorld(state: GameState, ctx: StepContext, building: Entity): void {
-  const bdef = ctx.services.registry.buildings.get(building.defId);
-  if (bdef) {
-    clearBuildingNav(ctx.services.nav, bdef, building.pos.x, building.pos.y);
-    ctx.services.flow.invalidate();
-  }
-  state.entities.delete(building.id);
-  recomputePower(state, ctx.services);
-}
-
-function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'sellBuilding' }>): void {
-  const player = getPlayer(state, cmd.playerId)!;
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  const bdef = ctx.services.registry.buildings.get(b.defId);
-  if (!bdef || bdef.isConstructionYard) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'cannot_sell' });
-    return;
-  }
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-  if (b.productionQueue && b.productionQueue.length > 0) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-  const refund = Math.floor(bdef.cost * ctx.services.registry.balance.sellRefundRatio);
-  removeBuildingFromWorld(state, ctx, b);
-  player.mana += refund;
-  ctx.events.push({ type: 'buildingSold', id: b.id, defId: b.defId, owner: cmd.playerId, refund });
-  ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
-}
-
-function handleSetRepair(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRepair' }>): void {
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
-    return;
-  }
-  if (!cmd.enabled) {
-    b.repairing = false;
-    return;
-  }
-  if (b.hp >= b.maxHp) return;
-  b.repairing = true;
-}
-
-function handleChannel(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'channel' }>): void {
-  for (const id of cmd.entityIds) {
-    const e = state.entities.get(id);
-    if (!e || e.owner !== cmd.playerId || e.kind !== 'unit' || !isAlive(e)) continue;
-    if (e.morphProgress !== undefined) continue;
-    const udef = ctx.services.registry.units.get(e.defId);
-    if (!udef?.canConjureMana) continue;
-    if (!cmd.enabled) {
-      e.channeling = false;
-      e.channelTicks = undefined;
-      if (e.state === 'channeling') e.state = 'idle';
-      continue;
-    }
-    e.channeling = true;
-    e.channelTicks = 0;
-    e.state = 'channeling';
-    e.orders = [];
-    e.targetId = undefined;
-    e.vel = { x: 0, y: 0 };
-  }
-}
-
-function handleCancel(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'cancelProduce' }>): void {
-  const player = getPlayer(state, cmd.playerId)!;
-  const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || !b.productionQueue) return;
-  const item = b.productionQueue[cmd.index];
-  if (!item) return;
-  const udef = ctx.services.registry.units.get(item.defId);
-  if (udef) {
-    player.mana += udef.cost; // full refund
-    ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
-  }
-  b.productionQueue.splice(cmd.index, 1);
-}
-
-function handleSpell(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'castSpell' }>): void {
-  const player = getPlayer(state, cmd.playerId)!;
-  const spell = ctx.services.registry.spells.get(cmd.spellId);
-  if (!spell) return;
-  if (!requirementsMet(player, spell.requires)) return;
-  if ((player.spellCooldowns[cmd.spellId] ?? 0) > 0) return;
-  player.spellCooldowns[cmd.spellId] = spell.cooldownTicks;
-
-  const eff = spell.effect;
-  if (eff.kind === 'damage') {
-    for (const e of entitiesSorted(state)) {
-      if (e.kind === 'resource_node' || e.state === 'dead') continue;
-      const dx = e.pos.x - cmd.x;
-      const dy = e.pos.y - cmd.y;
-      if (dx * dx + dy * dy <= eff.radius * eff.radius) applyDamage(state, ctx, e, eff.damage, eff.vs);
-    }
-  } else if (eff.kind === 'buff') {
-    const ids = cmd.entityIds ?? [];
-    for (const id of ids) {
-      const e = state.entities.get(id);
-      if (e && e.owner === cmd.playerId && isAlive(e)) e.buffs.push({ kind: eff.buff, expiresTick: state.tick + eff.durationTicks });
-    }
-  } else if (eff.kind === 'blink') {
-    const ids = cmd.entityIds ?? [];
-    for (const id of ids) {
-      const e = state.entities.get(id);
-      if (e && e.owner === cmd.playerId && isAlive(e) && e.kind === 'unit') {
-        e.pos = { x: cmd.x, y: cmd.y };
-        e.orders = [];
-        e.state = 'idle';
-      }
-    }
-  }
-  ctx.events.push({ type: 'spellCast', playerId: cmd.playerId, spellId: cmd.spellId, x: cmd.x, y: cmd.y });
 }

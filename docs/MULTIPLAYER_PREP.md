@@ -28,12 +28,12 @@ solid **before** wiring transport.
 
 ## Phase 3 — Code structure (parallel with Phase 2)
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| Split `apply-commands.ts` | Medium | One handler file per command group |
-| Split `hud.ts` | Medium | Panel components (build, train, selection) |
-| Remove or wire `EventBus` | Low | Use for presentation-only event fan-out |
-| `sim/views.ts` query facade | Low | Single import surface for render/UI |
+| Item | Priority | Status | Notes |
+|------|----------|--------|-------|
+| Split `apply-commands.ts` | Medium | Done | Per-command handler modules under `systems/commands/` |
+| Split `hud.ts` | Medium | Done | Panel components under `ui/hud/` |
+| Remove or wire `EventBus` | Low | Done | Removed unused `event-bus.ts` |
+| `sim/views.ts` query facade | Low | Done | Single import surface for render/UI |
 
 ## Phase 4 — Multiplayer integration
 
