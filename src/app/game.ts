@@ -82,7 +82,13 @@ export class Game {
     private audio: AudioManager,
     private settings: Settings,
     private onExit: () => void,
-    opts?: { useWorker?: boolean; lockstep?: LockstepClient; matchId?: string; onDesync?: (tick: number, peers: string[], replay: Replay) => void },
+    opts?: {
+      useWorker?: boolean;
+      lockstep?: LockstepClient;
+      matchId?: string;
+      localPlayerId?: PlayerId;
+      onDesync?: (tick: number, peers: string[], replay: Replay) => void;
+    },
   ) {
     this.lockstep = opts?.lockstep ?? null;
     this.matchId = opts?.matchId ?? 'skirmish_1v1';
@@ -95,8 +101,12 @@ export class Game {
     } else {
       this.useWorker = false;
       this.sim = new Simulation(state, services);
+      if (this.lockstep) this.sim.aiEnabled = false;
     }
-    this.humanId = state.players.find((p) => p.controller === 'human')?.id ?? state.players[0]!.id;
+    this.humanId =
+      opts?.localPlayerId ??
+      state.players.find((p) => p.controller === 'human')?.id ??
+      state.players[0]!.id;
     for (const p of state.players) this.colorByOwner.set(p.id, p.color);
     this.renderer = new Renderer(registry, registry.map(state.mapId));
     this.boxEl = document.createElement('div');

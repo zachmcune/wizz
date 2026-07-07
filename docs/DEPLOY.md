@@ -37,18 +37,38 @@ builds on push. Only add a Actions workflow if you want CI deploy with API token
 **Cost:** effectively $0 (Pages serves static sites with unmetered bandwidth). Only a custom
 domain registration costs money; the free `*.pages.dev` subdomain is $0.
 
-## V2 — multiplayer relay on Cloudflare Workers + Durable Objects
+## V2 — multiplayer relay
 
-Architected, not built (do not start before V1 ships and determinism is proven — it is, see
-`tests/determinism.test.ts` and `tests/worker.test.ts`). Design:
+### Local development (ready now)
+
+1. **Terminal 1:** `npm run relay` — starts the lockstep relay on port **8787**
+2. **Terminal 2:** `npm run dev` — Vite dev server
+3. Open two browser tabs (or two devices on the same LAN):
+   - Tab A: **Create Online 1v1** — share the room code
+   - Tab B: **Join Online 1v1** — enter the code
+4. Match starts automatically when both players join.
+
+The client defaults to `ws://<hostname>:8787`. Override with `VITE_RELAY_URL` at build time
+(see `.env.example`).
+
+### Production relay deploy
+
+The relay is a small Node WebSocket server (`relay/server.mjs`). Deploy it to any host that
+supports WebSockets (Fly.io, Railway, a VPS, etc.) and set `VITE_RELAY_URL=wss://your-relay`
+when building the Pages app.
+
+### Cloudflare Workers + Durable Objects (future)
+
+For hobby-scale hosting on Cloudflare, port `relay/server.mjs` merge/tick logic into a Durable
+Object per room. The client `WebSocketTransport` and wire protocol are already compatible.
+
+Architected design:
 
 - One **Durable Object per match room** holds that room's WebSocket connections and broadcasts the
   merged per-tick command list. Use **WebSocket Hibernation** so idle rooms don't bill compute.
 - A thin **Worker** handles lobby/matchmaking and routes clients to a room DO. The relay forwards
   commands only; it never simulates.
-- Client seams already exist: `src/net/protocol.ts` (wire messages, `INPUT_DELAY_TICKS`) and
-  `src/net/lockstep.ts` (`LockstepClient`: input-delay buffering, confirmed per-tick commands,
-  desync detection). Re-verify Cloudflare free-tier limits before building.
+- Client seams: `src/net/protocol.ts`, `src/net/lockstep.ts`, `src/net/multiplayer.ts`.
 
-**Cost:** free at hobby scale; ~$5/month floor once past the Workers free allowance. No database
-needed for matches (clients run the sim).
+**Cost:** free at hobby scale on CF Workers; Node relay on a small VPS is also ~$0–5/month. No
+database needed for matches (clients run the sim).
