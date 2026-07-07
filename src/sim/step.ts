@@ -12,7 +12,6 @@ import { harvestSystem } from './systems/harvest';
 import { deathSystem } from './systems/death';
 import { morphSystem } from './systems/morph';
 import { winCheckSystem } from './systems/wincheck';
-import { morphSystem } from './systems/morph';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
 

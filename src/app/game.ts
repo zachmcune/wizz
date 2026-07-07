@@ -40,7 +40,6 @@ export class Game {
   private loop!: GameLoop;
   private humanId: PlayerId;
   private colorByOwner = new Map<PlayerId, string>();
-  private canvasHost!: HTMLDivElement;
   private boxEl: HTMLDivElement;
   private tickCounter = 0;
   private disposed = false;
@@ -75,7 +74,6 @@ export class Game {
   async start(): Promise<void> {
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
-    this.canvasHost = canvasHost;
     this.host.appendChild(canvasHost);
     this.boxEl.style.position = 'absolute';
     this.boxEl.style.pointerEvents = 'none';
