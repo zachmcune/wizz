@@ -1,7 +1,10 @@
-// Power grid helpers (Red Alert 2 style: deficit disables power consumers until balanced).
+// Power grid helpers (Red Alert 2 low-power rules).
+// Defenses and radar shut off completely; production and construction slow down.
 import type { Registry } from '../data/registry';
-import type { GameState, Entity, EntityId, PlayerId } from './types';
-import { getPlayer, entitiesSorted } from './queries';
+import type { GameState, Entity, PlayerId } from './types';
+import { getPlayer } from './queries';
+
+const MIN_PRODUCTION_RATE = 0.1;
 
 export function isPowerShort(state: GameState, playerId: PlayerId): boolean {
   const p = getPlayer(state, playerId);
@@ -18,39 +21,36 @@ export function buildingPowerUse(registry: Registry, defId: string): number {
   return registry.buildings.get(defId)?.powerUsed ?? 0;
 }
 
-let offlineCacheTick = -1;
-let offlineCache = new Set<EntityId>();
-
-/** Buildings forced offline this tick to cover a power deficit (newest consumers first). */
-export function offlineBuildings(state: GameState, registry: Registry): Set<EntityId> {
-  if (state.tick === offlineCacheTick) return offlineCache;
-  const offline = new Set<EntityId>();
-  for (const p of state.players) {
-    if (!isPowerShort(state, p.id)) continue;
-    const consumers = entitiesSorted(state).filter(
-      (e) =>
-        e.owner === p.id &&
-        e.kind === 'building' &&
-        e.state !== 'dead' &&
-        e.buildProgress === undefined &&
-        buildingPowerUse(registry, e.defId) > 0,
-    );
-    let cut = powerDeficit(state, p.id);
-    for (let i = consumers.length - 1; i >= 0 && cut > 0; i--) {
-      const b = consumers[i]!;
-      offline.add(b.id);
-      cut -= buildingPowerUse(registry, b.defId);
-    }
-  }
-  offlineCacheTick = state.tick;
-  offlineCache = offline;
-  return offline;
+function buildingDef(registry: Registry, building: Entity) {
+  return registry.buildings.get(building.defId);
 }
 
-/** True when a completed building is receiving power. */
+/** True for buildings that hard-stop when the grid is short (turrets, radar). */
+export function isHardPowerConsumer(registry: Registry, defId: string): boolean {
+  const b = registry.buildings.get(defId);
+  return !!(b?.weapon || b?.isRadar);
+}
+
+/**
+ * RA2 low power: defenses and radar are offline; refineries and factories keep working.
+ * Used for combat, radar, and HUD offline state.
+ */
 export function buildingHasPower(state: GameState, registry: Registry, building: Entity): boolean {
   if (building.kind !== 'building' || building.state === 'dead' || building.buildProgress !== undefined) return true;
-  if (buildingPowerUse(registry, building.defId) <= 0) return true;
   if (!isPowerShort(state, building.owner)) return true;
-  return !offlineBuildings(state, registry).has(building.id);
+  return !isHardPowerConsumer(registry, building.defId);
+}
+
+/**
+ * Production / construction speed multiplier while low on power.
+ * 1.0 when balanced; proportional to power supply otherwise (RA2-style slowdown).
+ */
+export function productionRate(state: GameState, registry: Registry, building: Entity): number {
+  if (building.kind !== 'building' || building.state === 'dead') return 0;
+  if (!isPowerShort(state, building.owner)) return 1;
+  const bdef = buildingDef(registry, building);
+  if (bdef?.weapon || bdef?.isRadar) return 0;
+  const p = getPlayer(state, building.owner)!;
+  if (p.powerUsed <= 0) return 1;
+  return Math.max(MIN_PRODUCTION_RATE, p.power / p.powerUsed);
 }

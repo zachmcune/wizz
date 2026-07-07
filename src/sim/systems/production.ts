@@ -3,7 +3,7 @@ import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted } from '../queries';
-import { buildingHasPower } from '../power';
+import { productionRate } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
 
 export function productionSystem(state: GameState, ctx: StepContext): void {
@@ -21,7 +21,7 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
     const player = state.players.find((p) => p.id === e.owner);
     if (!player) continue;
     const bdef = ctx.services.registry.building(e.defId);
-    const rate = buildingHasPower(state, ctx.services.registry, e) ? 1 : 0;
+    const rate = productionRate(state, ctx.services.registry, e);
 
     // Construction of the building itself.
     if (e.buildProgress !== undefined) {

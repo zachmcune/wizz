@@ -5,19 +5,20 @@ import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
 import type { GameState, Entity, Player, PlayerId } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
-import { buildingHasPower } from './power';
+import { buildingHasPower, isPowerShort } from './power';
 
 export function createFogTiles(tileCount: number): number[] {
   return new Array(tileCount).fill(0);
 }
 
-/** True when the player has a completed, powered radar structure (RA2 radar online). */
+/** True when the player has radar and the grid is not in low-power (RA2 radar shutdown). */
 export function radarActive(state: GameState, registry: Registry, playerId: PlayerId): boolean {
+  if (isPowerShort(state, playerId)) return false;
   for (const e of entitiesSorted(state)) {
     if (e.owner !== playerId || e.kind !== 'building' || !isAlive(e)) continue;
     if (e.buildProgress !== undefined || e.morphProgress !== undefined) continue;
     if (!registry.buildings.get(e.defId)?.isRadar) continue;
-    if (buildingHasPower(state, registry, e)) return true;
+    return true;
   }
   return false;
 }
