@@ -18,6 +18,7 @@ import { EffectsLayer } from './effects';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
+import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -54,6 +55,24 @@ interface RenderNode {
 
 /** Exponential smoothing for unit/projectile display positions (per second). */
 const DISPLAY_SMOOTH_HZ = 18;
+
+/**
+ * Screen-space occlusion tuning (oblique 2.5D only). Radii/lift are fractions of the
+ * entity's visual `art.size`, matching the oblique voxel-box geometry in shape-sprite.ts.
+ */
+const OCCLUSION_BUILDING_RADIUS_FACTOR = 0.5;
+const OCCLUSION_BUILDING_LIFT_FACTOR = 0.28;
+const OCCLUSION_UNIT_RADIUS_FACTOR = 0.38;
+
+/** Minimal marker drawn over a building where a hidden own-unit stands. */
+const OCCLUSION_MARKER_RADIUS = 5;
+const OCCLUSION_MARKER_WIDTH = 2;
+const OCCLUSION_MARKER_ALPHA = 0.95;
+const OCCLUSION_MARKER_FILL_ALPHA = 0.35;
+
+interface OwnUnitBounds extends OcclusionBounds {
+  color: string;
+}
 
 export class Renderer {
   app: Application;
@@ -347,6 +366,10 @@ export class Renderer {
     this.shadowLayer.clear();
     if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
 
+    const oblique = this.isOblique();
+    const buildingBounds: OcclusionBounds[] = [];
+    const ownUnits: OwnUnitBounds[] = [];
+
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
@@ -383,6 +406,28 @@ export class Renderer {
       const depth = this.sortKeyAt(x, y);
       n.sprite.position.set(pos.x, pos.y);
       n.sprite.zIndex = depth;
+
+      if (oblique) {
+        if (e.kind === 'building') {
+          const size = this.artOf(e).art.size;
+          buildingBounds.push({
+            x: pos.x,
+            y: pos.y - size * OCCLUSION_BUILDING_LIFT_FACTOR,
+            radius: size * OCCLUSION_BUILDING_RADIUS_FACTOR,
+            depth,
+          });
+        } else if (e.kind === 'unit' && e.owner === this.viewerId) {
+          const size = this.artOf(e).art.size;
+          ownUnits.push({
+            x: pos.x,
+            y: pos.y,
+            radius: size * OCCLUSION_UNIT_RADIUS_FACTOR,
+            depth,
+            color: this.colorByOwner.get(e.owner) ?? '#ffffff',
+          });
+        }
+      }
+
       if (!this.isOblique() && (e.kind === 'unit' || e.kind === 'projectile')) {
         n.sprite.rotation = n.facing + Math.PI / 2;
       } else if (this.isOblique()) {
@@ -446,6 +491,12 @@ export class Renderer {
       }
     }
 
+    if (oblique) {
+      for (const u of filterOccludedUnits(ownUnits, buildingBounds)) {
+        this.drawOccludedUnitMarker(u.x, u.y, u.color);
+      }
+    }
+
     if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);
 
     if (overlay?.buildZones?.length) {
@@ -502,6 +553,20 @@ export class Renderer {
       .moveTo(x + s, y - s)
       .lineTo(x - s, y + s)
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
+  }
+
+  /**
+   * Minimal on-top hint for an own unit hidden behind a building (oblique only).
+   * Drawn via the overlay pools, which sit above the entity layer, so it reads over the
+   * occluding building without any zIndex juggling.
+   */
+  private drawOccludedUnitMarker(x: number, y: number, colorHex: string): void {
+    const color = parseOwnerColor(colorHex);
+    this.fillDot(x, y, OCCLUSION_MARKER_RADIUS - 1, color, OCCLUSION_MARKER_FILL_ALPHA);
+    this.overlayStrokePool
+      .acquire()
+      .circle(x, y, OCCLUSION_MARKER_RADIUS)
+      .stroke({ width: OCCLUSION_MARKER_WIDTH, color, alpha: OCCLUSION_MARKER_ALPHA });
   }
 
   private drawNodeReserve(x: number, y: number, e: ResourceNodeEntity): void {
