@@ -145,15 +145,19 @@ export class Hud {
   }
 
   showResult(win: boolean): void {
+    this.controller.clearSelection();
     this.result.innerHTML = '';
-    this.result.append(
+    const card = el('div', 'result-card');
+    card.append(
       el('h1', 'result-title', win ? 'Victory' : 'Defeat'),
+      el('p', 'result-hint', 'Drag or pinch to explore the map · two fingers to pan'),
       (() => {
         const b = el('button', 'btn big', 'Back to Menu');
         b.addEventListener('click', () => this.onExit?.());
         return b;
       })(),
     );
+    this.result.append(card);
     this.result.style.display = 'flex';
   }
 
@@ -234,8 +238,13 @@ export class Hud {
     this.powerStat.title = short ? 'Low power — production and defenses offline. Build Ley Conduit (+60 pwr).' : '';
 
     const radarOn = radarActive(st, this.registry, this.playerId);
-    this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar offline');
-    this.minimapPanel.root.classList.toggle('minimap-offline', !radarOn);
+    if (st.ended) {
+      this.minimapPanel.setTitle('Map');
+      this.minimapPanel.root.classList.remove('minimap-offline');
+    } else {
+      this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar offline');
+      this.minimapPanel.root.classList.toggle('minimap-offline', !radarOn);
+    }
 
     const session = this.controller.session;
     this.spellBar.update(p, session);

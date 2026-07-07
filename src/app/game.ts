@@ -72,6 +72,7 @@ export class Game {
   private lastFrameTime = 0;
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
+  private postGameCameraReady = false;
   private pointerStart = { x: 0, y: 0 };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
@@ -216,15 +217,23 @@ export class Game {
     let boxStart = { x: 0, y: 0 };
     this.gesture = new GestureRecognizer(
       {
-        onTap: (p) => this.controller.tap(p),
-        onDoubleTap: (p) => this.controller.doubleTap(p),
+        onTap: (p) => {
+          if (this.state.ended) return;
+          this.controller.tap(p);
+        },
+        onDoubleTap: (p) => {
+          if (this.state.ended) return;
+          this.controller.doubleTap(p);
+        },
         onPanMove: (dx, dy) => this.controller.panByScreen(dx, dy),
         onTwoFingerPan: (dx, dy) => this.controller.panByScreen(dx, dy),
         onBoxStart: (p) => {
+          if (this.state.ended) return;
           boxStart = p;
           this.boxEl.style.display = 'block';
         },
         onBoxMove: (p) => {
+          if (this.state.ended) return;
           const x = Math.min(boxStart.x, p.x);
           const y = Math.min(boxStart.y, p.y);
           this.boxEl.style.left = `${x}px`;
@@ -233,6 +242,7 @@ export class Game {
           this.boxEl.style.height = `${Math.abs(p.y - boxStart.y)}px`;
         },
         onBoxEnd: (a, b) => {
+          if (this.state.ended) return;
           this.boxEl.style.display = 'none';
           this.controller.boxSelect(a, b);
         },
@@ -256,6 +266,10 @@ export class Game {
       this.lastPointer = p;
       this.pointerStart = p;
       canvas.setPointerCapture(e.pointerId);
+      if (this.state.ended) {
+        this.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
+        return;
+      }
       const mode = this.controller.session.mode;
       if (mode === 'build' && this.controller.isWallBuild()) {
         this.wallDragging = true;
@@ -267,6 +281,10 @@ export class Game {
     canvas.addEventListener('pointermove', (e) => {
       const p = rel(e);
       this.lastPointer = p;
+      if (this.state.ended) {
+        this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
+        return;
+      }
       const mode = this.controller.session.mode;
       if (mode === 'build' && this.controller.isWallBuild() && this.wallDragging) {
         const w = screenToWorld(p, this.renderer.camera.view());
@@ -293,6 +311,10 @@ export class Game {
     });
     const up = (e: PointerEvent) => {
       const p = rel(e);
+      if (this.state.ended) {
+        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
+        return;
+      }
       const mode = this.controller.session.mode;
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
       if (mode === 'rally') {
@@ -519,12 +541,17 @@ export class Game {
 
     if (this.lockstep) this.drainLockstepTicks();
 
+    if (this.state.ended && !this.postGameCameraReady) {
+      this.postGameCameraReady = true;
+      this.gesture.setDragMode('pan');
+    }
+
     const renderAlpha = Math.min(1, (now - this.lastSimSyncMs) / TICK_MS);
 
     this.gesture.update(now);
     const overlay = this.buildOverlay();
     this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt);
-    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry);
+    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, this.state.ended);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);

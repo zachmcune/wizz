@@ -233,17 +233,18 @@ export class Renderer {
 
     const viewer = getPlayer(state, this.viewerId);
     const nav = this.nav;
+    const revealAll = state.ended;
 
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
     this.fogLayer.clear();
-    if (viewer && nav) this.drawFog(state, viewer, nav);
+    if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
 
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
 
-      const liveVisible = !nav || isVisibleTo(state, this.viewerId, e, nav);
+      const liveVisible = revealAll || !nav || isVisibleTo(state, this.viewerId, e, nav);
       const showAsGhost =
         e.kind === 'building' &&
         nav &&
@@ -275,7 +276,7 @@ export class Renderer {
       if (n.label) {
         n.label.position.set(x, y + e.radius + 4);
         if (e.kind === 'resource_node') {
-          const intel = viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav);
+          const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
           n.label.visible = !!intel;
         } else {
           n.label.alpha = e.kind === 'building' && e.owner !== this.viewerId ? 0.75 : 1;
@@ -283,7 +284,7 @@ export class Renderer {
       }
 
       if (e.kind === 'resource_node') {
-        const intel = viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav);
+        const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
         if (intel) {
           const { art, color } = this.artOf(e);
           n.sprite.texture = this.provider.texture(art, color);
@@ -330,7 +331,7 @@ export class Renderer {
       }
     }
 
-    if (viewer && nav) this.renderBuildingGhosts(state, viewer, nav);
+    if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);
 
     if (overlay?.buildZones?.length) {
       for (const z of overlay.buildZones) {

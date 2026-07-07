@@ -49,7 +49,7 @@ export class Minimap {
     });
   }
 
-  render(state: GameState, viewerId: PlayerId, nav: NavGrid, registry: Registry): void {
+  render(state: GameState, viewerId: PlayerId, nav: NavGrid, registry: Registry, revealAll = false): void {
     const c = this.ctx;
     const s = this.scale;
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -57,7 +57,7 @@ export class Minimap {
     const viewer = getPlayer(state, viewerId);
     if (!viewer) return;
 
-    const radarOn = radarActive(state, registry, viewerId);
+    const radarOn = revealAll || radarActive(state, registry, viewerId);
     this.enabled = radarOn;
     this.canvas.classList.toggle('minimap-disabled', !radarOn);
 
@@ -80,7 +80,7 @@ export class Minimap {
         const blocked = this.map.tiles[i] === 1;
         c.fillStyle = blocked ? '#2a2540' : '#1a1826';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
-        if (isMinimapTileFogged(viewer, i, radarOn)) {
+        if (isMinimapTileFogged(viewer, i, radarOn) && !revealAll) {
           c.fillStyle = 'rgba(184, 184, 200, 0.42)';
           c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
         }
@@ -88,9 +88,9 @@ export class Minimap {
     }
 
     for (const e of state.entities.values()) {
-      if (!isVisibleOnMinimap(state, registry, viewerId, e, nav)) continue;
+      if (!revealAll && !isVisibleOnMinimap(state, registry, viewerId, e, nav)) continue;
       if (e.kind === 'resource_node') {
-        const intel = isNodeIntelVisible(state, viewerId, e, nav);
+        const intel = revealAll || isNodeIntelVisible(state, viewerId, e, nav);
         if (!intel) {
           c.fillStyle = '#39d0c0';
         } else {
@@ -104,9 +104,11 @@ export class Minimap {
       c.fillRect(e.pos.x * s - size / 2, e.pos.y * s - size / 2, size, size);
     }
 
-    for (const known of listBuildingGhosts(state, registry, viewerId, nav)) {
-      c.fillStyle = 'rgba(140, 140, 155, 0.75)';
-      c.fillRect(known.x * s - 2, known.y * s - 2, 4, 4);
+    if (!revealAll) {
+      for (const known of listBuildingGhosts(state, registry, viewerId, nav)) {
+        c.fillStyle = 'rgba(140, 140, 155, 0.75)';
+        c.fillRect(known.x * s - 2, known.y * s - 2, 4, 4);
+      }
     }
 
     const v = this.camera.visibleWorldRect();
