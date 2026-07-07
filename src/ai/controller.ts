@@ -12,7 +12,7 @@ import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { distSq, len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
-const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus'];
+const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus', 'astral_spire'];
 const DEFEND_RADIUS = 280;
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
@@ -87,6 +87,19 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   const own = ownedBy(state, p.id);
   const wisps = own.filter(isHarvester);
   const combat = own.filter(isCombatUnit);
+
+  if (p.unlockedTech.includes('astral_spire')) {
+    const beam = state.beams.find((b) => b.owner === p.id);
+    const cd = p.spellCooldowns['astral_lance'] ?? 0;
+    const target = findEnemySanctum(state, p.id) ?? nearestEnemyBuilding(state, p.id, sanctum.pos);
+    if (target) {
+      if (beam && beam.state === 'firing') {
+        cmds.push({ type: 'steerSuperweapon', playerId: p.id, x: target.pos.x, y: target.pos.y });
+      } else if (!beam && cd === 0) {
+        cmds.push({ type: 'castSpell', playerId: p.id, spellId: 'astral_lance', x: target.pos.x, y: target.pos.y });
+      }
+    }
+  }
 
   for (const w of wisps) {
     if (w.orders.length === 0 && w.state === 'idle') {

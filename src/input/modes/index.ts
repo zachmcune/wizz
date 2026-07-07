@@ -6,6 +6,7 @@ import { deployMode } from './deploy-mode';
 import { normalMode } from './normal-mode';
 import { rallyMode } from './rally-mode';
 import { spellMode } from './spell-mode';
+import { superweaponMode } from './superweapon-mode';
 
 const TAP_HANDLERS: Record<InputMode, ModeTapHandler> = {
   normal: normalMode,
@@ -14,10 +15,15 @@ const TAP_HANDLERS: Record<InputMode, ModeTapHandler> = {
   spell: spellMode,
   rally: rallyMode,
   attackMove: attackMoveMode,
+  superweapon: superweaponMode,
 };
 
 export function handleModeTap(ctx: InputContext, mode: InputMode, screen: import('../../core/coords').Vec2, world: import('../../core/coords').Vec2): void {
   if (mode === 'spell' && !ctx.session.spellId) {
+    normalMode.onTap(ctx, screen, world);
+    return;
+  }
+  if (mode === 'superweapon' && !ctx.session.spellId) {
     normalMode.onTap(ctx, screen, world);
     return;
   }
@@ -33,5 +39,6 @@ export { attackMoveMode } from './attack-move-mode';
 export * from './build-mode';
 export * from './deploy-mode';
 export * from './spell-mode';
+export { superweaponMode } from './superweapon-mode';
 export * from './rally-mode';
 export { isWallBuild } from '../placement';

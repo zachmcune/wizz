@@ -43,6 +43,8 @@ export function deserializeState(saved: SavedGame, registry: Registry): { state:
   const entities = new Map<number, Entity>();
   for (const e of saved.state.entities) entities.set(e.id, e);
   const state: GameState = { ...saved.state, entities };
+  if (!state.beams) state.beams = [];
+  if (state.oneSuperweaponPerPlayer === undefined) state.oneSuperweaponPerPlayer = true;
 
   const map = registry.map(state.mapId);
   const nav = new NavGrid(map);

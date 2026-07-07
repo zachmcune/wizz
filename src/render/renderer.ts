@@ -473,6 +473,21 @@ export class Renderer {
       this.fillDot(to.x, to.y, 5, 0x7fe3ff, 0.9);
       this.strokeRing(to.x, to.y, 10, 2, 0x7fe3ff, 0.7);
     }
+    for (const b of state.beams) {
+      const p = this.drawPos(b.pos.x, b.pos.y);
+      if (b.state === 'charging') {
+        this.strokeRing(p.x, p.y, b.radius, 2, 0xff5d5d, 0.9);
+        this.strokeRing(p.x, p.y, b.radius * 0.55, 2, 0xff5d5d, 0.6);
+      } else {
+        this.fillDot(p.x, p.y, b.radius, 0x9fdcff, 0.35);
+        this.strokeRing(p.x, p.y, b.radius, 3, 0x8b6cff, 0.95);
+        this.overlayStrokePool
+          .acquire()
+          .moveTo(p.x, p.y)
+          .lineTo(p.x, p.y - 500)
+          .stroke({ width: 6, color: 0x9fdcff, alpha: 0.7 });
+      }
+    }
     this.effects.update();
   }
 

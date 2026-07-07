@@ -38,6 +38,24 @@ export function handleSpell(state: GameState, ctx: StepContext, cmd: Extract<Com
         e.state = 'idle';
       }
     }
+  } else if (eff.kind === 'beam') {
+    state.beams.push({
+      id: state.nextEntityId++,
+      owner: cmd.playerId,
+      spellId: cmd.spellId,
+      pos: { x: cmd.x, y: cmd.y },
+      dir: { x: 0, y: 0 },
+      speed: eff.speed,
+      radius: eff.radius,
+      damagePerTick: eff.damagePerTick,
+      durationTicks: eff.durationTicks,
+      vs: eff.vs,
+      state: 'charging',
+      fireTick: state.tick + eff.chargeTicks,
+      expiresTick: 0,
+    });
+    ctx.events.push({ type: 'superweaponLaunched', playerId: cmd.playerId, x: cmd.x, y: cmd.y });
+    return;
   }
   ctx.events.push({ type: 'spellCast', playerId: cmd.playerId, spellId: cmd.spellId, x: cmd.x, y: cmd.y });
 }

@@ -13,6 +13,7 @@ export class EventBridge {
     private deadSpectatorReveal: boolean,
     private audio: AudioManager,
     private effects: EffectsLayer,
+    private onNotify?: (text: string) => void,
   ) {}
 
   handle(ev: GameEvent): void {
@@ -41,6 +42,15 @@ export class EventBridge {
         break;
       case 'spellCast':
         if (visible) this.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
+        break;
+      case 'superweaponLaunched': {
+        const mine = ev.playerId === this.humanId;
+        this.onNotify?.(mine ? 'Astral Lance launched!' : 'Warning: enemy Astral Lance detected!');
+        this.effects.spawn('ring', ev.x, ev.y, 0xff5d5d, 60);
+        break;
+      }
+      case 'superweaponFired':
+        this.effects.spawn('flash', ev.x, ev.y, 0x9fdcff, 40);
         break;
     }
   }

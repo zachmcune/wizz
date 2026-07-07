@@ -49,7 +49,7 @@ export function buildMatchOverlay(
     }
   }
   let spell: { x: number; y: number; radius: number } | undefined;
-  if (session.mode === 'spell' && session.spellId) {
+  if ((session.mode === 'spell' || session.mode === 'superweapon') && session.spellId) {
     const def = registry.spells.get(session.spellId);
     if (def && def.aoeRadius > 0) {
       const w = screenToWorld(lastPointer, camera.view());

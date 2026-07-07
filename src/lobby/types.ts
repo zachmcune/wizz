@@ -28,6 +28,8 @@ export interface LobbyState {
   seed?: number;
   /** When true, eliminated human players see the live full map (no fog) while spectating. */
   deadSpectatorReveal?: boolean;
+  /** When true (default), each player may build only one Astral Spire. */
+  oneSuperweaponPerPlayer?: boolean;
   /** Locked render view for this match: Classic 2D or oblique 2.5D. Host chooses in lobby. */
   projectionMode?: ProjectionMode;
 }

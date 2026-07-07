@@ -33,6 +33,9 @@ export function hashState(state: GameState): string {
       `E${id}:${e.defId}:${e.owner}:${r(e.pos.x)},${r(e.pos.y)}:${r(e.hp)}:${stateStr}:${carryStr}:${amountStr}:${channelStr}:${flags}`,
     );
   }
+  for (const b of state.beams) {
+    parts.push(`SW${b.id}:${b.owner}:${r(b.pos.x)},${r(b.pos.y)}:${b.state}:${b.fireTick}:${b.expiresTick}`);
+  }
   const s = parts.join('|');
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {

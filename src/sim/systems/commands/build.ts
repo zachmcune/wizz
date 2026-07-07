@@ -15,6 +15,15 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
     return;
   }
+  if (def.isSuperweapon && state.oneSuperweaponPerPlayer) {
+    const already = [...state.entities.values()].some(
+      (e) => e.owner === cmd.playerId && e.kind === 'building' && e.defId === def.id && e.state !== 'dead',
+    );
+    if (already) {
+      ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'limit' });
+      return;
+    }
+  }
   if (player.mana < def.cost) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
     return;

@@ -14,6 +14,7 @@ import { deathSystem } from './systems/death';
 import { morphSystem } from './systems/morph';
 import { visibilitySystem } from './systems/visibility';
 import { winCheckSystem } from './systems/wincheck';
+import { superweaponSystem } from './systems/superweapon';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
 
@@ -41,6 +42,7 @@ export function stepSimulation(
   visibilitySystem(state, ctx); // 5b fog of war
   combatSystem(state, ctx); // 6
   projectileSystem(state, ctx); // 6b projectiles
+  superweaponSystem(state, ctx); // 6c superweapon beams
   harvestSystem(state, ctx); // 7
   channelSystem(state, ctx); // 7b mana weaver conjuring
   deathSystem(state, ctx); // 8

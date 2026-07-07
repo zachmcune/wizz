@@ -83,6 +83,7 @@ export function buildMatchConfig(state: LobbyState): MatchConfig {
     seed: state.seed ?? 0,
     players,
     deadSpectatorReveal: state.deadSpectatorReveal ?? false,
+    oneSuperweaponPerPlayer: state.oneSuperweaponPerPlayer ?? true,
   };
 }
 

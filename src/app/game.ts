@@ -123,6 +123,7 @@ export class Game {
       this.deadSpectatorReveal,
       this.audio,
       this.renderer.effects,
+      (text) => this.hud?.showHint(text),
     );
 
     const aiEnabled = this.lockstep ? this.state.players.some((p) => p.controller === 'ai') : true;
@@ -287,6 +288,7 @@ export class Game {
     const renderAlpha = Math.min(1, (now - this.simCtrl.lastSyncMs) / TICK_MS);
 
     this.gesture.update(now);
+    this.controller.syncSuperweaponMode();
     const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
     const overlay = buildMatchOverlay(
       this.state,

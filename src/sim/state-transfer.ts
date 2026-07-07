@@ -11,6 +11,8 @@ export interface TransferState {
   mapId: string;
   winnerTeam: GameState['winnerTeam'];
   ended: boolean;
+  beams: GameState['beams'];
+  oneSuperweaponPerPlayer: boolean;
 }
 
 export function packState(state: GameState): TransferState {
@@ -25,6 +27,8 @@ export function packState(state: GameState): TransferState {
     mapId: state.mapId,
     winnerTeam: state.winnerTeam,
     ended: state.ended,
+    beams: state.beams,
+    oneSuperweaponPerPlayer: state.oneSuperweaponPerPlayer,
   };
 }
 
@@ -39,6 +43,8 @@ export function unpackState(t: TransferState): GameState {
     mapId: t.mapId,
     winnerTeam: t.winnerTeam,
     ended: t.ended,
+    beams: t.beams ?? [],
+    oneSuperweaponPerPlayer: t.oneSuperweaponPerPlayer ?? true,
   };
 }
 
@@ -53,4 +59,6 @@ export function applyTransferState(target: GameState, t: TransferState): void {
   target.mapId = t.mapId;
   target.winnerTeam = t.winnerTeam;
   target.ended = t.ended;
+  target.beams = t.beams ?? [];
+  target.oneSuperweaponPerPlayer = t.oneSuperweaponPerPlayer ?? true;
 }

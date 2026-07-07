@@ -39,6 +39,7 @@ export class MatchLobby {
   private factionSelect!: HTMLSelectElement;
   private templateSelect!: HTMLSelectElement;
   private deadSpectatorToggle!: HTMLInputElement;
+  private oneSuperweaponToggle!: HTMLInputElement;
   private projectionSelect!: HTMLSelectElement;
   private projectionWarning!: HTMLParagraphElement;
   private roomEl: HTMLElement | null = null;
@@ -147,6 +148,21 @@ export class MatchLobby {
       el('span', 'lobby-toggle-label', 'Eliminated players see full map'),
     );
     optionsRow.appendChild(spectatorLabel);
+
+    const superweaponLabel = el('label', 'lobby-toggle') as HTMLLabelElement;
+    this.oneSuperweaponToggle = el('input') as HTMLInputElement;
+    this.oneSuperweaponToggle.type = 'checkbox';
+    this.oneSuperweaponToggle.checked = true;
+    this.oneSuperweaponToggle.addEventListener('change', () => {
+      this.state.oneSuperweaponPerPlayer = this.oneSuperweaponToggle.checked;
+      this.pushUpdate();
+      this.refresh();
+    });
+    superweaponLabel.append(
+      this.oneSuperweaponToggle,
+      el('span', 'lobby-toggle-label', 'One superweapon per player'),
+    );
+    optionsRow.appendChild(superweaponLabel);
 
     if (this.opts.room) {
       this.roomEl = el('div', 'lobby-room');
@@ -423,6 +439,8 @@ export class MatchLobby {
     this.projectionWarning.style.display = this.projectionSelect.value === 'oblique' ? 'block' : 'none';
     this.deadSpectatorToggle.checked = this.state.deadSpectatorReveal ?? false;
     this.deadSpectatorToggle.disabled = this.opts.mode === 'guest';
+    this.oneSuperweaponToggle.checked = this.state.oneSuperweaponPerPlayer ?? true;
+    this.oneSuperweaponToggle.disabled = this.opts.mode === 'guest';
     for (let i = 0; i < 4; i++) {
       this.renderSlotPanel(this.slotEls[i]!, this.state.slots[i]!, i);
     }

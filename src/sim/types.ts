@@ -1,5 +1,7 @@
 // Core simulation contracts. These are the single source of truth for sim state shape.
 // Extend these; do not restructure. The sim only ever mutates GameState via commands.
+import type { Vec2 } from '../core/coords';
+import type { ArmorClass } from '../data/defs';
 import type { Entity } from './entity-types';
 
 export type PlayerId = string; // e.g. "player0"
@@ -72,6 +74,22 @@ export interface Buff {
   expiresTick: number;
 }
 
+export interface SuperweaponBeam {
+  id: EntityId;
+  owner: PlayerId;
+  spellId: string;
+  pos: Vec2;
+  dir: Vec2; // normalized heading; {0,0} = stationary
+  speed: number; // world units / second
+  radius: number;
+  damagePerTick: number;
+  durationTicks: number;
+  vs: Record<ArmorClass, number>;
+  state: 'charging' | 'firing';
+  fireTick: number; // tick charging -> firing
+  expiresTick: number; // tick firing -> removed (0 until firing starts)
+}
+
 export type { Entity, UnitEntity, BuildingEntity, ProjectileEntity, ResourceNodeEntity } from './entity-types';
 export { isUnit, isBuilding, isProjectile, isResourceNode, isHarvester, isCombatUnit } from './entity-types';
 
@@ -92,6 +110,7 @@ export type Command =
   | { type: 'setRepair'; playerId: PlayerId; buildingId: EntityId; enabled: boolean }
   | { type: 'channel'; playerId: PlayerId; entityIds: EntityId[]; enabled: boolean }
   | { type: 'castSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
+  | { type: 'steerSuperweapon'; playerId: PlayerId; x: number; y: number }
   | { type: 'surrender'; playerId: PlayerId };
 
 export type GameEvent =
@@ -108,6 +127,9 @@ export type GameEvent =
   | { type: 'manaDeposited'; playerId: PlayerId; amount: number; x: number; y: number }
   | { type: 'underAttack'; playerId: PlayerId; x: number; y: number }
   | { type: 'spellCast'; playerId: PlayerId; spellId: string; x: number; y: number }
+  | { type: 'superweaponLaunched'; playerId: PlayerId; x: number; y: number }
+  | { type: 'superweaponFired'; playerId: PlayerId; x: number; y: number }
+  | { type: 'superweaponEnded'; playerId: PlayerId; x: number; y: number }
   | { type: 'orderIssued'; playerId: PlayerId; kind: string; x: number; y: number }
   | { type: 'commandRejected'; playerId: PlayerId; reason: string }
   | { type: 'playerDefeated'; playerId: PlayerId }
@@ -123,6 +145,8 @@ export interface GameState {
   mapId: string;
   winnerTeam: TeamId | null;
   ended: boolean;
+  beams: SuperweaponBeam[];
+  oneSuperweaponPerPlayer: boolean;
 }
 
 export interface MatchPlayerConfig {
@@ -143,4 +167,6 @@ export interface MatchConfig {
   players: MatchPlayerConfig[];
   /** When true, eliminated human players see the live full map (no fog) while spectating. */
   deadSpectatorReveal?: boolean;
+  /** When true (default), each player may build only one superweapon building. */
+  oneSuperweaponPerPlayer?: boolean;
 }

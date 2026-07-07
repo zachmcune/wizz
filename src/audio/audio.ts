@@ -28,6 +28,10 @@ function voiceFor(ev: GameEvent): Voice | null {
       return { freq: 780, dur: 0.06, type: 'sine', gain: 0.14 };
     case 'spellCast':
       return { freq: 220, dur: 0.4, type: 'sawtooth', gain: 0.4 };
+    case 'superweaponLaunched':
+      return { freq: 180, dur: 0.7, type: 'square', gain: 0.5 };
+    case 'superweaponFired':
+      return { freq: 90, dur: 0.5, type: 'sawtooth', gain: 0.5 };
     case 'underAttack':
       return { freq: 200, dur: 0.12, type: 'square', gain: 0.18 };
     case 'commandRejected':

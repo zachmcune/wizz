@@ -34,6 +34,14 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
         e.hp = e.maxHp;
         unlockTech(state, e.owner, e.defId); // tech becomes available only when complete
         ctx.events.push({ type: 'buildingComplete', id: e.id, defId: e.defId, owner: e.owner });
+        if (bdef.isSuperweapon && bdef.unlocksSpells) {
+          for (const spellId of bdef.unlocksSpells) {
+            const sdef = ctx.services.registry.spells.get(spellId);
+            if (sdef && (player.spellCooldowns[spellId] ?? 0) <= 0) {
+              player.spellCooldowns[spellId] = sdef.cooldownTicks;
+            }
+          }
+        }
         if (bdef.spawnsFreeWisp) spawnFreeUnit(state, ctx, e, 'wisp');
         powerDirty = true;
       }

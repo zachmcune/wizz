@@ -145,6 +145,8 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
     mapId: config.mapId,
     winnerTeam: null,
     ended: false,
+    beams: [],
+    oneSuperweaponPerPlayer: config.oneSuperweaponPerPlayer ?? true,
   };
 
   const nodeCap = registry.balance.manaNodeCapacity;
@@ -200,6 +202,7 @@ export function purgePlayer(state: GameState, services: SimServices, playerId: P
     toRemove.push(id);
   }
   for (const id of toRemove.sort((a, b) => a - b)) state.entities.delete(id);
+  state.beams = state.beams.filter((b) => b.owner !== playerId);
   if (buildingsRemoved) {
     services.flow.invalidate();
     recomputePower(state, services);

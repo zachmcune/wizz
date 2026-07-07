@@ -86,6 +86,7 @@ export const buildingSchema = z.object({
   powerProduced: z.number().nonnegative().optional(),
   powerUsed: z.number().nonnegative().optional(),
   unlocksSpells: z.array(z.string()).optional(),
+  isSuperweapon: z.boolean().optional(),
   isRadar: z.boolean().optional(),
   isWall: z.boolean().optional(),
   isGate: z.boolean().optional(),
@@ -103,6 +104,15 @@ const spellEffectSchema = z.discriminatedUnion('kind', [
     durationTicks: z.number().int().positive(),
   }),
   z.object({ kind: z.literal('blink') }),
+  z.object({
+    kind: z.literal('beam'),
+    radius: z.number().positive(),
+    damagePerTick: z.number().positive(),
+    vs: vsSchema,
+    chargeTicks: z.number().int().nonnegative(),
+    durationTicks: z.number().int().positive(),
+    speed: z.number().nonnegative(),
+  }),
 ]);
 
 export const spellSchema = z.object({
