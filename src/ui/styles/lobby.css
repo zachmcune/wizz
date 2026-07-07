@@ -388,6 +388,17 @@
 .compact-ui .spell-confirm {
   max-width: calc(100% - min(50vw, 252px) - var(--hud-gap) * 4);
 }
+.compact-ui .superweapon-status {
+  padding: 1px 6px;
+}
+.compact-ui .superweapon-status .sw-title,
+.compact-ui .superweapon-status .sw-time {
+  font-size: 8px;
+}
+.compact-ui .superweapon-status .sw-swatch {
+  width: 5px;
+  height: 5px;
+}
 
 @media (max-height: 420px) {
   :root {
