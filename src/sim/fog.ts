@@ -1,5 +1,5 @@
 // Red Alert 2-style fog of war: shroud (unexplored), fog (explored but not seen), visible.
-// Radar permanently removes shroud from the entire map once built.
+// Radar reveals the full map only while its building is powered.
 import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
@@ -11,21 +11,20 @@ export function createFogTiles(tileCount: number): number[] {
   return new Array(tileCount).fill(0);
 }
 
-export function revealEntireMap(player: Player): void {
-  player.explored.fill(1);
+/** True when the player has a completed, powered radar structure (RA2 radar online). */
+export function radarActive(state: GameState, registry: Registry, playerId: PlayerId): boolean {
+  for (const e of entitiesSorted(state)) {
+    if (e.owner !== playerId || e.kind !== 'building' || !isAlive(e)) continue;
+    if (e.buildProgress !== undefined || e.morphProgress !== undefined) continue;
+    if (!registry.buildings.get(e.defId)?.isRadar) continue;
+    if (buildingHasPower(state, registry, e)) return true;
+  }
+  return false;
 }
 
-export function syncRadarFromTech(state: GameState, registry: Registry): void {
-  for (const p of state.players) {
-    if (p.hasRadar) continue;
-    for (const defId of p.unlockedTech) {
-      if (registry.buildings.get(defId)?.isRadar) {
-        p.hasRadar = true;
-        revealEntireMap(p);
-        break;
-      }
-    }
-  }
+/** Shrouded tiles are hidden until explored by sight or revealed by an online radar. */
+export function isShrouded(player: Player, tileIdx: number, radarOn: boolean): boolean {
+  return player.explored[tileIdx] === 0 && !radarOn;
 }
 
 function visionPartners(state: GameState, viewerId: PlayerId): PlayerId[] {
@@ -86,8 +85,6 @@ export function visibilitySystem(state: GameState, registry: Registry, nav: NavG
     if (player.defeated) continue;
     player.visible.fill(0);
 
-    if (player.hasRadar) player.explored.fill(1);
-
     const partners = visionPartners(state, player.id);
     for (const e of entitiesSorted(state)) {
       if (!partners.includes(e.owner)) continue;
@@ -97,9 +94,10 @@ export function visibilitySystem(state: GameState, registry: Registry, nav: NavG
   }
 }
 
-export function isTileExplored(player: Player, tx: number, ty: number, nav: NavGrid): boolean {
+export function isTileExplored(player: Player, tx: number, ty: number, nav: NavGrid, radarOn = false): boolean {
   if (!nav.inBounds(tx, ty)) return false;
-  return player.explored[ty * nav.w + tx] === 1;
+  const i = ty * nav.w + tx;
+  return player.explored[i] === 1 || radarOn;
 }
 
 export function isTileVisible(player: Player, x: number, y: number, nav: NavGrid): boolean {
@@ -127,9 +125,4 @@ export function isVisibleTo(
   }
 
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
-}
-
-export function onRadarBuilt(player: Player): void {
-  player.hasRadar = true;
-  revealEntireMap(player);
 }

@@ -85,7 +85,6 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, t
     defeated: false,
     explored: new Array(tileCount).fill(0),
     visible: new Array(tileCount).fill(0),
-    hasRadar: false,
   };
 }
 

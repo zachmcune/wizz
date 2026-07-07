@@ -7,7 +7,7 @@ import { NavGrid } from '../sim/nav-grid';
 import { createServices, type SimServices, type StepContext } from '../sim/context';
 import { recomputePower } from '../sim/factory';
 import { visibilitySystem } from '../sim/systems/visibility';
-import { createFogTiles, syncRadarFromTech } from '../sim/fog';
+import { createFogTiles } from '../sim/fog';
 import { TILE } from '../core/constants';
 
 const SAVE_VERSION = 2;
@@ -22,12 +22,10 @@ function ensureFogFields(state: GameState, registry: Registry): void {
   const map = registry.map(state.mapId);
   const tileCount = map.tileW * map.tileH;
   for (const p of state.players) {
-    const legacy = p as Player & { explored?: number[]; visible?: number[]; hasRadar?: boolean };
+    const legacy = p as Player & { explored?: number[]; visible?: number[] };
     if (!legacy.explored || legacy.explored.length !== tileCount) legacy.explored = createFogTiles(tileCount);
     if (!legacy.visible || legacy.visible.length !== tileCount) legacy.visible = createFogTiles(tileCount);
-    if (legacy.hasRadar === undefined) legacy.hasRadar = false;
   }
-  syncRadarFromTech(state, registry);
 }
 
 export function serializeState(state: GameState): SavedGame {

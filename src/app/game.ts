@@ -262,7 +262,7 @@ export class Game {
     this.gesture.update(now);
     const overlay = this.buildOverlay();
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay);
-    this.minimap.render(this.state, this.humanId, this.services.nav);
+    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);
