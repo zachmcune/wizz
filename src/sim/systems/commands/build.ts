@@ -4,7 +4,7 @@ import type { GameState, Command } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { spawnEntity } from '../../factory';
 import { canBuildNearBase } from '../../build-zone';
-import { removeNodesUnderFootprint } from '../../resource-nodes';
+import { footprintOverlapsNode } from '../../resource-nodes';
 import { requirementsMet, removeBuildingFromWorld } from './shared';
 
 export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
@@ -25,6 +25,10 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }
+  if (footprintOverlapsNode(state, tx, ty, def.footprint)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
+    return;
+  }
   if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, def.footprint)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
     return;
@@ -32,7 +36,6 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
   player.mana -= def.cost;
   const cx = (tx + def.footprint / 2) * TILE;
   const cy = (ty + def.footprint / 2) * TILE;
-  removeNodesUnderFootprint(state, tx, ty, def.footprint);
   const e = spawnEntity(state, ctx.services, ctx, def.id, cmd.playerId, cx, cy);
   e.buildProgress = 0;
   e.hp = Math.max(1, Math.floor(def.hp * 0.1));
@@ -55,6 +58,10 @@ export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Co
   const tx = Math.floor((cmd.x - (bdef.footprint * TILE) / 2) / TILE);
   const ty = Math.floor((cmd.y - (bdef.footprint * TILE) / 2) / TILE);
   if (!ctx.services.nav.canPlace(tx, ty, bdef.footprint)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
+    return;
+  }
+  if (footprintOverlapsNode(state, tx, ty, bdef.footprint)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }

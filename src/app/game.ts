@@ -19,6 +19,7 @@ import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
+import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { isWorldPointVisible } from '../sim/views';
 import { applyTransferState, packState } from '../sim/state-transfer';
 import { rebuildBuildingNav } from '../sim/building-nav';
@@ -150,6 +151,7 @@ export class Game {
       (kind, world) => this.renderer.effects.spawn('ring', world.x, world.y, ORDER_COLORS[kind] ?? 0xffffff, 14),
       (tx, ty, fp) => this.services.nav.canPlace(tx, ty, fp),
       (tx, ty, fp) => canBuildNearBase(this.state, this.services, this.humanId, tx, ty, fp),
+      (tx, ty, fp) => footprintOverlapsNode(this.state, tx, ty, fp),
     );
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);

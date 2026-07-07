@@ -6,6 +6,7 @@ import type { GameState, Command, Entity, Player, PlayerId } from '../sim/types'
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { isPowerShort, buildingHasPower } from '../sim/power';
 import { canBuildNearBase } from '../sim/build-zone';
+import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
@@ -51,7 +52,11 @@ function findPlacement(
         if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
         const tx = ctx + dx;
         const ty = cty + dy;
-        if (nav.canPlace(tx, ty, footprint) && canBuildNearBase(state, services, owner, tx, ty, footprint)) {
+        if (
+          nav.canPlace(tx, ty, footprint) &&
+          !footprintOverlapsNode(state, tx, ty, footprint) &&
+          canBuildNearBase(state, services, owner, tx, ty, footprint)
+        ) {
           return { x: (tx + footprint / 2) * TILE, y: (ty + footprint / 2) * TILE };
         }
       }

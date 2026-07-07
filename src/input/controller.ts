@@ -24,6 +24,7 @@ export class InputController {
     private onOrderFeedback: (kind: string, world: Vec2) => void,
     private canPlace: (tx: number, ty: number, footprint: number) => boolean,
     private canBuildNear: (tx: number, ty: number, footprint: number) => boolean,
+    private onNode: (tx: number, ty: number, footprint: number) => boolean,
   ) {}
 
   private toWorld(p: Vec2): Vec2 {
@@ -285,13 +286,14 @@ export class InputController {
     return tiles;
   }
 
-  private ghostAtTile(tx: number, ty: number, footprint: number): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } {
+  private ghostAtTile(tx: number, ty: number, footprint: number): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } {
     const cx = (tx + footprint / 2) * TILE;
     const cy = (ty + footprint / 2) * TILE;
     const navOk = this.canPlace(tx, ty, footprint);
+    const nodeBlocked = this.onNode(tx, ty, footprint);
     const zoneOk = this.canBuildNear(tx, ty, footprint);
-    const valid = navOk && zoneOk;
-    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
+    const valid = navOk && !nodeBlocked && zoneOk;
+    const issue = !navOk ? 'blocked' : nodeBlocked ? 'node' : !zoneOk ? 'range' : undefined;
     return { x: cx, y: cy, valid, issue };
   }
 
@@ -369,9 +371,10 @@ export class InputController {
     const cx = (tx + def.footprint / 2) * TILE;
     const cy = (ty + def.footprint / 2) * TILE;
     const navOk = this.canPlace(tx, ty, def.footprint);
+    const nodeBlocked = this.onNode(tx, ty, def.footprint);
     const zoneOk = this.canBuildNear(tx, ty, def.footprint);
-    const valid = navOk && zoneOk;
-    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
+    const valid = navOk && !nodeBlocked && zoneOk;
+    const issue = !navOk ? 'blocked' : nodeBlocked ? 'node' : !zoneOk ? 'range' : undefined;
     this.session.buildGhost = { x: cx, y: cy, valid, issue };
   }
 
@@ -406,7 +409,7 @@ export class InputController {
     this.session.buildGhost = ghost;
   }
 
-  private computeDeployGhost(world: Vec2): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } {
+  private computeDeployGhost(world: Vec2): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } {
     const entityId = this.session.deployEntityId;
     const unit = entityId ? this.getState().entities.get(entityId) : null;
     const udef = unit ? this.registry.units.get(unit.defId) : null;
@@ -414,8 +417,9 @@ export class InputController {
     if (!def) return { x: world.x, y: world.y, valid: false, issue: 'blocked' };
     const { tx, ty, cx, cy } = this.tileAt(world, def.footprint);
     const navOk = this.canPlace(tx, ty, def.footprint);
-    const valid = navOk;
-    const issue = !navOk ? 'blocked' : undefined;
+    const nodeBlocked = this.onNode(tx, ty, def.footprint);
+    const valid = navOk && !nodeBlocked;
+    const issue = !navOk ? 'blocked' : nodeBlocked ? 'node' : undefined;
     return { x: cx, y: cy, valid, issue };
   }
 

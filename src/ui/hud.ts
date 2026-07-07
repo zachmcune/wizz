@@ -384,13 +384,17 @@ export class Hud {
       const wallPreview = session.wallDragTiles?.length;
       const ok = wallPreview ? this.controller.wallPlacementValid() : session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
-      const hint = ok
-        ? '· tap Place to confirm'
-        : session.mode === 'deploy'
-          ? '· blocked'
-          : session.buildGhost?.issue === 'range'
-            ? '· too far from base'
-            : '· blocked';
+      const hint =         ok
+          ? '· tap Place to confirm'
+          : session.mode === 'deploy'
+            ? session.buildGhost?.issue === 'node'
+              ? '· on mana pool'
+              : '· blocked'
+            : session.buildGhost?.issue === 'node'
+              ? '· on mana pool'
+              : session.buildGhost?.issue === 'range'
+                ? '· too far from base'
+                : '· blocked';
       const prefix = session.mode === 'deploy' ? 'Deploy' : def.name;
       const costLabel =
         session.mode === 'deploy'

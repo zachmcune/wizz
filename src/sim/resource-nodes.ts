@@ -2,12 +2,13 @@
 import { TILE } from '../core/constants';
 import type { GameState, Entity } from './types';
 
-/** Remove neutral mana nodes whose tile lies under a building footprint. */
-export function removeNodesUnderFootprint(state: GameState, tx: number, ty: number, footprint: number): void {
-  for (const [id, e] of state.entities) {
+/** True when any mana node tile lies inside the building footprint. */
+export function footprintOverlapsNode(state: GameState, tx: number, ty: number, footprint: number): boolean {
+  for (const e of state.entities.values()) {
     if (e.kind !== 'resource_node') continue;
-    if (nodeUnderFootprint(tx, ty, footprint, e)) state.entities.delete(id);
+    if (nodeUnderFootprint(tx, ty, footprint, e)) return true;
   }
+  return false;
 }
 
 function nodeUnderFootprint(tx: number, ty: number, footprint: number, node: Entity): boolean {

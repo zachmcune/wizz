@@ -7,7 +7,7 @@ export interface SessionState {
   selection: Set<EntityId>;
   mode: InputMode;
   buildDefId: string | null;
-  buildGhost: { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } | null;
+  buildGhost: { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } | null;
   /** Preview tiles while drag-placing walls. */
   wallDragTiles: { x: number; y: number; valid: boolean }[] | null;
   wallDragStart: { tx: number; ty: number } | null;
