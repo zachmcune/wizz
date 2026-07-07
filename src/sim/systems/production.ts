@@ -48,7 +48,6 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
       if (cost > 0 && player.mana >= cost) {
         player.mana -= cost;
         e.hp = Math.min(e.maxHp, e.hp + hpGain);
-        ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
       } else if (player.mana < balance.repairHpPerTick * balance.repairManaPerHp) {
         e.repairing = false;
       }

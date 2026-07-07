@@ -144,6 +144,14 @@ export class NavGrid {
     return best;
   }
 
+  /** Clear building/gate occupancy and restore terrain-only passability. */
+  resetBuildings(): void {
+    for (let i = 0; i < this.blocked.length; i++) {
+      this.blocked[i] = this.terrain[i]!;
+    }
+    this.gateOwners.clear();
+  }
+
   /** Register gate tiles — allies of owner can pass; enemies are blocked. */
   setGate(tx: number, ty: number, footprint: number, owner: PlayerId | null): void {
     for (let dy = 0; dy < footprint; dy++) {

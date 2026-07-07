@@ -35,7 +35,7 @@ async function boot(): Promise<void> {
         game = new Game(app, registry, state, services, audio, settings, () => {
           game = null;
           void showMenu();
-        });
+        }, { useWorker: true });
         void game.start();
       },
       onContinue: saved

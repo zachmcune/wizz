@@ -18,12 +18,13 @@ solid **before** wiring transport.
 
 ## Phase 2 — Performance (before public MP)
 
-| Item | Priority | Notes |
-|------|----------|-------|
-| Sim Web Worker | High | `WorkerSimClient` exists but main thread runs sim today |
-| Event throttling | Medium | Avoid per-tick `manaChanged` from repair; batch where possible |
-| Flow-field cache bounds | Medium | Per-owner cache keys grow with player count — monitor |
-| Spatial hash tuning | Low | Already used for combat queries |
+| Item | Priority | Status | Notes |
+|------|----------|--------|-------|
+| Sim Web Worker | High | Done | Main-thread `Game` drives worker via `requestStep()` |
+| Replay harness | High | Done | `src/sim/replay.ts` + `ReplayRecorder` in Game |
+| Event throttling | Medium | Done | Repair no longer emits per-tick `manaChanged` |
+| Flow-field cache bounds | Medium | — | Per-owner cache keys grow with player count — monitor |
+| Spatial hash tuning | Low | — | Already used for combat queries |
 
 ## Phase 3 — Code structure (parallel with Phase 2)
 
