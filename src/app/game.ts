@@ -1,5 +1,5 @@
 // In-match orchestrator: wires sim + renderer + input + HUD + audio + loop together.
-import { TICK_MS } from '../core/constants';
+import { BUILD_SPACING_TILES, TICK_MS } from '../core/constants';
 import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
 import type { GameState, Command, PlayerId } from '../sim/types';
@@ -171,7 +171,7 @@ export class Game {
       this.humanId,
       enqueue,
       (kind, world) => this.renderer.effects.spawn('ring', world.x, world.y, ORDER_COLORS[kind] ?? 0xffffff, 14),
-      (tx, ty, fp) => this.services.nav.canPlace(tx, ty, fp),
+      (tx, ty, fp, spacing) => this.services.nav.canPlace(tx, ty, fp, spacing ?? BUILD_SPACING_TILES),
       (tx, ty, fp) => canBuildNearBase(this.state, this.services, this.humanId, tx, ty, fp),
       (tx, ty, fp) => footprintOverlapsNode(this.state, tx, ty, fp),
     );

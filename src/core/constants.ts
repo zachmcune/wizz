@@ -22,6 +22,9 @@ export const TAP_SLOP_PX = 28;
 export const LONG_PRESS_MS = 400;
 export const DOUBLE_TAP_MS = 300;
 
+/** Extra empty tiles required around a new building footprint (walls exempt). */
+export const BUILD_SPACING_TILES = 1;
+
 /** Camera zoom clamps. */
 export const MIN_ZOOM = 0.4;
 export const MAX_ZOOM = 2.0;

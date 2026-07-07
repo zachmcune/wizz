@@ -1,6 +1,10 @@
-import { TILE } from '../core/constants';
+import { BUILD_SPACING_TILES, TILE } from '../core/constants';
 import type { Vec2 } from '../core/coords';
 import type { InputContext } from './input-context';
+
+export function placementSpacing(isWall: boolean | undefined): number {
+  return isWall ? 0 : BUILD_SPACING_TILES;
+}
 
 export function tileAt(world: Vec2, footprint: number): { tx: number; ty: number; cx: number; cy: number } {
   const tx = Math.floor((world.x - (footprint * TILE) / 2) / TILE);
@@ -29,10 +33,13 @@ export function ghostAtTile(
   tx: number,
   ty: number,
   footprint: number,
+  defId: string,
 ): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } {
+  const def = ctx.registry.buildings.get(defId);
+  const spacing = placementSpacing(def?.isWall);
   const cx = (tx + footprint / 2) * TILE;
   const cy = (ty + footprint / 2) * TILE;
-  const navOk = ctx.canPlace(tx, ty, footprint);
+  const navOk = ctx.canPlace(tx, ty, footprint, spacing);
   const nodeBlocked = ctx.onNode(tx, ty, footprint);
   const zoneOk = ctx.canBuildNear(tx, ty, footprint);
   const valid = navOk && !nodeBlocked && zoneOk;
