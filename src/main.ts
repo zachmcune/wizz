@@ -79,6 +79,7 @@ async function boot(): Promise<void> {
           console.error('[lockstep] desync at tick', tick, 'peers:', peers);
           console.error('[lockstep] replay:', serializeReplay(replay));
         },
+        relayTransport: session.transport,
       });
       await game.start();
     } catch (err) {

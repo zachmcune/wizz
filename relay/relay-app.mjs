@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 
 const TICK_MS = 50;
 const MATCH_LOAD_GRACE_MS = 2500;
+const WS_KEEPALIVE_MS = 30_000;
 const PLAYER_SLOTS = ['player0', 'player1'];
 
 /** @param {import('./relay-types').PendingCommand[]} pending @param {number} tick */
@@ -146,9 +147,25 @@ export function attachRelay(server) {
 
   const wss = new WebSocketServer({ server });
 
+  const keepalive = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) {
+        ws.terminate();
+        continue;
+      }
+      ws.isAlive = false;
+      ws.ping();
+    }
+  }, WS_KEEPALIVE_MS);
+  keepalive.unref();
+
   wss.on('connection', (ws) => {
     /** @type {Room | null} */
     let room = null;
+    ws.isAlive = true;
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
 
     ws.on('message', (data) => {
       let msg;

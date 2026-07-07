@@ -17,13 +17,15 @@ export interface Transport {
 export class LockstepClient {
   private confirmed = new Map<number, Command[]>();
   private peerHashes = new Map<number, Map<string, string>>();
+  /** Highest tick number received from the relay (fills gaps with empty command lists). */
+  private lastReceivedTick = -1;
   /** Next tick the relay will advance to (one past the latest tick message). */
   private relayHead = 0;
+  private lastTickAtMs = 0;
 
   constructor(private transport: Transport) {
     transport.onTickCommands((tick, cmds) => {
-      this.confirmed.set(tick, cmds);
-      this.relayHead = Math.max(this.relayHead, tick + 1);
+      this.ingestTick(tick, cmds);
     });
     transport.onPeerChecksum((playerId, tick, hash) => {
       let m = this.peerHashes.get(tick);
@@ -33,6 +35,20 @@ export class LockstepClient {
       }
       m.set(playerId, hash);
     });
+  }
+
+  /** Record a confirmed tick; synthesize empty ticks for any sequence gaps. */
+  private ingestTick(tick: number, cmds: Command[]): void {
+    if (tick < 0) return;
+    if (this.lastReceivedTick >= 0) {
+      for (let t = this.lastReceivedTick + 1; t < tick; t++) {
+        if (!this.confirmed.has(t)) this.confirmed.set(t, []);
+      }
+    }
+    this.confirmed.set(tick, cmds);
+    this.lastReceivedTick = Math.max(this.lastReceivedTick, tick);
+    this.relayHead = this.lastReceivedTick + 1;
+    this.lastTickAtMs = Date.now();
   }
 
   /** Schedule commands far enough ahead that relay/network jitter cannot drop them. */
@@ -52,6 +68,15 @@ export class LockstepClient {
 
   commandsForTick(tick: number): Command[] | undefined {
     return this.confirmed.get(tick);
+  }
+
+  hasReceivedTicks(): boolean {
+    return this.lastReceivedTick >= 0;
+  }
+
+  msSinceLastTick(): number {
+    if (!this.lastTickAtMs) return 0;
+    return Date.now() - this.lastTickAtMs;
   }
 
   /** Drop confirmed ticks and peer checksums older than `before` to bound memory. */
