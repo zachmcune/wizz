@@ -43,3 +43,7 @@ export function screenToWorld(screen: Vec2, cam: CameraView): Vec2 {
 export function projectionSortKey(world: Vec2, cam: CameraView, visualHeight = 0): number {
   return getProjection().sortKey(world, cam, visualHeight);
 }
+
+export function screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2 {
+  return getProjection().screenPanToCameraDelta(dxScreen, dyScreen, zoom);
+}
