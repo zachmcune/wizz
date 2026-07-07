@@ -272,7 +272,15 @@ export class Game {
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
-      if (mode === 'normal' && this.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
+      // Recover taps lost to tiny camera pans (common on touch).
+      if (
+        (mode === 'normal' || mode === 'build' || mode === 'deploy') &&
+        drift <= TAP_SLOP_PX &&
+        this.gesture.lastEndKind !== 'tap' &&
+        this.gesture.lastEndKind !== 'box'
+      ) {
+        this.controller.tap(p);
+      } else if (mode === 'normal' && this.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
         this.controller.tap(p);
       }
     };
@@ -289,7 +297,8 @@ export class Game {
   private step(): boolean {
     if (this.state.ended) return false;
 
-    if (this.lockstep) return this.advanceLockstepSim(true);
+    // Lockstep sim is network-driven; drained every frame in frame().
+    if (this.lockstep) return false;
 
     if (this.worker) return this.worker.requestStep();
 
@@ -421,6 +430,15 @@ export class Game {
     }
   }
 
+  /** Process every confirmed lockstep tick available (keeps client synced with relay). */
+  private drainLockstepTicks(): void {
+    if (!this.lockstep) return;
+    let safety = 0;
+    while (this.advanceLockstepSim(true) && safety++ < 128) {
+      /* catch up */
+    }
+  }
+
   private frame(_loopAlpha: number): void {
     const now = performance.now();
     const dt = this.lastFrameTime ? now - this.lastFrameTime : 16;
@@ -428,6 +446,8 @@ export class Game {
       this.fps = this.fps * 0.9 + (1000 / dt) * 0.1;
     }
     this.lastFrameTime = now;
+
+    if (this.lockstep) this.drainLockstepTicks();
 
     const renderAlpha = Math.min(1, (now - this.lastSimSyncMs) / TICK_MS);
 

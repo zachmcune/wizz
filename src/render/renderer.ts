@@ -473,6 +473,19 @@ export class Renderer {
     this.overlayFillPool.acquire().circle(cx, cy, r).fill({ color, alpha });
   }
 
+  /** World position used for hit-testing (display-smoothed for moving units). */
+  private pickPos(e: Entity): { x: number; y: number } {
+    const n = this.nodes.get(e.id);
+    if (n && (e.kind === 'unit' || e.kind === 'projectile')) {
+      return { x: n.dispX, y: n.dispY };
+    }
+    return { x: e.pos.x, y: e.pos.y };
+  }
+
+  private pickRadius(e: Entity): number {
+    return e.radius + (e.kind === 'unit' ? 14 : e.kind === 'building' ? 8 : 6);
+  }
+
   /** Pick a mana node at a world position (generous hit area for touch). */
   pickResourceNode(state: GameState, wx: number, wy: number): Entity | null {
     const nav = this.nav;
@@ -481,9 +494,10 @@ export class Renderer {
     for (const e of state.entities.values()) {
       if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
       if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
-      const dx = wx - e.pos.x;
-      const dy = wy - e.pos.y;
-      const r = e.radius + 14;
+      const { x, y } = this.pickPos(e);
+      const dx = wx - x;
+      const dy = wy - y;
+      const r = this.pickRadius(e) + 8;
       const d2 = dx * dx + dy * dy;
       if (d2 <= r * r && d2 < bestD) {
         bestD = d2;
@@ -501,9 +515,10 @@ export class Renderer {
     for (const e of state.entities.values()) {
       if (e.kind === 'projectile') continue;
       if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
-      const dx = wx - e.pos.x;
-      const dy = wy - e.pos.y;
-      const r = e.radius + 6;
+      const { x, y } = this.pickPos(e);
+      const dx = wx - x;
+      const dy = wy - y;
+      const r = this.pickRadius(e);
       if (dx * dx + dy * dy <= r * r) {
         const score = (e.kind === 'unit' ? 100 : e.kind === 'building' ? 50 : 10) - (dx * dx + dy * dy) / 1000;
         if (score > bestScore) {

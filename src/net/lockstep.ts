@@ -17,9 +17,14 @@ export interface Transport {
 export class LockstepClient {
   private confirmed = new Map<number, Command[]>();
   private peerHashes = new Map<number, Map<string, string>>();
+  /** Next tick the relay will advance to (one past the latest tick message). */
+  private relayHead = 0;
 
   constructor(private transport: Transport) {
-    transport.onTickCommands((tick, cmds) => this.confirmed.set(tick, cmds));
+    transport.onTickCommands((tick, cmds) => {
+      this.confirmed.set(tick, cmds);
+      this.relayHead = Math.max(this.relayHead, tick + 1);
+    });
     transport.onPeerChecksum((playerId, tick, hash) => {
       let m = this.peerHashes.get(tick);
       if (!m) {
@@ -30,9 +35,15 @@ export class LockstepClient {
     });
   }
 
+  /** Schedule commands far enough ahead that relay/network jitter cannot drop them. */
+  scheduleForTick(localTick: number): number {
+    const base = Math.max(localTick, this.relayHead);
+    return base + INPUT_DELAY_TICKS;
+  }
+
   submitLocal(currentTick: number, cmds: Command[]): void {
     if (!cmds.length) return;
-    this.transport.send(currentTick + INPUT_DELAY_TICKS, cmds);
+    this.transport.send(this.scheduleForTick(currentTick), cmds);
   }
 
   isTickReady(tick: number): boolean {

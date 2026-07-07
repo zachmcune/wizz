@@ -101,7 +101,8 @@ class Room {
   receiveCommands(ws, forTick, cmds) {
     const info = this.clients.get(ws);
     if (!info || !cmds?.length) return;
-    this.pending.push({ playerId: info.playerId, forTick, cmds });
+    const effective = forTick < this.tick ? this.tick : forTick;
+    this.pending.push({ playerId: info.playerId, forTick: effective, cmds });
   }
 
   /** @param {import('ws').WebSocket} ws @param {number} tick @param {string} hash */

@@ -17,7 +17,7 @@ export type ServerMessage =
   | { t: 'error'; message: string };
 
 /** Ticks of input delay before a command is executed (lockstep buffering). */
-export const INPUT_DELAY_TICKS = 3;
+export const INPUT_DELAY_TICKS = 6;
 
 /** Report state checksums every N sim ticks during lockstep play. */
 export const CHECKSUM_INTERVAL_TICKS = 60;

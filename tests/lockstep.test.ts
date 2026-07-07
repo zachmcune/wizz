@@ -37,6 +37,14 @@ describe('lockstep scaffolding (V2)', () => {
     expect(t.sent[0]!.forTick).toBe(100 + INPUT_DELAY_TICKS);
   });
 
+  it('schedules ahead of relay head so late packets are not dropped', () => {
+    const t = new FakeTransport();
+    const c = new LockstepClient(t);
+    t.emitTick(109, []);
+    c.submitLocal(100, [{ type: 'stop', playerId: 'player0', entityIds: [1] }]);
+    expect(t.sent[0]!.forTick).toBe(110 + INPUT_DELAY_TICKS);
+  });
+
   it('surfaces confirmed per-tick commands from the relay', () => {
     const t = new FakeTransport();
     const c = new LockstepClient(t);

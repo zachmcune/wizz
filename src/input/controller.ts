@@ -83,10 +83,12 @@ export class InputController {
     const world = this.toWorld(screen);
     if (this.session.mode === 'build') {
       this.updateGhost(world);
+      if (this.session.buildGhost?.valid) this.confirmBuild();
       return;
     }
     if (this.session.mode === 'deploy') {
       this.updateDeployGhost(world);
+      if (this.session.buildGhost?.valid) this.confirmDeploy();
       return;
     }
     if (this.session.mode === 'attackMove') {
