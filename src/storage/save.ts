@@ -10,7 +10,7 @@ import { visibilitySystem } from '../sim/systems/visibility';
 import { createFogTiles } from '../sim/fog';
 import { TILE } from '../core/constants';
 
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const SAVE_KEY = 'arcane:save';
 
 export interface SavedGame {
@@ -25,6 +25,7 @@ function ensureFogFields(state: GameState, registry: Registry): void {
     const legacy = p as Player & { explored?: number[]; visible?: number[] };
     if (!legacy.explored || legacy.explored.length !== tileCount) legacy.explored = createFogTiles(tileCount);
     if (!legacy.visible || legacy.visible.length !== tileCount) legacy.visible = createFogTiles(tileCount);
+    if (!legacy.knownBuildings) legacy.knownBuildings = {};
   }
 }
 
@@ -36,7 +37,7 @@ export function serializeState(state: GameState): SavedGame {
 }
 
 export function deserializeState(saved: SavedGame, registry: Registry): { state: GameState; services: SimServices } {
-  if (saved.version !== SAVE_VERSION && saved.version !== 1) {
+  if (saved.version !== SAVE_VERSION && saved.version !== 1 && saved.version !== 2) {
     throw new Error(`Unsupported save version ${saved.version}`);
   }
   const entities = new Map<number, Entity>();

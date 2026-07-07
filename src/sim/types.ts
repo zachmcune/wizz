@@ -25,6 +25,21 @@ export interface Player {
   explored: number[];
   /** Recomputed each tick: 1 = currently in sight. */
   visible: number[];
+  /** Last-seen enemy buildings shown as gray ghosts when out of sight (Generals-style). */
+  knownBuildings: Record<EntityId, KnownBuilding>;
+}
+
+/** Frozen snapshot of an enemy building the player has scouted. */
+export interface KnownBuilding {
+  id: EntityId;
+  owner: PlayerId;
+  defId: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  radius: number;
+  buildProgress?: number;
 }
 
 export type UnitState =

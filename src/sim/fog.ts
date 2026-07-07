@@ -1,10 +1,11 @@
 // C&C Generals-style fog: the full map stays visible but grayed without line of sight.
-// Terrain, obstacles, and mana nodes always show; enemy units/buildings need sight.
+// Terrain, obstacles, and mana nodes always show; enemy units need sight.
+// Enemy buildings leave a frozen gray ghost after they are scouted.
 // Radar reveals the full map only while its building is powered.
 import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
-import type { GameState, Entity, Player, PlayerId } from './types';
+import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower } from './power';
 
@@ -92,7 +93,86 @@ export function visibilitySystem(state: GameState, registry: Registry, nav: NavG
       if (!isSightSource(state, registry, e)) continue;
       revealSight(nav, player.explored, player.visible, e.pos.x, e.pos.y, sightOfEntity(registry, e));
     }
+
+    updateKnownBuildings(state, registry, nav, player);
   }
+}
+
+function isEnemyOwner(state: GameState, viewerId: PlayerId, owner: PlayerId): boolean {
+  if (owner === viewerId || owner === 'neutral') return false;
+  return !isAlly(state, viewerId, owner);
+}
+
+function snapshotBuilding(e: Entity): KnownBuilding {
+  return {
+    id: e.id,
+    owner: e.owner,
+    defId: e.defId,
+    x: e.pos.x,
+    y: e.pos.y,
+    hp: e.hp,
+    maxHp: e.maxHp,
+    radius: e.radius,
+    buildProgress: e.buildProgress,
+  };
+}
+
+/** True when a building is in current sight or revealed by powered radar. */
+export function isBuildingInLiveSight(
+  state: GameState,
+  registry: Registry,
+  viewerId: PlayerId,
+  building: Entity,
+  nav: NavGrid,
+): boolean {
+  if (building.kind !== 'building') return false;
+  if (!isEnemyOwner(state, viewerId, building.owner)) return true;
+  if (radarActive(state, registry, viewerId)) return true;
+  const viewer = getPlayer(state, viewerId);
+  if (!viewer) return false;
+  return isTileVisible(viewer, building.pos.x, building.pos.y, nav);
+}
+
+function updateKnownBuildings(
+  state: GameState,
+  registry: Registry,
+  nav: NavGrid,
+  player: Player,
+): void {
+  const radarOn = radarActive(state, registry, player.id);
+
+  for (const e of entitiesSorted(state)) {
+    if (e.kind !== 'building' || !isAlive(e)) continue;
+    if (!isEnemyOwner(state, player.id, e.owner)) continue;
+    if (isBuildingInLiveSight(state, registry, player.id, e, nav)) {
+      player.knownBuildings[e.id] = snapshotBuilding(e);
+    }
+  }
+
+  for (const id of Object.keys(player.knownBuildings).map(Number)) {
+    const known = player.knownBuildings[id]!;
+    if (!radarOn && !isTileVisible(player, known.x, known.y, nav)) continue;
+    const e = state.entities.get(id);
+    if (!e || e.kind !== 'building' || !isAlive(e)) delete player.knownBuildings[id];
+  }
+}
+
+/** Enemy building ghosts shown while out of sight (or after destruction until re-scouted). */
+export function listBuildingGhosts(
+  state: GameState,
+  registry: Registry,
+  viewerId: PlayerId,
+  nav: NavGrid,
+): KnownBuilding[] {
+  const viewer = getPlayer(state, viewerId);
+  if (!viewer) return [];
+  const ghosts: KnownBuilding[] = [];
+  for (const known of Object.values(viewer.knownBuildings)) {
+    const e = state.entities.get(known.id);
+    if (e && isBuildingInLiveSight(state, registry, viewerId, e, nav)) continue;
+    ghosts.push(known);
+  }
+  return ghosts;
 }
 
 export function isTileExplored(player: Player, tx: number, ty: number, nav: NavGrid, radarOn = false): boolean {

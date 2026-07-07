@@ -6,7 +6,7 @@ import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import { getPlayer } from '../sim/queries';
-import { isVisibleTo, radarActive, isTileFogged } from '../sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../sim/fog';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
@@ -80,6 +80,11 @@ export class Minimap {
       } else c.fillStyle = this.colorByOwner.get(e.owner) ?? '#ffffff';
       const size = e.kind === 'building' ? 4 : e.kind === 'resource_node' ? 3 : 2;
       c.fillRect(e.pos.x * s - size / 2, e.pos.y * s - size / 2, size, size);
+    }
+
+    for (const known of listBuildingGhosts(state, registry, viewerId, nav)) {
+      c.fillStyle = 'rgba(140, 140, 155, 0.75)';
+      c.fillRect(known.x * s - 2, known.y * s - 2, 4, 4);
     }
 
     const v = this.camera.visibleWorldRect();
