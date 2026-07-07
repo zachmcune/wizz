@@ -1,0 +1,20 @@
+{
+  "id": "waystone_camp",
+  "name": "Waystone Camp",
+  "shortLabel": "MHQ",
+  "description": "A deployed mobile command post. Build structures here, then pack up to move again.",
+  "kind": "building",
+  "cost": 0,
+  "buildTime": 1,
+  "hp": 1400,
+  "armor": "building",
+  "sight": 200,
+  "footprint": 3,
+  "requires": [],
+  "isConstructionYard": true,
+  "isMobileHQ": true,
+  "packsInto": "waystone_wagon",
+  "packTime": 10,
+  "powerProduced": 15,
+  "art": { "shape": "building", "size": 80, "accent": "#8b6cff" }
+}

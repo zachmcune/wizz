@@ -17,6 +17,7 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
   let powerDirty = false;
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'building' || e.state === 'dead') continue;
+    if (e.morphProgress !== undefined) continue;
     const player = state.players.find((p) => p.id === e.owner);
     if (!player) continue;
     const bdef = ctx.services.registry.building(e.defId);

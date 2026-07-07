@@ -33,9 +33,14 @@ export function buildingsOf(state: GameState, owner: PlayerId): Entity[] {
   return ownedBy(state, owner).filter((e) => e.kind === 'building' && e.state !== 'dead');
 }
 
-/** True if the player still has a living HQ (Sanctum). */
+/** True if the player still has a living HQ (Sanctum or deployed Waystone Camp). */
+export function hasHQ(state: GameState, owner: PlayerId): boolean {
+  return buildingsOf(state, owner).some((b) => b.defId === 'sanctum' || b.defId === 'waystone_camp');
+}
+
+/** @deprecated Use hasHQ */
 export function hasSanctum(state: GameState, owner: PlayerId): boolean {
-  return buildingsOf(state, owner).some((b) => b.defId === 'sanctum');
+  return hasHQ(state, owner);
 }
 
 export function isAlive(e: Entity | undefined | null): e is Entity {

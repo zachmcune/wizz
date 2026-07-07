@@ -10,7 +10,9 @@ import { combatSystem } from './systems/combat';
 import { projectileSystem } from './systems/projectile';
 import { harvestSystem } from './systems/harvest';
 import { deathSystem } from './systems/death';
+import { morphSystem } from './systems/morph';
 import { winCheckSystem } from './systems/wincheck';
+import { morphSystem } from './systems/morph';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
 
@@ -33,6 +35,7 @@ export function stepSimulation(
   applyCommands(state, ctx, cmds); // 1
   if (aiHook && !state.ended) nextCommands.push(...aiHook(state, services)); // 2 AI
   productionSystem(state, ctx); // 3
+  morphSystem(state, ctx); // 3b mobile HQ deploy/pack
   movementSystem(state, ctx); // 4/5 (pathing computed on demand inside)
   combatSystem(state, ctx); // 6
   projectileSystem(state, ctx); // 6b projectiles

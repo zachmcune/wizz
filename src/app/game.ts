@@ -25,6 +25,8 @@ const ORDER_COLORS: Record<string, number> = {
   attackMove: 0xffa14f,
   harvest: 0x39d0c0,
   build: 0x8b6cff,
+  deploy: 0x8b6cff,
+  pack: 0x8b6cff,
   spell: 0xffd166,
 };
 
@@ -177,9 +179,10 @@ export class Game {
       const p = rel(e);
       this.lastPointer = p;
       const mode = this.controller.session.mode;
-      if (mode === 'build') {
+      if (mode === 'build' || mode === 'deploy') {
         const w = screenToWorld(p, this.renderer.camera.view());
-        this.controller.updateGhost(w);
+        if (mode === 'build') this.controller.updateGhost(w);
+        else this.controller.updateDeployGhost(w);
       }
       if (mode === 'normal' || mode === 'attackMove') {
         this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
@@ -189,7 +192,7 @@ export class Game {
       const p = rel(e);
       const mode = this.controller.session.mode;
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
-      if (mode === 'normal' || mode === 'attackMove' || mode === 'build') {
+      if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
       // Small finger drift during a one-finger pan: treat as a tap (move order, select, etc.).
@@ -267,6 +270,9 @@ export class Game {
     if (s.mode === 'build' && s.buildGhost && s.buildDefId) {
       const def = this.registry.buildings.get(s.buildDefId);
       if (def) ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size: def.footprint * TILE, valid: s.buildGhost.valid };
+    } else if (s.mode === 'deploy' && s.buildGhost) {
+      const def = this.registry.buildings.get('waystone_camp');
+      if (def) ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size: def.footprint * TILE, valid: s.buildGhost.valid };
     }
     let spell: { x: number; y: number; radius: number } | undefined;
     if (s.mode === 'spell' && s.spellId) {
@@ -278,7 +284,7 @@ export class Game {
     }
     const confirm = s.pendingConfirm ? { x: s.pendingConfirm.x, y: s.pendingConfirm.y } : null;
     const buildZones =
-      s.mode === 'build' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
+      s.mode === 'build' || s.mode === 'deploy' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
     return { ghost, spell, confirm, buildZones };
   }
 

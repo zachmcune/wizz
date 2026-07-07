@@ -64,6 +64,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       }
       case 'stop':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+          if (e.morphProgress !== undefined) continue;
           e.orders = [];
           e.targetId = undefined;
           e.vel = { x: 0, y: 0 };
@@ -75,6 +76,12 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'build':
         handleBuild(state, ctx, cmd);
+        break;
+      case 'deploy':
+        handleDeploy(state, ctx, cmd);
+        break;
+      case 'pack':
+        handlePack(state, ctx, cmd);
         break;
       case 'produce':
         handleProduce(state, ctx, cmd);
@@ -134,10 +141,64 @@ function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, {
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
 }
 
+function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'deploy' }>): void {
+  const unit = state.entities.get(cmd.entityId);
+  if (!unit || unit.owner !== cmd.playerId || unit.kind !== 'unit' || !isAlive(unit)) return;
+  if (unit.morphProgress !== undefined || unit.orders.length > 0 || unit.state !== 'idle') {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+  const udef = ctx.services.registry.units.get(unit.defId);
+  if (!udef?.deploysAs) return;
+  const bdef = ctx.services.registry.buildings.get(udef.deploysAs);
+  if (!bdef) return;
+
+  const tx = Math.floor((cmd.x - (bdef.footprint * TILE) / 2) / TILE);
+  const ty = Math.floor((cmd.y - (bdef.footprint * TILE) / 2) / TILE);
+  if (!ctx.services.nav.canPlace(tx, ty, bdef.footprint)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
+    return;
+  }
+  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, bdef.footprint)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
+    return;
+  }
+
+  const cx = (tx + bdef.footprint / 2) * TILE;
+  const cy = (ty + bdef.footprint / 2) * TILE;
+  unit.morphProgress = 0;
+  unit.morphAction = 'deploy';
+  unit.morphTargetPos = { x: cx, y: cy };
+  unit.morphTargetDefId = udef.deploysAs;
+  unit.state = 'building';
+  unit.orders = [];
+  unit.vel = { x: 0, y: 0 };
+  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'deploy', x: cx, y: cy });
+}
+
+function handlePack(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'pack' }>): void {
+  const b = state.entities.get(cmd.buildingId);
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
+  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+  const bdef = ctx.services.registry.buildings.get(b.defId);
+  if (!bdef?.packsInto) return;
+  if (b.productionQueue && b.productionQueue.length > 0) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+
+  b.morphProgress = 0;
+  b.morphAction = 'pack';
+  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'pack', x: b.pos.x, y: b.pos.y });
+}
+
 function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'produce' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || b.buildProgress !== undefined) return;
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || b.buildProgress !== undefined || b.morphProgress !== undefined) return;
   const bdef = ctx.services.registry.buildings.get(b.defId) as BuildingDef | undefined;
   const udef = ctx.services.registry.units.get(cmd.defId);
   if (!bdef || !udef || !bdef.producesUnits?.includes(cmd.defId)) return;
