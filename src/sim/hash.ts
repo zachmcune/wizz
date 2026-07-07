@@ -20,13 +20,17 @@ export function hashState(state: GameState): string {
   for (const id of ids) {
     const e = state.entities.get(id)!;
     const flags = [
-      e.channeling ? 'C' : '',
-      e.repairing ? 'R' : '',
-      e.buildProgress !== undefined ? `B${r(e.buildProgress)}` : '',
-      e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
+      e.kind === 'unit' && e.channeling ? 'C' : '',
+      e.kind === 'building' && e.repairing ? 'R' : '',
+      e.kind === 'building' && e.buildProgress !== undefined ? `B${r(e.buildProgress)}` : '',
+      (e.kind === 'unit' || e.kind === 'building') && e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
     ].join('');
+    const stateStr = e.kind === 'resource_node' ? 'node' : e.state;
+    const carryStr = e.kind === 'unit' ? r(e.carry ?? 0) : 0;
+    const amountStr = e.kind === 'resource_node' ? r(e.amount) : 0;
+    const channelStr = e.kind === 'unit' ? (e.channelTicks ?? 0) : 0;
     parts.push(
-      `E${id}:${e.defId}:${e.owner}:${r(e.pos.x)},${r(e.pos.y)}:${r(e.hp)}:${e.state}:${r(e.carry ?? 0)}:${r(e.amount ?? 0)}:${e.channelTicks ?? 0}:${flags}`,
+      `E${id}:${e.defId}:${e.owner}:${r(e.pos.x)},${r(e.pos.y)}:${r(e.hp)}:${stateStr}:${carryStr}:${amountStr}:${channelStr}:${flags}`,
     );
   }
   const s = parts.join('|');

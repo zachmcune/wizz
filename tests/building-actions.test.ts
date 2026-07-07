@@ -3,6 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
+import { expectBuilding } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -12,7 +13,7 @@ describe('building actions', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
-    const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
+    const circle = expectBuilding(spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id)));
     circle.buildProgress = undefined;
     human.mana = 0;
 
@@ -28,7 +29,7 @@ describe('building actions', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
-    const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
+    const circle = expectBuilding(spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id)));
     circle.buildProgress = undefined;
     circle.hp = 200;
     human.mana = 500;
@@ -46,7 +47,7 @@ describe('building actions', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
-    const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
+    const circle = expectBuilding(spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id)));
     circle.buildProgress = undefined;
 
     sim.enqueueNow([{ type: 'setRally', playerId: human.id, buildingId: circle.id, x: 900, y: 700 }]);

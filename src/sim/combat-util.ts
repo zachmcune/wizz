@@ -18,7 +18,7 @@ export function applyDamage(
   vs: Record<ArmorClass, number>,
   killerId?: EntityId,
 ): void {
-  if (target.state === 'dead') return;
+  if (target.kind === 'resource_node' || target.state === 'dead') return;
   if (hasBuff(target, 'aegis', state.tick)) return; // Aegis = temporary invulnerability
   const cls = armorClassOf(ctx, target);
   const mult = vs[cls] ?? 1;

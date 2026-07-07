@@ -2,7 +2,9 @@
 // It ONLY emits Commands (same as a human) - never mutates sim state directly.
 import { TILE } from '../core/constants';
 import type { SimServices } from '../sim/context';
-import type { GameState, Command, Entity, Player, PlayerId } from '../sim/types';
+import type { GameState, Command, Player, PlayerId } from '../sim/types';
+import { isHarvester, isCombatUnit, type BuildingEntity } from '../sim/types';
+import type { ResourceNodeEntity, UnitEntity } from '../sim/entity-types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { isPowerShort, buildingHasPower } from '../sim/power';
 import { canBuildNearBase } from '../sim/build-zone';
@@ -31,7 +33,7 @@ function hasBuilding(state: GameState, owner: PlayerId, defId: string): boolean 
   return ownedBy(state, owner).some((e) => e.kind === 'building' && e.defId === defId && e.state !== 'dead');
 }
 
-function findSanctum(state: GameState, owner: PlayerId): Entity | null {
+function findSanctum(state: GameState, owner: PlayerId): BuildingEntity | null {
   return buildingsOf(state, owner).find((b) => b.defId === 'sanctum') ?? null;
 }
 
@@ -70,8 +72,8 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   const sanctum = findSanctum(state, p.id);
   if (!sanctum) return;
   const own = ownedBy(state, p.id);
-  const wisps = own.filter((e) => e.kind === 'unit' && e.carryMax !== undefined);
-  const combat = own.filter((e) => e.kind === 'unit' && e.carryMax === undefined);
+  const wisps = own.filter(isHarvester);
+  const combat = own.filter(isCombatUnit);
 
   // 1) Economy: keep wisps harvesting.
   for (const w of wisps) {
@@ -134,7 +136,7 @@ function produceArmy(state: GameState, services: SimServices, p: Player, cmds: C
   const reg = services.registry;
   const circle = buildingsOf(state, p.id).find((b) => b.defId === 'summoning_circle' && b.buildProgress === undefined);
   const forge = buildingsOf(state, p.id).find((b) => b.defId === 'golem_forge' && b.buildProgress === undefined);
-  const pick = (building: Entity | undefined, options: string[]) => {
+  const pick = (building: BuildingEntity | undefined, options: string[]) => {
     if (!building || !buildingHasPower(state, reg, building)) return;
     const q = building.productionQueue?.length ?? 0;
     if (q >= 2) return;
@@ -149,11 +151,11 @@ function produceArmy(state: GameState, services: SimServices, p: Player, cmds: C
   pick(forge, ['stone_golem', 'siege_behemoth']);
 }
 
-function nearestNode(state: GameState, e: Entity): Entity | null {
-  let best: Entity | null = null;
+function nearestNode(state: GameState, e: UnitEntity): ResourceNodeEntity | null {
+  let best: ResourceNodeEntity | null = null;
   let bestD = Infinity;
   for (const n of state.entities.values()) {
-    if (n.kind !== 'resource_node' || (n.amount ?? 0) <= 0) continue;
+    if (n.kind !== 'resource_node' || n.amount <= 0) continue;
     const d = len(n.pos.x - e.pos.x, n.pos.y - e.pos.y);
     if (d < bestD) {
       bestD = d;
@@ -163,8 +165,8 @@ function nearestNode(state: GameState, e: Entity): Entity | null {
   return best;
 }
 
-function nearestEnemyBuilding(state: GameState, owner: PlayerId, from: { x: number; y: number }): Entity | null {
-  let best: Entity | null = null;
+function nearestEnemyBuilding(state: GameState, owner: PlayerId, from: { x: number; y: number }): BuildingEntity | null {
+  let best: BuildingEntity | null = null;
   let bestD = Infinity;
   const ids = [...state.entities.keys()].sort((a, b) => a - b);
   for (const id of ids) {

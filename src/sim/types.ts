@@ -1,6 +1,6 @@
 // Core simulation contracts. These are the single source of truth for sim state shape.
 // Extend these; do not restructure. The sim only ever mutates GameState via commands.
-import type { Vec2 } from '../core/coords';
+import type { Entity } from './entity-types';
 
 export type PlayerId = string; // e.g. "player0"
 export type EntityId = number; // stable integer, monotonically assigned
@@ -72,54 +72,8 @@ export interface Buff {
   expiresTick: number;
 }
 
-export interface Entity {
-  id: EntityId;
-  owner: PlayerId;
-  defId: string;
-  kind: 'unit' | 'building' | 'resource_node' | 'projectile';
-  pos: Vec2;
-  vel: Vec2;
-  facing: number; // radians, for rendering
-  hp: number;
-  maxHp: number;
-  radius: number;
-  orders: Order[];
-  state: UnitState;
-  stance: Stance;
-  targetId?: EntityId;
-  cooldowns: Record<string, number>; // e.g. { attack: 3 } in ticks
-  buffs: Buff[];
-
-  // economy (Wisp)
-  carry?: number;
-  carryMax?: number;
-  homeSpireId?: EntityId;
-
-  // buildings
-  buildProgress?: number; // 0..1 while under construction; undefined when complete
-  productionQueue?: ProductionItem[];
-  rally?: Vec2;
-  repairing?: boolean; // slow HP restore while spending mana
-  channeling?: boolean; // sitting to conjure mana
-  channelTicks?: number; // ticks accumulated toward next conjure pulse
-
-  // deploy / pack (mobile HQ)
-  morphProgress?: number; // 0..1 while deploying or packing
-  morphAction?: 'deploy' | 'pack';
-  morphTargetPos?: Vec2;
-  morphTargetDefId?: string;
-
-  // projectile
-  projTargetId?: EntityId;
-  projDamage?: number;
-  projArmorVs?: Record<string, number>;
-  projSpeed?: number;
-  projSourceOwner?: PlayerId;
-
-  // resource node
-  amount?: number;
-  amountMax?: number;
-}
+export type { Entity, UnitEntity, BuildingEntity, ProjectileEntity, ResourceNodeEntity } from './entity-types';
+export { isUnit, isBuilding, isProjectile, isResourceNode, isHarvester, isCombatUnit } from './entity-types';
 
 export type Command =
   | { type: 'move'; playerId: PlayerId; entityIds: EntityId[]; x: number; y: number }

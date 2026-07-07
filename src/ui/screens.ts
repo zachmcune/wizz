@@ -23,6 +23,7 @@ export class MainMenu {
     }
 
     const custom = el('button', 'btn big', 'Custom Game');
+    custom.dataset.testid = 'menu-custom-game';
     custom.addEventListener('click', () => opts.onCustomGame());
 
     const onlineLabel = el('p', 'menu-section', 'Multiplayer');

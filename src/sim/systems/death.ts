@@ -7,7 +7,9 @@ import { recomputePower } from '../factory';
 export function deathSystem(state: GameState, ctx: StepContext): void {
   const dead: number[] = [];
   for (const [id, e] of state.entities) {
-    if (e.state === 'dead' || e.hp <= 0) dead.push(id);
+    const deadEntity =
+      e.kind === 'resource_node' ? (e.amount ?? 0) <= 0 : e.state === 'dead' || e.hp <= 0;
+    if (deadEntity) dead.push(id);
   }
   if (!dead.length) return;
   dead.sort((a, b) => a - b);

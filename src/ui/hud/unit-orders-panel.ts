@@ -1,5 +1,6 @@
 import type { Registry } from '../../data/registry';
-import type { GameState, Entity, PlayerId } from '../../sim/types';
+import type { GameState, Entity, PlayerId, UnitEntity } from '../../sim/types';
+import { isUnit, isBuilding } from '../../sim/types';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 import { Collapsible } from './collapsible';
@@ -49,7 +50,7 @@ export class UnitOrdersPanel {
       });
       if (!ids.length) return;
       const single = st.entities.get(ids[0]!);
-      this.controller.channel(ids, !single?.channeling);
+      this.controller.channel(ids, !(single && isUnit(single) && single.channeling));
     });
     this.row.append(deselect, stop, am, this.deployBtn, this.packBtn, this.conjureBtn);
   }
@@ -60,13 +61,17 @@ export class UnitOrdersPanel {
     inPlaceMode: boolean,
   ): void {
     const wagonReady =
-      single?.owner === this.playerId &&
+      single != null &&
+      isUnit(single) &&
+      single.owner === this.playerId &&
       single.defId === 'waystone_wagon' &&
       single.morphProgress === undefined &&
       single.state === 'idle' &&
       single.orders.length === 0;
     const campReady =
-      single?.owner === this.playerId &&
+      single != null &&
+      isBuilding(single) &&
+      single.owner === this.playerId &&
       single.defId === 'waystone_camp' &&
       single.morphProgress === undefined &&
       !(single.productionQueue?.length);
@@ -74,7 +79,8 @@ export class UnitOrdersPanel {
     this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';
 
     const weaversSelected = sel.filter(
-      (e) => e.owner === this.playerId && e.kind === 'unit' && this.registry.units.get(e.defId)?.canConjureMana,
+      (e): e is UnitEntity =>
+        e.owner === this.playerId && e.kind === 'unit' && !!this.registry.units.get(e.defId)?.canConjureMana,
     );
     const showConjure = !inPlaceMode && weaversSelected.length > 0;
     this.conjureBtn.style.display = showConjure ? '' : 'none';

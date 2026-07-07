@@ -5,6 +5,7 @@
 import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
+import type { BuildingEntity } from './entity-types';
 import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower, isPowerShort } from './power';
@@ -109,7 +110,7 @@ function isEnemyOwner(state: GameState, viewerId: PlayerId, owner: PlayerId): bo
   return !isAlly(state, viewerId, owner);
 }
 
-function snapshotBuilding(e: Entity): KnownBuilding {
+function snapshotBuilding(e: BuildingEntity): KnownBuilding {
   return {
     id: e.id,
     owner: e.owner,

@@ -4,6 +4,7 @@ import { initMatch } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { leastBusyProducer, listProducersForUnit, producerLabel, type ProducerInfo } from '../src/ui/hud/producers';
+import { expectBuilding } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -23,13 +24,13 @@ describe('producer helpers', () => {
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 10; i++) sim.step();
 
-    const circle = ownedBy(state, 'player0').find((e) => e.defId === 'summoning_circle');
+    const circle = expectBuilding(ownedBy(state, 'player0').find((e) => e.defId === 'summoning_circle')!);
     expect(circle).toBeTruthy();
 
     const producers = listProducersForUnit(state, reg, 'player0', 'imp_swarmling');
     expect(producers).toHaveLength(1);
-    expect(producers[0]!.entity.id).toBe(circle!.id);
-    expect(producerLabel(reg, state, circle!)).toMatch(/^SUM #\d+$/);
+    expect(producers[0]!.entity.id).toBe(circle.id);
+    expect(producerLabel(reg, state, circle)).toMatch(/^SUM #\d+$/);
   });
 
   it('picks the least busy producer', () => {

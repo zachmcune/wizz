@@ -1,5 +1,7 @@
 // In-match DOM HUD: context-sensitive, collapsible panels for mobile landscape.
 import type { GameState, PlayerId, Entity } from '../sim/types';
+import { isBuilding, isUnit } from '../sim/types';
+import { isAlive } from '../sim/queries';
 import type { Registry } from '../data/registry';
 import type { BuildingDef } from '../data/defs';
 import { isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
@@ -253,11 +255,12 @@ export class Hud {
     this.spellBar.update(p, session);
 
     const selIds = [...session.selection];
-    const sel = selIds.map((id) => st.entities.get(id)).filter((e) => e && e.state !== 'dead') as Entity[];
+    const sel = selIds.map((id) => st.entities.get(id)).filter((e): e is Entity => !!e && isAlive(e));
     const single = sel.length === 1 ? sel[0]! : null;
+    const singleBuilding = single && isBuilding(single) ? single : null;
     const unitsSelected = sel.some((e) => e.owner === this.playerId && e.kind === 'unit');
     const ownBuilding =
-      single?.owner === this.playerId && single.kind === 'building' ? this.registry.buildings.get(single.defId) : null;
+      singleBuilding?.owner === this.playerId ? this.registry.buildings.get(singleBuilding.defId) : null;
 
     const inBuildMode = session.mode === 'build';
     const inDeployMode = session.mode === 'deploy';
@@ -284,8 +287,8 @@ export class Hud {
         ? { mode: 'hq' as const }
         : {
             mode: 'producer' as const,
-            producerBuildingId: single!.id,
-            producerBuildingDefId: single!.defId,
+            producerBuildingId: singleBuilding!.id,
+            producerBuildingDefId: singleBuilding!.defId,
           }
       : null;
     if (showCommandMenu) {
@@ -297,10 +300,10 @@ export class Hud {
 
     if (inRallyMode) {
       this.selName.textContent = ownBuilding?.name ?? 'Set rally point';
-      this.selDesc.textContent = single?.rally
+      this.selDesc.textContent = singleBuilding?.rally
         ? 'Tap the map to move the rally point.'
         : 'Tap the map where new units should go after training.';
-      this.selMeta.textContent = single?.rally ? 'Rally point set — tap map to move' : 'No rally point';
+      this.selMeta.textContent = singleBuilding?.rally ? 'Rally point set — tap map to move' : 'No rally point';
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inDeployMode && session.deployEntityId) {
       const campDef = this.registry.buildings.get('waystone_camp')!;
@@ -319,25 +322,25 @@ export class Hud {
     } else if (single) {
       const def = this.registry.units.get(single.defId) ?? this.registry.buildings.get(single.defId);
       this.selName.textContent = def?.name ?? single.defId;
-      if (ownBuilding) {
+      if (ownBuilding && singleBuilding) {
         this.selDesc.textContent = ownBuilding.description;
         const meta: string[] = [`${Math.ceil(single.hp)}/${single.maxHp} HP`];
         if (ownBuilding.powerUsed) meta.push(`uses ${ownBuilding.powerUsed} power`);
         if (ownBuilding.powerProduced) meta.push(`+${ownBuilding.powerProduced} power`);
-        if (!buildingHasPower(st, this.registry, single)) meta.unshift('⚡ OFFLINE — low power');
-        else if (isPowerShort(st, this.playerId) && (ownBuilding.producesUnits || single.buildProgress !== undefined)) {
+        if (!buildingHasPower(st, this.registry, singleBuilding)) meta.unshift('⚡ OFFLINE — low power');
+        else if (isPowerShort(st, this.playerId) && (ownBuilding.producesUnits || singleBuilding.buildProgress !== undefined)) {
           meta.unshift('⚡ SLOW — low power');
         }
-        if (single.morphProgress !== undefined) meta.push(`Packing ${Math.round(single.morphProgress * 100)}%`);
-        if (single.repairing) meta.push('repairing');
-        if (single.rally) meta.push('rally set');
+        if (singleBuilding.morphProgress !== undefined) meta.push(`Packing ${Math.round(singleBuilding.morphProgress * 100)}%`);
+        if (singleBuilding.repairing) meta.push('repairing');
+        if (singleBuilding.rally) meta.push('rally set');
         this.commandMenu.updateTrainQueue(
           this.registry,
           this.controller,
-          isProducer ? single : null,
+          isProducer ? singleBuilding : null,
         );
         this.selMeta.textContent = meta.join(' · ');
-      } else if (def && 'role' in def) {
+      } else if (def && 'role' in def && isUnit(single)) {
         this.selDesc.textContent = def.role;
         let meta = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
         if (single.morphProgress !== undefined) {
@@ -388,7 +391,7 @@ export class Hud {
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';
-      this.buildConfirmLabel.textContent = single?.rally
+      this.buildConfirmLabel.textContent = singleBuilding?.rally
         ? 'Tap map to move rally point'
         : 'Tap map to set rally point';
       this.buildConfirmBtn.style.display = 'none';

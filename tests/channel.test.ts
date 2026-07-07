@@ -3,6 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { secondsToTicks } from '../src/core/constants';
+import { expectUnit } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -12,7 +13,7 @@ describe('mana weaver channeling', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
-    const weaver = spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600);
+    const weaver = expectUnit(spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600));
     human.mana = 0;
 
     sim.enqueueNow([{ type: 'channel', playerId: human.id, entityIds: [weaver.id], enabled: true }]);
@@ -29,7 +30,7 @@ describe('mana weaver channeling', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
-    const weaver = spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600);
+    const weaver = expectUnit(spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600));
 
     sim.enqueueNow([{ type: 'channel', playerId: human.id, entityIds: [weaver.id], enabled: true }]);
     sim.step();

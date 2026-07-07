@@ -1,19 +1,20 @@
 // Wisp harvest cycle: travel to Mana Node -> siphon -> return to Attunement Spire -> deposit.
 import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
-import type { GameState, Entity } from '../types';
+import type { BuildingEntity, ResourceNodeEntity, UnitEntity } from '../entity-types';
+import type { GameState } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { buildingHasPower } from '../power';
 import { len } from '../math';
 import { moveTowardGoal, makePathContext } from '../pathing';
 
-function moveToward(e: Entity, tx: number, ty: number, speed: number, ctx: StepContext, state: GameState): number {
+function moveToward(e: UnitEntity, tx: number, ty: number, speed: number, ctx: StepContext, state: GameState): number {
   const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
   return moveTowardGoal(pathCtx, e, { x: tx, y: ty }, speed, 1 / TICK_HZ);
 }
 
-function nearestSpire(state: GameState, ctx: StepContext, e: Entity): Entity | null {
-  let best: Entity | null = null;
+function nearestSpire(state: GameState, ctx: StepContext, e: UnitEntity): BuildingEntity | null {
+  let best: BuildingEntity | null = null;
   let bestD = Infinity;
   for (const b of entitiesSorted(state)) {
     if (b.owner !== e.owner || b.kind !== 'building' || b.state === 'dead' || b.buildProgress !== undefined) continue;
@@ -28,11 +29,11 @@ function nearestSpire(state: GameState, ctx: StepContext, e: Entity): Entity | n
   return best;
 }
 
-function nearestNode(state: GameState, e: Entity): Entity | null {
-  let best: Entity | null = null;
+function nearestNode(state: GameState, e: UnitEntity): ResourceNodeEntity | null {
+  let best: ResourceNodeEntity | null = null;
   let bestD = Infinity;
   for (const n of entitiesSorted(state)) {
-    if (n.kind !== 'resource_node' || (n.amount ?? 0) <= 0) continue;
+    if (n.kind !== 'resource_node' || n.amount <= 0) continue;
     const d = len(n.pos.x - e.pos.x, n.pos.y - e.pos.y);
     if (d < bestD) {
       bestD = d;
@@ -70,8 +71,10 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     }
 
     // harvesting
-    let node = state.entities.get(order.nodeId);
-    if (!node || node.kind !== 'resource_node' || (node.amount ?? 0) <= 0) {
+    const rawNode = state.entities.get(order.nodeId);
+    let node: ResourceNodeEntity | undefined =
+      rawNode?.kind === 'resource_node' && rawNode.amount > 0 ? rawNode : undefined;
+    if (!node) {
       const alt = nearestNode(state, e);
       if (!alt) {
         e.orders = [];
@@ -85,9 +88,9 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     if (d <= node.radius + e.radius + 4) {
       const room = e.carryMax - carry;
       const siphonPerSec = ctx.services.registry.balance.siphonPerSecond;
-      const take = Math.min(siphonPerSec / TICK_HZ, room, node.amount ?? 0);
+      const take = Math.min(siphonPerSec / TICK_HZ, room, node.amount);
       e.carry = carry + take;
-      node.amount = (node.amount ?? 0) - take;
+      node.amount -= take;
       if ((e.carry ?? 0) >= e.carryMax) e.state = 'returning';
     }
   }

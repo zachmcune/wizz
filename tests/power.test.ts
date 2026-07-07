@@ -5,6 +5,7 @@ import { Simulation } from '../src/sim/simulation';
 import { radarActive } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort, buildingHasPower, productionRate } from '../src/sim/power';
+import { expectBuilding } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -54,7 +55,7 @@ describe('RA2 low power', () => {
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
     expect(isPowerShort(state, human.id)).toBe(true);
-    const turret = ownedBy(state, human.id).find((e) => e.defId === 'ward_turret')!;
+    const turret = expectBuilding(ownedBy(state, human.id).find((e) => e.defId === 'ward_turret')!);
     const enemy = [...state.entities.values()].find((e) => e.owner !== human.id && e.kind === 'unit')!;
     const hpBefore = enemy.hp;
     for (let i = 0; i < 80; i++) sim.step();

@@ -151,6 +151,7 @@ export class MatchLobby {
     });
 
     this.templateSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    this.templateSelect.dataset.testid = 'lobby-template';
     const blank = el('option', undefined, 'Load template…') as HTMLOptionElement;
     blank.value = '';
     this.templateSelect.appendChild(blank);
@@ -194,6 +195,7 @@ export class MatchLobby {
     const backBtn = el('button', 'btn', 'Back');
     backBtn.addEventListener('click', () => this.opts.onBack());
     this.actionBtn.addEventListener('click', () => this.onAction());
+    this.actionBtn.dataset.testid = 'lobby-start';
     footerActions.append(backBtn, this.templateSelect, this.actionBtn);
     footer.append(this.hintEl, footerActions);
 

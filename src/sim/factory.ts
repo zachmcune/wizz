@@ -6,38 +6,64 @@ import { NavGrid } from './nav-grid';
 import { createServices, type SimServices, type StepContext } from './context';
 import { placeBuildingNav, clearBuildingNav } from './building-nav';
 import { visibilitySystem } from './systems/visibility';
-import type { GameState, Entity, PlayerId, Player, MatchConfig, Relation } from './types';
+import type {
+  BuildingEntity,
+  Entity,
+  ResourceNodeEntity,
+  UnitEntity,
+} from './entity-types';
+import type { GameState, PlayerId, Player, MatchConfig, Relation } from './types';
 
-export function makeEntity(id: number, owner: PlayerId, def: UnitDef | BuildingDef, x: number, y: number): Entity {
-  const isBuilding = def.kind === 'building';
-  const e: Entity = {
+export function makeUnit(id: number, owner: PlayerId, def: UnitDef, x: number, y: number): UnitEntity {
+  const e: UnitEntity = {
     id,
     owner,
     defId: def.id,
-    kind: isBuilding ? 'building' : 'unit',
+    kind: 'unit',
     pos: { x, y },
     vel: { x: 0, y: 0 },
     facing: 0,
     hp: def.hp,
     maxHp: def.hp,
-    radius: isBuilding ? ((def as BuildingDef).footprint * TILE) / 2 : (def as UnitDef).radius,
+    radius: def.radius,
     orders: [],
     state: 'idle',
     stance: 'aggressive',
     cooldowns: {},
     buffs: [],
   };
-  if (!isBuilding) {
-    const u = def as UnitDef;
-    if (u.isHarvester) {
-      e.carry = 0;
-      e.carryMax = u.carry ?? 100;
-    }
-  } else {
-    const b = def as BuildingDef;
-    if (b.producesUnits && b.producesUnits.length) e.productionQueue = [];
+  if (def.isHarvester) {
+    e.carry = 0;
+    e.carryMax = def.carry ?? 100;
   }
   return e;
+}
+
+export function makeBuilding(id: number, owner: PlayerId, def: BuildingDef, x: number, y: number): BuildingEntity {
+  const e: BuildingEntity = {
+    id,
+    owner,
+    defId: def.id,
+    kind: 'building',
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    facing: 0,
+    hp: def.hp,
+    maxHp: def.hp,
+    radius: (def.footprint * TILE) / 2,
+    orders: [],
+    state: 'idle',
+    stance: 'aggressive',
+    cooldowns: {},
+    buffs: [],
+  };
+  if (def.producesUnits && def.producesUnits.length) e.productionQueue = [];
+  return e;
+}
+
+/** @deprecated Prefer makeUnit / makeBuilding for typed spawning. */
+export function makeEntity(id: number, owner: PlayerId, def: UnitDef | BuildingDef, x: number, y: number): Entity {
+  return def.kind === 'building' ? makeBuilding(id, owner, def, x, y) : makeUnit(id, owner, def, x, y);
 }
 
 /** Spawn a completed entity into the world (buildings block the nav grid). */
@@ -121,12 +147,11 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
     ended: false,
   };
 
-  // Mana nodes (neutral resource entities).
   const nodeCap = registry.balance.manaNodeCapacity;
   for (const node of map.manaNodes) {
     const id = state.nextEntityId++;
     const amount = Math.min(node.amount, nodeCap);
-    const e: Entity = {
+    const e: ResourceNodeEntity = {
       id,
       owner: 'neutral',
       defId: 'mana_node',
@@ -137,31 +162,24 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
       hp: 1,
       maxHp: 1,
       radius: TILE * 0.9,
-      orders: [],
-      state: 'idle',
-      stance: 'hold',
-      cooldowns: {},
-      buffs: [],
       amount,
       amountMax: amount,
     };
     state.entities.set(id, e);
   }
 
-  // Starting base per player: Sanctum + 2 Wisps at their start location.
   for (const cfg of config.players) {
     const start = map.startLocations[cfg.startIndex] ?? map.startLocations[0]!;
     spawnEntity(state, services, null, 'sanctum', cfg.id, start.x, start.y);
-    unlockTech(state, cfg.id, 'sanctum'); // starting building is complete -> tech available
+    unlockTech(state, cfg.id, 'sanctum');
     spawnEntity(state, services, null, 'wisp', cfg.id, start.x - TILE * 2, start.y + TILE * 2);
     spawnEntity(state, services, null, 'wisp', cfg.id, start.x + TILE * 2, start.y + TILE * 2);
   }
 
-  // recompute power for each player from initial buildings
   recomputePower(state, services);
   const visCtx: StepContext = { services, events: [] };
   visibilitySystem(state, visCtx);
-  void secondsToTicks; // referenced by systems; keep import path stable
+  void secondsToTicks;
   return { state, services };
 }
 

@@ -1,6 +1,7 @@
 // Target acquisition, firing (instant or projectile), chasing, cooldowns. Buildings can fire too.
 import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
+import type { ProjectileEntity, UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { buildingHasPower } from '../power';
@@ -42,14 +43,14 @@ function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: num
   return best;
 }
 
-function fire(state: GameState, ctx: StepContext, e: Entity, target: Entity, w: WeaponDef): void {
+function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
   e.cooldowns.attack = w.cooldownTicks;
   e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
   ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
   if (w.projectile) {
     const pdef = ctx.services.registry.projectile(w.projectile);
     const id = state.nextEntityId++;
-    const proj: Entity = {
+    const proj: ProjectileEntity = {
       id,
       owner: e.owner,
       defId: w.projectile,
