@@ -6,7 +6,6 @@ import { Simulation } from '../src/sim/simulation';
 import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
-import { visibilitySystem } from '../src/sim/systems/visibility';
 
 const reg = getRegistry();
 
@@ -91,14 +90,17 @@ describe('fog of war', () => {
 });
 
 describe('power disables consumers', () => {
-  it('radar building is offline when it is the newest consumer under deficit', () => {
+  it('radar is offline for the whole base when power is short', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.id === 'player0')!;
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
-    spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 160, sanctum!.pos.y);
-    spawnEntity(state, services, null, 'scrying_obelisk', human.id, sanctum!.pos.x + 96, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'ley_conduit', human.id, sanctum!.pos.x + 96, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'scrying_obelisk', human.id, sanctum!.pos.x + 160, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 224, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 288, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 352, sanctum!.pos.y);
+    spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 416, sanctum!.pos.y);
     recomputePower(state, services);
-    visibilitySystem(state, { services, events: [] });
     expect(isPowerShort(state, human.id)).toBe(true);
     expect(radarActive(state, reg, human.id)).toBe(false);
   });

@@ -273,6 +273,7 @@ export class Hud {
   private updateProduceButtons(p: { mana: number; unlockedTech: string[] }, building: Entity): void {
     const st = this.state();
     const offline = !buildingHasPower(st, this.registry, building);
+    const slow = isPowerShort(st, this.playerId) && !offline;
     for (const btn of this.produceRow.querySelectorAll<HTMLButtonElement>('.produce-btn')) {
       const uid = btn.dataset.unit!;
       const udef = this.registry.unit(uid);
@@ -280,10 +281,11 @@ export class Hud {
       const affordable = p.mana >= udef.cost;
       const ok = unlocked && affordable && !offline;
       btn.disabled = !ok;
-      btn.classList.toggle('no-power', offline);
+      btn.classList.toggle('no-power', offline || slow);
       const sub = btn.querySelector('.btn-sub');
       if (sub) {
         if (offline) sub.textContent = 'No power';
+        else if (slow) sub.textContent = 'Slow (low power)';
         else if (!affordable) sub.textContent = `${udef.cost} mana`;
         else if (!unlocked) sub.textContent = 'Locked';
         else sub.textContent = `${udef.role} · ${udef.cost} mana`;
@@ -485,6 +487,9 @@ export class Hud {
         if (ownBuilding.powerUsed) meta.push(`uses ${ownBuilding.powerUsed} power`);
         if (ownBuilding.powerProduced) meta.push(`+${ownBuilding.powerProduced} power`);
         if (!buildingHasPower(st, this.registry, single)) meta.unshift('⚡ OFFLINE — low power');
+        else if (isPowerShort(st, this.playerId) && (ownBuilding.producesUnits || single.buildProgress !== undefined)) {
+          meta.unshift('⚡ SLOW — low power');
+        }
         if (single.morphProgress !== undefined) meta.push(`Packing ${Math.round(single.morphProgress * 100)}%`);
         this.updateTrainQueue(single);
         if (showTrainPanel) {
