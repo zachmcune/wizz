@@ -21,7 +21,11 @@ export class SpellBar {
       const b = el('button', 'btn spell-btn compact-btn', short);
       b.dataset.spell = id;
       b.title = def.name;
-      b.addEventListener('click', () => this.controller.startSpell(id));
+      b.addEventListener('click', () => {
+        const spell = this.registry.spells.get(id)!;
+        if (spell.effect.kind === 'beam') this.controller.startSuperweapon(id);
+        else this.controller.startSpell(id);
+      });
       this.row.appendChild(b);
     }
     const cast = el('button', 'btn confirm', 'Cast');

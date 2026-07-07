@@ -13,6 +13,7 @@ import { CommandMenuPanel } from './hud/command-menu-panel';
 import { UnitOrdersPanel } from './hud/unit-orders-panel';
 import { BuildingActionsPanel } from './hud/building-actions-panel';
 import { SpellBar } from './hud/spell-bar';
+import { SuperweaponStatus } from './hud/superweapon-status';
 
 export class Hud {
   root = el('div', 'hud');
@@ -37,6 +38,7 @@ export class Hud {
   private unitOrdersPanel: UnitOrdersPanel;
   private buildingActions: BuildingActionsPanel;
   private spellBar: SpellBar;
+  private superweaponStatus: SuperweaponStatus;
   private panelContext = '';
   private hudTab: 'info' | 'command' = 'info';
   private lastSelectionKey = '';
@@ -75,6 +77,7 @@ export class Hud {
     const menuBtn = el('button', 'btn menu-btn', 'Menu');
     menuBtn.addEventListener('click', () => this.toggleMenu());
     this.spellBar = new SpellBar(registry, controller);
+    this.superweaponStatus = new SuperweaponStatus(registry);
     top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
@@ -130,6 +133,7 @@ export class Hud {
 
     this.root.append(
       top,
+      this.superweaponStatus.root,
       this.minimapPanel.root,
       cmdCard,
       this.buildConfirm,
@@ -232,6 +236,7 @@ export class Hud {
 
   update(): void {
     const st = this.state();
+    this.superweaponStatus.update(st);
     const p = st.players.find((pl) => pl.id === this.playerId);
     if (!p) return;
     this.manaEl.textContent = Math.floor(p.mana).toString();

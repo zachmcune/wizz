@@ -22,6 +22,7 @@ import {
 import { handleProduce, handleCancelProduce } from './commands/production';
 import { handleChannel } from './commands/channel';
 import { handleSpell } from './commands/spell';
+import { handleSteerSuperweapon } from './commands/superweapon';
 import { handleSurrender } from './commands/surrender';
 
 export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[]): void {
@@ -76,6 +77,9 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'castSpell':
         handleSpell(state, ctx, cmd);
+        break;
+      case 'steerSuperweapon':
+        handleSteerSuperweapon(state, ctx, cmd);
         break;
       case 'surrender':
         handleSurrender(state, ctx, cmd);

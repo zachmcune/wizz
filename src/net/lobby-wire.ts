@@ -12,6 +12,7 @@ export function lobbyStateToWire(state: LobbyState): LobbyStateWire {
     mapId: state.mapId,
     factionId: state.factionId,
     deadSpectatorReveal: state.deadSpectatorReveal ?? false,
+    oneSuperweaponPerPlayer: state.oneSuperweaponPerPlayer ?? true,
     projectionMode: state.projectionMode ?? 'ortho',
     slots: state.slots.map((s) => ({
       id: s.id,
@@ -32,6 +33,7 @@ export function lobbyStateFromWire(wire: LobbyStateWire): LobbyState {
     mapId: wire.mapId,
     factionId: wire.factionId,
     deadSpectatorReveal: wire.deadSpectatorReveal ?? false,
+    oneSuperweaponPerPlayer: wire.oneSuperweaponPerPlayer ?? true,
     projectionMode: wireProjectionMode(wire.projectionMode),
     slots: wire.slots.map((s) => ({
       id: s.id as LobbyState['slots'][number]['id'],

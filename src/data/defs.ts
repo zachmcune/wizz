@@ -87,6 +87,7 @@ export interface BuildingDef {
   powerProduced?: number;
   powerUsed?: number;
   unlocksSpells?: string[];
+  isSuperweapon?: boolean;
   isRadar?: boolean; // reveals entire map on minimap (RA2 radar)
   isWall?: boolean;
   isGate?: boolean; // allies pass; enemies blocked
@@ -98,7 +99,16 @@ export interface BuildingDef {
 export type SpellEffect =
   | { kind: 'damage'; radius: number; damage: number; vs: Record<ArmorClass, number> }
   | { kind: 'buff'; buff: 'aegis' | 'haste'; radius: number; durationTicks: number }
-  | { kind: 'blink' };
+  | { kind: 'blink' }
+  | {
+      kind: 'beam';
+      radius: number;
+      damagePerTick: number;
+      vs: Record<ArmorClass, number>;
+      chargeTicks: number;
+      durationTicks: number;
+      speed: number;
+    };
 
 export interface SpellDef {
   id: string;

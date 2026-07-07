@@ -590,3 +590,42 @@
   margin: 0;
 }
 
+.superweapon-status {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 6px 12px;
+  background: rgba(10, 8, 18, 0.88);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  font-size: 12px;
+  pointer-events: none;
+}
+.superweapon-status .sw-title {
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 4px;
+  color: #9fdcff;
+}
+.superweapon-status .sw-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+.superweapon-status .sw-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.superweapon-status .sw-name {
+  min-width: 56px;
+}
+.superweapon-status .sw-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+

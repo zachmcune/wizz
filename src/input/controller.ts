@@ -168,7 +168,7 @@ export class InputController {
       this.session.deployEntityId = null;
       if (mode !== 'build') this.session.buildGhost = null;
     }
-    if (mode !== 'spell') this.session.spellId = null;
+    if (mode !== 'spell' && mode !== 'superweapon') this.session.spellId = null;
     if (mode !== 'rally') {
       this.session.rallyBuildingId = null;
       this.session.rallyCursor = null;
@@ -305,6 +305,19 @@ export class InputController {
     startSpell(this.ctx(), spellId);
   }
 
+  startSuperweapon(spellId: string): void {
+    this.session.mode = 'superweapon';
+    this.session.spellId = spellId;
+  }
+
+  syncSuperweaponMode(): void {
+    if (this.session.mode !== 'superweapon') return;
+    const st = this.getState();
+    const beam = st.beams.find((b) => b.owner === this.playerId);
+    const cd = st.players.find((p) => p.id === this.playerId)?.spellCooldowns['astral_lance'] ?? 0;
+    if (!beam && cd > 0) this.setMode('normal');
+  }
+
   confirmSpell(): void {
     runConfirmSpell(this.ctx());
   }
@@ -320,7 +333,8 @@ export class InputController {
       this.session.mode === 'spell' ||
       this.session.mode === 'attackMove' ||
       this.session.mode === 'deploy' ||
-      this.session.mode === 'rally'
+      this.session.mode === 'rally' ||
+      this.session.mode === 'superweapon'
     ) {
       this.setMode('normal');
     }
