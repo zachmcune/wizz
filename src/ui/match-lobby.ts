@@ -1,11 +1,12 @@
-// Pre-match lobby UI: configure slots, teams, colors, corners, AI, map, and faction.
+// Pre-match lobby UI: configure slots, teams, colors, positions, AI, map, and faction.
 import type { Registry } from '../data/registry';
 import type { LobbyClient } from '../net/lobby-client';
 import { validateLobby } from '../lobby/build-config';
 import { getLobbyTemplates } from '../lobby/templates';
 import { TEAM_LABELS, teamLabelDisplay } from '../lobby/teams';
-import type { AiDifficulty, CornerIndex, LobbyMode, LobbySlot, LobbyState, SlotKind } from '../lobby/types';
-import { CORNER_LABELS, DEFAULT_COLORS } from '../lobby/types';
+import type { AiDifficulty, LobbyMode, LobbySlot, LobbyState, SlotId, SlotKind } from '../lobby/types';
+import { DEFAULT_COLORS } from '../lobby/types';
+import { LobbyMapPreview } from './lobby-map-preview';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -42,13 +43,26 @@ export class MatchLobby {
   private factionSelect!: HTMLSelectElement;
   private templateSelect!: HTMLSelectElement;
   private roomEl: HTMLElement | null = null;
+  private bodyEl = el('div', 'lobby-body');
+  private slotsWrap = el('div', 'lobby-slots');
+  private mapPreview: LobbyMapPreview;
+  private pickSlotId: SlotId | null = null;
 
   constructor(private opts: MatchLobbyOptions) {
     this.state = structuredClone(opts.initialState);
+    this.mapPreview = new LobbyMapPreview(this.opts.registry.map(this.state.mapId));
     this.errorEl.style.display = 'none';
     this.build();
     if (opts.lobbyClient) this.wireNetwork(opts.lobbyClient);
+    this.pickSlotId = this.defaultPickSlot();
     this.refresh();
+  }
+
+  private defaultPickSlot(): SlotId | null {
+    if (this.opts.localSlotId) return this.opts.localSlotId as SlotId;
+    if (this.opts.mode === 'solo') return 'player0';
+    const editable = this.state.slots.find((s) => s.kind !== 'closed' && this.canEditSlot(s));
+    return editable?.id ?? null;
   }
 
   private build(): void {
@@ -64,6 +78,13 @@ export class MatchLobby {
     this.mapSelect.value = this.state.mapId;
     this.mapSelect.addEventListener('change', () => {
       this.state.mapId = this.mapSelect.value;
+      const map = this.opts.registry.map(this.state.mapId);
+      for (const slot of this.state.slots) {
+        if (slot.startIndex !== null && slot.startIndex >= map.startLocations.length) {
+          slot.startIndex = null;
+        }
+      }
+      this.mapPreview.setMap(map);
       this.pushUpdate();
       this.refresh();
     });
@@ -96,12 +117,23 @@ export class MatchLobby {
       this.roomEl.append(el('span', 'lobby-label', 'Room code'), el('strong', 'lobby-code', this.opts.room));
     }
 
-    const slotsWrap = el('div', 'lobby-slots');
     for (let i = 0; i < 4; i++) {
       const panel = this.buildSlotPanel(i);
       this.slotEls.push(panel);
-      slotsWrap.appendChild(panel);
+      this.slotsWrap.appendChild(panel);
     }
+
+    this.mapPreview.onPositionPick((index) => {
+      if (!this.pickSlotId) return;
+      const slot = this.state.slots.find((s) => s.id === this.pickSlotId);
+      if (!slot || !this.canEditSlot(slot) || slot.kind === 'closed') return;
+      if (this.isPositionTaken(index, slot.id)) return;
+      slot.startIndex = index;
+      this.pushUpdate();
+      this.refresh();
+    });
+
+    this.bodyEl.append(this.slotsWrap, this.mapPreview.root);
 
     this.templateSelect = el('select', 'lobby-select') as HTMLSelectElement;
     const blank = el('option', undefined, 'Load template…') as HTMLOptionElement;
@@ -126,6 +158,8 @@ export class MatchLobby {
         }
       }
       this.templateSelect.value = '';
+      this.mapPreview.setMap(this.opts.registry.map(this.state.mapId));
+      this.pickSlotId = this.defaultPickSlot();
       this.pushUpdate();
       this.refresh();
     });
@@ -133,27 +167,45 @@ export class MatchLobby {
     const footer = el('div', 'lobby-footer');
     const backBtn = el('button', 'btn', 'Back');
     backBtn.addEventListener('click', () => this.opts.onBack());
-
     this.actionBtn.addEventListener('click', () => this.onAction());
-
     footer.append(backBtn, this.templateSelect, this.actionBtn);
 
-    this.root.append(title, header, this.roomEl ?? '', slotsWrap, this.statusEl, this.errorEl, footer);
+    this.root.append(title, header, this.roomEl ?? '', this.bodyEl, this.statusEl, this.errorEl, footer);
   }
 
   private buildSlotPanel(index: number): HTMLElement {
     const panel = el('div', 'lobby-slot');
     panel.dataset.index = String(index);
+    panel.addEventListener('pointerdown', () => {
+      const slot = this.state.slots[index]!;
+      if (slot.kind !== 'closed' && this.canEditSlot(slot)) {
+        this.pickSlotId = slot.id;
+        this.refresh();
+      }
+    });
     return panel;
+  }
+
+  private spawnCount(): number {
+    return this.opts.registry.map(this.state.mapId).startLocations.length;
+  }
+
+  private isPositionTaken(index: number, exceptId: string): boolean {
+    return this.state.slots.some(
+      (s) => s.kind !== 'closed' && s.id !== exceptId && s.startIndex === index,
+    );
   }
 
   private renderSlotPanel(panel: HTMLElement, slot: LobbySlot, index: number): void {
     panel.replaceChildren();
     const canEdit = this.canEditSlot(slot);
     const isMine = slot.id === this.opts.localSlotId || (this.opts.mode === 'solo' && index === 0);
+    const isPickTarget = this.pickSlotId === slot.id;
+
+    panel.classList.toggle('pick-target', isPickTarget);
 
     const head = el('div', 'lobby-slot-head');
-    head.append(el('span', 'lobby-slot-title', `Slot ${index + 1}`));
+    head.append(el('span', 'lobby-slot-title', `Player ${index + 1}`));
     if (slot.claimedBy) {
       const tag = slot.claimedBy === this.opts.connId ? ' (You)' : slot.claimedBy === 'local' ? ' (You)' : ' (Taken)';
       head.append(el('span', 'lobby-slot-claim', tag));
@@ -177,6 +229,7 @@ export class MatchLobby {
         slot.claimedBy = null;
         slot.ready = false;
       }
+      if (slot.kind === 'closed') slot.startIndex = null;
       this.pushUpdate();
       this.refresh();
     });
@@ -195,20 +248,24 @@ export class MatchLobby {
       this.refresh();
     });
 
-    const cornerWrap = el('div', 'lobby-corners');
-    const taken = this.takenCorners(slot.id);
-    for (let c = 0; c < 4; c++) {
-      const btn = el('button', 'btn lobby-corner', CORNER_LABELS[c]![0]!);
-      if (slot.startIndex === c) btn.classList.add('active');
-      if (taken.has(c)) btn.disabled = true;
-      btn.disabled = btn.disabled || !canEdit;
-      btn.addEventListener('click', () => {
-        slot.startIndex = c as CornerIndex;
-        this.pushUpdate();
-        this.refresh();
-      });
-      cornerWrap.appendChild(btn);
+    const posSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    const dash = el('option', undefined, '-') as HTMLOptionElement;
+    dash.value = '';
+    posSelect.appendChild(dash);
+    const count = this.spawnCount();
+    for (let p = 0; p < count; p++) {
+      const opt = el('option', undefined, String(p + 1)) as HTMLOptionElement;
+      opt.value = String(p);
+      if (this.isPositionTaken(p, slot.id)) opt.disabled = true;
+      posSelect.appendChild(opt);
     }
+    posSelect.value = slot.startIndex === null ? '' : String(slot.startIndex);
+    posSelect.disabled = !canEdit || slot.kind === 'closed';
+    posSelect.addEventListener('change', () => {
+      slot.startIndex = posSelect.value === '' ? null : Number(posSelect.value);
+      this.pushUpdate();
+      this.refresh();
+    });
 
     const colorInput = el('input', 'lobby-color-input') as HTMLInputElement;
     colorInput.type = 'color';
@@ -262,7 +319,7 @@ export class MatchLobby {
     const row1 = el('div', 'lobby-slot-row');
     row1.append(el('label', 'lobby-field-label', 'Type'), kindSelect, el('label', 'lobby-field-label', 'Team'), teamSelect);
     const row2 = el('div', 'lobby-slot-row');
-    row2.append(el('label', 'lobby-field-label', 'Corner'), cornerWrap, colorInput, swatches);
+    row2.append(el('label', 'lobby-field-label', 'Position'), posSelect, colorInput, swatches);
     panel.append(row1, row2);
 
     if (slot.kind === 'ai') {
@@ -309,14 +366,6 @@ export class MatchLobby {
     return this.opts.mode === 'host' || this.opts.mode === 'solo';
   }
 
-  private takenCorners(exceptId: string): Set<number> {
-    const taken = new Set<number>();
-    for (const s of this.state.slots) {
-      if (s.kind !== 'closed' && s.id !== exceptId) taken.add(s.startIndex);
-    }
-    return taken;
-  }
-
   private wireNetwork(client: LobbyClient): void {
     client.onLobbyState = (state) => {
       this.setRemoteState(state);
@@ -338,6 +387,9 @@ export class MatchLobby {
     for (let i = 0; i < 4; i++) {
       this.renderSlotPanel(this.slotEls[i]!, this.state.slots[i]!, i);
     }
+
+    this.mapPreview.setAssignments(this.state.slots);
+    this.mapPreview.render();
 
     const map = this.opts.registry.map(this.state.mapId);
     const validation = validateLobby(this.state, this.opts.mode, map, this.opts.localSlotId);
@@ -376,11 +428,13 @@ export class MatchLobby {
 
   setLocalSlotId(slotId: string): void {
     this.opts.localSlotId = slotId;
+    this.pickSlotId = slotId as SlotId;
     this.refresh();
   }
 
   setRemoteState(state: LobbyState): void {
     this.state = state;
+    this.mapPreview.setMap(this.opts.registry.map(this.state.mapId));
     this.refresh();
   }
 

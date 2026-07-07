@@ -17,6 +17,8 @@ describe('lobby config', () => {
 
   it('builds a match config from lobby state', () => {
     const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
     const config = buildMatchConfig(lobby);
     expect(config.mapId).toBe('duel_glade');
     expect(config.players).toHaveLength(2);
@@ -26,6 +28,8 @@ describe('lobby config', () => {
 
   it('excludes closed slots', () => {
     const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
     lobby.slots[2]!.kind = 'closed';
     lobby.slots[3]!.kind = 'closed';
     const config = buildMatchConfig(lobby);
@@ -34,9 +38,15 @@ describe('lobby config', () => {
 
   it('validates solo lobby requirements', () => {
     const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
     const map = reg.map(lobby.mapId);
     expect(validateLobby(lobby, 'solo', map).valid).toBe(true);
 
+    lobby.slots[0]!.startIndex = null;
+    expect(validateLobby(lobby, 'solo', map).valid).toBe(false);
+
+    lobby.slots[0]!.startIndex = 0;
     lobby.slots[0]!.kind = 'ai';
     expect(validateLobby(lobby, 'solo', map).valid).toBe(false);
 
@@ -47,7 +57,9 @@ describe('lobby config', () => {
 
   it('validates online host lobby', () => {
     const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
     lobby.slots[1]!.kind = 'open';
+    lobby.slots[1]!.startIndex = 3;
     lobby.slots[1]!.claimedBy = null;
     const map = reg.map(lobby.mapId);
     expect(validateLobby(lobby, 'host', map).valid).toBe(false);

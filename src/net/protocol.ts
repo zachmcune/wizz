@@ -6,7 +6,7 @@ export interface LobbySlotWire {
   kind: 'closed' | 'human' | 'ai' | 'open';
   team: string;
   color: string;
-  startIndex: number;
+  startIndex: number | null;
   factionId: string;
   aiDifficulty?: 'easy' | 'normal' | 'hard';
   claimedBy?: string | null;
@@ -22,7 +22,7 @@ export interface LobbyStateWire {
 export type ClientMessage =
   | { t: 'join'; room: string; lobbyState?: LobbyStateWire }
   | { t: 'lobbyUpdate'; state: LobbyStateWire }
-  | { t: 'claimSlot'; slotId: string; team: string; color: string; startIndex: number; factionId: string }
+  | { t: 'claimSlot'; slotId: string; team: string; color: string; startIndex: number | null; factionId: string }
   | { t: 'slotReady'; slotId: string; ready: boolean }
   | { t: 'startMatch' }
   | { t: 'commands'; forTick: number; cmds: Command[] }

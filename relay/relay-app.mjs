@@ -13,10 +13,10 @@ const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
   factionId: 'arcane',
   slots: [
-    { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: 0, factionId: 'arcane', claimedBy: null, ready: false },
-    { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: 3, factionId: 'arcane', claimedBy: null, ready: false },
-    { id: 'player2', kind: 'closed', team: 'c', color: '#5dff8f', startIndex: 2, factionId: 'arcane', claimedBy: null, ready: false },
-    { id: 'player3', kind: 'closed', team: 'd', color: '#ffd166', startIndex: 1, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player2', kind: 'closed', team: 'c', color: '#5dff8f', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player3', kind: 'closed', team: 'd', color: '#ffd166', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
   ],
 };
 
@@ -153,9 +153,12 @@ class Room {
       ws.send(JSON.stringify({ t: 'error', message: 'Slot already claimed' }));
       return;
     }
-    const cornerTaken = this.lobbyState.slots.some(
-      (s) => s.id !== slotId && s.kind !== 'closed' && s.startIndex === startIndex,
-    );
+    const cornerTaken =
+      startIndex !== null &&
+      startIndex !== undefined &&
+      this.lobbyState.slots.some(
+        (s) => s.id !== slotId && s.kind !== 'closed' && s.startIndex === startIndex,
+      );
     if (cornerTaken) {
       ws.send(JSON.stringify({ t: 'error', message: 'Corner already taken' }));
       return;
