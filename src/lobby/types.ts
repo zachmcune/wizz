@@ -2,15 +2,17 @@
 export type TeamLabel = 'a' | 'b' | 'c' | 'd';
 export type SlotKind = 'closed' | 'human' | 'ai' | 'open';
 export type SlotId = 'player0' | 'player1' | 'player2' | 'player3';
-export type CornerIndex = 0 | 1 | 2 | 3;
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
+
+/** Map spawn index (0-based), or null when unselected ("-"). */
+export type SpawnIndex = number | null;
 
 export interface LobbySlot {
   id: SlotId;
   kind: SlotKind;
   team: TeamLabel;
   color: string;
-  startIndex: CornerIndex;
+  startIndex: SpawnIndex;
   factionId: string;
   aiDifficulty?: AiDifficulty;
   claimedBy?: string | null;
@@ -27,5 +29,3 @@ export interface LobbyState {
 export type LobbyMode = 'solo' | 'host' | 'guest';
 
 export const DEFAULT_COLORS = ['#4f9dff', '#ff5d5d', '#5dff8f', '#ffd166'] as const;
-
-export const CORNER_LABELS = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'] as const;

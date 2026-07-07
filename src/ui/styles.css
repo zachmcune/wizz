@@ -734,7 +734,17 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px 12px;
-  width: min(96vw, 720px);
+  width: min(96vw, 900px);
+}
+.lobby-body {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  width: min(96vw, 900px);
+  flex: 1;
+  min-height: 0;
 }
 .lobby-field-label {
   font-size: 11px;
@@ -751,16 +761,23 @@ body {
   font-size: 13px;
 }
 .lobby-slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 10px;
-  width: min(96vw, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 340px;
+  min-width: 0;
+  max-height: min(58vh, 420px);
+  overflow-y: auto;
 }
 .lobby-slot {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
   background: var(--panel);
+}
+.lobby-slot.pick-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(139, 108, 255, 0.35);
 }
 .lobby-slot.closed {
   opacity: 0.45;
@@ -785,20 +802,6 @@ body {
   gap: 6px 8px;
   margin-top: 6px;
 }
-.lobby-corners {
-  display: flex;
-  gap: 4px;
-}
-.lobby-corner {
-  min-width: 28px;
-  min-height: 28px;
-  padding: 4px;
-  font-size: 11px;
-}
-.lobby-corner.active {
-  border-color: var(--accent);
-  background: rgba(139, 108, 255, 0.25);
-}
 .lobby-color-input {
   width: 36px;
   height: 28px;
@@ -818,14 +821,47 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.25);
   padding: 0;
 }
+.lobby-map-preview {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.lobby-map-title {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.7;
+  text-align: center;
+}
+.lobby-map-canvas {
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: #0c0a14;
+  touch-action: manipulation;
+  cursor: pointer;
+}
 .lobby-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: min(96vw, 720px);
+  width: min(96vw, 900px);
   margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .lobby-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lobby-slots {
+    max-height: none;
+  }
+  .lobby-map-preview {
+    align-self: center;
+  }
 }
 .dbg-btn {
   flex-shrink: 0;
