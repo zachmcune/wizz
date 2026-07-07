@@ -65,7 +65,7 @@ function drawShape(
   }
 }
 
-/** Oblique-view voxel-style box: top diamond + two visible walls, anchor at ground center (y=0). */
+/** Oblique-view voxel-style box: ground footprint diamond centered at (0, 0). */
 function drawObliqueBox(
   g: Graphics,
   shape: ShapeKind,
@@ -86,21 +86,26 @@ function drawObliqueBox(
   const wallMid = shade(fillN, 0.62);
   const topLift = -boxH;
 
+  // Ground footprint diamond — center at origin (sim entity / selection ring center).
+  const gRight = { x: hw, y: 0 };
+  const gBottom = { x: 0, y: hh };
+  const gLeft = { x: -hw, y: 0 };
+
   const top = { x: 0, y: topLift - hh };
   const right = { x: hw, y: topLift };
   const bottom = { x: 0, y: topLift + hh };
   const left = { x: -hw, y: topLift };
 
-  const footR = { x: hw * 0.72, y: hh * 0.35 };
-  const foot = { x: 0, y: hh * 0.55 };
-  const footL = { x: -hw * 0.72, y: hh * 0.35 };
-
-  g.poly([right.x, right.y, bottom.x, bottom.y, foot.x, foot.y, footR.x, footR.y])
+  g.poly([gRight.x, gRight.y, gBottom.x, gBottom.y, bottom.x, bottom.y, right.x, right.y])
     .fill(wallMid)
     .stroke({ width: 1.5, color: OUTLINE });
-  g.poly([bottom.x, bottom.y, left.x, left.y, footL.x, footL.y, foot.x, foot.y])
+  g.poly([gBottom.x, gBottom.y, gLeft.x, gLeft.y, left.x, left.y, bottom.x, bottom.y])
     .fill(wallDark)
     .stroke({ width: 1.5, color: OUTLINE });
+  g.poly([gRight.x, gRight.y, right.x, right.y, bottom.x, bottom.y, gBottom.x, gBottom.y])
+    .fill(wallMid)
+    .stroke({ width: 1.5, color: OUTLINE });
+
   g.poly([top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y])
     .fill(fillN)
     .stroke({ width: 2, color: OUTLINE });
