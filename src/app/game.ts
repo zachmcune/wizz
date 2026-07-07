@@ -19,6 +19,8 @@ import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
+import { isTileVisible } from '../sim/fog';
+import { getPlayer } from '../sim/queries';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -235,28 +237,56 @@ export class Game {
   }
 
   private handleEvent(ev: GameEvent): void {
-    this.audio.play(ev);
+    const visible = this.isEventVisible(ev);
+    if (visible) this.audio.play(ev);
     switch (ev.type) {
       case 'attackFired':
-        this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+        if (visible) this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
         break;
       case 'damageDealt':
-        this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+        if (visible) this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
         break;
       case 'entityDied':
-        this.renderer.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
+        if (visible) this.renderer.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
         break;
       case 'buildingComplete': {
         const b = this.state.entities.get(ev.id);
-        if (b) this.renderer.effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
+        if (b && this.isEffectVisibleAt(b.pos.x, b.pos.y)) {
+          this.renderer.effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
+        }
         break;
       }
       case 'manaDeposited':
-        this.renderer.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
+        if (visible) this.renderer.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
         break;
       case 'spellCast':
-        this.renderer.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
+        if (visible) this.renderer.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
         break;
+    }
+  }
+
+  /** True when the human player has line-of-sight on a world point (fog of war). */
+  private isEffectVisibleAt(x: number, y: number): boolean {
+    const viewer = getPlayer(this.state, this.humanId);
+    if (!viewer) return false;
+    return isTileVisible(viewer, x, y, this.services.nav);
+  }
+
+  /** Whether combat/economy VFX and audio for this event should play for the human. */
+  private isEventVisible(ev: GameEvent): boolean {
+    switch (ev.type) {
+      case 'attackFired':
+      case 'damageDealt':
+      case 'entityDied':
+      case 'manaDeposited':
+      case 'spellCast':
+        return this.isEffectVisibleAt(ev.x, ev.y);
+      case 'buildingComplete': {
+        const b = this.state.entities.get(ev.id);
+        return b ? this.isEffectVisibleAt(b.pos.x, b.pos.y) : false;
+      }
+      default:
+        return true;
     }
   }
 
