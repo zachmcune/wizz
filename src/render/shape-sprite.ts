@@ -25,6 +25,7 @@ function shade(color: number, factor: number): number {
 const OUTLINE = 0x0a0a12;
 
 type DesignFn = (g: Graphics, size: number, fill: string, accent: string, dir: number) => void;
+type ObliqueDesignFn = (g: Graphics, size: number, fill: string, accent: string, dir: number) => void;
 /** Distinctive accent glyph centered at origin with radius r. */
 type GlyphFn = (g: Graphics, r: number, accent: string, dir?: number) => void;
 
@@ -299,6 +300,261 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   waystone_wagon: { wMul: 1.15, hMul: 0.42 },
 };
 
+const UNIT_SPRITES = new Set([
+  'wisp',
+  'mana_weaver',
+  'imp_swarmling',
+  'arcane_archer',
+  'rift_familiar',
+  'stone_golem',
+  'siege_behemoth',
+  'waystone_wagon',
+  'storm_caster',
+]);
+
+function isUnitSprite(sprite: string): boolean {
+  return UNIT_SPRITES.has(sprite);
+}
+
+function drawIsoPrism(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  hw: number,
+  hh: number,
+  h: number,
+  fillN: number,
+): void {
+  const wallDark = shade(fillN, 0.42);
+  const wallMid = shade(fillN, 0.62);
+  const top = shade(fillN, 1.05);
+  const gr = { x: cx + hw, y: cy };
+  const gb = { x: cx, y: cy + hh };
+  const gl = { x: cx - hw, y: cy };
+  const tr = { x: cx + hw, y: cy - h };
+  const tb = { x: cx, y: cy + hh - h };
+  const tl = { x: cx - hw, y: cy - h };
+  const tt = { x: cx, y: cy - hh - h };
+
+  g.poly([gr.x, gr.y, gb.x, gb.y, tb.x, tb.y, tr.x, tr.y])
+    .fill(wallMid)
+    .stroke({ width: 1.5, color: OUTLINE });
+  g.poly([gb.x, gb.y, gl.x, gl.y, tl.x, tl.y, tb.x, tb.y])
+    .fill(wallDark)
+    .stroke({ width: 1.5, color: OUTLINE });
+  g.poly([tt.x, tt.y, tr.x, tr.y, tb.x, tb.y, tl.x, tl.y])
+    .fill(top)
+    .stroke({ width: 2, color: OUTLINE });
+}
+
+function drawIsoPyramid(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  hw: number,
+  hh: number,
+  h: number,
+  fillN: number,
+): void {
+  const mid = shade(fillN, 0.74);
+  const dark = shade(fillN, 0.52);
+  const top = { x: cx, y: cy - h };
+  const right = { x: cx + hw, y: cy };
+  const bottom = { x: cx, y: cy + hh };
+  const left = { x: cx - hw, y: cy };
+  const far = { x: cx, y: cy - hh };
+
+  g.poly([top.x, top.y, right.x, right.y, bottom.x, bottom.y]).fill(mid).stroke({ width: 1.5, color: OUTLINE });
+  g.poly([top.x, top.y, bottom.x, bottom.y, left.x, left.y]).fill(dark).stroke({ width: 1.5, color: OUTLINE });
+  g.poly([top.x, top.y, left.x, left.y, far.x, far.y, right.x, right.y]).fill(shade(fillN, 0.92)).stroke({ width: 1.5, color: OUTLINE });
+}
+
+function drawIsoPlate(g: Graphics, cx: number, cy: number, hw: number, hh: number, color: number): void {
+  g.poly([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy])
+    .fill(color)
+    .stroke({ width: 1.5, color: OUTLINE });
+}
+
+function drawAccentGlyph(g: Graphics, sprite: string, cx: number, cy: number, r: number, accent: string, dir: number): void {
+  const glyph = GLYPHS[sprite];
+  if (!glyph) return;
+  const child = new Graphics();
+  glyph(child, r, accent, dir);
+  child.position.set(cx, cy);
+  g.addChild(child);
+}
+
+function drawObliqueFacing(g: Graphics, cx: number, cy: number, length: number, dir: number): void {
+  const ang = (dir / 8) * Math.PI * 2 - Math.PI / 2;
+  g.moveTo(cx, cy)
+    .lineTo(cx + Math.cos(ang) * length, cy + Math.sin(ang) * length * 0.6)
+    .stroke({ width: 2.5, color: OUTLINE, alpha: 0.95 });
+}
+
+// Entity-specific oblique art. These are intentionally composed from different
+// volumes and silhouettes instead of sharing the generic cube/box body.
+const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
+  wisp: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    drawIsoPlate(g, 0, r * 0.2, r * 0.75, r * 0.28, shade(parseHex(fill), 0.35));
+    g.circle(0, -r * 0.85, r * 0.58).fill(fill).stroke({ width: 2, color: OUTLINE });
+    drawAccentGlyph(g, 'wisp', 0, -r * 0.85, r * 0.65, accent, dir);
+  },
+  mana_weaver: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPlate(g, 0, r * 0.35, r * 0.58, r * 0.2, shade(fillN, 0.36));
+    drawIsoPyramid(g, 0, -r * 0.1, r * 0.45, r * 0.18, r * 1.15, fillN);
+    drawAccentGlyph(g, 'mana_weaver', 0, -r * 0.55, r * 0.55, accent, dir);
+  },
+  imp_swarmling: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    g.poly([0, -r * 0.85, r * 0.72, r * 0.2, 0, r * 0.55, -r * 0.72, r * 0.2])
+      .fill(shade(fillN, 0.78))
+      .stroke({ width: 2, color: OUTLINE });
+    g.poly([-r * 0.62, -r * 0.2, -r * 0.25, -r * 0.65, -r * 0.05, -r * 0.12]).fill(accent).stroke({ width: 1, color: OUTLINE });
+    g.poly([r * 0.62, -r * 0.2, r * 0.25, -r * 0.65, r * 0.05, -r * 0.12]).fill(accent).stroke({ width: 1, color: OUTLINE });
+    drawObliqueFacing(g, 0, -r * 0.05, r * 0.55, dir);
+  },
+  arcane_archer: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    drawIsoPrism(g, 0, r * 0.22, r * 0.28, r * 0.16, r * 0.8, parseHex(fill));
+    g.arc(0, -r * 0.45, r * 0.62, -2.35, -0.8).stroke({ width: 2.5, color: accent });
+    g.moveTo(-r * 0.42, -r * 0.18).lineTo(r * 0.52, -r * 0.52).stroke({ width: 2, color: accent });
+    drawObliqueFacing(g, 0, -r * 0.3, r * 0.5, dir);
+  },
+  rift_familiar: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    g.poly([-r * 1.05, -r * 0.15, -r * 0.1, -r * 0.65, -r * 0.2, r * 0.25])
+      .fill(shade(fillN, 0.68))
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.poly([r * 1.05, -r * 0.15, r * 0.1, -r * 0.65, r * 0.2, r * 0.25])
+      .fill(shade(fillN, 0.82))
+      .stroke({ width: 1.5, color: OUTLINE });
+    drawIsoPyramid(g, 0, r * 0.1, r * 0.32, r * 0.14, r * 0.7, fillN);
+    drawAccentGlyph(g, 'rift_familiar', 0, -r * 0.35, r * 0.45, accent, dir);
+  },
+  stone_golem: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.35, r * 0.6, r * 0.26, r * 0.75, fillN);
+    drawIsoPrism(g, -r * 0.5, r * 0.1, r * 0.28, r * 0.14, r * 0.55, fillN);
+    drawIsoPrism(g, r * 0.5, r * 0.1, r * 0.28, r * 0.14, r * 0.55, fillN);
+    drawIsoPrism(g, 0, -r * 0.42, r * 0.28, r * 0.14, r * 0.35, fillN);
+    drawAccentGlyph(g, 'stone_golem', 0, -r * 0.35, r * 0.52, accent, dir);
+  },
+  siege_behemoth: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.25, r * 0.82, r * 0.34, r * 0.45, fillN);
+    drawIsoPrism(g, r * 0.52, -r * 0.18, r * 0.48, r * 0.12, r * 0.18, fillN);
+    g.circle(r * 0.98, -r * 0.3, r * 0.16).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    drawAccentGlyph(g, 'siege_behemoth', -r * 0.1, -r * 0.3, r * 0.45, accent, dir);
+  },
+  waystone_wagon: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.25, r * 0.85, r * 0.28, r * 0.38, fillN);
+    drawIsoPrism(g, 0, -r * 0.18, r * 0.52, r * 0.18, r * 0.32, fillN);
+    g.circle(-r * 0.55, r * 0.45, r * 0.2).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    g.circle(r * 0.55, r * 0.45, r * 0.2).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    drawObliqueFacing(g, 0, -r * 0.2, r * 0.45, dir);
+  },
+  storm_caster: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    drawIsoPlate(g, 0, r * 0.32, r * 0.55, r * 0.22, shade(parseHex(fill), 0.4));
+    drawIsoPyramid(g, 0, -r * 0.05, r * 0.42, r * 0.18, r * 0.85, parseHex(fill));
+    drawAccentGlyph(g, 'storm_caster', 0, -r * 0.45, r * 0.58, accent, dir);
+  },
+  sanctum: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.38, r * 0.95, r * 0.42, r * 0.5, fillN);
+    drawIsoPrism(g, 0, -r * 0.15, r * 0.35, r * 0.2, r * 0.9, fillN);
+    drawIsoPyramid(g, 0, -r * 1.05, r * 0.28, r * 0.14, r * 0.45, fillN);
+    drawAccentGlyph(g, 'sanctum', 0, -r * 0.78, r * 0.45, accent, dir);
+  },
+  waystone_camp: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.42, r * 0.82, r * 0.3, r * 0.32, fillN);
+    drawIsoPyramid(g, 0, r * 0.05, r * 0.78, r * 0.26, r * 0.75, fillN);
+    drawAccentGlyph(g, 'waystone_camp', r * 0.1, -r * 0.6, r * 0.42, accent, dir);
+  },
+  attunement_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.45, r * 0.45, r * 0.2, r * 0.35, fillN);
+    drawIsoPyramid(g, 0, r * 0.12, r * 0.35, r * 0.16, r * 1.25, fillN);
+    drawIsoPyramid(g, 0, -r * 0.95, r * 0.22, r * 0.1, r * 0.45, parseHex(accent));
+  },
+  ley_conduit: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.45, r * 0.78, r * 0.28, r * 0.28, fillN);
+    drawIsoPrism(g, -r * 0.28, r * 0.05, r * 0.14, r * 0.1, r * 0.85, fillN);
+    drawIsoPrism(g, r * 0.28, -r * 0.02, r * 0.14, r * 0.1, r * 0.75, fillN);
+    g.moveTo(-r * 0.35, -r * 0.72).quadraticCurveTo(0, -r * 1.05, r * 0.35, -r * 0.78).stroke({ width: 2.5, color: accent });
+    drawAccentGlyph(g, 'ley_conduit', 0, -r * 0.55, r * 0.45, accent, dir);
+  },
+  summoning_circle: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    drawIsoPlate(g, 0, r * 0.22, r * 0.85, r * 0.34, parseHex(fill));
+    drawIsoPlate(g, 0, r * 0.1, r * 0.58, r * 0.22, shade(parseHex(fill), 0.42));
+    drawAccentGlyph(g, 'summoning_circle', 0, -r * 0.02, r * 0.78, accent, dir);
+  },
+  golem_forge: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, -r * 0.12, r * 0.42, r * 0.92, r * 0.36, r * 0.55, fillN);
+    drawIsoPrism(g, r * 0.52, -r * 0.22, r * 0.25, r * 0.14, r * 0.88, fillN);
+    drawIsoPyramid(g, -r * 0.4, -r * 0.15, r * 0.34, r * 0.16, r * 0.45, fillN);
+    drawAccentGlyph(g, 'golem_forge', -r * 0.15, -r * 0.2, r * 0.55, accent, dir);
+  },
+  stone_wall: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    for (let i = 0; i < 3; i++) {
+      drawIsoPrism(g, (i - 1) * r * 0.55, r * 0.22 - (i % 2) * r * 0.08, r * 0.34, r * 0.16, r * 0.28, fillN);
+    }
+    drawAccentGlyph(g, 'stone_wall', 0, -r * 0.05, r * 0.7, accent, dir);
+  },
+  ward_turret: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.42, r * 0.62, r * 0.3, r * 0.35, fillN);
+    drawIsoPrism(g, 0, -r * 0.02, r * 0.36, r * 0.18, r * 0.52, fillN);
+    drawIsoPrism(g, r * 0.42, -r * 0.55, r * 0.5, r * 0.1, r * 0.12, fillN);
+    g.circle(r * 0.92, -r * 0.62, r * 0.11).fill(accent).stroke({ width: 1, color: OUTLINE });
+    drawAccentGlyph(g, 'ward_turret', 0, -r * 0.48, r * 0.4, accent, dir);
+  },
+  arcane_gate: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, -r * 0.48, r * 0.26, r * 0.2, r * 0.16, r * 0.85, fillN);
+    drawIsoPrism(g, r * 0.48, r * 0.26, r * 0.2, r * 0.16, r * 0.85, fillN);
+    drawIsoPrism(g, 0, -r * 0.55, r * 0.72, r * 0.12, r * 0.2, fillN);
+    drawAccentGlyph(g, 'arcane_gate', 0, -r * 0.45, r * 0.72, accent, dir);
+  },
+  scrying_obelisk: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.45, r * 0.42, r * 0.18, r * 0.28, fillN);
+    drawIsoPyramid(g, 0, r * 0.2, r * 0.26, r * 0.12, r * 1.35, fillN);
+    drawAccentGlyph(g, 'scrying_obelisk', 0, -r * 0.6, r * 0.55, accent, dir);
+  },
+  arcane_nexus: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPlate(g, 0, r * 0.36, r * 0.9, r * 0.36, fillN);
+    drawIsoPrism(g, 0, r * 0.18, r * 0.5, r * 0.22, r * 0.35, fillN);
+    g.circle(0, -r * 0.62, r * 0.22).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    drawAccentGlyph(g, 'arcane_nexus', 0, -r * 0.2, r * 0.7, accent, dir);
+  },
+};
+
 function drawShape(
   g: Graphics,
   shape: ShapeKind,
@@ -357,7 +613,12 @@ function drawObliqueBox(
   direction: number,
   sprite = '',
 ): void {
-  const isBuilding = shape === 'building' || (sprite && ORTHO_DESIGNS[sprite] && !['wisp', 'mana_weaver', 'imp_swarmling', 'arcane_archer', 'rift_familiar', 'stone_golem', 'siege_behemoth', 'waystone_wagon', 'storm_caster'].includes(sprite));
+  if (sprite && OBLIQUE_DESIGNS[sprite]) {
+    OBLIQUE_DESIGNS[sprite](g, size, fill, accent, direction);
+    return;
+  }
+
+  const isBuilding = shape === 'building' || (sprite && ORTHO_DESIGNS[sprite] && !isUnitSprite(sprite));
   const isWide = isBuilding || shape === 'hexagon';
   const props = sprite ? OBLIQUE_PROPS[sprite] : undefined;
   const w = size * (props?.wMul ?? (isWide ? 1.05 : 0.82));
@@ -431,7 +692,7 @@ export class ShapeSpriteProvider implements SpriteProvider {
   texture(art: ArtDef, teamColor: string, direction = 0): Texture {
     const mode = getProjectionMode();
     const sprite = art.sprite ?? '';
-    const isBuildingDesign = sprite && ORTHO_DESIGNS[sprite] && !['wisp', 'mana_weaver', 'imp_swarmling', 'arcane_archer', 'rift_familiar', 'stone_golem', 'siege_behemoth', 'waystone_wagon', 'storm_caster'].includes(sprite);
+    const isBuildingDesign = sprite && ORTHO_DESIGNS[sprite] && !isUnitSprite(sprite);
     const dir = art.shape === 'building' || isBuildingDesign ? 0 : direction % 8;
     const key = `${mode}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
     let tex = this.cache.get(key);
