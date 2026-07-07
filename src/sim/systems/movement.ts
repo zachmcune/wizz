@@ -4,9 +4,10 @@ import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, hasBuff } from '../queries';
-import { steerToGoal, bestNeighborSteer } from '../pathing';
+import { steerToGoal, applyVelocityMove, slidePosition } from '../pathing';
 
 const scratch: EntityId[] = [];
+const SEP_BLEND = 0.55;
 
 function goalOf(e: Entity): { x: number; y: number } | null {
   const o = e.orders[0];
@@ -31,25 +32,29 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;
 
     const goal = goalOf(e);
-    let steerX = 0;
-    let steerY = 0;
-
-    if (goal) {
-      const dx = goal.x - e.pos.x;
-      const dy = goal.y - e.pos.y;
-      const d = Math.hypot(dx, dy);
-      if (d <= TILE * 0.4) {
-        e.orders.shift();
-        e.vel = { x: 0, y: 0 };
-        if (e.orders.length === 0 && e.state === 'moving') e.state = 'idle';
-      } else {
-        const steer = steerToGoal(nav, flow, e.pos, goal);
-        steerX = steer.x;
-        steerY = steer.y;
-      }
+    if (!goal) {
+      e.vel = { x: 0, y: 0 };
+      continue;
     }
 
-    // Local separation from nearby units (boids-style push).
+    const dx = goal.x - e.pos.x;
+    const dy = goal.y - e.pos.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= TILE * 0.4) {
+      e.orders.shift();
+      e.vel = { x: 0, y: 0 };
+      if (e.orders.length === 0 && e.state === 'moving') e.state = 'idle';
+      continue;
+    }
+
+    const goalTx = Math.floor(goal.x / TILE);
+    const goalTy = Math.floor(goal.y / TILE);
+    const field = flow.get(nav, goalTx, goalTy);
+    const steer = steerToGoal(nav, flow, e.pos, goal);
+
+    let moveX = steer.x * speed;
+    let moveY = steer.y * speed;
+
     const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 3, scratch);
     let sepX = 0;
     let sepY = 0;
@@ -68,34 +73,43 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       }
     }
 
-    const moveX = steerX * speed + sepX * speed * 0.9;
-    const moveY = steerY * speed + sepY * speed * 0.9;
+    moveX += sepX * speed * SEP_BLEND;
+    moveY += sepY * speed * SEP_BLEND;
 
     if (moveX !== 0 || moveY !== 0) {
-      let nx = e.pos.x + moveX * dt;
-      let ny = e.pos.y + moveY * dt;
-      if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
-      if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
-      if (nx === e.pos.x && ny === e.pos.y && goal) {
-        const goalTx = Math.floor(goal.x / TILE);
-        const goalTy = Math.floor(goal.y / TILE);
-        const field = flow.get(nav, goalTx, goalTy);
-        const tx = Math.floor(e.pos.x / TILE);
-        const ty = Math.floor(e.pos.y / TILE);
-        const escape = bestNeighborSteer(field, nav, tx, ty);
-        if (escape.x !== 0 || escape.y !== 0) {
-          nx = e.pos.x + escape.x * speed * dt;
-          ny = e.pos.y + escape.y * speed * dt;
-          if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
-          if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
-        }
-      }
-      e.pos.x = nx;
-      e.pos.y = ny;
-      e.vel = { x: moveX, y: moveY };
-      if (goal) e.facing = Math.atan2(moveY, moveX);
+      const moved = applyVelocityMove(e, moveX, moveY, nav, dt, field);
+      if (moved) e.facing = Math.atan2(moveY, moveX);
+      else e.vel = { x: 0, y: 0 };
     } else {
       e.vel = { x: 0, y: 0 };
+    }
+  }
+
+  // Idle crowding relief so units don't glue together after reaching a waypoint.
+  for (const e of entitiesSorted(state)) {
+    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0) continue;
+    const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 2.5, scratch);
+    let sepX = 0;
+    let sepY = 0;
+    for (const nid of neighbors) {
+      if (nid === e.id) continue;
+      const other = state.entities.get(nid);
+      if (!other || other.kind !== 'unit') continue;
+      const ox = e.pos.x - other.pos.x;
+      const oy = e.pos.y - other.pos.y;
+      const dd = Math.hypot(ox, oy);
+      const minDist = e.radius + other.radius;
+      if (dd > 0 && dd < minDist) {
+        const push = (minDist - dd) / minDist;
+        sepX += (ox / dd) * push;
+        sepY += (oy / dd) * push;
+      }
+    }
+    if (sepX === 0 && sepY === 0) continue;
+    const nudge = slidePosition(nav, e.pos.x, e.pos.y, e.pos.x + sepX * 8 * dt, e.pos.y + sepY * 8 * dt);
+    if (nudge) {
+      e.pos.x = nudge.x;
+      e.pos.y = nudge.y;
     }
   }
 }
