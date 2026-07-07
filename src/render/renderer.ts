@@ -152,11 +152,11 @@ export class Renderer {
   private applySpriteAnchors(): void {
     const oblique = this.isOblique();
     for (const n of this.nodes.values()) {
-      n.sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+      n.sprite.anchor.set(0.5, 0.5);
       if (oblique) n.sprite.rotation = 0;
     }
     for (const n of this.ghostNodes.values()) {
-      n.sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+      n.sprite.anchor.set(0.5, 0.5);
       if (oblique) n.sprite.rotation = 0;
     }
   }
@@ -280,8 +280,7 @@ export class Renderer {
       if (!n) {
         const { art, color } = this.artOf(e);
         const sprite = new Sprite(this.textureFor(e, art, color));
-        const oblique = this.projectionMode === 'oblique';
-        sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+        sprite.anchor.set(0.5, 0.5);
         this.entityLayer.addChild(sprite);
         n = { sprite, prevX: e.pos.x, prevY: e.pos.y, curX: e.pos.x, curY: e.pos.y, dispX: e.pos.x, dispY: e.pos.y, facing: e.facing };
         this.nodes.set(id, n);
@@ -528,8 +527,7 @@ export class Renderer {
       const color = this.colorByOwner.get(known.owner) ?? '#888888';
       if (!n) {
         const sprite = new Sprite(this.provider.texture(b.art, color));
-        const oblique = this.projectionMode === 'oblique';
-        sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+        sprite.anchor.set(0.5, 0.5);
         sprite.tint = 0xaaaaaa;
         this.entityLayer.addChild(sprite);
         const label = new Text({
