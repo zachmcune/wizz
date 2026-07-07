@@ -13,11 +13,11 @@ describe('movement & pathfinding', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
 
-    const start = { x: 400, y: 800 };
-    const target = { x: 1400, y: 800 };
+    const start = { x: 900, y: 1200 };
+    const target = { x: 2500, y: 1200 };
     const unit = spawnEntity(state, services, null, 'imp_swarmling', 'player0', start.x, start.y);
     // Block the direct horizontal path with a 3x3 structure.
-    spawnEntity(state, services, null, 'golem_forge', 'player0', 900, 800);
+    spawnEntity(state, services, null, 'golem_forge', 'player0', 1700, 1200);
 
     sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [unit.id], x: target.x, y: target.y }]);
 
@@ -37,20 +37,20 @@ describe('movement & pathfinding', () => {
     sim.setAiEnabled(false);
 
     const ids: number[] = [];
-    let x = 500;
-    let y = 500;
+    let x = 900;
+    let y = 900;
     for (let i = 0; i < 64; i++) {
       const e = spawnEntity(state, services, null, 'imp_swarmling', 'player0', x, y);
       ids.push(e.id);
       x += 20;
       if ((i + 1) % 8 === 0) {
-        x = 500;
+        x = 900;
         y += 20;
       }
     }
-    const target = { x: 1100, y: 900 };
+    const target = { x: 2400, y: 2100 };
     sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: ids, x: target.x, y: target.y }]);
-    for (let i = 0; i < 400; i++) sim.step();
+    for (let i = 0; i < 800; i++) sim.step();
 
     const units = ids.map((id) => state.entities.get(id)!).filter(Boolean);
     expect(units.length).toBe(64);

@@ -12,7 +12,7 @@ describe('win conditions', () => {
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
 
-    sim.enqueueNow([{ type: 'build', playerId: 'player1', defId: 'attunement_spire', x: 1648, y: 1168 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player1', defId: 'attunement_spire', x: 3472, y: 2352 }]);
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
     expect(hasSanctum(state, 'player1')).toBe(true);
