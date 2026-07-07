@@ -773,7 +773,10 @@ export class Renderer {
   }
 
   iconCanvas(art: ArtDef, color: string): HTMLCanvasElement {
-    const tex = this.provider.iconTexture(art, color);
+    // Build/train menu previews mirror the match's projection: the flat shape in Classic 2D,
+    // the voxel box in oblique 2.5D. Using the in-world texture keeps the preview identical to
+    // how the unit/building will actually look once placed.
+    const tex = this.provider.texture(art, color);
     return this.app.renderer.extract.canvas(tex) as unknown as HTMLCanvasElement;
   }
 }
