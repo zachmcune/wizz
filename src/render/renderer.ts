@@ -46,7 +46,9 @@ export class Renderer {
   private overlayLayer = new Container();
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
-  private overlay = new Graphics();
+  /** Separate fill/stroke graphics — mixing both on one object causes stray connector lines on Android WebGL. */
+  private overlayFill = new Graphics();
+  private overlayStroke = new Graphics();
   private colorByOwner = new Map<PlayerId, string>();
   private humanOwner: PlayerId = '';
 
@@ -69,7 +71,7 @@ export class Renderer {
     this.provider = new ShapeSpriteProvider(this.app.renderer);
 
     this.world.addChild(this.terrainLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
-    this.overlayLayer.addChild(this.overlay);
+    this.overlayLayer.addChild(this.overlayFill, this.overlayStroke);
     this.app.stage.addChild(this.world);
 
     const worldW = this.map.tileW * TILE;
@@ -89,7 +91,8 @@ export class Renderer {
       if (w > 0 && h > 0) this.app.renderer.resize(w, h);
     }
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
-    this.overlay.clear();
+    this.overlayFill.clear();
+    this.overlayStroke.clear();
     this.effects.reset();
   }
 
@@ -202,7 +205,8 @@ export class Renderer {
     this.world.scale.set(this.camera.zoom);
     this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
 
-    this.overlay.clear();
+    this.overlayFill.clear();
+    this.overlayStroke.clear();
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
@@ -267,7 +271,7 @@ export class Renderer {
       const gx = gh.x - gh.size / 2;
       const gy = gh.y - gh.size / 2;
       this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
-      this.overlay.moveTo(gx, gy).rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+      this.overlayStroke.rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
     }
     if (overlay?.spell) {
       this.strokeRing(overlay.spell.x, overlay.spell.y, overlay.spell.radius, 2, 0xffd166, 0.9);
@@ -281,7 +285,7 @@ export class Renderer {
   private drawPowerOffline(x: number, y: number, radius: number): void {
     this.strokeRing(x, y, radius + 4, 2, 0xff5d5d, 0.85);
     const s = radius * 0.35;
-    this.overlay
+    this.overlayStroke
       .moveTo(x - s, y - s)
       .lineTo(x + s, y + s)
       .moveTo(x + s, y - s)
@@ -318,19 +322,24 @@ export class Renderer {
     if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
   }
 
-  /** Isolated ring stroke — avoids Pixi connecting paths with lines to (0,0). */
+  /** Isolated ring stroke — each ring is its own path to avoid connector lines on mobile GPUs. */
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
+    const full = start === 0 && end >= Math.PI * 2 - 0.001;
+    if (full) {
+      this.overlayStroke.circle(cx, cy, r).stroke({ width, color, alpha });
+      return;
+    }
     const sx = cx + Math.cos(start) * r;
     const sy = cy + Math.sin(start) * r;
-    this.overlay.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
+    this.overlayStroke.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
   private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
-    this.overlay.moveTo(x, y).rect(x, y, w, h).fill({ color, alpha });
+    this.overlayFill.rect(x, y, w, h).fill({ color, alpha });
   }
 
   private fillDot(cx: number, cy: number, r: number, color: number, alpha = 1): void {
-    this.overlay.moveTo(cx + r, cy).arc(cx, cy, r, 0, Math.PI * 2).fill({ color, alpha });
+    this.overlayFill.circle(cx, cy, r).fill({ color, alpha });
   }
 
   /** Pick a mana node at a world position (generous hit area for touch). */
