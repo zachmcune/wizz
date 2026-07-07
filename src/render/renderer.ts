@@ -2,7 +2,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { projectGround, projectionSortKey } from '../core/coords';
-import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y, type ProjectionMode } from '../core/projection';
+import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, type ProjectionMode } from '../core/projection';
 import { lerp } from '../sim/math';
 import type { ResourceNodeEntity } from '../sim/entity-types';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
@@ -630,12 +630,10 @@ export class Renderer {
   ): void {
     const pos = this.drawPos(worldX, worldY);
     const g = this.selectionRingPool.acquire();
-    g.zIndex = depth - 0.001;
-    if (this.isOblique()) {
-      g.ellipse(pos.x, pos.y, radius * OBLIQUE_SCALE_X, radius * OBLIQUE_SCALE_Y).stroke({ width, color, alpha });
-    } else {
-      g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
-    }
+    // Slightly above the entity so the ring isn't clipped by its own sprite, but still
+    // behind anything drawn in front (higher depth).
+    g.zIndex = depth + 0.001;
+    g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
   }
 
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
