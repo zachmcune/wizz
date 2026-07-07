@@ -8,6 +8,9 @@ import { WebSocketServer } from 'ws';
 const TICK_MS = 50;
 const MATCH_LOAD_GRACE_MS = 2500;
 const WS_KEEPALIVE_MS = 30_000;
+const WS_MAX_MISSED_PINGS = 3;
+const TICK_HISTORY_MAX = 1200;
+const RECONNECT_GRACE_MS = 120_000;
 
 const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
@@ -72,6 +75,10 @@ class Room {
     this.tick = 0;
     /** @type {ReturnType<typeof setInterval> | null} */
     this.interval = null;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    this.cleanupTimer = null;
+    /** @type {Array<{ tick: number; cmds: import('../src/sim/types').Command[] }>} */
+    this.tickHistory = [];
     this.started = false;
   }
 
@@ -265,9 +272,12 @@ class Room {
   advance() {
     const merged = mergePending(this.pending, this.tick);
     this.pending = this.pending.filter((p) => p.forTick !== this.tick);
-    const msg = JSON.stringify({ t: 'tick', tick: this.tick, cmds: merged });
+    const tickMsg = { t: 'tick', tick: this.tick, cmds: merged };
+    this.tickHistory.push({ tick: this.tick, cmds: merged });
+    if (this.tickHistory.length > TICK_HISTORY_MAX) this.tickHistory.shift();
+    const data = JSON.stringify(tickMsg);
     for (const ws of this.clients.keys()) {
-      if (ws.readyState === 1) ws.send(msg);
+      if (ws.readyState === 1) ws.send(data);
     }
     this.tick++;
   }
@@ -291,22 +301,74 @@ class Room {
     }
   }
 
+  /** @param {import('ws').WebSocket} ws @param {string} connId @param {number} fromTick */
+  rejoinClient(ws, connId, fromTick) {
+    if (!this.started) {
+      ws.send(JSON.stringify({ t: 'error', message: 'Match not in progress' }));
+      return false;
+    }
+    const slot = this.lobbyState.slots.find((s) => s.claimedBy === connId);
+    if (!slot) {
+      ws.send(JSON.stringify({ t: 'error', message: 'Session expired — rejoin the room from the menu' }));
+      return false;
+    }
+    if (this.cleanupTimer) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    this.clients.set(ws, { connId, slotId: slot.id });
+    ws.send(
+      JSON.stringify({
+        t: 'rejoined',
+        connId,
+        playerId: slot.id,
+        seed: this.seed,
+        startTick: 0,
+        lobbyState: this.lobbyState,
+        currentTick: this.tick,
+      }),
+    );
+    const replayFrom = Math.max(0, Number.isFinite(fromTick) ? fromTick : 0);
+    for (const entry of this.tickHistory) {
+      if (entry.tick >= replayFrom) {
+        ws.send(JSON.stringify({ t: 'tick', tick: entry.tick, cmds: entry.cmds }));
+      }
+    }
+    return true;
+  }
+
+  scheduleEmptyRoomCleanup() {
+    if (this.cleanupTimer) return;
+    this.cleanupTimer = setTimeout(() => {
+      this.cleanupTimer = null;
+      if (this.clients.size === 0) {
+        if (this.interval) clearInterval(this.interval);
+        this.rooms.delete(this.id);
+      }
+    }, RECONNECT_GRACE_MS);
+  }
+
   /** @param {import('ws').WebSocket} ws */
   removeClient(ws) {
     const info = this.clients.get(ws);
     this.clients.delete(ws);
-    if (info) {
-      for (const slot of this.lobbyState.slots) {
-        if (slot.claimedBy === info.connId) {
-          slot.claimedBy = null;
-          slot.ready = false;
-          if (slot.kind === 'human' && ws !== this.hostWs) slot.kind = 'open';
-        }
-      }
-      this.broadcast({ t: 'peerLeft', playerId: info.connId });
-      this.broadcast({ t: 'lobbyState', state: this.lobbyState });
-      this.broadcastWaiting();
+    if (!info) return;
+
+    if (this.started) {
+      if (this.clients.size === 0) this.scheduleEmptyRoomCleanup();
+      return;
     }
+
+    for (const slot of this.lobbyState.slots) {
+      if (slot.claimedBy === info.connId) {
+        slot.claimedBy = null;
+        slot.ready = false;
+        if (slot.kind === 'human' && ws !== this.hostWs) slot.kind = 'open';
+      }
+    }
+    this.broadcast({ t: 'peerLeft', playerId: info.connId });
+    this.broadcast({ t: 'lobbyState', state: this.lobbyState });
+    this.broadcastWaiting();
     if (ws === this.hostWs) this.hostWs = null;
     if (this.clients.size === 0) {
       if (this.interval) clearInterval(this.interval);
@@ -352,8 +414,13 @@ export function attachRelay(server) {
   const keepalive = setInterval(() => {
     for (const ws of wss.clients) {
       if (ws.isAlive === false) {
-        ws.terminate();
-        continue;
+        ws.missedPings = (ws.missedPings ?? 0) + 1;
+        if (ws.missedPings >= WS_MAX_MISSED_PINGS) {
+          ws.terminate();
+          continue;
+        }
+      } else {
+        ws.missedPings = 0;
       }
       ws.isAlive = false;
       ws.ping();
@@ -365,6 +432,7 @@ export function attachRelay(server) {
     /** @type {Room | null} */
     let room = null;
     ws.isAlive = true;
+    ws.missedPings = 0;
     ws.on('pong', () => {
       ws.isAlive = true;
     });
@@ -386,6 +454,17 @@ export function attachRelay(server) {
         if (!rooms.has(roomId)) rooms.set(roomId, new Room(roomId, rooms));
         room = rooms.get(roomId);
         room.addClient(ws, msg.lobbyState);
+        return;
+      }
+
+      if (msg.t === 'rejoin') {
+        const roomId = String(msg.room ?? '').toUpperCase();
+        room = rooms.get(roomId);
+        if (!room) {
+          ws.send(JSON.stringify({ t: 'error', message: 'Room not found' }));
+          return;
+        }
+        room.rejoinClient(ws, String(msg.connId ?? ''), msg.fromTick ?? 0);
         return;
       }
 

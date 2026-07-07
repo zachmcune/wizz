@@ -25,6 +25,7 @@ export class SimController {
   private tickCounter = 0;
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
+  private backgrounded = false;
 
   constructor(
     private state: GameState,
@@ -112,6 +113,11 @@ export class SimController {
     this.sim = createSimulation(this.state, this.services);
   }
 
+  setBackgrounded(hidden: boolean): void {
+    this.backgrounded = hidden;
+    if (!hidden) this.lockstepStallShown = false;
+  }
+
   catchUpLockstep(): void {
     if (!this.lockstep || !this.sim) return;
     let safety = 0;
@@ -120,6 +126,12 @@ export class SimController {
       lastTick = this.state.tick;
     }
     this.finishLockstepBatch(lastTick);
+  }
+
+  /** Process all buffered lockstep ticks after foreground resume or reconnect. */
+  resumeLockstep(): void {
+    this.lockstepStallShown = false;
+    this.catchUpLockstep();
   }
 
   drainLockstep(hudHint: (msg: string) => void): void {
@@ -182,7 +194,7 @@ export class SimController {
   }
 
   private checkLockstepStall(hudHint: (msg: string) => void): void {
-    if (!this.lockstep?.hasReceivedTicks() || this.state.ended) return;
+    if (this.backgrounded || !this.lockstep?.hasReceivedTicks() || this.state.ended) return;
     const gap = this.lockstep.msSinceLastTick();
     if (gap < LOCKSTEP_STALL_MS) {
       this.lockstepStallShown = false;

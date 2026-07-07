@@ -80,6 +80,7 @@ export default [
       sourceType: 'module',
       globals: {
         clearInterval: 'readonly',
+        clearTimeout: 'readonly',
         console: 'readonly',
         process: 'readonly',
         setInterval: 'readonly',

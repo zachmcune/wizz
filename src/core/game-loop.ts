@@ -44,4 +44,10 @@ export class GameLoop {
     this.running = false;
     if (this.rafId) cancelAnimationFrame(this.rafId);
   }
+
+  /** Reset timing after the tab/PWA was backgrounded so catch-up does not spiral. */
+  resetAfterGap(): void {
+    this.accumulator = 0;
+    this.last = performance.now();
+  }
 }

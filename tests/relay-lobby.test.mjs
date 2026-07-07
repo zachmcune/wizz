@@ -108,6 +108,34 @@ describe('relay lobby', () => {
     expect(room.started).toBe(false);
   });
 
+  it('replays ticks for a reconnecting player during a live match', () => {
+    const rooms = new Map();
+    const room = new Room('REJOIN', rooms);
+    const lobby = lobbyWithSlots(2);
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+    claimGuest(room, guest, 'player1', 1);
+    room.setReady(host, 'player0', true);
+    room.tryStartMatch(host);
+    room.advance();
+    room.advance();
+    room.advance();
+
+    const guestInfo = room.clients.get(guest);
+    room.removeClient(guest);
+    expect(room.lobbyState.slots[1].claimedBy).toBe(guestInfo.connId);
+
+    const reconnected = mockWs();
+    room.rejoinClient(reconnected, guestInfo.connId, 1);
+    expect(reconnected.sent.some((m) => m.t === 'rejoined')).toBe(true);
+    const replayTicks = reconnected.sent.filter((m) => m.t === 'tick');
+    expect(replayTicks.length).toBeGreaterThanOrEqual(2);
+    expect(replayTicks[0].tick).toBe(1);
+  });
+
   it('clears guest claims when host closes or AI-fills a slot', () => {
     const rooms = new Map();
     const room = new Room('KICK', rooms);
