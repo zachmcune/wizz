@@ -233,7 +233,7 @@ export function moveTowardGoal(
   const goalTy = Math.floor(goal.y / TILE);
   const field = flow.getFor(nav, goalTx, goalTy, ctx.unitOwner, block);
   const steer = steerToGoal(ctx, e.pos, goal);
-  applySteeredMove(e, steer, speed, ctx, dt, field, e.radius);
+  applySteeredMove(e, steer, speed, ctx, dt, field);
   return d;
 }
 

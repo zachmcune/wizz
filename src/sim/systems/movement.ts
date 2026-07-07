@@ -91,7 +91,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     moveY += sepY * speed * SEP_BLEND;
 
     if (moveX !== 0 || moveY !== 0) {
-      const moved = applyVelocityMove(e, moveX, moveY, pathCtx, dt, field, e.radius);
+      const moved = applyVelocityMove(e, moveX, moveY, pathCtx, dt, field);
       if (moved) e.facing = Math.atan2(moveY, moveX);
       else e.vel = { x: 0, y: 0 };
     } else {
@@ -114,7 +114,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       sepY += sep.y;
     }
     if (sepX === 0 && sepY === 0) continue;
-    const nudge = slidePosition(pathCtx, e.pos.x, e.pos.y, e.pos.x + sepX * 8 * dt, e.pos.y + sepY * 8 * dt, e.radius);
+    const nudge = slidePosition(pathCtx, e.pos.x, e.pos.y, e.pos.x + sepX * 8 * dt, e.pos.y + sepY * 8 * dt);
     if (nudge) {
       e.pos.x = nudge.x;
       e.pos.y = nudge.y;
