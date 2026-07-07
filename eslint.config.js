@@ -83,6 +83,7 @@ export default [
         console: 'readonly',
         process: 'readonly',
         setInterval: 'readonly',
+        setTimeout: 'readonly',
         URL: 'readonly',
       },
     },

@@ -24,3 +24,6 @@ export const CHECKSUM_INTERVAL_TICKS = 60;
 
 /** Relay advances the sim at 20 Hz (must match TICK_HZ). */
 export const RELAY_TICK_MS = 50;
+
+/** Grace period after matchStart before relay ticks (lets clients finish loading). */
+export const MATCH_LOAD_GRACE_MS = 2500;

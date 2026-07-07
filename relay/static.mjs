@@ -58,6 +58,12 @@ export function serveStatic(req, res) {
   }
 
   if (!stat?.isFile()) {
+    const ext = extname(safePath);
+    if (ext && ext !== '.html') {
+      res.writeHead(404);
+      res.end();
+      return true;
+    }
     const fallback = join(ROOT, 'index.html');
     if (!existsSync(fallback)) {
       res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });

@@ -163,23 +163,18 @@ export class Game {
     window.addEventListener('pageshow', this.onVisibilityResume);
 
     if (this.worker) {
-      this.worker.onReady = (transfer) => {
-        applyTransferState(this.state, transfer);
-        rebuildBuildingNav(this.state, this.services, this.registry);
+      const ready = await this.waitForWorkerReady();
+      if (!ready) {
+        this.worker.terminate();
+        this.worker = null;
+        this.sim = new Simulation(this.state, this.services);
         this.renderer.syncTick(this.state);
-      };
-      this.worker.onTick = ({ state, events }) => {
-        applyTransferState(this.state, state);
-        rebuildBuildingNav(this.state, this.services, this.registry);
-        for (const ev of events) this.handleEvent(ev);
-        this.renderer.syncTick(this.state);
-        this.tickCounter++;
-        if (this.tickCounter % 200 === 0) void saveGame(this.state);
-      };
-      this.worker.initState(packState(this.state));
+      }
     } else {
       this.renderer.syncTick(this.state);
     }
+
+    if (this.lockstep) this.catchUpLockstep();
 
     this.loop = new GameLoop(
       () => this.step(),
@@ -290,17 +285,7 @@ export class Game {
     if (this.state.ended) return;
 
     if (this.lockstep) {
-      const tick = this.state.tick;
-      if (!this.lockstep.isTickReady(tick)) return;
-      const cmds = this.lockstep.commandsForTick(tick) ?? [];
-      this.sim!.enqueue(tick, cmds);
-      const res = this.sim!.step();
-      for (const ev of res.events) this.handleEvent(ev);
-      this.renderer.syncTick(this.state);
-      this.tickCounter++;
-      if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
-      if (this.tickCounter % 200 === 0) void saveGame(this.state);
-      this.lockstep.pruneBefore(Math.max(0, tick - 120));
+      this.runLockstepStep();
       return;
     }
 
@@ -314,6 +299,56 @@ export class Game {
     this.renderer.syncTick(this.state);
     this.tickCounter++;
     if (this.tickCounter % 200 === 0) void saveGame(this.state);
+  }
+
+  /** Process one confirmed lockstep tick (used by the main loop and startup catch-up). */
+  private runLockstepStep(): void {
+    const tick = this.state.tick;
+    if (!this.lockstep?.isTickReady(tick)) return;
+    const cmds = this.lockstep.commandsForTick(tick) ?? [];
+    this.sim!.enqueue(tick, cmds);
+    const res = this.sim!.step();
+    for (const ev of res.events) this.handleEvent(ev);
+    this.renderer.syncTick(this.state);
+    this.tickCounter++;
+    if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
+    if (this.tickCounter % 200 === 0) void saveGame(this.state);
+    this.lockstep.pruneBefore(Math.max(0, tick - 120));
+  }
+
+  /** Fast-forward through relay ticks buffered during match load. */
+  private catchUpLockstep(): void {
+    if (!this.lockstep) return;
+    let safety = 0;
+    while (this.lockstep.isTickReady(this.state.tick) && safety < 10_000) {
+      this.runLockstepStep();
+      safety++;
+    }
+  }
+
+  private waitForWorkerReady(): Promise<boolean> {
+    const worker = this.worker;
+    if (!worker) return Promise.resolve(false);
+
+    return new Promise((resolve) => {
+      const timeout = window.setTimeout(() => resolve(worker.isReady), 4000);
+      worker.onReady = (transfer) => {
+        clearTimeout(timeout);
+        applyTransferState(this.state, transfer);
+        rebuildBuildingNav(this.state, this.services, this.registry);
+        this.renderer.syncTick(this.state);
+        resolve(true);
+      };
+      worker.onTick = ({ state, events }) => {
+        applyTransferState(this.state, state);
+        rebuildBuildingNav(this.state, this.services, this.registry);
+        for (const ev of events) this.handleEvent(ev);
+        this.renderer.syncTick(this.state);
+        this.tickCounter++;
+        if (this.tickCounter % 200 === 0) void saveGame(this.state);
+      };
+      worker.initState(packState(this.state));
+    });
   }
 
   private reportChecksum(tick: number): void {

@@ -1,5 +1,6 @@
 // WebSocket transport implementing the lockstep Transport interface.
 import type { Command } from '../sim/types';
+import { LockstepClient } from './lockstep';
 import type { Transport } from './lockstep';
 import type { ClientMessage, ServerMessage } from './protocol';
 
@@ -12,6 +13,8 @@ export type ErrorHandler = (message: string) => void;
 export class WebSocketTransport implements Transport {
   private tickCb: ((tick: number, cmds: Command[]) => void) | null = null;
   private peerCb: ((playerId: string, tick: number, hash: string) => void) | null = null;
+  private tickBuffer: Array<{ tick: number; cmds: Command[] }> = [];
+  private peerChecksumBuffer: Array<{ playerId: string; tick: number; hash: string }> = [];
   onMatchStart: MatchStartHandler | null = null;
   onWaiting: WaitingHandler | null = null;
   onPeerJoined: PeerJoinedHandler | null = null;
@@ -33,10 +36,14 @@ export class WebSocketTransport implements Transport {
 
   onTickCommands(cb: (tick: number, cmds: Command[]) => void): void {
     this.tickCb = cb;
+    for (const msg of this.tickBuffer) cb(msg.tick, msg.cmds);
+    this.tickBuffer = [];
   }
 
   onPeerChecksum(cb: (playerId: string, tick: number, hash: string) => void): void {
     this.peerCb = cb;
+    for (const msg of this.peerChecksumBuffer) cb(msg.playerId, msg.tick, msg.hash);
+    this.peerChecksumBuffer = [];
   }
 
   join(room: string, matchId: string): void {
@@ -62,10 +69,12 @@ export class WebSocketTransport implements Transport {
     }
     switch (msg.t) {
       case 'tick':
-        this.tickCb?.(msg.tick, msg.cmds);
+        if (this.tickCb) this.tickCb(msg.tick, msg.cmds);
+        else this.tickBuffer.push({ tick: msg.tick, cmds: msg.cmds });
         break;
       case 'peerChecksum':
-        this.peerCb?.(msg.playerId, msg.tick, msg.hash);
+        if (this.peerCb) this.peerCb(msg.playerId, msg.tick, msg.hash);
+        else this.peerChecksumBuffer.push({ playerId: msg.playerId, tick: msg.tick, hash: msg.hash });
         break;
       case 'matchStart':
         this.onMatchStart?.(msg.startTick);
@@ -103,19 +112,20 @@ function openSocket(url: string): Promise<WebSocket> {
   });
 }
 
-/** Connect, join a room, and wait for the join ack. */
+/** Connect, join a room, and wait for the join ack. Lockstep is created before join to avoid tick races. */
 export async function connectAndJoin(
   relayUrl: string,
   room: string,
   matchId: string,
   timeoutMs = 15_000,
-): Promise<{ ws: WebSocket; transport: WebSocketTransport; joined: LockstepJoinResult }> {
+): Promise<{ ws: WebSocket; transport: WebSocketTransport; lockstep: LockstepClient; joined: LockstepJoinResult }> {
   const ws = await openSocket(relayUrl);
   const transport = new WebSocketTransport(ws);
+  const lockstep = new LockstepClient(transport);
   const joinedPromise = waitForJoin(ws, timeoutMs);
   transport.join(room, matchId);
   const joined = await joinedPromise;
-  return { ws, transport, joined };
+  return { ws, transport, lockstep, joined };
 }
 
 /** Wait for the next `joined` message from the relay. */

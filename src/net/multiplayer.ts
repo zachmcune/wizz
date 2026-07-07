@@ -40,8 +40,7 @@ export interface MultiplayerSession {
 
 export async function joinMultiplayerRoom(room: string, matchId = ONLINE_MATCH_ID): Promise<MultiplayerSession> {
   const code = room.toUpperCase();
-  const { transport, joined } = await connectAndJoin(relayWsUrl(), code, matchId);
-  const lockstep = new LockstepClient(transport);
+  const { transport, lockstep, joined } = await connectAndJoin(relayWsUrl(), code, matchId);
 
   let resolveMatchStart!: () => void;
   const matchStarted = new Promise<void>((resolve) => {

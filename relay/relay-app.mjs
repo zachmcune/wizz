@@ -6,6 +6,7 @@ import { randomInt } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 
 const TICK_MS = 50;
+const MATCH_LOAD_GRACE_MS = 2500;
 const PLAYER_SLOTS = ['player0', 'player1'];
 
 /** @param {import('./relay-types').PendingCommand[]} pending @param {number} tick */
@@ -80,7 +81,10 @@ class Room {
   startMatch() {
     this.broadcast({ t: 'matchStart', startTick: 0 });
     if (this.interval) return;
-    this.interval = setInterval(() => this.advance(), TICK_MS);
+    setTimeout(() => {
+      if (this.clients.size === 0) return;
+      this.interval = setInterval(() => this.advance(), TICK_MS);
+    }, MATCH_LOAD_GRACE_MS);
   }
 
   advance() {
