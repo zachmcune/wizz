@@ -74,6 +74,7 @@ export interface BuildingDef {
   powerProduced?: number;
   powerUsed?: number;
   unlocksSpells?: string[];
+  isRadar?: boolean; // reveals entire map on minimap (RA2 radar)
   weapon?: WeaponDef | null; // Ward Turret
   art: ArtDef;
   sfx?: SfxDef;

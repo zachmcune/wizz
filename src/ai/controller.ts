@@ -10,7 +10,7 @@ import { len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
 // Ordered tech/economy build goals the AI works through.
-const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'summoning_circle', 'golem_forge', 'arcane_nexus'];
+const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus'];
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
   const cmds: Command[] = [];

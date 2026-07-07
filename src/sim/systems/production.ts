@@ -5,6 +5,7 @@ import type { GameState, Entity } from '../types';
 import { entitiesSorted } from '../queries';
 import { buildingHasPower } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
+import { onRadarBuilt } from '../fog';
 
 export function productionSystem(state: GameState, ctx: StepContext): void {
   // Decrement spell cooldowns + expire buffs handled here (deterministic, per tick).
@@ -32,6 +33,10 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
         e.buildProgress = undefined;
         e.hp = e.maxHp;
         unlockTech(state, e.owner, e.defId); // tech becomes available only when complete
+        if (bdef.isRadar) {
+          const owner = state.players.find((p) => p.id === e.owner);
+          if (owner) onRadarBuilt(owner);
+        }
         ctx.events.push({ type: 'buildingComplete', id: e.id, defId: e.defId, owner: e.owner });
         if (bdef.spawnsFreeWisp) spawnFreeUnit(state, ctx, e, 'wisp');
         powerDirty = true;

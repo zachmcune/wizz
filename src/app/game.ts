@@ -81,6 +81,7 @@ export class Game {
     this.boxEl.style.pointerEvents = 'none';
     canvasHost.appendChild(this.boxEl);
     await this.renderer.init(canvasHost);
+    this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state);
 
     // center camera on the human's start
@@ -130,7 +131,7 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
-    this.hud.showHint('Tap teal nodes to send wisps · Build Attunement Spire (MINE) to deposit mana');
+    this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
   }
 
   private setupGestures(): void {
@@ -261,7 +262,7 @@ export class Game {
     this.gesture.update(now);
     const overlay = this.buildOverlay();
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay);
-    this.minimap.render(this.state);
+    this.minimap.render(this.state, this.humanId, this.services.nav);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);

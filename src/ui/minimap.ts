@@ -1,9 +1,12 @@
 // Minimap: a small 2D-canvas overview. Tap/drag to move the camera. Draws terrain, entities,
 // and the current viewport rectangle. Independent of the Pixi renderer for simplicity.
 import { TILE } from '../core/constants';
-import type { GameState } from '../sim/types';
+import type { GameState, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
+import { getPlayer } from '../sim/queries';
+import { isVisibleTo } from '../sim/fog';
+import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
   readonly canvas: HTMLCanvasElement;
@@ -29,7 +32,6 @@ export class Minimap {
 
     const jump = (ev: PointerEvent) => {
       const rect = this.canvas.getBoundingClientRect();
-      // map client coords -> canvas coords -> world coords
       const cx = ((ev.clientX - rect.left) / rect.width) * this.canvas.width;
       const cy = ((ev.clientY - rect.top) / rect.height) * this.canvas.height;
       this.camera.centerOn(cx / this.scale, cy / this.scale);
@@ -43,23 +45,33 @@ export class Minimap {
     });
   }
 
-  render(state: GameState): void {
+  render(state: GameState, viewerId: PlayerId, nav: NavGrid): void {
     const c = this.ctx;
     const s = this.scale;
+    const viewer = getPlayer(state, viewerId);
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    c.fillStyle = '#0e0c16';
+    c.fillStyle = '#000000';
     c.fillRect(0, 0, this.worldW * s, this.worldH * s);
 
-    // blocked terrain
-    c.fillStyle = '#2a2540';
+    if (!viewer) return;
+
     for (let ty = 0; ty < this.map.tileH; ty++) {
       for (let tx = 0; tx < this.map.tileW; tx++) {
-        if (this.map.tiles[ty * this.map.tileW + tx] === 1) c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
+        const i = ty * this.map.tileW + tx;
+        if (!viewer.hasRadar && viewer.explored[i] === 0) continue;
+        const blocked = this.map.tiles[i] === 1;
+        c.fillStyle = blocked ? '#2a2540' : '#1a1826';
+        c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
+        if (viewer.explored[i] === 1 && viewer.visible[i] === 0) {
+          c.fillStyle = 'rgba(0, 0, 0, 0.55)';
+          c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
+        }
       }
     }
 
     for (const e of state.entities.values()) {
       if (e.kind === 'projectile') continue;
+      if (!isVisibleTo(state, viewerId, e, nav)) continue;
       if (e.kind === 'resource_node') {
         const max = e.amountMax ?? e.amount ?? 1;
         const frac = Math.max(0, (e.amount ?? 0) / max);
