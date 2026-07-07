@@ -106,10 +106,7 @@ export class Hud {
     this.minimapPanel.body.append(minimapWrap);
     this.minimapPanel.root.classList.add('minimap-panel');
 
-    this.buildConfirmBtn.addEventListener('click', () => {
-      if (this.controller.session.mode === 'deploy') this.controller.confirmDeploy();
-      else this.controller.confirmBuild();
-    });
+    this.buildConfirmBtn.addEventListener('click', () => this.controller.confirmPlacement());
     this.buildCancelBtn.addEventListener('click', () => this.controller.setMode('normal'));
     this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
     this.buildConfirm.style.display = 'none';
@@ -375,24 +372,33 @@ export class Hud {
       this.buildConfirm.style.display = 'flex';
       this.buildConfirmLabel.textContent = 'Tap map to set rally point';
       this.buildConfirmBtn.style.display = 'none';
-    } else if ((session.mode === 'build' && session.buildGhost && session.buildDefId) || (session.mode === 'deploy' && session.buildGhost)) {
+    } else if (
+      (session.mode === 'build' && session.buildDefId && (session.buildGhost || session.wallDragTiles?.length)) ||
+      (session.mode === 'deploy' && session.buildGhost)
+    ) {
       this.buildConfirmBtn.style.display = '';
       const def =
         session.mode === 'deploy'
           ? this.registry.buildings.get('waystone_camp')!
           : this.registry.buildings.get(session.buildDefId!)!;
-      const ok = session.buildGhost!.valid;
+      const wallPreview = session.wallDragTiles?.length;
+      const ok = wallPreview ? this.controller.wallPlacementValid() : session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
-      const hint =
-        ok
-          ? '· tap Place to confirm'
-          : session.mode === 'deploy'
-            ? '· blocked'
-            : session.buildGhost!.issue === 'range'
-              ? '· too far from base'
-              : '· blocked';
+      const hint = ok
+        ? '· tap Place to confirm'
+        : session.mode === 'deploy'
+          ? '· blocked'
+          : session.buildGhost?.issue === 'range'
+            ? '· too far from base'
+            : '· blocked';
       const prefix = session.mode === 'deploy' ? 'Deploy' : def.name;
-      this.buildConfirmLabel.textContent = `${prefix} (${session.mode === 'deploy' ? 'free' : def.cost}) ${hint}`;
+      const costLabel =
+        session.mode === 'deploy'
+          ? 'free'
+          : wallPreview && session.wallDragTiles
+            ? String(def.cost * session.wallDragTiles.filter((t) => t.valid).length)
+            : String(def.cost);
+      this.buildConfirmLabel.textContent = `${prefix} (${costLabel}) ${hint}`;
       this.buildConfirmBtn.disabled = !ok;
     } else {
       this.buildConfirm.style.display = 'none';
