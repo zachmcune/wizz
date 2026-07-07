@@ -42,16 +42,34 @@ export class Hud {
   private lastSelectionKey = '';
   private panelTabRow = el('div', 'panel-tab-row');
   private infoTabBtn = el('button', 'btn panel-tab', 'Info');
-  private commandTabBtn = el('button', 'btn panel-tab', 'Build & Train');
+  private commandTabBtn = el('button', 'btn panel-tab', 'Build');
+  private cmdSidebar = el('div', 'cmd-sidebar');
+  private cmdContent = el('div', 'cmd-content');
 
   onExit: (() => void) | null = null;
+
+  private syncSidebarVisibility(): void {
+    const tabsVisible = this.panelTabRow.style.display !== 'none';
+    const actionsVisible = this.buildingActions.row.style.display !== 'none';
+    this.cmdSidebar.style.display = tabsVisible || actionsVisible ? 'flex' : 'none';
+    this.cmdSidebar.parentElement?.classList.toggle('cmd-tabs-mode', tabsVisible);
+  }
 
   private setHudTab(tab: 'info' | 'command'): void {
     this.hudTab = tab;
     this.infoTabBtn.classList.toggle('active', tab === 'info');
     this.commandTabBtn.classList.toggle('active', tab === 'command');
-    this.infoPanel.setOpen(tab === 'info');
-    this.commandMenu.panel.setOpen(tab === 'command');
+    const tabsMode = this.panelTabRow.style.display !== 'none';
+    if (tabsMode) {
+      this.infoPanel.root.style.display = tab === 'info' ? '' : 'none';
+      this.commandMenu.panel.root.style.display = tab === 'command' ? '' : 'none';
+      this.infoPanel.setOpen(true);
+      this.commandMenu.panel.setOpen(true);
+    } else {
+      this.infoPanel.root.style.display = '';
+      this.infoPanel.setOpen(tab === 'info');
+      this.commandMenu.panel.setOpen(tab === 'command');
+    }
   }
 
   constructor(
@@ -91,22 +109,28 @@ export class Hud {
 
     this.infoTabBtn.addEventListener('click', () => this.setHudTab('info'));
     this.commandTabBtn.addEventListener('click', () => this.setHudTab('command'));
+    this.commandTabBtn.title = 'Build & Train';
     this.panelTabRow.append(this.infoTabBtn, this.commandTabBtn);
     this.panelTabRow.style.display = 'none';
 
     this.unitOrdersPanel = new UnitOrdersPanel(state, registry, controller, playerId, false);
 
-    const cmdCard = el('div', 'cmd-card hud-scroll');
-    cmdCard.append(
+    this.cmdSidebar.append(this.panelTabRow, this.buildingActions.row);
+    this.cmdContent.append(
       this.infoPanel.root,
-      this.panelTabRow,
-      this.buildingActions.row,
       this.commandMenu.panel.root,
       this.unitOrdersPanel.panel.root,
     );
+    this.cmdSidebar.style.display = 'none';
+
+    const cmdCard = el('div', 'cmd-card hud-scroll');
+    const cmdCardLayout = el('div', 'cmd-card-layout');
+    cmdCardLayout.append(this.cmdSidebar, this.cmdContent);
+    cmdCard.append(cmdCardLayout);
     const keepScroll = (e: Event) => e.stopPropagation();
     for (const node of [
       cmdCard,
+      this.cmdSidebar,
       this.spellBar.row,
       this.panelTabRow,
       ...this.commandMenu.touchRoots,
@@ -388,6 +412,7 @@ export class Hud {
       selectionLabel,
       sel.length > 1,
     );
+    this.syncSidebarVisibility();
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';
