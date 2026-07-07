@@ -46,10 +46,10 @@ describe('fog of war', () => {
     human.mana = 8000;
 
     const sanctum = [...state.entities.values()].find((e) => e.owner === human.id && e.defId === 'sanctum')!;
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'ley_conduit', x: sanctum.pos.x + 96, y: sanctum.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'ley_conduit', x: sanctum.pos.x + 112, y: sanctum.pos.y }]);
     sim.step();
     for (let i = 0; i < 200; i++) sim.step();
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'scrying_obelisk', x: sanctum.pos.x + 160, y: sanctum.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'scrying_obelisk', x: sanctum.pos.x + 208, y: sanctum.pos.y }]);
     for (let i = 0; i < 200; i++) sim.step();
 
     expect(ownedBy(state, human.id).some((e) => e.defId === 'scrying_obelisk')).toBe(true);

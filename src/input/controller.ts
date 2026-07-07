@@ -46,7 +46,7 @@ export class InputController {
     private playerId: string,
     private emit: (cmd: Command) => void,
     private onOrderFeedback: (kind: string, world: Vec2) => void,
-    private canPlace: (tx: number, ty: number, footprint: number) => boolean,
+    private canPlace: (tx: number, ty: number, footprint: number, spacing?: number) => boolean,
     private canBuildNear: (tx: number, ty: number, footprint: number) => boolean,
     private onNode: (tx: number, ty: number, footprint: number) => boolean,
   ) {}

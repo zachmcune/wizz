@@ -1,13 +1,24 @@
-import { TILE } from '../../core/constants';
 import { screenToWorld } from '../../core/coords';
 import type { Vec2 } from '../../core/coords';
 import type { Registry } from '../../data/registry';
 import type { Camera } from '../../render/camera';
-import type { RenderOverlay } from '../../render/renderer';
+import type { BuildPlacementGhost, RenderOverlay } from '../../render/renderer';
 import type { SimServices } from '../../sim/context';
 import { buildZoneCircles } from '../../sim/build-zone';
 import type { GameState, PlayerId } from '../../sim/types';
 import type { SessionState } from '../../input/session';
+
+function placementGhost(
+  state: GameState,
+  humanId: PlayerId,
+  defId: string,
+  x: number,
+  y: number,
+  valid: boolean,
+): BuildPlacementGhost {
+  const color = state.players.find((p) => p.id === humanId)?.color ?? '#ffffff';
+  return { x, y, valid, defId, color };
+}
 
 export function buildMatchOverlay(
   state: GameState,
@@ -18,21 +29,24 @@ export function buildMatchOverlay(
   camera: Camera,
   lastPointer: Vec2,
 ): RenderOverlay {
-  let ghost: { x: number; y: number; size: number; valid: boolean } | undefined;
-  let wallGhosts: { x: number; y: number; size: number; valid: boolean }[] | undefined;
+  let ghost: BuildPlacementGhost | undefined;
+  let wallGhosts: BuildPlacementGhost[] | undefined;
   if (session.mode === 'build' && session.buildDefId) {
     const def = registry.buildings.get(session.buildDefId);
     if (def) {
-      const size = def.footprint * TILE;
       if (session.wallDragTiles?.length) {
-        wallGhosts = session.wallDragTiles.map((t) => ({ x: t.x, y: t.y, size, valid: t.valid }));
+        wallGhosts = session.wallDragTiles.map((t) =>
+          placementGhost(state, humanId, def.id, t.x, t.y, t.valid),
+        );
       } else if (session.buildGhost) {
-        ghost = { x: session.buildGhost.x, y: session.buildGhost.y, size, valid: session.buildGhost.valid };
+        ghost = placementGhost(state, humanId, def.id, session.buildGhost.x, session.buildGhost.y, session.buildGhost.valid);
       }
     }
   } else if (session.mode === 'deploy' && session.buildGhost) {
     const def = registry.buildings.get('waystone_camp');
-    if (def) ghost = { x: session.buildGhost.x, y: session.buildGhost.y, size: def.footprint * TILE, valid: session.buildGhost.valid };
+    if (def) {
+      ghost = placementGhost(state, humanId, def.id, session.buildGhost.x, session.buildGhost.y, session.buildGhost.valid);
+    }
   }
   let spell: { x: number; y: number; radius: number } | undefined;
   if (session.mode === 'spell' && session.spellId) {

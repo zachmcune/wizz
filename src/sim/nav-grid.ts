@@ -1,5 +1,6 @@
 // Tile passability grid. Derived from map terrain + building footprints.
 // Used by pathfinding (flow fields) and building placement validation.
+import { BUILD_SPACING_TILES } from '../core/constants';
 import { TILE } from '../core/constants';
 import type { MapData } from '../data/defs';
 import type { PlayerId, Relation } from './types';
@@ -189,9 +190,9 @@ export class NavGrid {
     return this.blocked[i] === 1;
   }
 
-  canPlace(tx: number, ty: number, footprint: number): boolean {
-    for (let dy = 0; dy < footprint; dy++) {
-      for (let dx = 0; dx < footprint; dx++) {
+  canPlace(tx: number, ty: number, footprint: number, spacing = BUILD_SPACING_TILES): boolean {
+    for (let dy = -spacing; dy < footprint + spacing; dy++) {
+      for (let dx = -spacing; dx < footprint + spacing; dx++) {
         if (this.isOccupied(tx + dx, ty + dy)) return false;
       }
     }

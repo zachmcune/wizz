@@ -1,4 +1,4 @@
-import { TILE } from '../../../core/constants';
+import { BUILD_SPACING_TILES, TILE } from '../../../core/constants';
 import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
@@ -21,7 +21,7 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
   }
   const tx = Math.floor((cmd.x - (def.footprint * TILE) / 2) / TILE);
   const ty = Math.floor((cmd.y - (def.footprint * TILE) / 2) / TILE);
-  if (!ctx.services.nav.canPlace(tx, ty, def.footprint)) {
+  if (!ctx.services.nav.canPlace(tx, ty, def.footprint, def.isWall ? 0 : BUILD_SPACING_TILES)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }
@@ -58,7 +58,7 @@ export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Co
 
   const tx = Math.floor((cmd.x - (bdef.footprint * TILE) / 2) / TILE);
   const ty = Math.floor((cmd.y - (bdef.footprint * TILE) / 2) / TILE);
-  if (!ctx.services.nav.canPlace(tx, ty, bdef.footprint)) {
+  if (!ctx.services.nav.canPlace(tx, ty, bdef.footprint, bdef.isWall ? 0 : BUILD_SPACING_TILES)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }

@@ -17,7 +17,7 @@ export function updateBuildGhost(ctx: InputContext, world: Vec2): void {
   const def = ctx.registry.buildings.get(ctx.session.buildDefId);
   if (!def) return;
   const { tx, ty } = tileAt(world, def.footprint);
-  ctx.session.buildGhost = ghostAtTile(ctx, tx, ty, def.footprint);
+  ctx.session.buildGhost = ghostAtTile(ctx, tx, ty, def.footprint, def.id);
 }
 
 export function startWallDrag(ctx: InputContext, world: Vec2): void {
@@ -25,7 +25,7 @@ export function startWallDrag(ctx: InputContext, world: Vec2): void {
   const def = ctx.registry.buildings.get(ctx.session.buildDefId)!;
   const { tx, ty } = tileAt(world, def.footprint);
   ctx.session.wallDragStart = { tx, ty };
-  ctx.session.wallDragTiles = [ghostAtTile(ctx, tx, ty, def.footprint)];
+  ctx.session.wallDragTiles = [ghostAtTile(ctx, tx, ty, def.footprint, def.id)];
   ctx.session.buildGhost = ctx.session.wallDragTiles[0]!;
 }
 
@@ -35,7 +35,7 @@ export function updateWallDrag(ctx: InputContext, world: Vec2): void {
   const { tx, ty } = tileAt(world, def.footprint);
   const start = ctx.session.wallDragStart;
   ctx.session.wallDragTiles = wallLineTiles(start.tx, start.ty, tx, ty).map((t) =>
-    ghostAtTile(ctx, t.tx, t.ty, def.footprint),
+    ghostAtTile(ctx, t.tx, t.ty, def.footprint, def.id),
   );
   const last = ctx.session.wallDragTiles[ctx.session.wallDragTiles.length - 1];
   if (last) ctx.session.buildGhost = last;
@@ -46,7 +46,7 @@ export function previewWallAt(ctx: InputContext, world: Vec2): void {
   const def = ctx.registry.buildings.get(ctx.session.buildDefId)!;
   const { tx, ty } = tileAt(world, def.footprint);
   ctx.session.wallDragStart = null;
-  ctx.session.wallDragTiles = [ghostAtTile(ctx, tx, ty, def.footprint)];
+  ctx.session.wallDragTiles = [ghostAtTile(ctx, tx, ty, def.footprint, def.id)];
   ctx.session.buildGhost = ctx.session.wallDragTiles[0]!;
 }
 

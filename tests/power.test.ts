@@ -45,13 +45,13 @@ describe('RA2 low power', () => {
     const human = state.players.find((p) => p.id === 'player0')!;
     human.mana = 5000;
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'ward_turret', x: sanctum!.pos.x + 64, y: sanctum!.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'ward_turret', x: sanctum!.pos.x + 96, y: sanctum!.pos.y }]);
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'summoning_circle', x: sanctum!.pos.x + 128, y: sanctum!.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'summoning_circle', x: sanctum!.pos.x + 176, y: sanctum!.pos.y }]);
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'summoning_circle', x: sanctum!.pos.x + 192, y: sanctum!.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'summoning_circle', x: sanctum!.pos.x + 272, y: sanctum!.pos.y }]);
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
     expect(isPowerShort(state, human.id)).toBe(true);

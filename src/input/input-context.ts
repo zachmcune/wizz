@@ -16,7 +16,7 @@ export interface InputContext {
   toWorld: (p: Vec2) => Vec2;
   emit: (cmd: Command) => void;
   onOrderFeedback: (kind: string, world: Vec2) => void;
-  canPlace: (tx: number, ty: number, footprint: number) => boolean;
+  canPlace: (tx: number, ty: number, footprint: number, spacing?: number) => boolean;
   canBuildNear: (tx: number, ty: number, footprint: number) => boolean;
   onNode: (tx: number, ty: number, footprint: number) => boolean;
   setSelection: (ids: EntityId[]) => void;

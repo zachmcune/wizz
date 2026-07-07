@@ -23,9 +23,17 @@ const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
 const NODE_DEPLETED_COLOR = '#4a4a5a';
 
+export interface BuildPlacementGhost {
+  x: number;
+  y: number;
+  valid: boolean;
+  defId: string;
+  color: string;
+}
+
 export interface RenderOverlay {
-  ghost?: { x: number; y: number; size: number; valid: boolean };
-  wallGhosts?: { x: number; y: number; size: number; valid: boolean }[];
+  ghost?: BuildPlacementGhost;
+  wallGhosts?: BuildPlacementGhost[];
   spell?: { x: number; y: number; radius: number };
   confirm?: { x: number; y: number } | null;
   buildZones?: { x: number; y: number; r: number }[];
@@ -61,6 +69,7 @@ export class Renderer {
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
   private ghostNodes = new Map<EntityId, RenderNode>();
+  private placementGhosts: Sprite[] = [];
   private overlayFillPool!: GraphicsPool;
   private overlayStrokePool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
@@ -438,23 +447,10 @@ export class Renderer {
         this.strokeRing(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
       }
     }
-    if (overlay?.ghost) {
-      const gh = overlay.ghost;
-      const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-      const p = this.drawPos(gh.x, gh.y);
-      const half = gh.size / 2;
-      this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
-      this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
-    }
-    if (overlay?.wallGhosts?.length) {
-      for (const gh of overlay.wallGhosts) {
-        const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-        const p = this.drawPos(gh.x, gh.y);
-        const half = gh.size / 2;
-        this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
-        this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
-      }
-    }
+    const placementGhosts: BuildPlacementGhost[] = [];
+    if (overlay?.ghost) placementGhosts.push(overlay.ghost);
+    if (overlay?.wallGhosts?.length) placementGhosts.push(...overlay.wallGhosts);
+    this.renderPlacementGhosts(placementGhosts);
     if (overlay?.spell) {
       const p = this.drawPos(overlay.spell.x, overlay.spell.y);
       this.strokeRing(p.x, p.y, overlay.spell.radius, 2, 0xffd166, 0.9);
@@ -582,6 +578,32 @@ export class Renderer {
     }
   }
 
+  private renderPlacementGhosts(ghosts: BuildPlacementGhost[]): void {
+    while (this.placementGhosts.length < ghosts.length) {
+      const sprite = new Sprite();
+      sprite.anchor.set(0.5, 0.5);
+      this.entityLayer.addChild(sprite);
+      this.placementGhosts.push(sprite);
+    }
+    for (let i = 0; i < this.placementGhosts.length; i++) {
+      const sprite = this.placementGhosts[i]!;
+      const ghost = ghosts[i];
+      if (!ghost) {
+        sprite.visible = false;
+        continue;
+      }
+      const def = this.registry.building(ghost.defId);
+      sprite.texture = this.provider.texture(def.art, ghost.color);
+      const pos = this.drawPos(ghost.x, ghost.y);
+      sprite.position.set(pos.x, pos.y);
+      sprite.rotation = 0;
+      sprite.alpha = ghost.valid ? 0.72 : 0.48;
+      sprite.tint = ghost.valid ? 0xafffbf : 0xffa0a0;
+      sprite.visible = true;
+      if (this.isOblique()) sprite.zIndex = this.sortKeyAt(ghost.x, ghost.y) + 0.5;
+    }
+  }
+
   private drawHpBar(x: number, y: number, e: Entity | KnownBuilding): void {
     const w = Math.max(16, e.radius * 2);
     const frac = Math.max(0, e.hp / e.maxHp);
@@ -632,6 +654,8 @@ export class Renderer {
   }
 
   destroy(): void {
+    for (const sprite of this.placementGhosts) sprite.destroy();
+    this.placementGhosts = [];
     for (const n of this.ghostNodes.values()) {
       n.sprite.destroy();
       n.label?.destroy();
