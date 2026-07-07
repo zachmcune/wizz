@@ -16,6 +16,8 @@ export interface Projection {
   worldToScreen(world: Vec2, cam: CameraView, visualHeight?: number): Vec2;
   screenToWorld(screen: Vec2, cam: CameraView): Vec2;
   sortKey(world: Vec2, cam: CameraView, visualHeight?: number): number;
+  /** Convert a screen drag delta to camera top-left movement in world space. */
+  screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2;
 }
 
 function projectObliqueGround(world: Vec2, visualHeight = 0): Vec2 {
@@ -43,6 +45,9 @@ export const OrthoProjection: Projection = {
   sortKey(world: Vec2, _cam: CameraView, _visualHeight = 0): number {
     return world.y;
   },
+  screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2 {
+    return { x: -dxScreen / zoom, y: -dyScreen / zoom };
+  },
 };
 
 export const ObliqueProjection: Projection = {
@@ -65,6 +70,14 @@ export const ObliqueProjection: Projection = {
   },
   sortKey(world: Vec2, cam: CameraView, visualHeight = 0): number {
     return this.worldToScreen(world, cam, visualHeight).y;
+  },
+  screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2 {
+    const invZoom = 1 / zoom;
+    const dwx =
+      -0.5 * (dxScreen * invZoom / OBLIQUE_SCALE_X + dyScreen * invZoom / OBLIQUE_SCALE_Y);
+    const dwy =
+      0.5 * (dxScreen * invZoom / OBLIQUE_SCALE_X - dyScreen * invZoom / OBLIQUE_SCALE_Y);
+    return { x: dwx, y: dwy };
   },
 };
 

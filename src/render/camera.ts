@@ -1,9 +1,9 @@
 // View camera over the world. Position is the world coord at the viewport's top-left.
 // Smoothly clamped to map bounds and zoom limits. Lives outside the sim (view concern).
-import { MIN_ZOOM, MAX_ZOOM } from '../core/constants';
+import { CAMERA_OVERSCROLL_RATIO, MIN_ZOOM, MAX_ZOOM } from '../core/constants';
 import { clamp } from '../sim/math';
 import type { CameraView, Vec2 } from '../core/coords';
-import { screenToWorld } from '../core/coords';
+import { screenPanToCameraDelta, screenToWorld } from '../core/coords';
 
 export class Camera implements CameraView {
   x = 0;
@@ -35,9 +35,11 @@ export class Camera implements CameraView {
     this.clampToBounds();
   }
 
+  /** Pan so world content follows the finger/mouse (projection-aware). */
   panByScreen(dxScreen: number, dyScreen: number): void {
-    this.x -= dxScreen / this.zoom;
-    this.y -= dyScreen / this.zoom;
+    const delta = screenPanToCameraDelta(dxScreen, dyScreen, this.zoom);
+    this.x += delta.x;
+    this.y += delta.y;
     this.clampToBounds();
   }
 
@@ -62,13 +64,23 @@ export class Camera implements CameraView {
     this.clampToBounds();
   }
 
+  private overscrollPad(): { x: number; y: number } {
+    const viewWorldW = this.viewW / this.zoom;
+    const viewWorldH = this.viewH / this.zoom;
+    return {
+      x: viewWorldW * CAMERA_OVERSCROLL_RATIO,
+      y: viewWorldH * CAMERA_OVERSCROLL_RATIO,
+    };
+  }
+
   private clampToBounds(): void {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
+    const pad = this.overscrollPad();
     if (viewWorldW >= this.worldW) this.x = (this.worldW - viewWorldW) / 2;
-    else this.x = clamp(this.x, 0, this.worldW - viewWorldW);
+    else this.x = clamp(this.x, -pad.x, this.worldW - viewWorldW + pad.x);
     if (viewWorldH >= this.worldH) this.y = (this.worldH - viewWorldH) / 2;
-    else this.y = clamp(this.y, 0, this.worldH - viewWorldH);
+    else this.y = clamp(this.y, -pad.y, this.worldH - viewWorldH + pad.y);
   }
 
   view(): CameraView {
