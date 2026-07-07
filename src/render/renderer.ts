@@ -371,15 +371,16 @@ export class Renderer {
         this.ghostNodes.set(known.id, n);
       } else {
         n.sprite.texture = this.provider.texture(b.art, color);
-        if (n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
+        if (n.label && n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
       }
 
+      const label = n.label!;
       n.sprite.position.set(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
-      n.label.position.set(known.x, known.y + known.radius + 4);
-      n.label.alpha = 0.55;
-      n.label.visible = true;
+      label.position.set(known.x, known.y + known.radius + 4);
+      label.alpha = 0.55;
+      label.visible = true;
 
       const ownerCol = this.colorByOwner.get(known.owner);
       if (ownerCol) this.strokeRing(known.x, known.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
