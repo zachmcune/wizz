@@ -185,4 +185,6 @@ export interface MatchConfig {
   mapId: string;
   seed: number;
   players: MatchPlayerConfig[];
+  /** When true, eliminated human players see the live full map (no fog) while spectating. */
+  deadSpectatorReveal?: boolean;
 }

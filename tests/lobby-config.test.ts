@@ -95,6 +95,15 @@ describe('lobby config', () => {
     expect(fourCfg.players.every((p) => p.controller === 'human')).toBe(true);
   });
 
+  it('passes dead spectator reveal setting into match config', () => {
+    const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
+    lobby.deadSpectatorReveal = true;
+    const config = buildMatchConfig(lobby);
+    expect(config.deadSpectatorReveal).toBe(true);
+  });
+
   it('builds a deterministic 4-player 2v2 AI match from lobby template', () => {
     const template = getLobbyTemplates(reg).find((t) => t.id === '2v2_ai');
     expect(template).toBeDefined();

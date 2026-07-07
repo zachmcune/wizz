@@ -20,7 +20,7 @@ import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
-import { isWorldPointVisible } from '../sim/views';
+import { isWorldPointVisible, shouldRevealAllForViewer } from '../sim/views';
 import { applyTransferState, packState } from '../sim/state-transfer';
 import { rebuildBuildingNav } from '../sim/building-nav';
 import { ReplayRecorder, serializeReplay, type Replay } from '../sim/replay';
@@ -73,6 +73,7 @@ export class Game {
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
   private postGameCameraReady = false;
+  private deadSpectatorReveal: boolean;
   private pointerStart = { x: 0, y: 0 };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
@@ -93,6 +94,7 @@ export class Game {
       lockstep?: LockstepClient;
       matchId?: string;
       localPlayerId?: PlayerId;
+      deadSpectatorReveal?: boolean;
       onDesync?: (tick: number, peers: string[], replay: Replay) => void;
       relayTransport?: WebSocketTransport;
     },
@@ -101,6 +103,7 @@ export class Game {
     this.matchId = opts?.matchId ?? 'skirmish_1v1';
     this.onDesync = opts?.onDesync ?? null;
     this.relayTransport = opts?.relayTransport ?? null;
+    this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
     const wantWorker = opts?.useWorker ?? workerSupported();
     this.useWorker = wantWorker && !this.lockstep && workerSupported();
     if (this.useWorker && workerSupported()) {
@@ -488,6 +491,7 @@ export class Game {
   }
 
   private isEventVisible(ev: GameEvent): boolean {
+    if (this.viewerRevealAll()) return true;
     const nav = this.services.nav;
     switch (ev.type) {
       case 'attackFired':
@@ -503,6 +507,10 @@ export class Game {
       default:
         return true;
     }
+  }
+
+  private viewerRevealAll(): boolean {
+    return shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
   }
 
   private checkLockstepStall(): void {
@@ -552,8 +560,9 @@ export class Game {
 
     this.gesture.update(now);
     const overlay = this.buildOverlay();
-    this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt);
-    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, this.state.ended);
+    const revealAll = this.viewerRevealAll();
+    this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt, revealAll);
+    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);

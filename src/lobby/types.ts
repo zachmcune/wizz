@@ -24,6 +24,8 @@ export interface LobbyState {
   factionId: string;
   slots: LobbySlot[];
   seed?: number;
+  /** When true, eliminated human players see the live full map (no fog) while spectating. */
+  deadSpectatorReveal?: boolean;
 }
 
 export type LobbyMode = 'solo' | 'host' | 'guest';

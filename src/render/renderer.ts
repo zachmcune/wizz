@@ -227,13 +227,13 @@ export class Renderer {
     }
   }
 
-  render(state: GameState, alpha: number, selected: Set<EntityId>, overlay?: RenderOverlay, dtMs = 16): void {
+  render(state: GameState, alpha: number, selected: Set<EntityId>, overlay?: RenderOverlay, dtMs = 16, revealAllOverride = false): void {
     this.world.scale.set(this.camera.zoom);
     this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
 
     const viewer = getPlayer(state, this.viewerId);
     const nav = this.nav;
-    const revealAll = state.ended;
+    const revealAll = revealAllOverride || state.ended;
 
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
