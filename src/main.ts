@@ -4,16 +4,20 @@ import { initOrientation } from './ui/orientation';
 import { initViewport } from './ui/viewport';
 import { initPwaUpdates } from './pwa';
 import { loadRegistry } from './data/loader';
+import { buildMatchConfig } from './lobby/build-config';
+import { defaultLobbyState } from './lobby/build-config';
 import { initMatch } from './sim/factory';
 import { Game } from './app/game';
 import { MainMenu } from './ui/screens';
-import { OnlineLobby, JoinOnlineForm } from './ui/lobby';
+import { JoinOnlineForm } from './ui/lobby';
+import { MatchLobby } from './ui/match-lobby';
 import { AudioManager } from './audio/audio';
 import { loadSettings, type Settings } from './storage/settings';
 import { loadGame, hasSave, clearSave } from './storage/save';
-import { generateRoomCode, joinMultiplayerRoom, ONLINE_MATCH_ID } from './net/multiplayer';
+import { generateRoomCode, joinMultiplayerRoom } from './net/multiplayer';
 import { serializeReplay } from './sim/replay';
 import type { MultiplayerSession } from './net/multiplayer';
+import type { LobbyState } from './lobby/types';
 
 async function boot(): Promise<void> {
   initPwaUpdates();
@@ -28,64 +32,159 @@ async function boot(): Promise<void> {
 
   let game: Game | null = null;
   let session: MultiplayerSession | null = null;
+  let lobby: MatchLobby | null = null;
 
-  const startLocal = (matchId: string): void => {
-    void clearSave();
-    const config = registry.match(matchId);
-    const { state, services } = initMatch(registry, config);
-    game = new Game(app, registry, state, services, audio, settings, () => {
+  const startFromLobby = (state: LobbyState, opts?: { session: MultiplayerSession; localPlayerId: string }): void => {
+    const config = buildMatchConfig(state);
+    const { state: simState, services } = initMatch(registry, config);
+    game = new Game(app, registry, simState, services, audio, settings, () => {
+      session?.disconnect();
+      session = null;
       game = null;
       void showMenu();
-    }, { useWorker: true, matchId });
+    }, {
+      useWorker: !opts?.session,
+      matchId: 'custom',
+      localPlayerId: opts?.localPlayerId,
+      lockstep: opts?.session?.lockstep,
+      onDesync: (tick, peers, replay) => {
+        console.error('[lockstep] desync at tick', tick, 'peers:', peers);
+        console.error('[lockstep] replay:', serializeReplay(replay));
+      },
+      relayTransport: opts?.session?.transport,
+    });
     void game.start();
   };
 
-  const startOnline = async (room: string): Promise<void> => {
-    void clearSave();
-    const lobby = new OnlineLobby({
-      room,
-      onCancel: () => {
-        session?.disconnect();
-        session = null;
-        lobby.destroy();
+  const showSoloLobby = (): void => {
+    lobby = new MatchLobby({
+      mode: 'solo',
+      registry,
+      initialState: defaultLobbyState(),
+      onStart: (state) => {
+        lobby?.destroy();
+        lobby = null;
+        void clearSave();
+        startFromLobby(state);
+      },
+      onBack: () => {
+        lobby?.destroy();
+        lobby = null;
         void showMenu();
       },
     });
     app.appendChild(lobby.root);
+  };
+
+  const showHostLobby = async (room: string): Promise<void> => {
+    const initialState = defaultLobbyState();
+    const hostSlot = initialState.slots[0]!;
+    hostSlot.claimedBy = 'pending';
+    hostSlot.ready = true;
 
     try {
-      session = await joinMultiplayerRoom(room, ONLINE_MATCH_ID);
-      lobby.setStatus(`You are ${session.localPlayerId}. Waiting for opponent…`);
+      session = await joinMultiplayerRoom(room, initialState);
+      hostSlot.claimedBy = session.connId;
 
-      session.transport.onWaiting = (count, max) => lobby.setPlayerCount(count, max);
-      session.transport.onPeerJoined = (playerId) => lobby.setStatus(`${playerId} joined the room`);
-
-      await session.waitForOpponent();
-      lobby.destroy();
-
-      const config = { ...registry.match(session.matchId), seed: session.seed };
-      const { state, services } = initMatch(registry, config);
-
-      game = new Game(app, registry, state, services, audio, settings, () => {
-        session?.disconnect();
-        session = null;
-        game = null;
-        void showMenu();
-      }, {
-        lockstep: session.lockstep,
-        matchId: session.matchId,
-        localPlayerId: session.localPlayerId,
-        onDesync: (tick, peers, replay) => {
-          console.error('[lockstep] desync at tick', tick, 'peers:', peers);
-          console.error('[lockstep] replay:', serializeReplay(replay));
+      lobby = new MatchLobby({
+        mode: 'host',
+        registry,
+        initialState: session.lobbyState,
+        room,
+        connId: session.connId,
+        localSlotId: 'player0',
+        isHost: true,
+        lobbyClient: session.lobby,
+        onStart: () => {},
+        onBack: () => {
+          session?.disconnect();
+          session = null;
+          lobby?.destroy();
+          lobby = null;
+          void showMenu();
         },
-        relayTransport: session.transport,
       });
-      await game.start();
+      app.appendChild(lobby.root);
+      lobby.setStatus('Share the room code. Configure slots, then start when everyone is ready.');
+
+      session.lobby.onMatchStart = (seed, state) => {
+        lobby?.destroy();
+        lobby = null;
+        void clearSave();
+        startFromLobby({ ...state, seed }, { session: session!, localPlayerId: 'player0' });
+      };
+      session.transport.onError = (msg) => lobby?.showError(msg);
     } catch (err) {
       session?.disconnect();
       session = null;
-      lobby.setError(err instanceof Error ? err.message : 'Connection failed');
+      const errLobby = new MatchLobby({
+        mode: 'solo',
+        registry,
+        initialState: defaultLobbyState(),
+        room,
+        onStart: () => {},
+        onBack: () => {
+          errLobby.destroy();
+          void showMenu();
+        },
+      });
+      app.appendChild(errLobby.root);
+      errLobby.showError(err instanceof Error ? err.message : 'Connection failed');
+    }
+  };
+
+  const showGuestLobby = async (room: string): Promise<void> => {
+    try {
+      session = await joinMultiplayerRoom(room);
+      lobby = new MatchLobby({
+        mode: 'guest',
+        registry,
+        initialState: session.lobbyState,
+        room,
+        connId: session.connId,
+        localSlotId: undefined,
+        lobbyClient: session.lobby,
+        onStart: () => {},
+        onBack: () => {
+          session?.disconnect();
+          session = null;
+          lobby?.destroy();
+          lobby = null;
+          void showMenu();
+        },
+      });
+      app.appendChild(lobby.root);
+      lobby.setStatus('Claim a slot, configure your settings, then ready up.');
+
+      session.lobby.onLobbyState = (state) => {
+        const mine = state.slots.find((s) => s.claimedBy === session?.connId);
+        if (mine) lobby?.setLocalSlotId(mine.id);
+        session!.lobbyState = state;
+        lobby?.setRemoteState(state);
+      };
+
+      session.lobby.onMatchStart = (seed, state) => {
+        const mine = state.slots.find((s) => s.claimedBy === session?.connId);
+        lobby?.destroy();
+        lobby = null;
+        void clearSave();
+        startFromLobby({ ...state, seed }, { session: session!, localPlayerId: mine?.id ?? session!.localPlayerId });
+      };
+      session.transport.onError = (msg) => lobby?.showError(msg);
+    } catch (err) {
+      session?.disconnect();
+      session = null;
+      const form = new JoinOnlineForm();
+      form.onBack = () => {
+        form.destroy();
+        void showMenu();
+      };
+      form.onJoin = (code) => {
+        form.destroy();
+        void showGuestLobby(code);
+      };
+      app.appendChild(form.root);
+      form.showError(err instanceof Error ? err.message : 'Connection failed');
     }
   };
 
@@ -97,7 +196,7 @@ async function boot(): Promise<void> {
     };
     form.onJoin = (room) => {
       form.destroy();
-      void startOnline(room);
+      void showGuestLobby(room);
     };
     app.appendChild(form.root);
   };
@@ -105,13 +204,13 @@ async function boot(): Promise<void> {
   const showMenu = async (): Promise<void> => {
     const saved = await hasSave();
     const menu = new MainMenu({
-      onStart: (matchId) => {
+      onCustomGame: () => {
         menu.destroy();
-        startLocal(matchId);
+        showSoloLobby();
       },
       onCreateOnline: () => {
         menu.destroy();
-        void startOnline(generateRoomCode());
+        void showHostLobby(generateRoomCode());
       },
       onJoinOnline: () => {
         menu.destroy();

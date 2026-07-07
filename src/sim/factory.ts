@@ -76,6 +76,7 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, t
     aiDifficulty: cfg.aiDifficulty,
     team: cfg.team,
     color: cfg.color,
+    factionId: cfg.factionId,
     mana: startingMana,
     power: 0,
     powerUsed: 0,

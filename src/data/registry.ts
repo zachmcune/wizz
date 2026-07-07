@@ -1,5 +1,5 @@
 // Typed registries: definitions loaded from data files, looked up by id at runtime.
-import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData, BalanceData } from './defs';
+import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData, BalanceData, FactionDef } from './defs';
 import type { MatchConfig } from '../sim/types';
 
 const DEFAULT_BALANCE: BalanceData = {
@@ -24,6 +24,7 @@ export class Registry {
   spells = new Map<string, SpellDef>();
   projectiles = new Map<string, ProjectileDef>();
   maps = new Map<string, MapData>();
+  factions = new Map<string, FactionDef>();
   matches = new Map<string, MatchConfig>();
   balance: BalanceData = DEFAULT_BALANCE;
 
@@ -54,6 +55,12 @@ export class Registry {
   map(id: string): MapData {
     const d = this.maps.get(id);
     if (!d) throw new Error(`Unknown map def: ${id}`);
+    return d;
+  }
+
+  faction(id: string): FactionDef {
+    const d = this.factions.get(id);
+    if (!d) throw new Error(`Unknown faction def: ${id}`);
     return d;
   }
 

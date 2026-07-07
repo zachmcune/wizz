@@ -3,12 +3,14 @@ import type { Command } from '../sim/types';
 import { LockstepClient } from './lockstep';
 import type { Transport } from './lockstep';
 import type { ClientMessage, ServerMessage } from './protocol';
+import type { LobbyStateWire } from './protocol';
 
-export type MatchStartHandler = (startTick: number) => void;
+export type MatchStartHandler = (startTick: number, seed: number, state: LobbyStateWire) => void;
 export type WaitingHandler = (playerCount: number, maxPlayers: number) => void;
 export type PeerJoinedHandler = (playerId: string) => void;
 export type PeerLeftHandler = (playerId: string) => void;
 export type ErrorHandler = (message: string) => void;
+export type LobbyMessageHandler = (msg: ServerMessage) => void;
 
 export class WebSocketTransport implements Transport {
   private tickCb: ((tick: number, cmds: Command[]) => void) | null = null;
@@ -20,6 +22,7 @@ export class WebSocketTransport implements Transport {
   onPeerJoined: PeerJoinedHandler | null = null;
   onPeerLeft: PeerLeftHandler | null = null;
   onError: ErrorHandler | null = null;
+  onLobbyMessage: LobbyMessageHandler | null = null;
 
   constructor(private ws: WebSocket) {
     ws.addEventListener('message', (ev) => this.handleMessage(ev));
@@ -27,11 +30,17 @@ export class WebSocketTransport implements Transport {
   }
 
   send(forTick: number, cmds: Command[]): void {
-    this.post({ t: 'commands', forTick, cmds });
+    this.sendRaw({ t: 'commands', forTick, cmds });
   }
 
   reportChecksum(tick: number, hash: string): void {
-    this.post({ t: 'checksum', tick, hash });
+    this.sendRaw({ t: 'checksum', tick, hash });
+  }
+
+  sendRaw(msg: ClientMessage): void {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
   }
 
   onTickCommands(cb: (tick: number, cmds: Command[]) => void): void {
@@ -46,18 +55,12 @@ export class WebSocketTransport implements Transport {
     this.peerChecksumBuffer = [];
   }
 
-  join(room: string, matchId: string): void {
-    this.post({ t: 'join', room: room.toUpperCase(), matchId });
+  join(room: string, lobbyState?: LobbyStateWire): void {
+    this.sendRaw({ t: 'join', room: room.toUpperCase(), lobbyState });
   }
 
   close(): void {
     this.ws.close();
-  }
-
-  private post(msg: ClientMessage): void {
-    if (this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
-    }
   }
 
   private handleMessage(ev: MessageEvent): void {
@@ -77,19 +80,27 @@ export class WebSocketTransport implements Transport {
         else this.peerChecksumBuffer.push({ playerId: msg.playerId, tick: msg.tick, hash: msg.hash });
         break;
       case 'matchStart':
-        this.onMatchStart?.(msg.startTick);
+        this.onMatchStart?.(msg.startTick, msg.seed, msg.state);
+        this.onLobbyMessage?.(msg);
         break;
       case 'waiting':
         this.onWaiting?.(msg.playerCount, msg.maxPlayers);
+        this.onLobbyMessage?.(msg);
         break;
       case 'peerJoined':
         this.onPeerJoined?.(msg.playerId);
+        this.onLobbyMessage?.(msg);
         break;
       case 'peerLeft':
         this.onPeerLeft?.(msg.playerId);
+        this.onLobbyMessage?.(msg);
         break;
       case 'error':
         this.onError?.(msg.message);
+        this.onLobbyMessage?.(msg);
+        break;
+      case 'lobbyState':
+        this.onLobbyMessage?.(msg);
         break;
       case 'joined':
         break;
@@ -98,9 +109,12 @@ export class WebSocketTransport implements Transport {
 }
 
 export interface LockstepJoinResult {
+  connId: string;
   playerId: string;
   seed: number;
   startTick: number;
+  isHost: boolean;
+  lobbyState: LobbyStateWire;
   waiting: boolean;
 }
 
@@ -116,14 +130,14 @@ function openSocket(url: string): Promise<WebSocket> {
 export async function connectAndJoin(
   relayUrl: string,
   room: string,
-  matchId: string,
+  lobbyState?: LobbyStateWire,
   timeoutMs = 15_000,
 ): Promise<{ ws: WebSocket; transport: WebSocketTransport; lockstep: LockstepClient; joined: LockstepJoinResult }> {
   const ws = await openSocket(relayUrl);
   const transport = new WebSocketTransport(ws);
   const lockstep = new LockstepClient(transport);
   const joinedPromise = waitForJoin(ws, timeoutMs);
-  transport.join(room, matchId);
+  transport.join(room, lobbyState);
   const joined = await joinedPromise;
   return { ws, transport, lockstep, joined };
 }
@@ -153,9 +167,12 @@ export function waitForJoin(ws: WebSocket, timeoutMs = 15_000): Promise<Lockstep
       clearTimeout(timer);
       ws.removeEventListener('message', onMessage);
       resolve({
+        connId: msg.connId,
         playerId: msg.playerId,
         seed: msg.seed,
         startTick: msg.startTick,
+        isHost: msg.isHost,
+        lobbyState: msg.lobbyState,
         waiting: msg.waiting,
       });
     };
@@ -165,15 +182,22 @@ export function waitForJoin(ws: WebSocket, timeoutMs = 15_000): Promise<Lockstep
 }
 
 /** Wait until the relay broadcasts matchStart. */
-export function waitForMatchStart(transport: WebSocketTransport, timeoutMs = 300_000): Promise<number> {
+export function waitForMatchStart(
+  transport: WebSocketTransport,
+  timeoutMs = 300_000,
+): Promise<{ startTick: number; seed: number; state: LobbyStateWire }> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Waiting for opponent timed out')), timeoutMs);
-    transport.onMatchStart = (startTick) => {
+    const timer = setTimeout(() => reject(new Error('Waiting for match start timed out')), timeoutMs);
+    const prev = transport.onMatchStart;
+    transport.onMatchStart = (startTick, seed, state) => {
       clearTimeout(timer);
-      resolve(startTick);
+      transport.onMatchStart = prev;
+      resolve({ startTick, seed, state });
     };
+    const prevErr = transport.onError;
     transport.onError = (message) => {
       clearTimeout(timer);
+      transport.onError = prevErr;
       reject(new Error(message));
     };
   });

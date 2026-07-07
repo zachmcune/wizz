@@ -51,6 +51,8 @@ solid **before** wiring transport.
 | Fog per client | Done | Presentation-only (already true) |
 | Playable online UI | Done | Create/Join room menu + `npm run relay` |
 | PvP match config | Done | `data/match/skirmish_1v1_online.json` |
+| Custom match lobby | Done | 4-slot setup UI, teams A–D, colors, corners, AI difficulty, map/faction selectors |
+| Lobby relay sync | Done | `lobbyUpdate`, `claimSlot`, `slotReady`, `startMatch` over WebSocket relay |
 
 **Note:** `Game` with `lockstep` waits for the transport to deliver confirmed per-tick commands
 (`{ t: 'tick', tick, cmds }` from the relay). Use `InMemoryRelay.advanceTick()` in tests or a

@@ -109,7 +109,9 @@ export class Game {
     } else {
       this.useWorker = false;
       this.sim = new Simulation(state, services);
-      if (this.lockstep) this.sim.aiEnabled = false;
+      if (this.lockstep) {
+        this.sim.aiEnabled = state.players.some((p) => p.controller === 'ai');
+      }
     }
     this.humanId =
       opts?.localPlayerId ??

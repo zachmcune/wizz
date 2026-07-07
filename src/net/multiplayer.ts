@@ -1,13 +1,14 @@
 // Client-side multiplayer session: connect to relay, join room, expose lockstep transport.
 import type { PlayerId } from '../sim/types';
+import type { LobbyState } from '../lobby/types';
+import { lobbyStateFromWire, lobbyStateToWire } from './lobby-wire';
+import { LobbyClient } from './lobby-client';
 import { LockstepClient } from './lockstep';
 import {
   connectAndJoin,
   waitForMatchStart,
   type WebSocketTransport,
 } from './ws-transport';
-
-export const ONLINE_MATCH_ID = 'skirmish_1v1_online';
 
 /** Resolve relay WebSocket URL from build-time env or page origin. */
 export function relayWsUrl(): string {
@@ -29,51 +30,52 @@ export function generateRoomCode(): string {
 
 export interface MultiplayerSession {
   room: string;
-  matchId: string;
+  connId: string;
   localPlayerId: PlayerId;
   seed: number;
+  isHost: boolean;
+  lobbyState: LobbyState;
   transport: WebSocketTransport;
   lockstep: LockstepClient;
+  lobby: LobbyClient;
   disconnect(): void;
-  waitForOpponent(): Promise<void>;
+  waitForMatchStart(): Promise<{ seed: number; lobbyState: LobbyState }>;
 }
 
-export async function joinMultiplayerRoom(room: string, matchId = ONLINE_MATCH_ID): Promise<MultiplayerSession> {
+export async function joinMultiplayerRoom(room: string, initialLobby?: LobbyState): Promise<MultiplayerSession> {
   const code = room.toUpperCase();
-  const { transport, lockstep, joined } = await connectAndJoin(relayWsUrl(), code, matchId);
+  const wire = initialLobby ? lobbyStateToWire(initialLobby) : undefined;
+  const { transport, lockstep, joined } = await connectAndJoin(relayWsUrl(), code, wire);
+  const lobby = new LobbyClient(transport);
 
-  let resolveMatchStart!: () => void;
-  const matchStarted = new Promise<void>((resolve) => {
+  let resolveMatchStart!: (value: { seed: number; lobbyState: LobbyState }) => void;
+  const matchStarted = new Promise<{ seed: number; lobbyState: LobbyState }>((resolve) => {
     resolveMatchStart = resolve;
   });
 
-  if (!joined.waiting) {
-    resolveMatchStart();
-  } else {
-    transport.onMatchStart = () => resolveMatchStart();
-  }
+  lobby.onMatchStart = (seed, state) => resolveMatchStart({ seed, lobbyState: state });
+  transport.onMatchStart = (startTick, seed, state) => {
+    void startTick;
+    resolveMatchStart({ seed, lobbyState: lobbyStateFromWire(state) });
+  };
 
   return {
     room: code,
-    matchId,
+    connId: joined.connId,
     localPlayerId: joined.playerId,
     seed: joined.seed,
+    isHost: joined.isHost,
+    lobbyState: lobbyStateFromWire(joined.lobbyState),
     transport,
     lockstep,
+    lobby,
     disconnect() {
       transport.close();
     },
-    waitForOpponent() {
+    waitForMatchStart() {
       return matchStarted;
     },
   };
-}
-
-/** @deprecated Use joinMultiplayerRoom + session.waitForOpponent */
-export async function joinAndWait(room: string, matchId = ONLINE_MATCH_ID): Promise<MultiplayerSession> {
-  const session = await joinMultiplayerRoom(room, matchId);
-  await session.waitForOpponent();
-  return session;
 }
 
 export { waitForMatchStart };
