@@ -5,10 +5,11 @@ import type { GameState, Entity } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { buildingHasPower } from '../power';
 import { len } from '../math';
-import { moveTowardGoal } from '../pathing';
+import { moveTowardGoal, makePathContext } from '../pathing';
 
-function moveToward(e: Entity, tx: number, ty: number, speed: number, ctx: StepContext): number {
-  return moveTowardGoal(ctx.services.nav, ctx.services.flow, e, { x: tx, y: ty }, speed, 1 / TICK_HZ);
+function moveToward(e: Entity, tx: number, ty: number, speed: number, ctx: StepContext, state: GameState): number {
+  const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
+  return moveTowardGoal(pathCtx, e, { x: tx, y: ty }, speed, 1 / TICK_HZ);
 }
 
 function nearestSpire(state: GameState, ctx: StepContext, e: Entity): Entity | null {
@@ -55,7 +56,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
         e.state = 'harvesting';
         continue;
       }
-      const d = moveToward(e, spire.pos.x, spire.pos.y, udef.speed, ctx);
+      const d = moveToward(e, spire.pos.x, spire.pos.y, udef.speed, ctx, state);
       if (d <= spire.radius + e.radius + 4) {
         if (!buildingHasPower(state, ctx.services.registry, spire)) continue;
         const player = state.players.find((p) => p.id === e.owner)!;
@@ -80,7 +81,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
       node = alt;
       e.orders = [{ type: 'harvest', nodeId: alt.id }];
     }
-    const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx);
+    const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx, state);
     if (d <= node.radius + e.radius + 4) {
       const room = e.carryMax - carry;
       const siphonPerSec = ctx.services.registry.balance.siphonPerSecond;

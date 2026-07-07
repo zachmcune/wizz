@@ -7,7 +7,7 @@ import { buildingHasPower } from '../power';
 import { isVisibleTo } from '../fog';
 import { len, distSq } from '../math';
 import { applyDamage } from '../combat-util';
-import { moveTowardGoal } from '../pathing';
+import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 
 const scratch: EntityId[] = [];
@@ -86,6 +86,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     const w = weaponOf(ctx, e);
     if (!w) continue;
     if (e.kind === 'unit' && e.carryMax !== undefined) continue; // harvesters don't fight
+    if (e.kind === 'unit' && e.channeling) continue;
 
     const order = e.orders[0];
     let target: Entity | null = null;
@@ -111,10 +112,12 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
       if ((e.cooldowns.attack ?? 0) <= 0) fire(state, ctx, e, target, w);
     } else if (order && order.type === 'attack' && e.kind === 'unit') {
       const udef = ctx.services.registry.unit(e.defId);
-      moveTowardGoal(ctx.services.nav, ctx.services.flow, e, target.pos, udef.speed, dt);
+      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
+      moveTowardGoal(pathCtx, e, target.pos, udef.speed, dt);
     } else if (!order && canRoam && d <= sightOf(ctx, e)) {
       const udef = ctx.services.registry.unit(e.defId);
-      moveTowardGoal(ctx.services.nav, ctx.services.flow, e, target.pos, udef.speed, dt);
+      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
+      moveTowardGoal(pathCtx, e, target.pos, udef.speed, dt);
     }
   }
 }

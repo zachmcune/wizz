@@ -9,6 +9,7 @@ import { movementSystem } from './systems/movement';
 import { combatSystem } from './systems/combat';
 import { projectileSystem } from './systems/projectile';
 import { harvestSystem } from './systems/harvest';
+import { channelSystem } from './systems/channel';
 import { deathSystem } from './systems/death';
 import { morphSystem } from './systems/morph';
 import { visibilitySystem } from './systems/visibility';
@@ -41,6 +42,7 @@ export function stepSimulation(
   combatSystem(state, ctx); // 6
   projectileSystem(state, ctx); // 6b projectiles
   harvestSystem(state, ctx); // 7
+  channelSystem(state, ctx); // 7b mana weaver conjuring
   deathSystem(state, ctx); // 8
   winCheckSystem(state, ctx); // 9
 

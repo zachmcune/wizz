@@ -1,7 +1,7 @@
 // Removes dead entities and frees their nav-grid footprint (buildings).
-import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState } from '../types';
+import { clearBuildingNav } from '../building-nav';
 import { recomputePower } from '../factory';
 
 export function deathSystem(state: GameState, ctx: StepContext): void {
@@ -18,9 +18,7 @@ export function deathSystem(state: GameState, ctx: StepContext): void {
     if (e.kind === 'building') {
       const b = ctx.services.registry.buildings.get(e.defId);
       if (b) {
-        const tx = Math.floor((e.pos.x - (b.footprint * TILE) / 2) / TILE);
-        const ty = Math.floor((e.pos.y - (b.footprint * TILE) / 2) / TILE);
-        ctx.services.nav.setBuildingBlock(tx, ty, b.footprint, false);
+        clearBuildingNav(ctx.services.nav, b, e.pos.x, e.pos.y);
         ctx.services.flow.invalidate();
         buildingDied = true;
       }

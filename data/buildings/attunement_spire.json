@@ -13,7 +13,7 @@
   "requires": ["sanctum"],
   "isRefinery": true,
   "spawnsFreeWisp": true,
-  "producesUnits": ["wisp"],
+  "producesUnits": ["wisp", "mana_weaver"],
   "powerUsed": 10,
   "art": { "shape": "building", "size": 60, "accent": "#4fb6c9" }
 }

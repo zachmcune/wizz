@@ -8,7 +8,7 @@ import { createServices, type SimServices, type StepContext } from '../sim/conte
 import { recomputePower } from '../sim/factory';
 import { visibilitySystem } from '../sim/systems/visibility';
 import { createFogTiles } from '../sim/fog';
-import { TILE } from '../core/constants';
+import { placeBuildingNav } from '../sim/building-nav';
 
 const SAVE_VERSION = 3;
 const SAVE_KEY = 'arcane:save';
@@ -49,11 +49,7 @@ export function deserializeState(saved: SavedGame, registry: Registry): { state:
   for (const e of entities.values()) {
     if (e.kind === 'building' && e.state !== 'dead') {
       const b = registry.buildings.get(e.defId);
-      if (b) {
-        const tx = Math.floor((e.pos.x - (b.footprint * TILE) / 2) / TILE);
-        const ty = Math.floor((e.pos.y - (b.footprint * TILE) / 2) / TILE);
-        nav.setBuildingBlock(tx, ty, b.footprint, true);
-      }
+      if (b) placeBuildingNav(nav, b, e.pos.x, e.pos.y, e.owner);
     }
   }
   const services = createServices(registry, nav);

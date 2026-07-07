@@ -4,6 +4,7 @@ import type { UnitDef, BuildingDef } from '../data/defs';
 import type { Registry } from '../data/registry';
 import { NavGrid } from './nav-grid';
 import { createServices, type SimServices, type StepContext } from './context';
+import { placeBuildingNav, clearBuildingNav } from './building-nav';
 import { visibilitySystem } from './systems/visibility';
 import type { GameState, Entity, PlayerId, Player, MatchConfig, Relation } from './types';
 
@@ -55,9 +56,7 @@ export function spawnEntity(
   state.entities.set(id, e);
   if (e.kind === 'building') {
     const b = def as BuildingDef;
-    const tx = Math.floor((x - (b.footprint * TILE) / 2) / TILE);
-    const ty = Math.floor((y - (b.footprint * TILE) / 2) / TILE);
-    services.nav.setBuildingBlock(tx, ty, b.footprint, true);
+    placeBuildingNav(services.nav, b, x, y, owner);
     services.flow.invalidate();
   }
   ctx?.events.push({ type: 'entitySpawned', id, defId, owner });
@@ -175,9 +174,7 @@ export function purgePlayer(state: GameState, services: SimServices, playerId: P
     if (e.kind === 'building') {
       const b = services.registry.buildings.get(e.defId);
       if (b) {
-        const tx = Math.floor((e.pos.x - (b.footprint * TILE) / 2) / TILE);
-        const ty = Math.floor((e.pos.y - (b.footprint * TILE) / 2) / TILE);
-        services.nav.setBuildingBlock(tx, ty, b.footprint, false);
+        clearBuildingNav(services.nav, b, e.pos.x, e.pos.y);
         buildingsRemoved = true;
       }
     }

@@ -1,0 +1,16 @@
+{
+  "id": "stone_wall",
+  "name": "Stone Wall",
+  "shortLabel": "WALL",
+  "description": "Blocks movement. Cheap defensive barrier.",
+  "kind": "building",
+  "cost": 40,
+  "buildTime": 2,
+  "hp": 350,
+  "armor": "building",
+  "sight": 60,
+  "footprint": 1,
+  "requires": ["sanctum"],
+  "isWall": true,
+  "art": { "shape": "building", "size": 26, "accent": "#8a8a9a" }
+}

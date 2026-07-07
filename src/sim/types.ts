@@ -48,6 +48,7 @@ export type UnitState =
   | 'attacking'
   | 'harvesting'
   | 'returning'
+  | 'channeling'
   | 'producing'
   | 'building'
   | 'dead';
@@ -98,6 +99,7 @@ export interface Entity {
   productionQueue?: ProductionItem[];
   rally?: Vec2;
   repairing?: boolean; // slow HP restore while spending mana
+  channeling?: boolean; // sitting to conjure mana
 
   // deploy / pack (mobile HQ)
   morphProgress?: number; // 0..1 while deploying or packing
@@ -132,6 +134,7 @@ export type Command =
   | { type: 'setRally'; playerId: PlayerId; buildingId: EntityId; x: number; y: number }
   | { type: 'sellBuilding'; playerId: PlayerId; buildingId: EntityId }
   | { type: 'setRepair'; playerId: PlayerId; buildingId: EntityId; enabled: boolean }
+  | { type: 'channel'; playerId: PlayerId; entityIds: EntityId[]; enabled: boolean }
   | { type: 'castSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
   | { type: 'surrender'; playerId: PlayerId };
 

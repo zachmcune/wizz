@@ -1,0 +1,19 @@
+{
+  "id": "mana_weaver",
+  "name": "Mana Weaver",
+  "kind": "unit",
+  "role": "mana conjurer",
+  "cost": 200,
+  "buildTime": 8,
+  "hp": 90,
+  "armor": "light",
+  "speed": 52,
+  "sight": 120,
+  "radius": 9,
+  "weapon": null,
+  "producedBy": "attunement_spire",
+  "requires": ["attunement_spire"],
+  "canConjureMana": true,
+  "art": { "shape": "pentagon", "size": 18, "accent": "#b57fff" },
+  "sfx": { "select": "wisp_select", "move": "wisp_move", "ready": "unit_ready" }
+}

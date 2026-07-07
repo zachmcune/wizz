@@ -5,6 +5,8 @@
   "sellRefundRatio": 0.5,
   "repairManaPerHp": 0.05,
   "repairHpPerTick": 2,
+  "conjureManaAmount": 10,
+  "conjureManaIntervalSeconds": 2,
   "ai": {
     "easy": { "interval": 20, "wispTarget": 3, "armyThreshold": 8 },
     "normal": { "interval": 15, "wispTarget": 4, "armyThreshold": 12 },

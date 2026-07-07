@@ -1,5 +1,5 @@
 // Mobile HQ deploy (unit → building) and pack (building → unit) progress.
-import { TILE } from '../../core/constants';
+import { clearBuildingNav } from '../building-nav';
 import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted } from '../queries';
@@ -60,9 +60,7 @@ function finishPack(state: GameState, ctx: StepContext, building: Entity, bdef: 
   if (!udef) return;
 
   const ratio = building.maxHp > 0 ? building.hp / building.maxHp : 1;
-  const tx = Math.floor((building.pos.x - (bdef.footprint * TILE) / 2) / TILE);
-  const ty = Math.floor((building.pos.y - (bdef.footprint * TILE) / 2) / TILE);
-  ctx.services.nav.setBuildingBlock(tx, ty, bdef.footprint, false);
+  clearBuildingNav(ctx.services.nav, bdef, building.pos.x, building.pos.y);
   ctx.services.flow.invalidate();
 
   const u = spawnEntity(state, ctx.services, ctx, unitDefId, building.owner, building.pos.x, building.pos.y);

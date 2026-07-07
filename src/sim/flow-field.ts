@@ -13,6 +13,8 @@ export interface FlowField {
   dirY: Int8Array;
 }
 
+export type TileBlocked = (tx: number, ty: number) => boolean;
+
 const NEIGHBORS: [number, number][] = [
   [1, 0],
   [-1, 0],
@@ -24,19 +26,23 @@ const NEIGHBORS: [number, number][] = [
   [-1, -1],
 ];
 
-export function computeFlowField(nav: NavGrid, goalTx: number, goalTy: number): FlowField {
+export function computeFlowField(
+  nav: NavGrid,
+  goalTx: number,
+  goalTy: number,
+  isTileBlocked: TileBlocked,
+): FlowField {
   const size = nav.w * nav.h;
   const cost = new Uint16Array(size).fill(UNREACHABLE);
   const dirX = new Int8Array(size);
   const dirY = new Int8Array(size);
 
-  // Clamp goal into a passable tile if needed.
-  if (nav.isBlocked(goalTx, goalTy)) {
+  if (isTileBlocked(goalTx, goalTy)) {
     let best = -1;
     let bestD = Infinity;
     for (let ty = 0; ty < nav.h; ty++) {
       for (let tx = 0; tx < nav.w; tx++) {
-        if (nav.isBlocked(tx, ty)) continue;
+        if (isTileBlocked(tx, ty)) continue;
         const d = (tx - goalTx) * (tx - goalTx) + (ty - goalTy) * (ty - goalTy);
         if (d < bestD) {
           bestD = d;
@@ -50,10 +56,8 @@ export function computeFlowField(nav: NavGrid, goalTx: number, goalTy: number): 
     }
   }
 
-  // BFS-style Dijkstra with integer step costs (10 straight, 14 diagonal).
   const goalIdx = goalTy * nav.w + goalTx;
   cost[goalIdx] = 0;
-  // simple bucketed frontier; grids are small so a sorted array is fine
   let frontier: number[] = [goalIdx];
   while (frontier.length) {
     const next: number[] = [];
@@ -64,10 +68,9 @@ export function computeFlowField(nav: NavGrid, goalTx: number, goalTy: number): 
       for (const [dx, dy] of NEIGHBORS) {
         const nx = cx + dx;
         const ny = cy + dy;
-        if (nav.isBlocked(nx, ny)) continue;
-        // prevent cutting diagonal corners through blocked tiles
+        if (isTileBlocked(nx, ny)) continue;
         if (dx !== 0 && dy !== 0) {
-          if (nav.isBlocked(cx + dx, cy) || nav.isBlocked(cx, cy + dy)) continue;
+          if (isTileBlocked(cx + dx, cy) || isTileBlocked(cx, cy + dy)) continue;
         }
         const step = dx !== 0 && dy !== 0 ? 14 : 10;
         const ni = ny * nav.w + nx;
@@ -81,7 +84,6 @@ export function computeFlowField(nav: NavGrid, goalTx: number, goalTy: number): 
     frontier = next;
   }
 
-  // Derive per-tile direction toward lowest-cost neighbor.
   for (let ty = 0; ty < nav.h; ty++) {
     for (let tx = 0; tx < nav.w; tx++) {
       const i = ty * nav.w + tx;
@@ -130,15 +132,21 @@ export class FlowFieldCache {
     this.version++;
   }
 
-  get(nav: NavGrid, goalTx: number, goalTy: number): FlowField {
+  getFor(
+    nav: NavGrid,
+    goalTx: number,
+    goalTy: number,
+    cacheKey: string,
+    isTileBlocked: TileBlocked,
+  ): FlowField {
     if (this.cachedVersion !== this.version) {
       this.cache.clear();
       this.cachedVersion = this.version;
     }
-    const key = `${goalTx},${goalTy}`;
+    const key = `${cacheKey}:${goalTx},${goalTy}`;
     let f = this.cache.get(key);
     if (!f) {
-      f = computeFlowField(nav, goalTx, goalTy);
+      f = computeFlowField(nav, goalTx, goalTy, isTileBlocked);
       this.cache.set(key, f);
     }
     return f;

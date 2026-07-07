@@ -337,6 +337,11 @@ export class InputController {
     this.emit({ type: 'setRepair', playerId: this.playerId, buildingId, enabled });
   }
 
+  channel(entityIds: EntityId[], enabled: boolean): void {
+    if (!entityIds.length) return;
+    this.emit({ type: 'channel', playerId: this.playerId, entityIds, enabled });
+  }
+
   startRally(buildingId: EntityId): void {
     const b = this.getState().entities.get(buildingId);
     if (!b || b.owner !== this.playerId || b.kind !== 'building') return;

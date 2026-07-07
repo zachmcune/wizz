@@ -7,6 +7,7 @@ import { getPlayer, isAlive, relationBetween } from '../queries';
 import { spawnEntity, recomputePower } from '../factory';
 import { canBuildNearBase } from '../build-zone';
 import { applyDamage } from '../combat-util';
+import { clearBuildingNav } from '../building-nav';
 import type { BuildingDef } from '../../data/defs';
 
 function ownedAliveUnits(state: GameState, playerId: PlayerId, ids: EntityId[]): Entity[] {
@@ -25,6 +26,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
     switch (cmd.type) {
       case 'move':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+          e.channeling = false;
           e.orders = [{ type: 'move', x: cmd.x, y: cmd.y }];
           e.targetId = undefined;
           e.state = 'moving';
@@ -33,6 +35,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'attackMove':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+          e.channeling = false;
           e.orders = [{ type: 'attackMove', x: cmd.x, y: cmd.y }];
           e.targetId = undefined;
           e.state = 'moving';
@@ -43,6 +46,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         const target = state.entities.get(cmd.targetId);
         if (!isAlive(target)) break;
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+          e.channeling = false;
           e.orders = [{ type: 'attack', targetId: cmd.targetId }];
           e.targetId = cmd.targetId;
           e.state = 'attacking';
@@ -64,6 +68,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       case 'stop':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
           if (e.morphProgress !== undefined) continue;
+          e.channeling = false;
           e.orders = [];
           e.targetId = undefined;
           e.vel = { x: 0, y: 0 };
@@ -96,6 +101,9 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'setRepair':
         handleSetRepair(state, ctx, cmd);
+        break;
+      case 'channel':
+        handleChannel(state, ctx, cmd);
         break;
       case 'castSpell':
         handleSpell(state, ctx, cmd);
@@ -232,9 +240,7 @@ function handleSetRally(state: GameState, ctx: StepContext, cmd: Extract<Command
 function removeBuildingFromWorld(state: GameState, ctx: StepContext, building: Entity): void {
   const bdef = ctx.services.registry.buildings.get(building.defId);
   if (bdef) {
-    const tx = Math.floor((building.pos.x - (bdef.footprint * TILE) / 2) / TILE);
-    const ty = Math.floor((building.pos.y - (bdef.footprint * TILE) / 2) / TILE);
-    ctx.services.nav.setBuildingBlock(tx, ty, bdef.footprint, false);
+    clearBuildingNav(ctx.services.nav, bdef, building.pos.x, building.pos.y);
     ctx.services.flow.invalidate();
   }
   state.entities.delete(building.id);
@@ -278,6 +284,26 @@ function handleSetRepair(state: GameState, ctx: StepContext, cmd: Extract<Comman
   }
   if (b.hp >= b.maxHp) return;
   b.repairing = true;
+}
+
+function handleChannel(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'channel' }>): void {
+  for (const id of cmd.entityIds) {
+    const e = state.entities.get(id);
+    if (!e || e.owner !== cmd.playerId || e.kind !== 'unit' || !isAlive(e)) continue;
+    if (e.morphProgress !== undefined) continue;
+    const udef = ctx.services.registry.units.get(e.defId);
+    if (!udef?.canConjureMana) continue;
+    if (!cmd.enabled) {
+      e.channeling = false;
+      if (e.state === 'channeling') e.state = 'idle';
+      continue;
+    }
+    e.channeling = true;
+    e.state = 'channeling';
+    e.orders = [];
+    e.targetId = undefined;
+    e.vel = { x: 0, y: 0 };
+  }
 }
 
 function handleCancel(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'cancelProduce' }>): void {

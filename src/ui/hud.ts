@@ -68,6 +68,7 @@ export class Hud {
   private buildCancelBtn = el('button', 'btn', 'Cancel');
   private deployBtn = el('button', 'btn', 'Deploy');
   private packBtn = el('button', 'btn', 'Pack Up');
+  private conjureBtn = el('button', 'btn', 'Conjure');
   private spellRow = el('div', 'spell-row');
   private spellConfirm = el('div', 'spell-confirm');
   private result = el('div', 'result-overlay');
@@ -209,7 +210,18 @@ export class Hud {
       const id = [...this.controller.session.selection][0];
       if (id !== undefined) this.controller.pack(id);
     });
-    this.stanceRow.append(deselect, stop, am, this.deployBtn, this.packBtn);
+    this.conjureBtn.style.display = 'none';
+    this.conjureBtn.addEventListener('click', () => {
+      const st = this.state();
+      const ids = [...this.controller.session.selection].filter((id) => {
+        const e = st.entities.get(id);
+        return e?.owner === this.playerId && e.kind === 'unit' && this.registry.units.get(e.defId)?.canConjureMana;
+      });
+      if (!ids.length) return;
+      const single = st.entities.get(ids[0]!);
+      this.controller.channel(ids, !single?.channeling);
+    });
+    this.stanceRow.append(deselect, stop, am, this.deployBtn, this.packBtn, this.conjureBtn);
   }
 
   private buildBuildingButtons(): void {
@@ -491,6 +503,20 @@ export class Hud {
     this.deployBtn.style.display = wagonReady && !inPlaceMode ? '' : 'none';
     this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';
 
+    const weaversSelected = sel.filter(
+      (e) => e.owner === this.playerId && e.kind === 'unit' && this.registry.units.get(e.defId)?.canConjureMana,
+    );
+    const showConjure = !inPlaceMode && weaversSelected.length > 0;
+    this.conjureBtn.style.display = showConjure ? '' : 'none';
+    if (showConjure) {
+      const channeling = weaversSelected.some((e) => e.channeling);
+      const bal = this.registry.balance;
+      this.conjureBtn.textContent = channeling
+        ? 'Stop Conjuring'
+        : `Conjure (${bal.conjureManaAmount}/${bal.conjureManaIntervalSeconds}s)`;
+      this.conjureBtn.classList.toggle('active', channeling);
+    }
+
     const completeBuilding = ownBuilding && single && single.buildProgress === undefined && single.morphProgress === undefined;
     const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
     const canRepair = !!completeBuilding && single!.hp < single!.maxHp;
@@ -574,6 +600,7 @@ export class Hud {
         if (single.morphProgress !== undefined) {
           meta += ` · ${single.morphAction === 'deploy' ? 'Deploying' : 'Packing'} ${Math.round(single.morphProgress * 100)}%`;
         }
+        if (single.channeling) meta += ' · conjuring mana';
         this.selMeta.textContent = meta;
         this.clearProduceRow();
         this.updateTrainQueue(null);

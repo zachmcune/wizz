@@ -47,6 +47,7 @@ export interface UnitDef {
   isHarvester?: boolean;
   deploysAs?: string; // building defId when deployed (mobile HQ)
   deployTime?: number; // seconds to deploy
+  canConjureMana?: boolean;
   art: ArtDef;
   sfx?: SfxDef;
 }
@@ -75,6 +76,8 @@ export interface BuildingDef {
   powerUsed?: number;
   unlocksSpells?: string[];
   isRadar?: boolean; // reveals entire map on minimap (RA2 radar)
+  isWall?: boolean;
+  isGate?: boolean; // allies pass; enemies blocked
   weapon?: WeaponDef | null; // Ward Turret
   art: ArtDef;
   sfx?: SfxDef;
@@ -116,6 +119,8 @@ export interface BalanceData {
   sellRefundRatio: number;
   repairManaPerHp: number;
   repairHpPerTick: number;
+  conjureManaAmount: number;
+  conjureManaIntervalSeconds: number;
   ai: Record<'easy' | 'normal' | 'hard', AiParams>;
 }
 
