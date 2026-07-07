@@ -26,8 +26,12 @@ export function validateLobby(state: LobbyState, mode: LobbyMode, map: MapData, 
 
   const corners = new Set<number>();
   for (const slot of active) {
+    if (slot.startIndex === null) {
+      errors.push('Each active player must choose a starting position');
+      break;
+    }
     if (corners.has(slot.startIndex)) {
-      errors.push('Each active slot needs a unique starting corner');
+      errors.push('Each active player needs a unique starting position');
       break;
     }
     corners.add(slot.startIndex);
@@ -61,15 +65,18 @@ export function validateLobby(state: LobbyState, mode: LobbyMode, map: MapData, 
 }
 
 export function buildMatchConfig(state: LobbyState): MatchConfig {
-  const players = activeSlots(state.slots).map((slot) => ({
-    id: slot.id,
-    controller: slot.kind === 'ai' ? ('ai' as const) : ('human' as const),
-    team: teamLabelToId(slot.team),
-    color: slot.color,
-    startIndex: slot.startIndex,
-    factionId: slot.factionId,
-    ...(slot.kind === 'ai' ? { aiDifficulty: slot.aiDifficulty ?? 'normal' } : {}),
-  }));
+  const players = activeSlots(state.slots).map((slot) => {
+    if (slot.startIndex === null) throw new Error(`Slot ${slot.id} has no starting position`);
+    return {
+      id: slot.id,
+      controller: slot.kind === 'ai' ? ('ai' as const) : ('human' as const),
+      team: teamLabelToId(slot.team),
+      color: slot.color,
+      startIndex: slot.startIndex,
+      factionId: slot.factionId,
+      ...(slot.kind === 'ai' ? { aiDifficulty: slot.aiDifficulty ?? 'normal' } : {}),
+    };
+  });
 
   return {
     mapId: state.mapId,
@@ -83,10 +90,10 @@ export function defaultLobbyState(mapId = 'duel_glade', factionId = 'arcane'): L
     mapId,
     factionId,
     slots: [
-      { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: 0, factionId, claimedBy: 'local', ready: true },
-      { id: 'player1', kind: 'ai', team: 'b', color: '#ff5d5d', startIndex: 3, factionId, aiDifficulty: 'normal' },
-      { id: 'player2', kind: 'closed', team: 'c', color: '#5dff8f', startIndex: 2, factionId },
-      { id: 'player3', kind: 'closed', team: 'd', color: '#ffd166', startIndex: 1, factionId },
+      { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId, claimedBy: 'local', ready: true },
+      { id: 'player1', kind: 'ai', team: 'b', color: '#ff5d5d', startIndex: null, factionId, aiDifficulty: 'normal' },
+      { id: 'player2', kind: 'closed', team: 'c', color: '#5dff8f', startIndex: null, factionId },
+      { id: 'player3', kind: 'closed', team: 'd', color: '#ffd166', startIndex: null, factionId },
     ],
   };
 }

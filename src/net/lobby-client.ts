@@ -33,7 +33,7 @@ export class LobbyClient {
     slotId: string,
     team: string,
     color: string,
-    startIndex: number,
+    startIndex: number | null,
     factionId: string,
   ): void {
     this.post({ t: 'claimSlot', slotId, team, color, startIndex, factionId });
