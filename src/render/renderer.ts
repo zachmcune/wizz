@@ -77,8 +77,26 @@ export class Renderer {
     private map: MapData,
   ) {
     this.app = new Application();
-    this.entityLayer.sortableChildren = true;
-    this.labelLayer.sortableChildren = true;
+  }
+
+  private isOblique(): boolean {
+    return this.projectionMode === 'oblique';
+  }
+
+  /** Screen draw position: world coords in Classic 2D, projected coords in oblique. */
+  private drawPos(worldX: number, worldY: number): { x: number; y: number } {
+    if (!this.isOblique()) return { x: worldX, y: worldY };
+    return this.groundPos(worldX, worldY);
+  }
+
+  private updateLayerSort(): void {
+    const oblique = this.isOblique();
+    this.entityLayer.sortableChildren = oblique;
+    this.labelLayer.sortableChildren = oblique;
+  }
+
+  private updateEffectsPositionFn(): void {
+    this.effects.setPositionFn((wx, wy) => this.drawPos(wx, wy));
   }
 
   async init(canvasParent: HTMLElement): Promise<void> {
@@ -108,7 +126,8 @@ export class Renderer {
     const worldW = this.map.tileW * TILE;
     const worldH = this.map.tileH * TILE;
     this.camera = new Camera(this.app.screen.width, this.app.screen.height, worldW, worldH);
-    this.effects.setPositionFn((wx, wy) => this.groundPos(wx, wy));
+    this.updateEffectsPositionFn();
+    this.updateLayerSort();
     this.buildTerrain();
 
     this.app.renderer.on('resize', () => this.camera.setViewport(this.app.screen.width, this.app.screen.height));
@@ -120,7 +139,10 @@ export class Renderer {
     this.projectionMode = mode;
     this.provider.clearCache();
     this.buildTerrain();
+    this.updateLayerSort();
+    this.updateEffectsPositionFn();
     this.applySpriteAnchors();
+    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
   }
 
   getProjectionMode(): ProjectionMode {
@@ -128,15 +150,14 @@ export class Renderer {
   }
 
   private applySpriteAnchors(): void {
-    const oblique = this.projectionMode === 'oblique';
-    const anchorY = oblique ? 1 : 0.5;
+    const oblique = this.isOblique();
     for (const n of this.nodes.values()) {
-      n.sprite.anchor.set(0.5, anchorY);
-      n.sprite.rotation = 0;
+      n.sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+      if (oblique) n.sprite.rotation = 0;
     }
     for (const n of this.ghostNodes.values()) {
-      n.sprite.anchor.set(0.5, anchorY);
-      n.sprite.rotation = 0;
+      n.sprite.anchor.set(0.5, oblique ? 1 : 0.5);
+      if (oblique) n.sprite.rotation = 0;
     }
   }
 
@@ -178,9 +199,13 @@ export class Renderer {
 
   private applyCameraTransform(): void {
     const cam = this.camera.view();
-    const camProj = projectGround({ x: cam.x, y: cam.y });
     this.world.scale.set(cam.zoom);
-    this.world.position.set(-camProj.x * cam.zoom, -camProj.y * cam.zoom);
+    if (this.isOblique()) {
+      const camProj = projectGround({ x: cam.x, y: cam.y });
+      this.world.position.set(-camProj.x * cam.zoom, -camProj.y * cam.zoom);
+    } else {
+      this.world.position.set(-cam.x * cam.zoom, -cam.y * cam.zoom);
+    }
   }
 
   private sortKeyAt(worldX: number, worldY: number): number {
@@ -294,8 +319,8 @@ export class Renderer {
   }
 
   private positionOverlayAt(worldX: number, worldY: number, offsetY: number): { x: number; y: number } {
+    if (!this.isOblique()) return { x: worldX, y: worldY + offsetY };
     const p = this.groundPos(worldX, worldY);
-    if (this.projectionMode === 'ortho') return { x: p.x, y: p.y + offsetY };
     return { x: p.x, y: p.y + offsetY * 0.5 };
   }
 
@@ -344,12 +369,12 @@ export class Renderer {
         n.dispY = targetY;
       }
 
-      const pos = this.groundPos(x, y);
+      const pos = this.drawPos(x, y);
       n.sprite.position.set(pos.x, pos.y);
-      n.sprite.zIndex = this.sortKeyAt(x, y);
-      if (this.projectionMode === 'ortho' && (e.kind === 'unit' || e.kind === 'projectile')) {
+      if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(x, y);
+      if (!this.isOblique() && (e.kind === 'unit' || e.kind === 'projectile')) {
         n.sprite.rotation = n.facing + Math.PI / 2;
-      } else {
+      } else if (this.isOblique()) {
         n.sprite.rotation = 0;
       }
 
@@ -357,9 +382,13 @@ export class Renderer {
 
       const labelOff = e.radius + 4;
       if (n.label) {
-        const lp = this.positionOverlayAt(x, y, labelOff);
-        n.label.position.set(lp.x, lp.y);
-        n.label.zIndex = n.sprite.zIndex + 0.01;
+        if (this.isOblique()) {
+          const lp = this.positionOverlayAt(x, y, labelOff);
+          n.label.position.set(lp.x, lp.y);
+          n.label.zIndex = n.sprite.zIndex + 0.01;
+        } else {
+          n.label.position.set(x, y + labelOff);
+        }
         if (e.kind === 'resource_node') {
           const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
           n.label.visible = !!intel;
@@ -415,14 +444,14 @@ export class Renderer {
 
     if (overlay?.buildZones?.length) {
       for (const z of overlay.buildZones) {
-        const p = this.groundPos(z.x, z.y);
+        const p = this.drawPos(z.x, z.y);
         this.strokeRing(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
       }
     }
     if (overlay?.ghost) {
       const gh = overlay.ghost;
       const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-      const p = this.groundPos(gh.x, gh.y);
+      const p = this.drawPos(gh.x, gh.y);
       const half = gh.size / 2;
       this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
       this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
@@ -430,23 +459,23 @@ export class Renderer {
     if (overlay?.wallGhosts?.length) {
       for (const gh of overlay.wallGhosts) {
         const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-        const p = this.groundPos(gh.x, gh.y);
+        const p = this.drawPos(gh.x, gh.y);
         const half = gh.size / 2;
         this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
         this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
       }
     }
     if (overlay?.spell) {
-      const p = this.groundPos(overlay.spell.x, overlay.spell.y);
+      const p = this.drawPos(overlay.spell.x, overlay.spell.y);
       this.strokeRing(p.x, p.y, overlay.spell.radius, 2, 0xffd166, 0.9);
     }
     if (overlay?.confirm) {
-      const p = this.groundPos(overlay.confirm.x, overlay.confirm.y);
+      const p = this.drawPos(overlay.confirm.x, overlay.confirm.y);
       this.strokeRing(p.x, p.y, 12, 3, 0xffd166, 1);
     }
     if (overlay?.rallyMarker) {
-      const from = this.groundPos(overlay.rallyMarker.fromX, overlay.rallyMarker.fromY);
-      const to = this.groundPos(overlay.rallyMarker.toX, overlay.rallyMarker.toY);
+      const from = this.drawPos(overlay.rallyMarker.fromX, overlay.rallyMarker.fromY);
+      const to = this.drawPos(overlay.rallyMarker.toX, overlay.rallyMarker.toY);
       this.overlayStrokePool.acquire().moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
       this.fillDot(to.x, to.y, 5, 0x7fe3ff, 0.9);
       this.strokeRing(to.x, to.y, 10, 2, 0x7fe3ff, 0.7);
@@ -516,26 +545,45 @@ export class Renderer {
         if (n.label && n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
       }
 
-      const pos = this.groundPos(known.x, known.y);
+      const pos = this.drawPos(known.x, known.y);
       n.sprite.position.set(pos.x, pos.y);
-      n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
+      if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
-      const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
-      n.label!.position.set(lp.x, lp.y);
-      n.label!.zIndex = n.sprite.zIndex + 0.01;
+      if (this.isOblique()) {
+        const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
+        n.label!.position.set(lp.x, lp.y);
+        n.label!.zIndex = n.sprite.zIndex + 0.01;
+      } else {
+        n.label!.position.set(known.x, known.y + known.radius + 4);
+      }
       n.label!.alpha = 0.55;
       n.label!.visible = true;
 
       const ownerCol = this.colorByOwner.get(known.owner);
       if (ownerCol) this.strokeRing(pos.x, pos.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
       if (known.hp < known.maxHp) {
-        const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
-        this.drawHpBar(hp.x, hp.y, known);
+        if (this.isOblique()) {
+          const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
+          this.drawHpBar(hp.x, hp.y, known);
+        } else {
+          this.drawHpBar(known.x, known.y - known.radius - 8, known);
+        }
       }
       if (known.buildProgress !== undefined) {
-        const bar = this.positionOverlayAt(known.x, known.y, known.radius + 3);
-        this.fillRect(bar.x - known.radius, bar.y, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
+        if (this.isOblique()) {
+          const bar = this.positionOverlayAt(known.x, known.y, known.radius + 3);
+          this.fillRect(bar.x - known.radius, bar.y, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
+        } else {
+          this.fillRect(
+            known.x - known.radius,
+            known.y + known.radius + 3,
+            known.radius * 2 * known.buildProgress,
+            3,
+            0x7fe3ff,
+            0.45,
+          );
+        }
       }
     }
 

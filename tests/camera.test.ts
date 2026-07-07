@@ -12,14 +12,14 @@ describe('camera & coordinate math', () => {
   beforeEach(() => {
     setProjectionMode('ortho');
   });
-  it('clamps position to map bounds with overscroll margin', () => {
+  it('clamps position to map bounds without overscroll in ortho mode', () => {
     const cam = new Camera(800, 600, 2000, 1500);
     cam.centerOn(-1000, -1000);
-    expect(cam.x).toBeGreaterThanOrEqual(-800 * 0.45);
-    expect(cam.y).toBeGreaterThanOrEqual(-600 * 0.45);
+    expect(cam.x).toBeGreaterThanOrEqual(0);
+    expect(cam.y).toBeGreaterThanOrEqual(0);
     cam.centerOn(99999, 99999);
-    const maxX = 2000 - 800 / cam.zoom + 800 * 0.45;
-    const maxY = 1500 - 600 / cam.zoom + 600 * 0.45;
+    const maxX = 2000 - 800 / cam.zoom;
+    const maxY = 1500 - 600 / cam.zoom;
     expect(cam.x).toBeLessThanOrEqual(maxX);
     expect(cam.y).toBeLessThanOrEqual(maxY);
   });

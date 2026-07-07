@@ -89,6 +89,14 @@ export class Camera implements CameraView {
   private clampToBounds(): void {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
+    if (getProjectionMode() === 'ortho') {
+      // Legacy Classic 2D: tight map bounds, no overscroll.
+      if (viewWorldW >= this.worldW) this.x = (this.worldW - viewWorldW) / 2;
+      else this.x = clamp(this.x, 0, this.worldW - viewWorldW);
+      if (viewWorldH >= this.worldH) this.y = (this.worldH - viewWorldH) / 2;
+      else this.y = clamp(this.y, 0, this.worldH - viewWorldH);
+      return;
+    }
     const pad = this.overscrollPad();
     if (viewWorldW >= this.worldW) this.x = (this.worldW - viewWorldW) / 2;
     else this.x = clamp(this.x, -pad.x, this.worldW - viewWorldW + pad.x);
