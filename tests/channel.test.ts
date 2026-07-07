@@ -18,11 +18,19 @@ describe('mana weaver channeling', () => {
 
     sim.enqueueNow([{ type: 'channel', playerId: human.id, entityIds: [weaver.id], enabled: true }]);
     const ticks = secondsToTicks(reg.balance.conjureManaIntervalSeconds);
-    for (let i = 0; i < ticks; i++) sim.step();
+    let pulse = sim.step();
+    for (let i = 1; i < ticks; i++) pulse = sim.step();
 
     expect(weaver.channeling).toBe(true);
     expect(weaver.state).toBe('channeling');
     expect(human.mana).toBe(reg.balance.conjureManaAmount);
+    expect(pulse.events).toContainEqual({
+      type: 'manaConjured',
+      playerId: human.id,
+      amount: reg.balance.conjureManaAmount,
+      x: weaver.pos.x,
+      y: weaver.pos.y,
+    });
   });
 
   it('stop command ends channeling', () => {
