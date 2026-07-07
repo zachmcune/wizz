@@ -136,14 +136,14 @@ export class PointerBinder {
     if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
       this.deps.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
     }
+    const panned = this.deps.gesture.lastEndKind === 'pan' || this.deps.gesture.lastEndKind === 'pinch';
     if (
       (mode === 'normal' || mode === 'build' || mode === 'deploy') &&
+      !panned &&
       drift <= TAP_SLOP_PX &&
       this.deps.gesture.lastEndKind !== 'tap' &&
       this.deps.gesture.lastEndKind !== 'box'
     ) {
-      this.deps.controller.tap(p);
-    } else if (mode === 'normal' && this.deps.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
       this.deps.controller.tap(p);
     }
   };
