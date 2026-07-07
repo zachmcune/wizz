@@ -8,6 +8,7 @@ const artSchema = z.object({
   shape: shapeKind,
   size: z.number().positive(),
   accent: z.string(),
+  sprite: z.string().optional(),
   atlas: z.string().optional(),
   frameWidth: z.number().positive().optional(),
   frameHeight: z.number().positive().optional(),

@@ -176,7 +176,14 @@ export class Game {
       (tx, ty, fp) => footprintOverlapsNode(this.state, tx, ty, fp),
     );
 
-    this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
+    this.hud = new Hud(
+      () => this.state,
+      this.registry,
+      this.controller,
+      this.humanId,
+      this.minimap,
+      (art, color) => this.renderer.iconCanvas(art, color),
+    );
     this.hud.onExit = () => this.exit();
     if (this.relayTransport) {
       this.relayTransport.onError = (message) => {

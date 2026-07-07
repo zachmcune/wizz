@@ -11,8 +11,19 @@
   "sight": 130,
   "footprint": 3,
   "menuCategory": "buildings",
-  "requires": ["ley_conduit"],
-  "producesUnits": ["stone_golem", "siege_behemoth", "waystone_wagon"],
+  "requires": [
+    "ley_conduit"
+  ],
+  "producesUnits": [
+    "stone_golem",
+    "siege_behemoth",
+    "waystone_wagon"
+  ],
   "powerUsed": 40,
-  "art": { "shape": "building", "size": 88, "accent": "#9a6a3a" }
+  "art": {
+    "shape": "building",
+    "size": 88,
+    "accent": "#9a6a3a",
+    "sprite": "golem_forge"
+  }
 }

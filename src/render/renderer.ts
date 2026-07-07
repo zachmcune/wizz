@@ -691,4 +691,9 @@ export class Renderer {
   makeTexture(art: ArtDef, color: string): Texture {
     return this.provider.texture(art, color);
   }
+
+  iconCanvas(art: ArtDef, color: string): HTMLCanvasElement {
+    const tex = this.provider.iconTexture(art, color);
+    return this.app.renderer.extract.canvas(tex) as unknown as HTMLCanvasElement;
+  }
 }

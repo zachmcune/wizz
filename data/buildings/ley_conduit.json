@@ -11,7 +11,14 @@
   "sight": 110,
   "footprint": 2,
   "menuCategory": "buildings",
-  "requires": ["sanctum"],
+  "requires": [
+    "sanctum"
+  ],
   "powerProduced": 60,
-  "art": { "shape": "building", "size": 60, "accent": "#e0c24a" }
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#e0c24a",
+    "sprite": "ley_conduit"
+  }
 }

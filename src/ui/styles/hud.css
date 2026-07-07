@@ -195,6 +195,9 @@
   border-left: 4px solid var(--accent);
   min-width: 0;
   flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .build-btn.unaffordable {
   opacity: 0.5;
@@ -213,6 +216,22 @@
 .produce-btn {
   min-width: 0;
   flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .category-chips {
   margin-bottom: 4px;
@@ -464,32 +483,16 @@
 }
 .queue-icon {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
-  background: var(--accent, #7fe3ff);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.queue-icon.shape-circle {
-  border-radius: 50%;
-}
-.queue-icon.shape-square {
-  border-radius: 2px;
-}
-.queue-icon.shape-triangle {
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  border: none;
-  background: var(--accent, #ff8a5c);
-}
-.queue-icon.shape-diamond {
-  transform: rotate(45deg);
-  border-radius: 1px;
-  width: 11px;
-  height: 11px;
-  margin: 0 2px;
-}
-.queue-icon.shape-hexagon {
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  border: none;
+.queue-icon canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .queue-meta {
   flex: 1;

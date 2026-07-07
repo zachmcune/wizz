@@ -16,5 +16,10 @@
   "packsInto": "waystone_wagon",
   "packTime": 10,
   "powerProduced": 15,
-  "art": { "shape": "building", "size": 80, "accent": "#8b6cff" }
+  "art": {
+    "shape": "building",
+    "size": 80,
+    "accent": "#8b6cff",
+    "sprite": "waystone_camp"
+  }
 }

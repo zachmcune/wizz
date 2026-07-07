@@ -12,6 +12,8 @@ export interface ArtDef {
   shape: ShapeKind;
   size: number; // draw size in world units
   accent: string; // hex accent color layered over the team color
+  /** Procedural design key; defaults to entity id when omitted. */
+  sprite?: string;
   /** Phase 3: sprite atlas path (when set, AtlasSpriteProvider uses this instead of shape). */
   atlas?: string;
   frameWidth?: number;

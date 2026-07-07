@@ -15,11 +15,27 @@
     "range": 132,
     "cooldownTicks": 18,
     "projectile": "arcane_bolt",
-    "vs": { "light": 1.2, "heavy": 0.7, "building": 0.6 }
+    "vs": {
+      "light": 1.2,
+      "heavy": 0.7,
+      "building": 0.6
+    }
   },
   "producedBy": "summoning_circle",
   "menuCategory": "small_troops",
-  "requires": ["summoning_circle"],
-  "art": { "shape": "diamond", "size": 16, "accent": "#c9b8ff" },
-  "sfx": { "select": "archer_select", "move": "archer_move", "attack": "bolt_fire", "die": "unit_die" }
+  "requires": [
+    "summoning_circle"
+  ],
+  "art": {
+    "shape": "diamond",
+    "size": 16,
+    "accent": "#c9b8ff",
+    "sprite": "arcane_archer"
+  },
+  "sfx": {
+    "select": "archer_select",
+    "move": "archer_move",
+    "attack": "bolt_fire",
+    "die": "unit_die"
+  }
 }
