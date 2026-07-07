@@ -77,7 +77,75 @@ export function steerToGoal(
   return normalize(dx, dy);
 }
 
-/** Apply steered movement with axis-separated collision slide against blocked tiles. */
+/** Slide along axes when the full move hits a blocked tile. */
+export function slidePosition(
+  nav: NavGrid,
+  x: number,
+  y: number,
+  nx: number,
+  ny: number,
+  radius = 0,
+): { x: number; y: number } | null {
+  const blocked = radius > 0
+    ? (px: number, py: number) => nav.isBlockedDisc(px, py, radius)
+    : (px: number, py: number) => nav.isBlockedWorld(px, py);
+
+  if (!blocked(nx, ny)) return { x: nx, y: ny };
+  if (!blocked(nx, y)) return { x: nx, y };
+  if (!blocked(x, ny)) return { x, y: ny };
+  return null;
+}
+
+function tryEscapeMove(
+  e: Entity,
+  nav: NavGrid,
+  field: FlowField,
+  speed: number,
+  dt: number,
+  radius: number,
+): boolean {
+  const tx = Math.floor(e.pos.x / TILE);
+  const ty = Math.floor(e.pos.y / TILE);
+  const here = field.cost[ty * nav.w + tx]!;
+  if (here === UNREACHABLE) return false;
+
+  const candidates: { dx: number; dy: number; cost: number }[] = [];
+  for (const [dx, dy] of NEIGHBORS) {
+    const nx = tx + dx;
+    const ny = ty + dy;
+    if (!nav.inBounds(nx, ny)) continue;
+    if (dx !== 0 && dy !== 0) {
+      if (nav.isBlocked(tx + dx, ty) || nav.isBlocked(tx, ty + dy)) continue;
+    }
+    const nc = field.cost[ny * nav.w + nx]!;
+    if (nc < here) candidates.push({ dx, dy, cost: nc });
+  }
+  candidates.sort((a, b) => a.cost - b.cost);
+
+  for (const c of candidates) {
+    const nx = e.pos.x + c.dx * speed * dt;
+    const ny = e.pos.y + c.dy * speed * dt;
+    const slid = slidePosition(nav, e.pos.x, e.pos.y, nx, ny, radius);
+    if (!slid) continue;
+    e.pos.x = slid.x;
+    e.pos.y = slid.y;
+    e.vel = { x: c.dx * speed, y: c.dy * speed };
+    e.facing = Math.atan2(c.dy, c.dx);
+    return true;
+  }
+  return false;
+}
+
+function tryUnstuckNudge(e: Entity, nav: NavGrid, radius: number): boolean {
+  const nudgeR = radius > 0 ? radius : 4;
+  const nudge = nav.nearestPassable(e.pos.x, e.pos.y, nudgeR, TILE * 2);
+  if (!nudge) return false;
+  e.pos.x = nudge.x;
+  e.pos.y = nudge.y;
+  return true;
+}
+
+/** Apply steered movement with collision slide and flow-field escape when stuck. */
 export function applySteeredMove(
   e: Entity,
   steer: { x: number; y: number },
@@ -85,38 +153,43 @@ export function applySteeredMove(
   nav: NavGrid,
   dt: number,
   field?: FlowField,
+  radius = 0,
 ): boolean {
   if (steer.x === 0 && steer.y === 0) return false;
 
-  let moveX = steer.x * speed;
-  let moveY = steer.y * speed;
-  let nx = e.pos.x + moveX * dt;
-  let ny = e.pos.y + moveY * dt;
+  const moveX = steer.x * speed;
+  const moveY = steer.y * speed;
+  const nx = e.pos.x + moveX * dt;
+  const ny = e.pos.y + moveY * dt;
 
-  if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
-  if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
-
-  if (nx === e.pos.x && ny === e.pos.y && field) {
-    const tx = Math.floor(e.pos.x / TILE);
-    const ty = Math.floor(e.pos.y / TILE);
-    const escape = bestNeighborSteer(field, nav, tx, ty);
-    if (escape.x !== 0 || escape.y !== 0) {
-      moveX = escape.x * speed;
-      moveY = escape.y * speed;
-      nx = e.pos.x + moveX * dt;
-      ny = e.pos.y + moveY * dt;
-      if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
-      if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
-    }
+  const slid = slidePosition(nav, e.pos.x, e.pos.y, nx, ny, radius);
+  if (slid) {
+    e.pos.x = slid.x;
+    e.pos.y = slid.y;
+    e.vel = { x: moveX, y: moveY };
+    e.facing = Math.atan2(moveY, moveX);
+    return true;
   }
 
-  if (nx === e.pos.x && ny === e.pos.y) return false;
+  if (field && tryEscapeMove(e, nav, field, speed, dt, radius)) return true;
+  if (tryUnstuckNudge(e, nav, radius)) return true;
 
-  e.pos.x = nx;
-  e.pos.y = ny;
-  e.vel = { x: moveX, y: moveY };
-  e.facing = Math.atan2(moveY, moveX);
-  return true;
+  return false;
+}
+
+/** Apply a velocity vector with collision slide and escape when stuck. */
+export function applyVelocityMove(
+  e: Entity,
+  vx: number,
+  vy: number,
+  nav: NavGrid,
+  dt: number,
+  field?: FlowField,
+  radius = 0,
+): boolean {
+  const mag = Math.hypot(vx, vy);
+  if (mag < 0.001) return false;
+  return applySteeredMove(e, { x: vx / mag, y: vy / mag }, mag, nav, dt, field, radius);
 }
 
 /** Move a unit toward a world goal using flow-field pathing. */

@@ -49,4 +49,28 @@ describe('pathing', () => {
     expect(maxYOffset).toBeGreaterThan(TILE * 1.2);
     expect(dist(unit.pos, target)).toBeLessThan(TILE * 3);
   });
+
+  it('group detours around a wall without getting stuck on corners', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+
+    const start = { x: 400, y: 800 };
+    const target = { x: 1400, y: 800 };
+    spawnEntity(state, services, null, 'golem_forge', 'player0', 900, 800);
+    spawnEntity(state, services, null, 'golem_forge', 'player0', 900, 900);
+
+    const ids: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const u = spawnEntity(state, services, null, 'imp_swarmling', 'player0', start.x + i * 14, start.y);
+      ids.push(u.id);
+    }
+
+    sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: ids, x: target.x, y: target.y }]);
+    for (let i = 0; i < 900; i++) sim.step();
+
+    const units = ids.map((id) => state.entities.get(id)!).filter(Boolean);
+    const arrived = units.filter((u) => dist(u.pos, target) < TILE * 4).length;
+    expect(arrived).toBeGreaterThanOrEqual(units.length * 0.75);
+  });
 });

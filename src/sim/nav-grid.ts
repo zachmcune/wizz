@@ -38,6 +38,49 @@ export class NavGrid {
     return this.isBlocked(Math.floor(x / TILE), Math.floor(y / TILE));
   }
 
+  /** True when a disc at world position overlaps any blocked tile (unit footprint). */
+  isBlockedDisc(x: number, y: number, radius: number): boolean {
+    if (radius <= 0) return this.isBlockedWorld(x, y);
+    const minTx = Math.floor((x - radius) / TILE);
+    const maxTx = Math.floor((x + radius) / TILE);
+    const minTy = Math.floor((y - radius) / TILE);
+    const maxTy = Math.floor((y + radius) / TILE);
+    const r2 = radius * radius;
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
+        if (!this.inBounds(tx, ty)) return true;
+        if (!this.isBlocked(tx, ty)) continue;
+        const closestX = Math.max(tx * TILE, Math.min(x, (tx + 1) * TILE));
+        const closestY = Math.max(ty * TILE, Math.min(y, (ty + 1) * TILE));
+        const dx = x - closestX;
+        const dy = y - closestY;
+        if (dx * dx + dy * dy < r2) return true;
+      }
+    }
+    return false;
+  }
+
+  /** Nearest passable world position within maxDist (for unstuck nudges). */
+  nearestPassable(x: number, y: number, radius: number, maxDist: number): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null;
+    let bestD = Infinity;
+    const step = Math.max(4, Math.floor(TILE / 4));
+    const range = Math.ceil(maxDist / step);
+    for (let oy = -range; oy <= range; oy++) {
+      for (let ox = -range; ox <= range; ox++) {
+        const px = x + ox * step;
+        const py = y + oy * step;
+        if (this.isBlockedDisc(px, py, radius)) continue;
+        const d = ox * ox + oy * oy;
+        if (d < bestD) {
+          bestD = d;
+          best = { x: px, y: py };
+        }
+      }
+    }
+    return best;
+  }
+
   /** Rebuild the building-occupancy layer. Called when buildings change. */
   setBuildingBlock(tx: number, ty: number, footprint: number, blocked: boolean): void {
     for (let dy = 0; dy < footprint; dy++) {
