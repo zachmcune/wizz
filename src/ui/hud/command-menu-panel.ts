@@ -48,8 +48,9 @@ export class CommandMenuPanel {
     private registry: Registry,
     private controller: InputController,
     startOpen: boolean,
+    onHeadClick?: () => void,
   ) {
-    this.panel = new Collapsible('Command', startOpen);
+    this.panel = new Collapsible('Command', startOpen, onHeadClick);
     this.categoryChips = new CategoryChips((id) => this.onCategorySelect(id));
     this.panel.body.append(this.categoryChips.root, this.producerRow, this.contentRow);
     this.touchRoots = [this.categoryChips.root, this.producerRow, this.contentRow];
@@ -121,7 +122,7 @@ export class CommandMenuPanel {
     if (!context) return;
 
     const categories =
-      context.mode === 'hq'
+      context.mode === 'hq' || context.mode === 'producer'
         ? [...BUILD_MENU_CATEGORIES, ...TRAIN_MENU_CATEGORIES].map((id) => ({
             id,
             label: MENU_CATEGORY_LABELS[id],
