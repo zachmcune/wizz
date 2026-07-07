@@ -23,10 +23,6 @@ const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
 const NODE_DEPLETED_COLOR = '#4a4a5a';
 
-function hexToNumber(hex: string): number {
-  return Number.parseInt(hex.replace('#', ''), 16);
-}
-
 export interface RenderOverlay {
   ghost?: { x: number; y: number; size: number; valid: boolean };
   wallGhosts?: { x: number; y: number; size: number; valid: boolean }[];
@@ -414,11 +410,6 @@ export class Renderer {
         n.sprite.alpha = 1;
       }
 
-      if (e.kind === 'building') {
-        const ownerCol = this.colorByOwner.get(e.owner);
-        if (ownerCol) this.strokeRing(pos.x, pos.y, e.radius + 3, 2, hexToNumber(ownerCol), 0.9);
-      }
-
       if (selected.has(id)) this.strokeRing(pos.x, pos.y, e.radius + 6, 2, 0xffffff, 0.9);
 
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
@@ -558,8 +549,6 @@ export class Renderer {
       n.label!.alpha = 0.55;
       n.label!.visible = true;
 
-      const ownerCol = this.colorByOwner.get(known.owner);
-      if (ownerCol) this.strokeRing(pos.x, pos.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
       if (known.hp < known.maxHp) {
         if (this.isOblique()) {
           const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
