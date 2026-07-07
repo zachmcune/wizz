@@ -13,6 +13,7 @@ import type { Player } from '../sim/types';
 import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
+import { GraphicsPool } from './graphics-pool';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -53,9 +54,9 @@ export class Renderer {
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
   private ghostNodes = new Map<EntityId, RenderNode>();
-  /** Separate fill/stroke graphics — mixing both on one object causes stray connector lines on Android WebGL. */
-  private overlayFill = new Graphics();
-  private overlayStroke = new Graphics();
+  /** One primitive per pooled Graphics — shared objects stitch subpaths on Android WebGL. */
+  private overlayFillPool!: GraphicsPool;
+  private overlayStrokePool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
   private humanOwner: PlayerId = '';
   private nav: NavGrid | null = null;
@@ -78,8 +79,9 @@ export class Renderer {
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
 
+    this.overlayFillPool = new GraphicsPool(this.overlayLayer);
+    this.overlayStrokePool = new GraphicsPool(this.overlayLayer);
     this.world.addChild(this.terrainLayer, this.fogLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
-    this.overlayLayer.addChild(this.overlayFill, this.overlayStroke);
     this.app.stage.addChild(this.world);
 
     const worldW = this.map.tileW * TILE;
@@ -99,8 +101,8 @@ export class Renderer {
       if (w > 0 && h > 0) this.app.renderer.resize(w, h);
     }
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
-    this.overlayFill.clear();
-    this.overlayStroke.clear();
+    this.overlayFillPool.releaseAll();
+    this.overlayStrokePool.releaseAll();
     this.fogLayer.clear();
     this.effects.reset();
   }
@@ -221,8 +223,8 @@ export class Renderer {
     const viewer = getPlayer(state, this.humanOwner);
     const nav = this.nav;
 
-    this.overlayFill.clear();
-    this.overlayStroke.clear();
+    this.overlayFillPool.releaseAll();
+    this.overlayStrokePool.releaseAll();
     this.fogLayer.clear();
     if (viewer && nav) this.drawFog(state, viewer, nav);
 
@@ -305,7 +307,7 @@ export class Renderer {
       const gx = gh.x - gh.size / 2;
       const gy = gh.y - gh.size / 2;
       this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
-      this.overlayStroke.rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+      this.overlayStrokePool.acquire().rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
     }
     if (overlay?.spell) {
       this.strokeRing(overlay.spell.x, overlay.spell.y, overlay.spell.radius, 2, 0xffd166, 0.9);
@@ -315,7 +317,7 @@ export class Renderer {
     }
     if (overlay?.rallyMarker) {
       const { fromX, fromY, toX, toY } = overlay.rallyMarker;
-      this.overlayStroke.moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
+      this.overlayStrokePool.acquire().moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
       this.fillDot(toX, toY, 5, 0x7fe3ff, 0.9);
       this.strokeRing(toX, toY, 10, 2, 0x7fe3ff, 0.7);
     }
@@ -325,9 +327,11 @@ export class Renderer {
   private drawPowerOffline(x: number, y: number, radius: number): void {
     this.strokeRing(x, y, radius + 4, 2, 0xff5d5d, 0.85);
     const s = radius * 0.35;
-    this.overlayStroke
+    this.overlayStrokePool.acquire()
       .moveTo(x - s, y - s)
       .lineTo(x + s, y + s)
+      .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
+    this.overlayStrokePool.acquire()
       .moveTo(x + s, y - s)
       .lineTo(x - s, y + s)
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
@@ -413,36 +417,38 @@ export class Renderer {
     if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
   }
 
-  /** Isolated ring stroke — each ring is its own path to avoid connector lines on mobile GPUs. */
+  /** Each ring gets its own Graphics — shared paths connect through (0,0) on Android WebGL. */
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
+    const g = this.overlayStrokePool.acquire();
     const full = start === 0 && end >= Math.PI * 2 - 0.001;
     if (full) {
-      this.overlayStroke.circle(cx, cy, r).stroke({ width, color, alpha });
+      g.circle(cx, cy, r).stroke({ width, color, alpha });
       return;
     }
     const sx = cx + Math.cos(start) * r;
     const sy = cy + Math.sin(start) * r;
-    this.overlayStroke.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
+    g.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
   private drawFog(_state: GameState, player: Player, nav: NavGrid): void {
+    let hasFog = false;
     for (let ty = 0; ty < nav.h; ty++) {
       for (let tx = 0; tx < nav.w; tx++) {
         const i = ty * nav.w + tx;
         if (!isTileFogged(player, i)) continue;
-        const x = tx * TILE;
-        const y = ty * TILE;
-        this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0xb8b8c8, alpha: 0.42 });
+        hasFog = true;
+        this.fogLayer.rect(tx * TILE, ty * TILE, TILE, TILE);
       }
     }
+    if (hasFog) this.fogLayer.fill({ color: 0xb8b8c8, alpha: 0.42 });
   }
 
   private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
-    this.overlayFill.rect(x, y, w, h).fill({ color, alpha });
+    this.overlayFillPool.acquire().rect(x, y, w, h).fill({ color, alpha });
   }
 
   private fillDot(cx: number, cy: number, r: number, color: number, alpha = 1): void {
-    this.overlayFill.circle(cx, cy, r).fill({ color, alpha });
+    this.overlayFillPool.acquire().circle(cx, cy, r).fill({ color, alpha });
   }
 
   /** Pick a mana node at a world position (generous hit area for touch). */
