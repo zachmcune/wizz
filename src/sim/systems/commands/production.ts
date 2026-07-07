@@ -28,7 +28,7 @@ export function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<C
 export function handleCancelProduce(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'cancelProduce' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || !b.productionQueue) return;
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !b.productionQueue) return;
   const item = b.productionQueue[cmd.index];
   if (!item) return;
   const udef = ctx.services.registry.units.get(item.defId);

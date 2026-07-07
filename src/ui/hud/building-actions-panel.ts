@@ -1,6 +1,7 @@
 import type { Registry } from '../../data/registry';
 import type { BuildingDef } from '../../data/defs';
 import type { GameState, Entity, Player } from '../../sim/types';
+import { isBuilding } from '../../sim/types';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 
@@ -25,7 +26,7 @@ export class BuildingActionsPanel {
       if (id === undefined) return;
       const st = this.state();
       const b = st.entities.get(id);
-      this.controller.setRepair(id, !b?.repairing);
+      this.controller.setRepair(id, !(b && isBuilding(b) && b.repairing));
     });
     this.rallyBtn.addEventListener('click', () => {
       const id = [...this.controller.session.selection][0];
@@ -46,22 +47,23 @@ export class BuildingActionsPanel {
     inPlaceMode: boolean,
     inRallyMode: boolean,
   ): void {
-    const completeBuilding = ownBuilding && single && single.buildProgress === undefined && single.morphProgress === undefined;
+    const building = single && isBuilding(single) ? single : null;
+    const completeBuilding = ownBuilding && building && building.buildProgress === undefined && building.morphProgress === undefined;
     const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
-    const canRepair = !!completeBuilding && single!.hp < single!.maxHp;
+    const canRepair = !!completeBuilding && building!.hp < building!.maxHp;
     const canRally = !!completeBuilding && !!ownBuilding.producesUnits?.length && !ownBuilding.isConstructionYard;
     const showBuildingRow =
-      (!inPlaceMode || inRallyMode) && !!ownBuilding && (canSell || canRepair || canRally || single?.repairing);
+      (!inPlaceMode || inRallyMode) && !!ownBuilding && (canSell || canRepair || canRally || building?.repairing);
     this.row.style.display = showBuildingRow ? 'flex' : 'none';
     this.sellBtn.style.display = canSell ? '' : 'none';
     if (canSell && ownBuilding) {
       const refund = Math.floor(ownBuilding.cost * this.registry.balance.sellRefundRatio);
       this.sellBtn.textContent = `Sell (+${refund})`;
-      this.sellBtn.disabled = !!(single?.productionQueue?.length || single?.repairing);
+      this.sellBtn.disabled = !!(building?.productionQueue?.length || building?.repairing);
     }
-    this.repairBtn.style.display = canRepair || single?.repairing ? '' : 'none';
-    if (canRepair || single?.repairing) {
-      const repairing = !!single?.repairing;
+    this.repairBtn.style.display = canRepair || building?.repairing ? '' : 'none';
+    if (canRepair || building?.repairing) {
+      const repairing = !!building?.repairing;
       const costPerTick = this.registry.balance.repairHpPerTick * this.registry.balance.repairManaPerHp;
       const costLabel = costPerTick < 1 ? costPerTick.toFixed(1) : String(Math.round(costPerTick));
       this.repairBtn.textContent = repairing ? 'Stop Repair' : `Repair (${costLabel}/tick)`;
@@ -72,7 +74,7 @@ export class BuildingActionsPanel {
     this.rallyBtn.classList.toggle('active', inRallyMode);
     if (inRallyMode) {
       this.rallyBtn.textContent = 'Cancel Rally';
-    } else if (canRally && single?.rally) {
+    } else if (canRally && building?.rally) {
       this.rallyBtn.textContent = 'Move Rally';
     } else {
       this.rallyBtn.textContent = 'Set Rally';

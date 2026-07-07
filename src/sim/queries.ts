@@ -1,5 +1,6 @@
 // Read-only helpers over GameState. All targeting/vision/win logic goes through relations,
 // never a hardcoded "me vs enemy" - this is what makes N players / teams / FFA work.
+import type { BuildingEntity } from './entity-types';
 import type { GameState, Entity, PlayerId, Relation } from './types';
 
 export function getPlayer(state: GameState, id: PlayerId) {
@@ -29,8 +30,8 @@ export function ownedBy(state: GameState, owner: PlayerId): Entity[] {
   return entitiesSorted(state).filter((e) => e.owner === owner);
 }
 
-export function buildingsOf(state: GameState, owner: PlayerId): Entity[] {
-  return ownedBy(state, owner).filter((e) => e.kind === 'building' && e.state !== 'dead');
+export function buildingsOf(state: GameState, owner: PlayerId): BuildingEntity[] {
+  return ownedBy(state, owner).filter((e): e is BuildingEntity => e.kind === 'building' && e.state !== 'dead');
 }
 
 /** True if the player still has a living HQ (Sanctum or deployed Waystone Camp). */
@@ -44,9 +45,12 @@ export function hasSanctum(state: GameState, owner: PlayerId): boolean {
 }
 
 export function isAlive(e: Entity | undefined | null): e is Entity {
-  return !!e && e.state !== 'dead' && e.hp > 0;
+  if (!e || e.hp <= 0) return false;
+  if (e.kind === 'resource_node') return (e.amount ?? 0) > 0;
+  return e.state !== 'dead';
 }
 
 export function hasBuff(e: Entity, kind: 'aegis' | 'haste', tick: number): boolean {
+  if (e.kind === 'resource_node') return false;
   return e.buffs.some((b) => b.kind === kind && b.expiresTick > tick);
 }

@@ -2,14 +2,14 @@
 // Makes group movement look coherent (no overlap/jitter). This is a "feel" system.
 import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
-import type { GameState, Entity, EntityId } from '../types';
+import type { GameState, UnitEntity, EntityId } from '../types';
 import { entitiesSorted, isAlive, hasBuff } from '../queries';
 import { steerToGoal, applyVelocityMove, slidePosition, makePathContext } from '../pathing';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
 
-function goalOf(e: Entity): { x: number; y: number } | null {
+function goalOf(e: UnitEntity): { x: number; y: number } | null {
   const o = e.orders[0];
   if (!o) return null;
   if (o.type === 'move' || o.type === 'attackMove') return { x: o.x, y: o.y };

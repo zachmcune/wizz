@@ -6,7 +6,7 @@ import tsparser from '@typescript-eslint/parser';
 // the deterministic simulation core must never import rendering, DOM, or asset code.
 export default [
   {
-    ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'scripts/**', '*.config.js', 'vite.config.ts', 'vitest.config.ts'],
+    ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'scripts/**', 'e2e/**', '*.config.js', 'vite.config.ts', 'vitest.config.ts', 'playwright.config.ts'],
   },
   js.configs.recommended,
   {

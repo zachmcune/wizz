@@ -24,7 +24,9 @@ export function handleSpell(state: GameState, ctx: StepContext, cmd: Extract<Com
     const ids = cmd.entityIds ?? [];
     for (const id of ids) {
       const e = state.entities.get(id);
-      if (e && e.owner === cmd.playerId && isAlive(e)) e.buffs.push({ kind: eff.buff, expiresTick: state.tick + eff.durationTicks });
+      if (e && e.owner === cmd.playerId && isAlive(e) && e.kind !== 'resource_node') {
+        e.buffs.push({ kind: eff.buff, expiresTick: state.tick + eff.durationTicks });
+      }
     }
   } else if (eff.kind === 'blink') {
     const ids = cmd.entityIds ?? [];

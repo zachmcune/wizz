@@ -1,6 +1,7 @@
 import type { Registry } from '../../data/registry';
 import type { BuildingDef, MenuCategory, UnitDef } from '../../data/defs';
-import type { Entity, GameState, Player, PlayerId } from '../../sim/types';
+import type { BuildingEntity } from '../../sim/entity-types';
+import type { GameState, Player, PlayerId } from '../../sim/types';
 import type { InputController } from '../../input/controller';
 import { buildingHasPower, isPowerShort } from '../../sim/views';
 import { el } from './dom';
@@ -157,7 +158,7 @@ export class CommandMenuPanel {
     this.updateItemStates(player, session);
   }
 
-  updateTrainQueue(registry: Registry, controller: InputController, building: Entity | null): void {
+  updateTrainQueue(registry: Registry, controller: InputController, building: BuildingEntity | null): void {
     this.trainQueueEl.innerHTML = '';
     const queue = building?.productionQueue;
     if (!building || !queue?.length) {

@@ -27,6 +27,7 @@ export class LobbyMapPreview {
     title.textContent = map.name;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'lobby-map-canvas';
+    this.canvas.dataset.testid = 'lobby-map-canvas';
     this.canvas.width = size;
     this.canvas.height = size;
     this.ctx = this.canvas.getContext('2d')!;

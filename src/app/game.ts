@@ -138,6 +138,7 @@ export class Game {
 
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
+    canvasHost.dataset.testid = 'game-canvas-host';
     this.host.appendChild(canvasHost);
     this.boxEl.style.position = 'absolute';
     this.boxEl.style.pointerEvents = 'none';

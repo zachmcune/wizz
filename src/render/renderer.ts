@@ -2,6 +2,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { lerp } from '../sim/math';
+import type { ResourceNodeEntity } from '../sim/entity-types';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
@@ -319,15 +320,15 @@ export class Renderer {
         this.drawHpBar(x, y - e.radius - 8, e);
       }
       // construction shimmer
-      if (e.buildProgress !== undefined) {
+      if (e.kind === 'building' && e.buildProgress !== undefined) {
         this.fillRect(x - e.radius, y + e.radius + 3, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
       }
-      if (e.morphProgress !== undefined) {
-        const w = e.kind === 'building' ? e.radius * 2 : e.radius * 2;
+      if ((e.kind === 'building' || e.kind === 'unit') && e.morphProgress !== undefined) {
+        const w = e.radius * 2;
         this.fillRect(x - e.radius, y + e.radius + 6, w * e.morphProgress, 3, 0x8b6cff);
       }
       // carry indicator for wisps
-      if (e.carry !== undefined && e.carry > 0) {
+      if (e.kind === 'unit' && e.carry !== undefined && e.carry > 0) {
         this.fillDot(x, y - e.radius - 4, 3, 0x7fe3ff);
       }
     }
@@ -384,9 +385,9 @@ export class Renderer {
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
   }
 
-  private drawNodeReserve(x: number, y: number, e: Entity): void {
-    const max = e.amountMax ?? e.amount ?? 1;
-    const frac = Math.max(0, Math.min(1, (e.amount ?? 0) / max));
+  private drawNodeReserve(x: number, y: number, e: ResourceNodeEntity): void {
+    const max = e.amountMax;
+    const frac = Math.max(0, Math.min(1, e.amount / max));
     const ringR = e.radius + 6;
     const track = 0x1a1826;
     const fill = frac <= 0 ? 0x555566 : 0x39d0c0;

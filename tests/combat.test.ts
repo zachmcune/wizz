@@ -14,7 +14,7 @@ function battleField() {
 }
 
 function countUnits(state: ReturnType<typeof battleField>['state'], owner: string, defId: string): number {
-  return ownedBy(state, owner).filter((e) => e.defId === defId && e.state !== 'dead').length;
+  return ownedBy(state, owner).filter((e) => e.kind !== 'resource_node' && e.defId === defId && e.state !== 'dead').length;
 }
 
 describe('combat & counters', () => {

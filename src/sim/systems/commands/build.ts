@@ -37,6 +37,7 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
   const cx = (tx + def.footprint / 2) * TILE;
   const cy = (ty + def.footprint / 2) * TILE;
   const e = spawnEntity(state, ctx.services, ctx, def.id, cmd.playerId, cx, cy);
+  if (e.kind !== 'building') return;
   e.buildProgress = 0;
   e.hp = Math.max(1, Math.floor(def.hp * 0.1));
   ctx.events.push({ type: 'buildingPlaced', id: e.id, defId: def.id, owner: cmd.playerId });

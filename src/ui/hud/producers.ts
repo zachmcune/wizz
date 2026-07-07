@@ -1,11 +1,12 @@
 import type { Registry } from '../../data/registry';
 import type { BuildingDef } from '../../data/defs';
 import type { TrainMenuCategory } from '../../data/defs';
-import type { Entity, GameState, PlayerId } from '../../sim/types';
+import type { BuildingEntity } from '../../sim/entity-types';
+import type { GameState, PlayerId } from '../../sim/types';
 import { buildingHasPower, isPowerShort } from '../../sim/views';
 
 export interface ProducerInfo {
-  entity: Entity;
+  entity: BuildingEntity;
   def: BuildingDef;
   label: string;
   queueLength: number;
@@ -13,11 +14,11 @@ export interface ProducerInfo {
   slow: boolean;
 }
 
-export function isProducerReady(entity: Entity): boolean {
+export function isProducerReady(entity: BuildingEntity): boolean {
   return entity.buildProgress === undefined && entity.morphProgress === undefined;
 }
 
-function producerIndex(state: GameState, entity: Entity): number {
+function producerIndex(state: GameState, entity: BuildingEntity): number {
   const peers = [...state.entities.values()]
     .filter(
       (e) =>
@@ -31,7 +32,7 @@ function producerIndex(state: GameState, entity: Entity): number {
   return peers.findIndex((e) => e.id === entity.id) + 1;
 }
 
-export function producerLabel(registry: Registry, state: GameState, entity: Entity): string {
+export function producerLabel(registry: Registry, state: GameState, entity: BuildingEntity): string {
   const def = registry.building(entity.defId);
   return `${def.shortLabel} #${producerIndex(state, entity)}`;
 }
@@ -40,7 +41,7 @@ function toProducerInfo(
   state: GameState,
   registry: Registry,
   playerId: PlayerId,
-  entity: Entity,
+  entity: BuildingEntity,
 ): ProducerInfo {
   const def = registry.building(entity.defId);
   return {

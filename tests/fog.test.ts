@@ -7,6 +7,7 @@ import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isNodeIntel
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
 import { visibilitySystem } from '../src/sim/systems/visibility';
+import { expectBuilding } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -94,7 +95,7 @@ describe('fog of war', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.controller === 'human')!;
     spawnEntity(state, services, null, 'ley_conduit', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
-    const radar = spawnEntity(state, services, null, 'scrying_obelisk', human.id, sanctumX(state, human.id) + 160, sanctumY(state, human.id));
+    const radar = expectBuilding(spawnEntity(state, services, null, 'scrying_obelisk', human.id, sanctumX(state, human.id) + 160, sanctumY(state, human.id)));
     radar.buildProgress = undefined;
     recomputePower(state, services);
     visibilitySystem(state, { services, events: [] });

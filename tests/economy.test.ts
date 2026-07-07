@@ -3,6 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
+import { expectBuilding } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -27,7 +28,7 @@ describe('economy & production (data-driven)', () => {
 
     const spires = ownedBy(state, 'player0').filter((e) => e.defId === 'attunement_spire');
     expect(spires.length).toBe(1);
-    expect(spires[0]!.buildProgress).toBeUndefined(); // completed
+    expect(expectBuilding(spires[0]!).buildProgress).toBeUndefined(); // completed
     expect(p.unlockedTech).toContain('attunement_spire');
 
     const wispsAfter = ownedBy(state, 'player0').filter((e) => e.defId === 'wisp').length;
@@ -85,7 +86,7 @@ describe('economy & production (data-driven)', () => {
 
     expect(p.powerUsed).toBeGreaterThan(p.power);
 
-    const circle = ownedBy(state, 'player0').find((e) => e.defId === 'summoning_circle')!;
+    const circle = expectBuilding(ownedBy(state, 'player0').find((e) => e.defId === 'summoning_circle')!);
     p.mana = 9999;
     sim.enqueueNow([{ type: 'produce', playerId: 'player0', buildingId: circle.id, defId: 'imp_swarmling' }]);
     sim.step();

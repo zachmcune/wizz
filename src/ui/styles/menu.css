@@ -1,0 +1,91 @@
+/* ---- Menu screens ---- */
+.menu-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  touch-action: pan-y;
+  background: radial-gradient(circle at 50% 30%, #1c1830, #0c0a14);
+  z-index: 20;
+}
+.menu-title {
+  font-size: clamp(28px, 8vw, 44px);
+  margin: 0;
+  color: var(--text);
+  text-shadow: 0 0 24px rgba(139, 108, 255, 0.6);
+  text-align: center;
+}
+.menu-sub {
+  opacity: 0.6;
+  margin: 0 0 12px;
+}
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(80vw, 320px);
+}
+.menu-list .btn {
+  width: 100%;
+  font-size: 16px;
+}
+.menu-section {
+  margin: 8px 0 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.45;
+  text-align: center;
+}
+.online-btn {
+  border-color: rgba(127, 227, 255, 0.35);
+}
+.lobby-room {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  background: rgba(139, 108, 255, 0.12);
+  border: 1px solid rgba(139, 108, 255, 0.35);
+}
+.lobby-label {
+  font-size: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.lobby-code {
+  font-size: 32px;
+  letter-spacing: 4px;
+  color: #7fe3ff;
+}
+.lobby-status {
+  opacity: 0.75;
+  margin: 0;
+  text-align: center;
+}
+.lobby-error {
+  color: #ff7f7f;
+  margin: 0;
+  text-align: center;
+}
+.lobby-input {
+  width: min(80vw, 280px);
+  padding: 12px 16px;
+  font-size: 24px;
+  letter-spacing: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 108, 255, 0.4);
+  background: rgba(10, 8, 18, 0.8);
+  color: var(--text);
+}
+

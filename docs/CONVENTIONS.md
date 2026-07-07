@@ -15,6 +15,7 @@ state-management lib — everything gameplay is hand-rolled.
 - `npm test` — Vitest headless tests (excludes slow balance harness).
 - `npm run test:slow` — AI balance harness only (~45s).
 - `npm run test:full` — all tests including balance harness.
+- `npm run test:e2e` — Playwright smoke test (starts dev server automatically).
 
 Every task must end green: `npm run typecheck && npm run lint && npm test`.
 
