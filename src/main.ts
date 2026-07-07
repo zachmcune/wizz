@@ -46,6 +46,7 @@ async function boot(): Promise<void> {
       useWorker: !opts?.session,
       matchId: 'custom',
       localPlayerId: opts?.localPlayerId,
+      deadSpectatorReveal: config.deadSpectatorReveal ?? false,
       lockstep: opts?.session?.lockstep,
       onDesync: (tick, peers, replay) => {
         console.error('[lockstep] desync at tick', tick, 'peers:', peers);

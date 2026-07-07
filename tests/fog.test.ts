@@ -3,7 +3,7 @@ import { TILE } from '../src/core/constants';
 import { getRegistry } from './helpers';
 import { initMatch, spawnEntity, recomputePower } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isNodeIntelVisible, isMinimapTileFogged } from '../src/sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isNodeIntelVisible, isMinimapTileFogged, shouldRevealAllForViewer } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
 import { visibilitySystem } from '../src/sim/systems/visibility';
@@ -104,6 +104,18 @@ describe('fog of war', () => {
     expect(fogged).toBeGreaterThanOrEqual(0);
     const minimapFogged = human.visible.findIndex((v, i) => v === 0 && isMinimapTileFogged(human, i, true));
     expect(minimapFogged).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reveals the full live map for defeated viewers only when enabled', () => {
+    const { state } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.controller === 'human')!;
+    expect(shouldRevealAllForViewer(state, human.id, false)).toBe(false);
+    expect(shouldRevealAllForViewer(state, human.id, true)).toBe(false);
+    human.defeated = true;
+    expect(shouldRevealAllForViewer(state, human.id, false)).toBe(false);
+    expect(shouldRevealAllForViewer(state, human.id, true)).toBe(true);
+    state.ended = true;
+    expect(shouldRevealAllForViewer(state, human.id, false)).toBe(true);
   });
 });
 

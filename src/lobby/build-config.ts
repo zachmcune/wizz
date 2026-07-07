@@ -82,6 +82,7 @@ export function buildMatchConfig(state: LobbyState): MatchConfig {
     mapId: state.mapId,
     seed: state.seed ?? 0,
     players,
+    deadSpectatorReveal: state.deadSpectatorReveal ?? false,
   };
 }
 

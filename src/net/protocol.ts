@@ -17,6 +17,7 @@ export interface LobbyStateWire {
   mapId: string;
   factionId: string;
   slots: LobbySlotWire[];
+  deadSpectatorReveal?: boolean;
 }
 
 export type ClientMessage =

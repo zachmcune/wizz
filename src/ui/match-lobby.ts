@@ -48,6 +48,7 @@ export class MatchLobby {
   private mapSelect!: HTMLSelectElement;
   private factionSelect!: HTMLSelectElement;
   private templateSelect!: HTMLSelectElement;
+  private deadSpectatorToggle!: HTMLInputElement;
   private roomEl: HTMLElement | null = null;
   private playersEl = el('div', 'lobby-players');
   private mapPreview: LobbyMapPreview;
@@ -123,6 +124,21 @@ export class MatchLobby {
       this.factionSelect,
     );
 
+    const optionsRow = el('div', 'lobby-options');
+    const spectatorLabel = el('label', 'lobby-toggle') as HTMLLabelElement;
+    this.deadSpectatorToggle = el('input') as HTMLInputElement;
+    this.deadSpectatorToggle.type = 'checkbox';
+    this.deadSpectatorToggle.addEventListener('change', () => {
+      this.state.deadSpectatorReveal = this.deadSpectatorToggle.checked;
+      this.pushUpdate();
+      this.refresh();
+    });
+    spectatorLabel.append(
+      this.deadSpectatorToggle,
+      el('span', 'lobby-toggle-label', 'Eliminated players see full map'),
+    );
+    optionsRow.appendChild(spectatorLabel);
+
     if (this.opts.room) {
       this.roomEl = el('div', 'lobby-room');
       this.roomEl.append(el('span', 'lobby-label', 'Room code'), el('strong', 'lobby-code', this.opts.room));
@@ -192,7 +208,7 @@ export class MatchLobby {
     footer.append(this.hintEl, footerActions);
 
     const shell = el('div', 'lobby-shell');
-    shell.append(topRow, header, this.roomEl ?? '', this.playersEl, footer);
+    shell.append(topRow, header, optionsRow, this.roomEl ?? '', this.playersEl, footer);
     this.root.appendChild(shell);
   }
 
@@ -212,7 +228,7 @@ export class MatchLobby {
 
   private isInteractiveTarget(target: EventTarget | null): boolean {
     const el = target instanceof HTMLElement ? target : null;
-    return !!el?.closest('select, button, .lobby-swatch, label');
+    return !!el?.closest('select, button, .lobby-swatch, label, input');
   }
 
   private spawnCount(): number {
@@ -391,6 +407,8 @@ export class MatchLobby {
   private refresh(): void {
     this.mapSelect.value = this.state.mapId;
     this.factionSelect.value = this.state.factionId;
+    this.deadSpectatorToggle.checked = this.state.deadSpectatorReveal ?? false;
+    this.deadSpectatorToggle.disabled = this.opts.mode === 'guest';
     for (let i = 0; i < 4; i++) {
       this.renderSlotPanel(this.slotEls[i]!, this.state.slots[i]!, i);
     }

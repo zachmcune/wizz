@@ -803,6 +803,34 @@ body {
   flex: 1 1 120px;
   max-width: 200px;
 }
+.lobby-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.lobby-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+}
+.lobby-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.lobby-toggle-label {
+  opacity: 0.9;
+}
+.lobby-toggle input:disabled + .lobby-toggle-label {
+  opacity: 0.55;
+}
 .lobby-players {
   display: flex;
   flex-direction: column;
