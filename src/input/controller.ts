@@ -82,13 +82,15 @@ export class InputController {
   tap(screen: Vec2): void {
     const world = this.toWorld(screen);
     if (this.session.mode === 'build') {
-      this.updateGhost(world);
-      if (this.session.buildGhost?.valid) this.confirmBuild();
+      if (this.isWallBuild()) {
+        this.previewWallAt(world);
+      } else {
+        this.updateGhost(world);
+      }
       return;
     }
     if (this.session.mode === 'deploy') {
       this.updateDeployGhost(world);
-      if (this.session.buildGhost?.valid) this.confirmDeploy();
       return;
     }
     if (this.session.mode === 'attackMove') {
@@ -329,9 +331,33 @@ export class InputController {
     this.session.buildGhost = null;
   }
 
-  endWallDrag(): void {
-    this.session.wallDragTiles = null;
+  previewWallAt(world: Vec2): void {
+    if (!this.isWallBuild() || !this.session.buildDefId) return;
+    const def = this.registry.buildings.get(this.session.buildDefId)!;
+    const { tx, ty } = this.tileAt(world, def.footprint);
     this.session.wallDragStart = null;
+    this.session.wallDragTiles = [this.ghostAtTile(tx, ty, def.footprint)];
+    this.session.buildGhost = this.session.wallDragTiles[0]!;
+  }
+
+  finishWallDrag(): void {
+    this.session.wallDragStart = null;
+  }
+
+  wallPlacementValid(): boolean {
+    return !!this.session.wallDragTiles?.some((t) => t.valid);
+  }
+
+  confirmPlacement(): void {
+    if (this.session.mode === 'deploy') {
+      this.confirmDeploy();
+      return;
+    }
+    if (this.isWallBuild() && this.hasWallDragTiles()) {
+      this.confirmWallDrag();
+      return;
+    }
+    this.confirmBuild();
   }
 
   updateGhost(world: Vec2): void {

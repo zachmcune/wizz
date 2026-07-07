@@ -309,12 +309,9 @@ export class Game {
       if (mode === 'build' && this.controller.isWallBuild()) {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
         if (this.wallDragging) {
-          if (drift > TAP_SLOP_PX && this.controller.hasWallDragTiles()) {
-            this.controller.confirmWallDrag();
-          } else if (drift <= TAP_SLOP_PX) {
-            this.controller.tap(p);
-          }
-          this.controller.endWallDrag();
+          const w = screenToWorld(p, this.renderer.camera.view());
+          this.controller.updateWallDrag(w);
+          this.controller.finishWallDrag();
           this.wallDragging = false;
         }
         return;
@@ -322,7 +319,7 @@ export class Game {
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
-      // Recover taps lost to tiny camera pans (common on touch).
+      // Recover taps lost to tiny camera pans (common on touch). Placement modes only move the ghost.
       if (
         (mode === 'normal' || mode === 'build' || mode === 'deploy') &&
         drift <= TAP_SLOP_PX &&
