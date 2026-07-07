@@ -6,7 +6,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse } from '../sim/power';
-import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isBuildingInLiveSight } from '../sim/fog';
+import { isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight } from '../sim/fog';
 import { getPlayer } from '../sim/queries';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
@@ -425,12 +425,11 @@ export class Renderer {
     this.overlayStroke.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
-  private drawFog(state: GameState, player: Player, nav: NavGrid): void {
-    const radarOn = radarActive(state, this.registry, player.id);
+  private drawFog(_state: GameState, player: Player, nav: NavGrid): void {
     for (let ty = 0; ty < nav.h; ty++) {
       for (let tx = 0; tx < nav.w; tx++) {
         const i = ty * nav.w + tx;
-        if (!isTileFogged(player, i, radarOn)) continue;
+        if (!isTileFogged(player, i)) continue;
         const x = tx * TILE;
         const y = ty * TILE;
         this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0xb8b8c8, alpha: 0.42 });

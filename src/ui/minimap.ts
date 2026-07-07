@@ -1,12 +1,12 @@
-// Minimap: a small 2D-canvas overview. Tap/drag to move the camera. Draws terrain, entities,
-// and the current viewport rectangle. Independent of the Pixi renderer for simplicity.
+// Minimap: a small 2D-canvas overview. Requires a powered Scrying Obelisk (radar) to use.
+// Tap/drag to move the camera. Independent of the Pixi renderer for simplicity.
 import { TILE } from '../core/constants';
 import type { GameState, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import { getPlayer } from '../sim/queries';
-import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../sim/fog';
+import { radarActive, isMinimapTileFogged, isVisibleOnMinimap, listBuildingGhosts } from '../sim/fog';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
@@ -15,6 +15,7 @@ export class Minimap {
   private worldW: number;
   private worldH: number;
   private scale: number;
+  private enabled = false;
 
   constructor(
     private map: MapData,
@@ -32,29 +33,47 @@ export class Minimap {
     this.scale = size / Math.max(this.worldW, this.worldH);
 
     const jump = (ev: PointerEvent) => {
+      if (!this.enabled) return;
       const rect = this.canvas.getBoundingClientRect();
       const cx = ((ev.clientX - rect.left) / rect.width) * this.canvas.width;
       const cy = ((ev.clientY - rect.top) / rect.height) * this.canvas.height;
       this.camera.centerOn(cx / this.scale, cy / this.scale);
     };
     this.canvas.addEventListener('pointerdown', (e) => {
+      if (!this.enabled) return;
       this.canvas.setPointerCapture(e.pointerId);
       jump(e);
     });
     this.canvas.addEventListener('pointermove', (e) => {
-      if (e.buttons) jump(e);
+      if (!this.enabled || !e.buttons) return;
+      jump(e);
     });
   }
 
   render(state: GameState, viewerId: PlayerId, nav: NavGrid, registry: Registry): void {
     const c = this.ctx;
     const s = this.scale;
-    const viewer = getPlayer(state, viewerId);
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    const viewer = getPlayer(state, viewerId);
     if (!viewer) return;
 
     const radarOn = radarActive(state, registry, viewerId);
+    this.enabled = radarOn;
+    this.canvas.classList.toggle('minimap-disabled', !radarOn);
+
+    if (!radarOn) {
+      c.fillStyle = '#12101c';
+      c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      c.fillStyle = '#666680';
+      c.font = 'bold 11px system-ui, sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('RAD', this.canvas.width / 2, this.canvas.height / 2 - 8);
+      c.font = '9px system-ui, sans-serif';
+      c.fillText('offline', this.canvas.width / 2, this.canvas.height / 2 + 8);
+      return;
+    }
 
     for (let ty = 0; ty < this.map.tileH; ty++) {
       for (let tx = 0; tx < this.map.tileW; tx++) {
@@ -62,7 +81,7 @@ export class Minimap {
         const blocked = this.map.tiles[i] === 1;
         c.fillStyle = blocked ? '#2a2540' : '#1a1826';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
-        if (isTileFogged(viewer, i, radarOn)) {
+        if (isMinimapTileFogged(viewer, i, radarOn)) {
           c.fillStyle = 'rgba(184, 184, 200, 0.42)';
           c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
         }
@@ -70,8 +89,7 @@ export class Minimap {
     }
 
     for (const e of state.entities.values()) {
-      if (e.kind === 'projectile') continue;
-      if (!isVisibleTo(state, viewerId, e, nav)) continue;
+      if (!isVisibleOnMinimap(state, registry, viewerId, e, nav)) continue;
       if (e.kind === 'resource_node') {
         const max = e.amountMax ?? e.amount ?? 1;
         const frac = Math.max(0, (e.amount ?? 0) / max);

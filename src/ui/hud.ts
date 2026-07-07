@@ -3,6 +3,7 @@ import type { GameState, PlayerId, Entity } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { BuildingDef } from '../data/defs';
 import { isPowerShort, powerDeficit, buildingHasPower } from '../sim/power';
+import { radarActive } from '../sim/fog';
 import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
 
@@ -425,6 +426,10 @@ export class Hud {
     this.powerEl.classList.toggle('low', short);
     this.powerStat.classList.toggle('power-short', short);
     this.powerStat.title = short ? 'Low power — production and defenses offline. Build Ley Conduit (+60 pwr).' : '';
+
+    const radarOn = radarActive(st, this.registry, this.playerId);
+    this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar offline');
+    this.minimapPanel.root.classList.toggle('minimap-offline', !radarOn);
 
     const session = this.controller.session;
 

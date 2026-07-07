@@ -1,7 +1,7 @@
 // C&C Generals-style fog: the full map stays visible but grayed without line of sight.
 // Terrain, obstacles, and mana nodes always show; enemy units need sight.
 // Enemy buildings leave a frozen gray ghost after they are scouted.
-// Radar reveals the full map only while its building is powered.
+// Radar reveals the minimap only while its building is powered (main view fog unchanged).
 import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
@@ -25,8 +25,13 @@ export function radarActive(state: GameState, registry: Registry, playerId: Play
   return false;
 }
 
-/** True when a tile is outside current sight and not revealed by radar. */
-export function isTileFogged(player: Player, tileIdx: number, radarOn: boolean): boolean {
+/** Main-view fog — gray veil on tiles outside unit/building sight. */
+export function isTileFogged(player: Player, tileIdx: number): boolean {
+  return player.visible[tileIdx] === 0;
+}
+
+/** Minimap fog — powered radar reveals the full overview. */
+export function isMinimapTileFogged(player: Player, tileIdx: number, radarOn: boolean): boolean {
   return !radarOn && player.visible[tileIdx] === 0;
 }
 
@@ -118,17 +123,16 @@ function snapshotBuilding(e: Entity): KnownBuilding {
   };
 }
 
-/** True when a building is in current sight or revealed by powered radar. */
+/** True when a building is in current unit/building sight (not radar). */
 export function isBuildingInLiveSight(
   state: GameState,
-  registry: Registry,
+  _registry: Registry,
   viewerId: PlayerId,
   building: Entity,
   nav: NavGrid,
 ): boolean {
   if (building.kind !== 'building') return false;
   if (!isEnemyOwner(state, viewerId, building.owner)) return true;
-  if (radarActive(state, registry, viewerId)) return true;
   const viewer = getPlayer(state, viewerId);
   if (!viewer) return false;
   return isTileVisible(viewer, building.pos.x, building.pos.y, nav);
@@ -140,8 +144,6 @@ function updateKnownBuildings(
   nav: NavGrid,
   player: Player,
 ): void {
-  const radarOn = radarActive(state, registry, player.id);
-
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'building' || !isAlive(e)) continue;
     if (!isEnemyOwner(state, player.id, e.owner)) continue;
@@ -152,7 +154,7 @@ function updateKnownBuildings(
 
   for (const id of Object.keys(player.knownBuildings).map(Number)) {
     const known = player.knownBuildings[id]!;
-    if (!radarOn && !isTileVisible(player, known.x, known.y, nav)) continue;
+    if (!isTileVisible(player, known.x, known.y, nav)) continue;
     const e = state.entities.get(id);
     if (!e || e.kind !== 'building' || !isAlive(e)) delete player.knownBuildings[id];
   }
@@ -204,4 +206,21 @@ export function isVisibleTo(
   if (entity.kind === 'resource_node') return true;
 
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
+}
+
+/** Minimap entity visibility — radar shows all units/buildings on the overview. */
+export function isVisibleOnMinimap(
+  state: GameState,
+  registry: Registry,
+  viewerId: PlayerId,
+  entity: Entity,
+  nav: NavGrid,
+): boolean {
+  if (entity.kind === 'projectile') return false;
+  if (radarActive(state, registry, viewerId)) {
+    if (entity.owner === viewerId || isAlly(state, viewerId, entity.owner)) return true;
+    if (entity.kind === 'resource_node') return true;
+    return entity.kind === 'unit' || entity.kind === 'building';
+  }
+  return isVisibleTo(state, viewerId, entity, nav);
 }

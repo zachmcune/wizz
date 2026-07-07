@@ -2,7 +2,7 @@
   "id": "scrying_obelisk",
   "name": "Scrying Obelisk",
   "shortLabel": "RAD",
-  "description": "Reveals the entire battlefield on your minimap. Requires a mine and power plant.",
+  "description": "Powers your minimap overview — reveals the full battlefield there while online. Requires a mine and power plant.",
   "kind": "building",
   "cost": 400,
   "buildTime": 7,

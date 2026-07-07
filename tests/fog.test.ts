@@ -21,7 +21,7 @@ describe('fog of war', () => {
     expect(explored).toBeLessThan(total);
     expect(visible).toBeGreaterThan(0);
     expect(visible).toBeLessThan(total);
-    const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i, false));
+    const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i));
     expect(fogged).toBeGreaterThanOrEqual(0);
   });
 
@@ -88,7 +88,29 @@ describe('fog of war', () => {
     expect(listBuildingGhosts(state, reg, human.id, services.nav).some((g) => g.id === enemySanctum!.id)).toBe(true);
     expect(isVisibleTo(state, human.id, enemySanctum!, services.nav)).toBe(false);
   });
+
+  it('keeps main-view fog when radar is powered', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.controller === 'human')!;
+    spawnEntity(state, services, null, 'ley_conduit', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
+    const radar = spawnEntity(state, services, null, 'scrying_obelisk', human.id, sanctumX(state, human.id) + 160, sanctumY(state, human.id));
+    radar.buildProgress = undefined;
+    recomputePower(state, services);
+    visibilitySystem(state, { services, events: [] });
+
+    expect(radarActive(state, reg, human.id)).toBe(true);
+    const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i));
+    expect(fogged).toBeGreaterThanOrEqual(0);
+  });
 });
+
+function sanctumX(state: ReturnType<typeof initMatch>['state'], playerId: string): number {
+  return ownedBy(state, playerId).find((e) => e.defId === 'sanctum')!.pos.x;
+}
+
+function sanctumY(state: ReturnType<typeof initMatch>['state'], playerId: string): number {
+  return ownedBy(state, playerId).find((e) => e.defId === 'sanctum')!.pos.y;
+}
 
 describe('power disables consumers', () => {
   it('radar is offline for the whole base when power is short', () => {
