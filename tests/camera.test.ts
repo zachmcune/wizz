@@ -24,11 +24,18 @@ describe('camera & coordinate math', () => {
     expect(cam.y).toBeLessThanOrEqual(maxY);
   });
 
-  it('can center a corner base with overscroll', () => {
-    const cam = new Camera(800, 600, 2048, 1408);
-    cam.centerOn(240, 240);
-    expect(cam.x).toBeLessThan(0);
-    expect(cam.y).toBeLessThan(0);
+  it('allows extra horizontal overscroll in oblique mode', () => {
+    setProjectionMode('ortho');
+    let cam = new Camera(800, 600, 2048, 1408);
+    cam.x = -1000;
+    cam.setViewport(800, 600);
+    const orthoMinX = cam.x;
+
+    setProjectionMode('oblique');
+    cam = new Camera(800, 600, 2048, 1408);
+    cam.x = -1000;
+    cam.setViewport(800, 600);
+    expect(cam.x).toBeLessThan(orthoMinX);
   });
 
   it('clamps zoom to limits', () => {

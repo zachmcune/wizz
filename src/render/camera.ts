@@ -1,9 +1,16 @@
 // View camera over the world. Position is the world coord at the viewport's top-left.
 // Smoothly clamped to map bounds and zoom limits. Lives outside the sim (view concern).
-import { CAMERA_OVERSCROLL_RATIO, MIN_ZOOM, MAX_ZOOM } from '../core/constants';
+import {
+  CAMERA_OVERSCROLL_RATIO,
+  CAMERA_OVERSCROLL_RATIO_X,
+  CAMERA_OVERSCROLL_RATIO_Y,
+  MIN_ZOOM,
+  MAX_ZOOM,
+} from '../core/constants';
 import { clamp } from '../sim/math';
 import type { CameraView, Vec2 } from '../core/coords';
 import { screenPanToCameraDelta, screenToWorld } from '../core/coords';
+import { getProjectionMode } from '../core/projection';
 
 export class Camera implements CameraView {
   x = 0;
@@ -67,6 +74,12 @@ export class Camera implements CameraView {
   private overscrollPad(): { x: number; y: number } {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
+    if (getProjectionMode() === 'oblique') {
+      return {
+        x: viewWorldW * CAMERA_OVERSCROLL_RATIO_X,
+        y: viewWorldH * CAMERA_OVERSCROLL_RATIO_Y,
+      };
+    }
     return {
       x: viewWorldW * CAMERA_OVERSCROLL_RATIO,
       y: viewWorldH * CAMERA_OVERSCROLL_RATIO,
