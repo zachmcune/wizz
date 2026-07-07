@@ -20,6 +20,10 @@ import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
 import { isWorldPointVisible } from '../sim/fog';
+import { applyTransferState, packState } from '../sim/state-transfer';
+import { rebuildBuildingNav } from '../sim/building-nav';
+import { ReplayRecorder } from '../sim/replay';
+import { WorkerSimClient } from './worker-client';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -33,8 +37,15 @@ const ORDER_COLORS: Record<string, number> = {
   rally: 0x7fe3ff,
 };
 
+function workerSupported(): boolean {
+  return typeof Worker !== 'undefined';
+}
+
 export class Game {
-  private sim: Simulation;
+  private sim: Simulation | null;
+  private worker: WorkerSimClient | null = null;
+  private useWorker: boolean;
+  private replay = new ReplayRecorder();
   private renderer: Renderer;
   private gesture!: GestureRecognizer;
   private controller!: InputController;
@@ -65,8 +76,16 @@ export class Game {
     private audio: AudioManager,
     private settings: Settings,
     private onExit: () => void,
+    opts?: { useWorker?: boolean },
   ) {
-    this.sim = new Simulation(state, services);
+    this.useWorker = opts?.useWorker ?? workerSupported();
+    if (this.useWorker && workerSupported()) {
+      this.worker = new WorkerSimClient();
+      this.sim = null;
+    } else {
+      this.useWorker = false;
+      this.sim = new Simulation(state, services);
+    }
     this.humanId = state.players.find((p) => p.controller === 'human')?.id ?? state.players[0]!.id;
     for (const p of state.players) this.colorByOwner.set(p.id, p.color);
     this.renderer = new Renderer(registry, registry.map(state.mapId));
@@ -86,18 +105,14 @@ export class Game {
     this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state);
 
-    // center camera on the human's start
-    const human = this.state.players.find((p) => p.id === this.humanId)!;
-    const start = this.registry.map(this.state.mapId).startLocations[
-      // find our sanctum instead of relying on config index
-      0
-    ]!;
+    const start = this.registry.map(this.state.mapId).startLocations[0]!;
     const sanctum = [...this.state.entities.values()].find((e) => e.owner === this.humanId && e.defId === 'sanctum');
     this.renderer.camera.centerOn(sanctum?.pos.x ?? start.x, sanctum?.pos.y ?? start.y);
-    void human;
 
     const mapSize = Math.max(72, Math.min(112, Math.floor(window.innerHeight * 0.26)));
     this.minimap = new Minimap(this.registry.map(this.state.mapId), this.renderer.camera, this.colorByOwner, mapSize);
+
+    const enqueue = (cmd: Command) => this.enqueueCommands([cmd]);
 
     this.controller = new InputController(
       () => this.state,
@@ -105,7 +120,7 @@ export class Game {
       this.renderer,
       this.registry,
       this.humanId,
-      (cmd: Command) => this.sim.enqueueNow([cmd]),
+      enqueue,
       (kind, world) => this.renderer.effects.spawn('ring', world.x, world.y, ORDER_COLORS[kind] ?? 0xffffff, 14),
       (tx, ty, fp) => this.services.nav.canPlace(tx, ty, fp),
       (tx, ty, fp) => canBuildNearBase(this.state, this.services, this.humanId, tx, ty, fp),
@@ -127,13 +142,38 @@ export class Game {
     document.addEventListener('visibilitychange', this.onVisibilityResume);
     window.addEventListener('pageshow', this.onVisibilityResume);
 
-    this.renderer.syncTick(this.state);
+    if (this.worker) {
+      this.worker.onReady = (transfer) => {
+        applyTransferState(this.state, transfer);
+        rebuildBuildingNav(this.state, this.services, this.registry);
+        this.renderer.syncTick(this.state);
+      };
+      this.worker.onTick = ({ state, events }) => {
+        applyTransferState(this.state, state);
+        rebuildBuildingNav(this.state, this.services, this.registry);
+        for (const ev of events) this.handleEvent(ev);
+        this.renderer.syncTick(this.state);
+        this.tickCounter++;
+        if (this.tickCounter % 200 === 0) void saveGame(this.state);
+      };
+      this.worker.initState(packState(this.state));
+    } else {
+      this.renderer.syncTick(this.state);
+    }
+
     this.loop = new GameLoop(
       () => this.step(),
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
     this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
+  }
+
+  private enqueueCommands(cmds: Command[]): void {
+    if (!cmds.length) return;
+    this.replay.record(this.state.tick, cmds);
+    if (this.worker) this.worker.send(cmds);
+    else this.sim?.enqueueNow(cmds);
   }
 
   private setupGestures(): void {
@@ -208,7 +248,6 @@ export class Game {
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
-      // Small finger drift during a one-finger pan: treat as a tap (move order, select, etc.).
       if (mode === 'normal' && this.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
         this.controller.tap(p);
       }
@@ -224,11 +263,14 @@ export class Game {
   }
 
   private step(): void {
-    if (this.state.ended) {
-      // keep rendering the final frame; stop advancing
+    if (this.state.ended) return;
+
+    if (this.worker) {
+      this.worker.requestStep();
       return;
     }
-    const res = this.sim.step();
+
+    const res = this.sim!.step();
     for (const ev of res.events) this.handleEvent(ev);
     this.renderer.syncTick(this.state);
     this.tickCounter++;
@@ -264,7 +306,6 @@ export class Game {
     }
   }
 
-  /** Whether combat/economy VFX and audio for this event should play for the human. */
   private isEventVisible(ev: GameEvent): boolean {
     const nav = this.services.nav;
     switch (ev.type) {
@@ -287,7 +328,7 @@ export class Game {
     const now = performance.now();
     if (this.lastFrameTime) {
       const dt = now - this.lastFrameTime;
-      if (dt > 0) this.fps = this.fps * 0.9 + (1000 / dt) * 0.1; // smoothed
+      if (dt > 0) this.fps = this.fps * 0.9 + (1000 / dt) * 0.1;
     }
     this.lastFrameTime = now;
 
@@ -341,6 +382,7 @@ export class Game {
     document.removeEventListener('visibilitychange', this.onVisibilityResume);
     window.removeEventListener('pageshow', this.onVisibilityResume);
     this.loop?.stop();
+    this.worker?.terminate();
     void saveGame(this.state);
     this.renderer.destroy();
     this.hud.root.remove();
