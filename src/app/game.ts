@@ -184,8 +184,17 @@ export class Game {
       this.humanId,
       this.minimap,
       (art, color) => this.renderer.iconCanvas(art, color),
+      {
+        settings: this.settings,
+        audio: this.audio,
+        onSettingsChange: (s) => {
+          this.renderer.setShowBuildingNames(s.showBuildingNames);
+          this.renderer.refreshBuildingLabels(this.state);
+        },
+      },
     );
     this.hud.onExit = () => this.exit();
+    this.renderer.setShowBuildingNames(this.settings.showBuildingNames);
     if (this.relayTransport) {
       this.relayTransport.onError = (message) => {
         if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);

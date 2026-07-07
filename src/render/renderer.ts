@@ -97,6 +97,7 @@ export class Renderer {
   private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
   private projectionMode: ProjectionMode = getProjectionMode();
+  private showBuildingNames = false;
 
   constructor(
     private registry: Registry,
@@ -175,6 +176,28 @@ export class Renderer {
 
   getProjectionMode(): ProjectionMode {
     return this.projectionMode;
+  }
+
+  setShowBuildingNames(show: boolean): void {
+    this.showBuildingNames = show;
+  }
+
+  refreshBuildingLabels(state: GameState): void {
+    for (const [id, n] of this.nodes) {
+      const e = state.entities.get(id);
+      if (e) this.ensureBuildingLabel(n, e);
+    }
+    for (const [id, n] of this.ghostNodes) {
+      if (n.label) {
+        n.label.destroy();
+        n.label = undefined;
+      }
+      this.ghostNodes.delete(id);
+    }
+  }
+
+  private buildingLabelText(defId: string): string {
+    return this.registry.building(defId).name;
   }
 
   private applySpriteAnchors(): void {
@@ -273,16 +296,23 @@ export class Renderer {
       return;
     }
     if (e.kind === 'building') {
-      const b = this.registry.building(e.defId);
+      if (!this.showBuildingNames) {
+        if (n.label) {
+          n.label.destroy();
+          n.label = undefined;
+        }
+        return;
+      }
+      const labelText = this.buildingLabelText(e.defId);
       if (!n.label) {
         n.label = new Text({
-          text: b.shortLabel,
-          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#ffffff' },
+          text: labelText,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#ffffff' },
         });
         n.label.anchor.set(0.5, 0);
         this.labelLayer.addChild(n.label);
-      } else if (n.label.text !== b.shortLabel) {
-        n.label.text = b.shortLabel;
+      } else if (n.label.text !== labelText) {
+        n.label.text = labelText;
       }
       return;
     }
@@ -604,17 +634,35 @@ export class Renderer {
         sprite.anchor.set(0.5, 0.5);
         sprite.tint = 0xaaaaaa;
         this.entityLayer.addChild(sprite);
-        const label = new Text({
-          text: b.shortLabel,
-          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#aaaaaa' },
-        });
-        label.anchor.set(0.5, 0);
-        this.labelLayer.addChild(label);
+        let label: Text | undefined;
+        if (this.showBuildingNames) {
+          label = new Text({
+            text: this.buildingLabelText(known.defId),
+            style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#aaaaaa' },
+          });
+          label.anchor.set(0.5, 0);
+          this.labelLayer.addChild(label);
+        }
         n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, dispX: known.x, dispY: known.y, facing: 0 };
         this.ghostNodes.set(known.id, n);
       } else {
         n.sprite.texture = this.provider.texture(b.art, color);
-        if (n.label && n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
+        if (this.showBuildingNames) {
+          const labelText = this.buildingLabelText(known.defId);
+          if (!n.label) {
+            n.label = new Text({
+              text: labelText,
+              style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#aaaaaa' },
+            });
+            n.label.anchor.set(0.5, 0);
+            this.labelLayer.addChild(n.label);
+          } else if (n.label.text !== labelText) {
+            n.label.text = labelText;
+          }
+        } else if (n.label) {
+          n.label.destroy();
+          n.label = undefined;
+        }
       }
 
       const pos = this.drawPos(known.x, known.y);
@@ -622,15 +670,17 @@ export class Renderer {
       if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
-      if (this.isOblique()) {
-        const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
-        n.label!.position.set(lp.x, lp.y);
-        n.label!.zIndex = n.sprite.zIndex + 0.01;
-      } else {
-        n.label!.position.set(known.x, known.y + known.radius + 4);
+      if (n.label) {
+        if (this.isOblique()) {
+          const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
+          n.label.position.set(lp.x, lp.y);
+          n.label.zIndex = n.sprite.zIndex + 0.01;
+        } else {
+          n.label.position.set(known.x, known.y + known.radius + 4);
+        }
+        n.label.alpha = 0.55;
+        n.label.visible = true;
       }
-      n.label!.alpha = 0.55;
-      n.label!.visible = true;
 
       if (known.hp < known.maxHp) {
         if (this.isOblique()) {
