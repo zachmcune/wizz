@@ -20,16 +20,17 @@ See [DEPLOY.md](DEPLOY.md) for Cloudflare Pages–only hosting (single-player, n
 ## 1. Deploy to Railway
 
 1. **New Project** → **Deploy from GitHub repo** → select this repository.
-2. `railway.json` configures the service automatically:
-   - **Build:** `npm ci --include=dev && npm run build` (typecheck + Vite → `dist/`)
+2. `nixpacks.toml` + `railway.json` configure the service:
+   - **Install:** `npm ci --include=dev` (Railway's default install skips devDeps)
+   - **Build:** `npm run build` (typecheck + Vite → `dist/`)
    - **Start:** `node relay/production.mjs` (static files + WebSocket relay)
    - **Health check:** `GET /health`
 3. **Settings → Networking** → **Generate Domain** (e.g. `arcane-dominion.up.railway.app`).
 4. **Settings → Deploy** → ensure **Serverless** is **off** (relay must stay always-on).
 
 If the build fails with `tsc: not found` or `vite: not found`, Railway skipped devDependencies.
-This repo sets `npm ci --include=dev` in `railway.json` / `nixpacks.toml` to fix that. You can also
-add a Railway variable `NPM_CONFIG_PRODUCTION=false` for the build.
+`nixpacks.toml` installs with `--include=dev`. Do **not** add a second `npm ci` in the Railway
+dashboard build command (causes `EBUSY` / `resource busy`). You can also set `NPM_CONFIG_PRODUCTION=false`.
 
 No database, volumes, or environment variables are required. Railway injects `PORT`.
 
@@ -59,7 +60,8 @@ npm run start
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Build fails: `tsc` / `vite` not found | Dev deps skipped (`NODE_ENV=production`) | Redeploy latest `main`; or set `NPM_CONFIG_PRODUCTION=false` |
+| Build fails: `tsc` / `vite` not found | Dev deps skipped (`NODE_ENV=production`) | Redeploy latest `main`; ensure `nixpacks.toml` is present |
+| Build fails: `EBUSY` / `resource busy` | `npm ci` ran twice (dashboard + nixpacks) | Clear custom build command in Railway; redeploy |
 | `503 Game build missing` | `dist/` not built | Build step failed; check Railway build logs |
 | Health check fails | Wrong start command or crash on boot | Logs; confirm `node relay/production.mjs` |
 | WS connects to `:8787` on Railway | Old client build | Redeploy; HTTPS pages use `wss://host` with no port |
