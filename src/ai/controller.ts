@@ -2,18 +2,18 @@
 // It ONLY emits Commands (same as a human) - never mutates sim state directly.
 import { TILE } from '../core/constants';
 import type { SimServices } from '../sim/context';
-import type { GameState, Command, Player, PlayerId } from '../sim/types';
+import type { GameState, Command, Entity, EntityId, Player, PlayerId } from '../sim/types';
 import { isHarvester, isCombatUnit, type BuildingEntity } from '../sim/types';
 import type { ResourceNodeEntity, UnitEntity } from '../sim/entity-types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { isPowerShort, buildingHasPower } from '../sim/power';
 import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
-import { len } from '../sim/math';
+import { distSq, len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
-// Ordered tech/economy build goals the AI works through.
 const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus'];
+const DEFEND_RADIUS = 280;
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
   const cmds: Command[] = [];
@@ -22,7 +22,6 @@ export function aiStep(state: GameState, services: SimServices): Command[] {
     const playerIndex = idx++;
     if (p.controller !== 'ai' || p.defeated) continue;
     const diff = services.registry.balance.ai[p.aiDifficulty ?? 'normal'];
-    // stagger players so they don't all act on the same tick
     if ((state.tick + playerIndex) % diff.interval !== 0) continue;
     decideForPlayer(state, services, p, diff, cmds);
   }
@@ -35,6 +34,16 @@ function hasBuilding(state: GameState, owner: PlayerId, defId: string): boolean 
 
 function findSanctum(state: GameState, owner: PlayerId): BuildingEntity | null {
   return buildingsOf(state, owner).find((b) => b.defId === 'sanctum') ?? null;
+}
+
+function findEnemySanctum(state: GameState, owner: PlayerId): BuildingEntity | null {
+  for (const id of [...state.entities.keys()].sort((a, b) => a - b)) {
+    const e = state.entities.get(id)!;
+    if (e.kind === 'building' && e.defId === 'sanctum' && isAlive(e) && isEnemy(state, owner, e.owner)) {
+      return e;
+    }
+  }
+  return null;
 }
 
 function findPlacement(
@@ -67,6 +76,10 @@ function findPlacement(
   return null;
 }
 
+function idleCombat(combat: UnitEntity[]): EntityId[] {
+  return combat.filter((e) => isAlive(e) && e.orders.length === 0 && e.state === 'idle').map((e) => e.id);
+}
+
 function decideForPlayer(state: GameState, services: SimServices, p: Player, diff: AiParams, cmds: Command[]): void {
   const reg = services.registry;
   const sanctum = findSanctum(state, p.id);
@@ -75,7 +88,6 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   const wisps = own.filter(isHarvester);
   const combat = own.filter(isCombatUnit);
 
-  // 1) Economy: keep wisps harvesting.
   for (const w of wisps) {
     if (w.orders.length === 0 && w.state === 'idle') {
       const node = nearestNode(state, w);
@@ -83,7 +95,6 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     }
   }
 
-  // 2) Expand power when short (build extra Ley Conduits).
   if (isPowerShort(state, p.id)) {
     const leyDef = reg.buildings.get('ley_conduit');
     if (leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
@@ -95,19 +106,19 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     }
   }
 
-  // 3) Build the next economy/tech structure we can afford and don't yet have.
   for (const defId of BUILD_ORDER) {
     if (hasBuilding(state, p.id, defId)) continue;
     const bdef = reg.buildings.get(defId);
     if (!bdef) continue;
     if (!bdef.requires.every((r) => p.unlockedTech.includes(r))) break;
-    if (p.mana < bdef.cost) return; // save up; don't skip ahead
+    if (p.mana < bdef.cost) return;
     const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
-    if (spot) cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
-    return; // one build goal at a time
+    if (spot) {
+      cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
+      return;
+    }
   }
 
-  // 4) Train more wisps if below target.
   const spire = buildingsOf(state, p.id).find((b) => b.defId === 'attunement_spire' && b.buildProgress === undefined);
   if (spire && buildingHasPower(state, reg, spire) && wisps.length < diff.wispTarget) {
     const q = spire.productionQueue?.length ?? 0;
@@ -117,38 +128,101 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     }
   }
 
-  // 5) Military production from available producers.
-  produceArmy(state, services, p, cmds);
+  produceArmy(state, services, p, diff, cmds);
 
-  // 6) Attack when the army is big enough: send idle combat units at the nearest enemy building.
-  if (combat.length >= diff.armyThreshold) {
-    const target = nearestEnemyBuilding(state, p.id, sanctum.pos);
-    if (target) {
-      const idleIds = combat.filter((e) => e.orders.length === 0 && e.state === 'idle').map((e) => e.id);
-      if (idleIds.length >= Math.floor(diff.armyThreshold / 2)) {
-        cmds.push({ type: 'attackMove', playerId: p.id, entityIds: idleIds, x: target.pos.x, y: target.pos.y });
-      }
+  const turretDef = reg.buildings.get('ward_turret');
+  if (
+    turretDef &&
+    !hasBuilding(state, p.id, 'ward_turret') &&
+    hasBuilding(state, p.id, 'golem_forge') &&
+    combat.length >= Math.floor(diff.armyThreshold * 0.5) &&
+    p.mana >= turretDef.cost * 2
+  ) {
+    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, turretDef.footprint);
+    if (spot) {
+      cmds.push({ type: 'build', playerId: p.id, defId: 'ward_turret', x: spot.x, y: spot.y });
+      return;
     }
+  }
+
+  let attackPool = idleCombat(combat);
+  const minPush = Math.max(4, Math.floor(diff.armyThreshold * 0.5));
+  if (combat.length < minPush && attackPool.length < 4) return;
+
+  const threats = enemiesNear(state, p.id, sanctum.pos.x, sanctum.pos.y, DEFEND_RADIUS);
+  if (threats.length > 0 && attackPool.length >= 4) {
+    const defendCount = Math.min(Math.floor(attackPool.length * 0.35), Math.max(2, threats.length + 1));
+    const defenders = attackPool.slice(0, defendCount);
+    attackPool = attackPool.slice(defendCount);
+    cmds.push({ type: 'attack', playerId: p.id, entityIds: defenders, targetId: threats[0]!.id });
+  }
+
+  if (attackPool.length < Math.floor(minPush / 2)) return;
+
+  const enemyHq = findEnemySanctum(state, p.id);
+  const siegeIdle = combat.filter((e) => e.defId === 'siege_behemoth' && e.orders.length === 0).map((e) => e.id);
+  const siegeReady = siegeIdle.filter((id) => attackPool.includes(id));
+  if (enemyHq && siegeReady.length > 0) {
+    const push = [...new Set([...siegeReady, ...attackPool])].slice(0, Math.max(siegeReady.length + 3, minPush));
+    cmds.push({ type: 'attackMove', playerId: p.id, entityIds: push, x: enemyHq.pos.x, y: enemyHq.pos.y });
+    return;
+  }
+
+  const target = pickAttackTarget(state, p.id, sanctum.pos);
+  if (target) {
+    cmds.push({ type: 'attackMove', playerId: p.id, entityIds: attackPool, x: target.pos.x, y: target.pos.y });
   }
 }
 
-function produceArmy(state: GameState, services: SimServices, p: Player, cmds: Command[]): void {
+function produceArmy(state: GameState, services: SimServices, p: Player, diff: AiParams, cmds: Command[]): void {
   const reg = services.registry;
   const circle = buildingsOf(state, p.id).find((b) => b.defId === 'summoning_circle' && b.buildProgress === undefined);
   const forge = buildingsOf(state, p.id).find((b) => b.defId === 'golem_forge' && b.buildProgress === undefined);
-  const pick = (building: BuildingEntity | undefined, options: string[]) => {
-    if (!building || !buildingHasPower(state, reg, building)) return;
-    const q = building.productionQueue?.length ?? 0;
-    if (q >= 2) return;
-    // rotate choice deterministically by tick
-    const choice = options[(state.tick / 5) % options.length | 0]!;
-    const udef = reg.units.get(choice);
-    if (udef && p.mana >= udef.cost && udef.requires.every((r) => p.unlockedTech.includes(r))) {
-      cmds.push({ type: 'produce', playerId: p.id, buildingId: building.id, defId: choice });
-    }
+  const combat = ownedBy(state, p.id).filter(isCombatUnit);
+
+  const tryProduce = (building: BuildingEntity | undefined, defId: string): boolean => {
+    if (!building || !buildingHasPower(state, reg, building)) return false;
+    if ((building.productionQueue?.length ?? 0) >= 2) return false;
+    const udef = reg.units.get(defId);
+    if (!udef || p.mana < udef.cost) return false;
+    if (!udef.requires.every((r) => p.unlockedTech.includes(r))) return false;
+    cmds.push({ type: 'produce', playerId: p.id, buildingId: building.id, defId });
+    return true;
   };
-  pick(circle, ['imp_swarmling', 'arcane_archer', 'rift_familiar']);
-  pick(forge, ['stone_golem', 'siege_behemoth']);
+
+  if (circle) {
+    const phase = Math.floor(state.tick / 40) % 3;
+    const order =
+      phase === 0
+        ? ['imp_swarmling', 'arcane_archer']
+        : phase === 1
+          ? ['arcane_archer', 'imp_swarmling']
+          : ['arcane_archer', 'rift_familiar'];
+    for (const uid of order) {
+      if (tryProduce(circle, uid)) break;
+    }
+  }
+
+  if (forge && combat.length >= Math.floor(diff.armyThreshold * 0.35)) {
+    if (!tryProduce(forge, 'siege_behemoth')) tryProduce(forge, 'stone_golem');
+  }
+}
+
+function pickAttackTarget(state: GameState, owner: PlayerId, from: { x: number; y: number }): BuildingEntity | null {
+  const enemyHq = findEnemySanctum(state, owner);
+  if (enemyHq) return enemyHq;
+  return nearestEnemyBuilding(state, owner, from);
+}
+
+function enemiesNear(state: GameState, owner: PlayerId, x: number, y: number, radius: number): Entity[] {
+  const r2 = radius * radius;
+  const out: Entity[] = [];
+  for (const id of [...state.entities.keys()].sort((a, b) => a - b)) {
+    const e = state.entities.get(id)!;
+    if (e.kind !== 'unit' || !isAlive(e) || !isEnemy(state, owner, e.owner)) continue;
+    if (distSq(e.pos.x, e.pos.y, x, y) <= r2) out.push(e);
+  }
+  return out;
 }
 
 function nearestNode(state: GameState, e: UnitEntity): ResourceNodeEntity | null {
@@ -167,14 +241,18 @@ function nearestNode(state: GameState, e: UnitEntity): ResourceNodeEntity | null
 
 function nearestEnemyBuilding(state: GameState, owner: PlayerId, from: { x: number; y: number }): BuildingEntity | null {
   let best: BuildingEntity | null = null;
-  let bestD = Infinity;
-  const ids = [...state.entities.keys()].sort((a, b) => a - b);
-  for (const id of ids) {
+  let bestScore = Infinity;
+  for (const id of [...state.entities.keys()].sort((a, b) => a - b)) {
     const e = state.entities.get(id)!;
     if (e.kind !== 'building' || !isAlive(e) || !isEnemy(state, owner, e.owner)) continue;
     const d = len(e.pos.x - from.x, e.pos.y - from.y);
-    if (d < bestD) {
-      bestD = d;
+    let bias = 0;
+    if (e.defId === 'sanctum' || e.defId === 'waystone_camp') bias = -1200;
+    else if (e.defId === 'attunement_spire') bias = -800;
+    else if (e.defId === 'summoning_circle' || e.defId === 'golem_forge') bias = -400;
+    const score = d + bias;
+    if (score < bestScore) {
+      bestScore = score;
       best = e;
     }
   }
