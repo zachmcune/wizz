@@ -11,6 +11,7 @@ import { projectileSystem } from './systems/projectile';
 import { harvestSystem } from './systems/harvest';
 import { deathSystem } from './systems/death';
 import { morphSystem } from './systems/morph';
+import { visibilitySystem } from './systems/visibility';
 import { winCheckSystem } from './systems/wincheck';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
@@ -36,6 +37,7 @@ export function stepSimulation(
   productionSystem(state, ctx); // 3
   morphSystem(state, ctx); // 3b mobile HQ deploy/pack
   movementSystem(state, ctx); // 4/5 (pathing computed on demand inside)
+  visibilitySystem(state, ctx); // 5b fog of war
   combatSystem(state, ctx); // 6
   projectileSystem(state, ctx); // 6b projectiles
   harvestSystem(state, ctx); // 7

@@ -4,6 +4,7 @@ import type { UnitDef, BuildingDef } from '../data/defs';
 import type { Registry } from '../data/registry';
 import { NavGrid } from './nav-grid';
 import { createServices, type SimServices, type StepContext } from './context';
+import { visibilitySystem } from './systems/visibility';
 import type { GameState, Entity, PlayerId, Player, MatchConfig, Relation } from './types';
 
 export function makeEntity(id: number, owner: PlayerId, def: UnitDef | BuildingDef, x: number, y: number): Entity {
@@ -69,7 +70,7 @@ export function unlockTech(state: GameState, owner: PlayerId, defId: string): vo
   if (player && !player.unlockedTech.includes(defId)) player.unlockedTech.push(defId);
 }
 
-function makePlayer(cfg: MatchConfig['players'][number], startingMana: number): Player {
+function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, tileCount: number): Player {
   return {
     id: cfg.id,
     controller: cfg.controller,
@@ -82,6 +83,9 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number): 
     unlockedTech: [],
     spellCooldowns: {},
     defeated: false,
+    explored: new Array(tileCount).fill(0),
+    visible: new Array(tileCount).fill(0),
+    hasRadar: false,
   };
 }
 
@@ -95,7 +99,7 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
   const nav = new NavGrid(map);
   const services = createServices(registry, nav);
 
-  const players = config.players.map((c) => makePlayer(c, registry.balance.startingMana));
+  const players = config.players.map((c) => makePlayer(c, registry.balance.startingMana, map.tileW * map.tileH));
   const relations: Record<PlayerId, Record<PlayerId, Relation>> = {};
   for (const a of players) {
     const row: Record<PlayerId, Relation> = {};
@@ -155,6 +159,8 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
 
   // recompute power for each player from initial buildings
   recomputePower(state, services);
+  const visCtx: StepContext = { services, events: [] };
+  visibilitySystem(state, visCtx);
   void secondsToTicks; // referenced by systems; keep import path stable
   return { state, services };
 }

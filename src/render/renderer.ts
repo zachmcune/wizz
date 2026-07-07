@@ -6,6 +6,10 @@ import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse } from '../sim/power';
+import { isVisibleTo } from '../sim/fog';
+import { getPlayer } from '../sim/queries';
+import type { NavGrid } from '../sim/nav-grid';
+import type { Player } from '../sim/types';
 import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
@@ -41,6 +45,7 @@ export class Renderer {
   private provider!: SpriteProvider;
   private world = new Container();
   private terrainLayer = new Container();
+  private fogLayer = new Graphics();
   private entityLayer = new Container();
   private labelLayer = new Container();
   private overlayLayer = new Container();
@@ -51,6 +56,7 @@ export class Renderer {
   private overlayStroke = new Graphics();
   private colorByOwner = new Map<PlayerId, string>();
   private humanOwner: PlayerId = '';
+  private nav: NavGrid | null = null;
 
   constructor(
     private registry: Registry,
@@ -70,7 +76,7 @@ export class Renderer {
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
 
-    this.world.addChild(this.terrainLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
+    this.world.addChild(this.terrainLayer, this.fogLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
     this.overlayLayer.addChild(this.overlayFill, this.overlayStroke);
     this.app.stage.addChild(this.world);
 
@@ -93,7 +99,12 @@ export class Renderer {
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.overlayFill.clear();
     this.overlayStroke.clear();
+    this.fogLayer.clear();
     this.effects.reset();
+  }
+
+  setNav(nav: NavGrid): void {
+    this.nav = nav;
   }
 
   setOwnerColors(state: GameState): void {
@@ -205,11 +216,22 @@ export class Renderer {
     this.world.scale.set(this.camera.zoom);
     this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
 
+    const viewer = getPlayer(state, this.humanOwner);
+    const nav = this.nav;
+
     this.overlayFill.clear();
     this.overlayStroke.clear();
+    this.fogLayer.clear();
+    if (viewer && nav) this.drawFog(viewer, nav);
+
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
+
+      const entityVisible = !nav || isVisibleTo(state, this.humanOwner, e, nav);
+      n.sprite.visible = entityVisible;
+      if (n.label) n.label.visible = entityVisible;
+      if (!entityVisible) continue;
       const x = lerp(n.prevX, n.curX, alpha);
       const y = lerp(n.prevY, n.curY, alpha);
       n.sprite.position.set(x, y);
@@ -334,6 +356,21 @@ export class Renderer {
     this.overlayStroke.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
+  private drawFog(player: Player, nav: NavGrid): void {
+    for (let ty = 0; ty < nav.h; ty++) {
+      for (let tx = 0; tx < nav.w; tx++) {
+        const i = ty * nav.w + tx;
+        const x = tx * TILE;
+        const y = ty * TILE;
+        if (player.explored[i] === 0) {
+          this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 1 });
+        } else if (player.visible[i] === 0) {
+          this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 0.58 });
+        }
+      }
+    }
+  }
+
   private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
     this.overlayFill.rect(x, y, w, h).fill({ color, alpha });
   }
@@ -344,10 +381,12 @@ export class Renderer {
 
   /** Pick a mana node at a world position (generous hit area for touch). */
   pickResourceNode(state: GameState, wx: number, wy: number): Entity | null {
+    const nav = this.nav;
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const e of state.entities.values()) {
       if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
+      if (nav && !isVisibleTo(state, this.humanOwner, e, nav)) continue;
       const dx = wx - e.pos.x;
       const dy = wy - e.pos.y;
       const r = e.radius + 14;
@@ -362,10 +401,12 @@ export class Renderer {
 
   /** Pick the topmost entity at a world position (units preferred over buildings). */
   pickEntity(state: GameState, wx: number, wy: number): Entity | null {
+    const nav = this.nav;
     let best: Entity | null = null;
     let bestScore = -Infinity;
     for (const e of state.entities.values()) {
       if (e.kind === 'projectile') continue;
+      if (nav && !isVisibleTo(state, this.humanOwner, e, nav)) continue;
       const dx = wx - e.pos.x;
       const dy = wy - e.pos.y;
       const r = e.radius + 6;

@@ -4,6 +4,7 @@ import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { buildingHasPower } from '../power';
+import { isVisibleTo } from '../fog';
 import { len, distSq } from '../math';
 import { applyDamage } from '../combat-util';
 import { moveTowardGoal } from '../pathing';
@@ -31,6 +32,7 @@ function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: num
     const o = state.entities.get(id);
     if (!o || o.kind === 'resource_node' || o.kind === 'projectile' || !isAlive(o)) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
+    if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
     if (d < bestD || (d === bestD && (best === null || o.id < best.id))) {
       bestD = d;
@@ -90,7 +92,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
 
     if (order && order.type === 'attack') {
       target = state.entities.get(order.targetId) ?? null;
-      if (!isAlive(target)) {
+      if (!isAlive(target) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
         e.orders.shift();
         target = null;
         if (e.state === 'attacking') e.state = 'idle';

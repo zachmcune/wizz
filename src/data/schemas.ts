@@ -78,6 +78,7 @@ export const buildingSchema = z.object({
   powerProduced: z.number().nonnegative().optional(),
   powerUsed: z.number().nonnegative().optional(),
   unlocksSpells: z.array(z.string()).optional(),
+  isRadar: z.boolean().optional(),
   weapon: weaponSchema.nullable().optional(),
   art: artSchema,
   sfx: sfxSchema,

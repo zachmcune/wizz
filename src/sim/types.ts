@@ -21,6 +21,12 @@ export interface Player {
   unlockedTech: string[]; // building defIds this player has built (enables tech gating)
   spellCooldowns: Record<string, number>; // spellId -> ticks remaining
   defeated: boolean;
+  /** RA2-style fog: 1 = tile has been seen at least once. */
+  explored: number[];
+  /** Recomputed each tick: 1 = currently in sight. */
+  visible: number[];
+  /** True after a radar building completes — permanently removes shroud. */
+  hasRadar: boolean;
 }
 
 export type UnitState =

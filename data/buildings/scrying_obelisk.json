@@ -1,0 +1,17 @@
+{
+  "id": "scrying_obelisk",
+  "name": "Scrying Obelisk",
+  "shortLabel": "RAD",
+  "description": "Reveals the entire battlefield on your minimap. Requires a mine and power plant.",
+  "kind": "building",
+  "cost": 400,
+  "buildTime": 7,
+  "hp": 450,
+  "armor": "building",
+  "sight": 140,
+  "footprint": 2,
+  "requires": ["attunement_spire", "ley_conduit"],
+  "isRadar": true,
+  "powerUsed": 15,
+  "art": { "shape": "building", "size": 56, "accent": "#9b7dff" }
+}
