@@ -36,8 +36,21 @@ export class Hud {
   private buildingActions: BuildingActionsPanel;
   private spellBar: SpellBar;
   private panelContext = '';
+  private hudTab: 'info' | 'command' = 'info';
+  private lastSelectionKey = '';
+  private panelTabRow = el('div', 'panel-tab-row');
+  private infoTabBtn = el('button', 'btn panel-tab', 'Info');
+  private commandTabBtn = el('button', 'btn panel-tab', 'Build & Train');
 
   onExit: (() => void) | null = null;
+
+  private setHudTab(tab: 'info' | 'command'): void {
+    this.hudTab = tab;
+    this.infoTabBtn.classList.toggle('active', tab === 'info');
+    this.commandTabBtn.classList.toggle('active', tab === 'command');
+    this.infoPanel.setOpen(tab === 'info');
+    this.commandMenu.panel.setOpen(tab === 'command');
+  }
 
   constructor(
     private state: () => GameState,
@@ -63,30 +76,37 @@ export class Hud {
     top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
-    this.commandMenu = new CommandMenuPanel(registry, controller, false);
+    this.commandMenu = new CommandMenuPanel(registry, controller, false, () => this.setHudTab('command'));
     this.buildingActions = new BuildingActionsPanel(state, registry, controller);
     selBlock.append(
       this.selName,
       this.selDesc,
       this.selMeta,
-      this.buildingActions.row,
       this.commandMenu.trainQueueEl,
     );
-    this.infoPanel = new Collapsible('Selection', !compact);
+    this.infoPanel = new Collapsible('Selection', !compact, () => this.setHudTab('info'));
     this.infoPanel.body.append(selBlock);
+
+    this.infoTabBtn.addEventListener('click', () => this.setHudTab('info'));
+    this.commandTabBtn.addEventListener('click', () => this.setHudTab('command'));
+    this.panelTabRow.append(this.infoTabBtn, this.commandTabBtn);
+    this.panelTabRow.style.display = 'none';
 
     this.unitOrdersPanel = new UnitOrdersPanel(state, registry, controller, playerId, false);
 
     const cmdCard = el('div', 'cmd-card hud-scroll');
     cmdCard.append(
       this.infoPanel.root,
-      this.unitOrdersPanel.panel.root,
+      this.panelTabRow,
+      this.buildingActions.row,
       this.commandMenu.panel.root,
+      this.unitOrdersPanel.panel.root,
     );
     const keepScroll = (e: Event) => e.stopPropagation();
     for (const node of [
       cmdCard,
       this.spellBar.row,
+      this.panelTabRow,
       ...this.commandMenu.touchRoots,
       this.unitOrdersPanel.row,
       this.buildingActions.row,
@@ -172,6 +192,7 @@ export class Hud {
       inPlaceMode ? 'place' : 'play',
       showCommandMenu ? 'cmd' : '',
       showUnitPanel ? 'units' : '',
+      this.hudTab,
       selectionLabel,
     ].join('|');
     if (key === this.panelContext) return;
@@ -179,25 +200,28 @@ export class Hud {
 
     if (inPlaceMode) {
       this.infoPanel.setTitle(selectionLabel.startsWith('Deploy') ? 'Deploying' : selectionLabel.startsWith('Set') ? 'Rally' : 'Placing');
+      this.panelTabRow.style.display = 'none';
       this.infoPanel.setOpen(true);
       this.commandMenu.panel.setOpen(false);
       this.unitOrdersPanel.panel.setOpen(false);
       return;
     }
-    if (showCommandMenu && ownBuilding) {
-      this.commandMenu.panel.setOpen(true);
-      this.infoPanel.setTitle(ownBuilding.name);
-      this.infoPanel.setOpen(false);
-      this.unitOrdersPanel.panel.setOpen(false);
-      return;
-    }
     if (showUnitPanel) {
+      this.panelTabRow.style.display = 'none';
       this.unitOrdersPanel.panel.setOpen(true);
       this.commandMenu.panel.setOpen(false);
       this.infoPanel.setTitle(selectionLabel);
       this.infoPanel.setOpen(!multiSelect);
       return;
     }
+    if (showCommandMenu && ownBuilding) {
+      this.panelTabRow.style.display = 'flex';
+      this.infoPanel.setTitle(ownBuilding.name);
+      this.unitOrdersPanel.panel.setOpen(false);
+      this.setHudTab(this.hudTab);
+      return;
+    }
+    this.panelTabRow.style.display = 'none';
     this.commandMenu.panel.setOpen(false);
     this.unitOrdersPanel.panel.setOpen(false);
     this.infoPanel.setTitle('Selection');
@@ -244,6 +268,14 @@ export class Hud {
     const showCommandMenu = !inPlaceMode && (isHQ || isProducer);
     const showUnitPanel = !inPlaceMode && unitsSelected;
 
+    const selectionKey =
+      single != null ? `b:${single.id}` : sel.length > 1 ? 'multi' : 'none';
+    if (selectionKey !== this.lastSelectionKey) {
+      this.lastSelectionKey = selectionKey;
+      if (isHQ || isProducer) this.hudTab = 'command';
+      else this.hudTab = 'info';
+    }
+
     this.setPanelVisible(this.commandMenu.panel, showCommandMenu);
     this.setPanelVisible(this.unitOrdersPanel.panel, showUnitPanel);
 
@@ -265,8 +297,10 @@ export class Hud {
 
     if (inRallyMode) {
       this.selName.textContent = ownBuilding?.name ?? 'Set rally point';
-      this.selDesc.textContent = 'Tap the map where new units should go after training.';
-      this.selMeta.textContent = single?.rally ? `Current rally set` : 'No rally point';
+      this.selDesc.textContent = single?.rally
+        ? 'Tap the map to move the rally point.'
+        : 'Tap the map where new units should go after training.';
+      this.selMeta.textContent = single?.rally ? 'Rally point set — tap map to move' : 'No rally point';
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inDeployMode && session.deployEntityId) {
       const campDef = this.registry.buildings.get('waystone_camp')!;
@@ -354,7 +388,9 @@ export class Hud {
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';
-      this.buildConfirmLabel.textContent = 'Tap map to set rally point';
+      this.buildConfirmLabel.textContent = single?.rally
+        ? 'Tap map to move rally point'
+        : 'Tap map to set rally point';
       this.buildConfirmBtn.style.display = 'none';
     } else if (
       (session.mode === 'build' && session.buildDefId && (session.buildGhost || session.wallDragTiles?.length)) ||

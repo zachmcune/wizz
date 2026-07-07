@@ -474,7 +474,7 @@ export class InputController {
     if (!bdef?.producesUnits?.length) return;
     this.session.mode = 'rally';
     this.session.rallyBuildingId = buildingId;
-    this.session.rallyCursor = { ...b.pos };
+    this.session.rallyCursor = b.rally ? { ...b.rally } : { ...b.pos };
   }
 
   confirmRally(world: Vec2): void {

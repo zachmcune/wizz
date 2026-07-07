@@ -52,6 +52,10 @@ describe('building actions', () => {
     sim.enqueueNow([{ type: 'setRally', playerId: human.id, buildingId: circle.id, x: 900, y: 700 }]);
     sim.step();
     expect(circle.rally).toEqual({ x: 900, y: 700 });
+
+    sim.enqueueNow([{ type: 'setRally', playerId: human.id, buildingId: circle.id, x: 500, y: 400 }]);
+    sim.step();
+    expect(circle.rally).toEqual({ x: 500, y: 400 });
   });
 });
 

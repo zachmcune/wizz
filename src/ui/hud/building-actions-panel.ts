@@ -29,7 +29,12 @@ export class BuildingActionsPanel {
     });
     this.rallyBtn.addEventListener('click', () => {
       const id = [...this.controller.session.selection][0];
-      if (id !== undefined) this.controller.startRally(id);
+      if (id === undefined) return;
+      if (this.controller.session.mode === 'rally' && this.controller.session.rallyBuildingId === id) {
+        this.controller.setMode('normal');
+        return;
+      }
+      this.controller.startRally(id);
     });
     this.row.append(this.sellBtn, this.repairBtn, this.rallyBtn);
   }
@@ -65,10 +70,12 @@ export class BuildingActionsPanel {
     }
     this.rallyBtn.style.display = canRally ? '' : 'none';
     this.rallyBtn.classList.toggle('active', inRallyMode);
-    if (canRally && single?.rally) {
-      this.rallyBtn.textContent = 'Set Rally ✓';
+    if (inRallyMode) {
+      this.rallyBtn.textContent = 'Cancel Rally';
+    } else if (canRally && single?.rally) {
+      this.rallyBtn.textContent = 'Move Rally';
     } else {
-      this.rallyBtn.textContent = inRallyMode ? 'Cancel Rally' : 'Set Rally';
+      this.rallyBtn.textContent = 'Set Rally';
     }
   }
 }
