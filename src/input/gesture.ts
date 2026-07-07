@@ -7,12 +7,15 @@ export interface Pt {
   y: number;
 }
 
+export type GestureEndKind = 'tap' | 'pan' | 'box' | 'pinch' | 'none';
+
 export interface GestureHandlers {
   onTap?: (p: Pt) => void;
   onDoubleTap?: (p: Pt) => void;
   onPanStart?: () => void;
   onPanMove?: (dx: number, dy: number) => void;
   onPanEnd?: () => void;
+  onTwoFingerPan?: (dx: number, dy: number) => void;
   onBoxStart?: (p: Pt) => void;
   onBoxMove?: (p: Pt) => void;
   onBoxEnd?: (a: Pt, b: Pt) => void;
@@ -23,6 +26,8 @@ type State = 'idle' | 'pending' | 'pan' | 'box' | 'pinch';
 
 export class GestureRecognizer {
   state: State = 'idle';
+  /** What the last pointer-up resolved to (for input routing after gesture ends). */
+  lastEndKind: GestureEndKind = 'none';
   private pointers = new Map<number, Pt>();
   private startPt: Pt = { x: 0, y: 0 };
   private startTime = 0;
@@ -30,11 +35,12 @@ export class GestureRecognizer {
   private lastTapTime = -Infinity;
   private lastTapPt: Pt = { x: 0, y: 0 };
   private pinchDist = 0;
+  private pinchCenter: Pt = { x: 0, y: 0 };
   private dragToSelect: boolean;
 
   constructor(
     private h: GestureHandlers,
-    dragMode: 'pan' | 'select' = 'pan',
+    dragMode: 'pan' | 'select' = 'select',
   ) {
     this.dragToSelect = dragMode === 'select';
   }
@@ -47,11 +53,25 @@ export class GestureRecognizer {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
+  private centerOfPointers(): Pt {
+    const pts = [...this.pointers.values()];
+    if (pts.length === 0) return { x: 0, y: 0 };
+    let x = 0;
+    let y = 0;
+    for (const p of pts) {
+      x += p.x;
+      y += p.y;
+    }
+    return { x: x / pts.length, y: y / pts.length };
+  }
+
   pointerDown(id: number, x: number, y: number, now: number): void {
+    this.lastEndKind = 'none';
     this.pointers.set(id, { x, y });
     if (this.pointers.size >= 2) {
       const pts = [...this.pointers.values()];
       this.pinchDist = this.dist(pts[0]!, pts[1]!);
+      this.pinchCenter = this.centerOfPointers();
       this.state = 'pinch';
       return;
     }
@@ -68,10 +88,17 @@ export class GestureRecognizer {
     if (this.state === 'pinch') {
       const pts = [...this.pointers.values()];
       if (pts.length >= 2) {
+        const center = this.centerOfPointers();
         const d = this.dist(pts[0]!, pts[1]!);
-        const center = { x: (pts[0]!.x + pts[1]!.x) / 2, y: (pts[0]!.y + pts[1]!.y) / 2 };
-        if (this.pinchDist > 0) this.h.onPinch?.(d / this.pinchDist, center);
+        if (this.pinchDist > 0) {
+          const panDx = center.x - this.pinchCenter.x;
+          const panDy = center.y - this.pinchCenter.y;
+          if (Math.hypot(panDx, panDy) > 0.5) this.h.onTwoFingerPan?.(panDx, panDy);
+          const factor = d / this.pinchDist;
+          if (Math.abs(factor - 1) > 0.015) this.h.onPinch?.(factor, center);
+        }
         this.pinchDist = d;
+        this.pinchCenter = center;
       }
       return;
     }
@@ -106,23 +133,26 @@ export class GestureRecognizer {
       if (this.pointers.size < 2) {
         if (this.pointers.size === 1) {
           const pt = [...this.pointers.values()][0]!;
-          this.state = 'pan';
+          this.state = 'pending';
           this.startPt = { ...pt };
           this.lastPt = { ...pt };
-          this.h.onPanStart?.();
+          this.startTime = now;
         } else {
           this.state = 'idle';
+          this.lastEndKind = 'pinch';
         }
       }
       return;
     }
     if (this.state === 'pan') {
       this.h.onPanEnd?.();
+      this.lastEndKind = 'pan';
       this.state = 'idle';
       return;
     }
     if (this.state === 'box') {
       this.h.onBoxEnd?.(this.startPt, cur);
+      this.lastEndKind = 'box';
       this.state = 'idle';
       return;
     }
@@ -132,20 +162,23 @@ export class GestureRecognizer {
       if (quick && still) {
         if (now - this.lastTapTime <= DOUBLE_TAP_MS && this.dist(this.lastTapPt, cur) <= MOVE_THRESHOLD * 2) {
           this.h.onDoubleTap?.(cur);
+          this.lastEndKind = 'tap';
           this.lastTapTime = -Infinity;
         } else {
           this.h.onTap?.(cur);
+          this.lastEndKind = 'tap';
           this.lastTapTime = now;
           this.lastTapPt = cur;
         }
+      } else {
+        this.lastEndKind = 'none';
       }
       this.state = 'idle';
     }
   }
 
-  /** Call each frame with wall-clock ms to promote a held press into a box-select (select mode only). */
+  /** Call each frame with wall-clock ms to promote a held press into a box-select. */
   update(now: number): void {
-    if (!this.dragToSelect) return;
     if (this.state === 'pending' && now - this.startTime >= LONG_PRESS_MS && this.dist(this.startPt, this.lastPt) <= MOVE_THRESHOLD) {
       this.state = 'box';
       this.h.onBoxStart?.(this.startPt);
@@ -153,6 +186,7 @@ export class GestureRecognizer {
     }
   }
 
+  /** True while a one-finger pan gesture is active (before pointerUp). */
   wasPanning(): boolean {
     return this.state === 'pan';
   }

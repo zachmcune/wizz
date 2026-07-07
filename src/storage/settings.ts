@@ -8,7 +8,7 @@ export interface Settings {
 }
 
 const KEY = 'arcane:settings';
-const DEFAULTS: Settings = { volume: 0.6, muted: false, dragMode: 'pan' };
+const DEFAULTS: Settings = { volume: 0.6, muted: false, dragMode: 'select' };
 
 export async function loadSettings(): Promise<Settings> {
   try {

@@ -38,6 +38,7 @@ export class Game {
   private loop!: GameLoop;
   private humanId: PlayerId;
   private colorByOwner = new Map<PlayerId, string>();
+  private canvasHost!: HTMLDivElement;
   private boxEl: HTMLDivElement;
   private tickCounter = 0;
   private disposed = false;
@@ -72,7 +73,11 @@ export class Game {
   async start(): Promise<void> {
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
+    this.canvasHost = canvasHost;
     this.host.appendChild(canvasHost);
+    this.boxEl.style.position = 'absolute';
+    this.boxEl.style.pointerEvents = 'none';
+    canvasHost.appendChild(this.boxEl);
     await this.renderer.init(canvasHost);
     this.renderer.setOwnerColors(this.state);
 
@@ -106,7 +111,7 @@ export class Game {
     this.controller.onHarvestNoRefinery = () => {
       this.hud.showHint('Tap teal mana nodes to harvest · Build Attunement Spire (MINE) to deposit');
     };
-    this.host.append(this.hud.root, this.boxEl);
+    this.host.append(this.hud.root);
 
     this.setupGestures();
     this.setupPointer();
@@ -130,6 +135,7 @@ export class Game {
         onTap: (p) => this.controller.tap(p),
         onDoubleTap: (p) => this.controller.doubleTap(p),
         onPanMove: (dx, dy) => this.controller.panByScreen(dx, dy),
+        onTwoFingerPan: (dx, dy) => this.controller.panByScreen(dx, dy),
         onBoxStart: (p) => {
           boxStart = p;
           this.boxEl.style.display = 'block';
@@ -182,13 +188,12 @@ export class Game {
     const up = (e: PointerEvent) => {
       const p = rel(e);
       const mode = this.controller.session.mode;
-      const wasPan = this.gesture.wasPanning();
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
-      // Mobile: small finger drift often becomes a pan — treat as tap for orders/harvest.
-      if (mode === 'normal' && wasPan && drift <= TAP_SLOP_PX) {
+      // Small finger drift during a one-finger pan: treat as a tap (move order, select, etc.).
+      if (mode === 'normal' && this.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
         this.controller.tap(p);
       }
     };
