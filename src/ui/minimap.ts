@@ -4,8 +4,9 @@ import { TILE } from '../core/constants';
 import type { GameState, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
+import type { Registry } from '../data/registry';
 import { getPlayer } from '../sim/queries';
-import { isVisibleTo } from '../sim/fog';
+import { isVisibleTo, radarActive, isShrouded } from '../sim/fog';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
@@ -45,7 +46,7 @@ export class Minimap {
     });
   }
 
-  render(state: GameState, viewerId: PlayerId, nav: NavGrid): void {
+  render(state: GameState, viewerId: PlayerId, nav: NavGrid, registry: Registry): void {
     const c = this.ctx;
     const s = this.scale;
     const viewer = getPlayer(state, viewerId);
@@ -55,10 +56,12 @@ export class Minimap {
 
     if (!viewer) return;
 
+    const radarOn = radarActive(state, registry, viewerId);
+
     for (let ty = 0; ty < this.map.tileH; ty++) {
       for (let tx = 0; tx < this.map.tileW; tx++) {
         const i = ty * this.map.tileW + tx;
-        if (!viewer.hasRadar && viewer.explored[i] === 0) continue;
+        if (isShrouded(viewer, i, radarOn)) continue;
         const blocked = this.map.tiles[i] === 1;
         c.fillStyle = blocked ? '#2a2540' : '#1a1826';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);

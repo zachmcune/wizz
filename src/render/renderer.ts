@@ -6,7 +6,7 @@ import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse } from '../sim/power';
-import { isVisibleTo } from '../sim/fog';
+import { isVisibleTo, radarActive, isShrouded } from '../sim/fog';
 import { getPlayer } from '../sim/queries';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
@@ -222,7 +222,7 @@ export class Renderer {
     this.overlayFill.clear();
     this.overlayStroke.clear();
     this.fogLayer.clear();
-    if (viewer && nav) this.drawFog(viewer, nav);
+    if (viewer && nav) this.drawFog(state, viewer, nav);
 
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
@@ -356,13 +356,14 @@ export class Renderer {
     this.overlayStroke.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
-  private drawFog(player: Player, nav: NavGrid): void {
+  private drawFog(state: GameState, player: Player, nav: NavGrid): void {
+    const radarOn = radarActive(state, this.registry, player.id);
     for (let ty = 0; ty < nav.h; ty++) {
       for (let tx = 0; tx < nav.w; tx++) {
         const i = ty * nav.w + tx;
         const x = tx * TILE;
         const y = ty * TILE;
-        if (player.explored[i] === 0) {
+        if (isShrouded(player, i, radarOn)) {
           this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 1 });
         } else if (player.visible[i] === 0) {
           this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 0.58 });
