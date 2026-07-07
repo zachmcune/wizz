@@ -21,7 +21,7 @@ describe('mana weaver channeling', () => {
 
     expect(weaver.channeling).toBe(true);
     expect(weaver.state).toBe('channeling');
-    expect(human.mana).toBeGreaterThanOrEqual(reg.balance.conjureManaAmount - 0.5);
+    expect(human.mana).toBe(reg.balance.conjureManaAmount);
   });
 
   it('stop command ends channeling', () => {

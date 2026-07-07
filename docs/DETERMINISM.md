@@ -16,4 +16,5 @@ multiplayer reproduce identically. A change is not done if any rule is violated.
 
 - `tests/determinism.test.ts`: two runs of the same config+commands produce an identical
   `hashState`, including a 1200-tick AI-vs-AI match and a scripted-command replay.
-- `hashState()` (`src/sim/hash.ts`) digests tick, players, and all entities (sorted).
+- `hashState()` (`src/sim/hash.ts`) digests tick, RNG, players, and all entities (sorted).
+  Includes channel/repair flags for desync detection.

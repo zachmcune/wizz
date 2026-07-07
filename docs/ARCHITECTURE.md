@@ -22,8 +22,11 @@ advances state on a fixed tick, and emits `GameEvent[]` out. Enforced by ESLint
 - Fixed rate: `TICK_HZ = 20` (`TICK_MS = 50`). Rendering interpolates between ticks.
 - Systems run in a FIXED order every tick (changing it changes results):
   1. `applyCommands` 2. AI hook (emits commands for next tick) 3. `productionSystem`
-  4. `movementSystem` (pathing sampled on demand) 5. `combatSystem` 6. `projectileSystem`
-  7. `harvestSystem` 8. `deathSystem` 9. `winCheckSystem`
+  4. `morphSystem` 5. `movementSystem` 6. `visibilitySystem` 7. `combatSystem`
+  8. `projectileSystem` 9. `harvestSystem` 10. `channelSystem` 11. `deathSystem`
+  12. `winCheckSystem`
+
+See `docs/MULTIPLAYER_PREP.md` for the lockstep roadmap.
 
 ## Key modules
 

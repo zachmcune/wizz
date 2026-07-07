@@ -100,6 +100,7 @@ export interface Entity {
   rally?: Vec2;
   repairing?: boolean; // slow HP restore while spending mana
   channeling?: boolean; // sitting to conjure mana
+  channelTicks?: number; // ticks accumulated toward next conjure pulse
 
   // deploy / pack (mobile HQ)
   morphProgress?: number; // 0..1 while deploying or packing
