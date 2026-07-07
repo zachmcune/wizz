@@ -353,7 +353,7 @@
   padding: 4px 8px;
 }
 .compact-ui .cmd-card {
-  width: min(46vw, 228px);
+  width: min(50vw, 252px);
 }
 .compact-ui .category-chip {
   min-height: 44px;
@@ -365,8 +365,16 @@
   padding: 6px 10px;
 }
 .compact-ui .panel-tab {
-  min-height: 44px;
-  font-size: 10px;
+  min-height: 24px;
+  min-width: 40px;
+  font-size: 8px;
+  padding: 2px 4px;
+}
+.compact-ui .building-row .btn {
+  min-height: 24px;
+  min-width: 40px;
+  font-size: 8px;
+  padding: 2px 4px;
 }
 .compact-ui .command-row {
   /* Single scroll container (cmd-card) on short screens — nested scroll traps touches. */
@@ -378,7 +386,7 @@
 }
 .compact-ui .build-confirm,
 .compact-ui .spell-confirm {
-  max-width: calc(100% - min(46vw, 228px) - var(--hud-gap) * 4);
+  max-width: calc(100% - min(50vw, 252px) - var(--hud-gap) * 4);
 }
 
 @media (max-height: 420px) {
