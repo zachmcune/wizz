@@ -39,6 +39,8 @@ export class MatchLobby {
   private factionSelect!: HTMLSelectElement;
   private templateSelect!: HTMLSelectElement;
   private deadSpectatorToggle!: HTMLInputElement;
+  private projectionSelect!: HTMLSelectElement;
+  private projectionWarning!: HTMLParagraphElement;
   private roomEl: HTMLElement | null = null;
   private playersEl = el('div', 'lobby-players');
   private mapPreview: LobbyMapPreview;
@@ -107,14 +109,31 @@ export class MatchLobby {
       this.refresh();
     });
 
+    this.projectionSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    const view2d = el('option', undefined, 'Classic 2D') as HTMLOptionElement;
+    view2d.value = 'ortho';
+    const view25 = el('option', undefined, 'Oblique 2.5D (under construction)') as HTMLOptionElement;
+    view25.value = 'oblique';
+    this.projectionSelect.append(view2d, view25);
+    this.projectionSelect.addEventListener('change', () => {
+      this.state.projectionMode = this.projectionSelect.value === 'oblique' ? 'oblique' : 'ortho';
+      this.pushUpdate();
+      this.refresh();
+    });
+
     header.append(
       el('label', 'lobby-field-label', 'Map'),
       this.mapSelect,
       el('label', 'lobby-field-label', 'Faction'),
       this.factionSelect,
+      el('label', 'lobby-field-label', 'View'),
+      this.projectionSelect,
     );
 
     const optionsRow = el('div', 'lobby-options');
+    this.projectionWarning = el('p', 'lobby-view-warning', '2.5D view is under construction — expect visual bugs.');
+    optionsRow.appendChild(this.projectionWarning);
+
     const spectatorLabel = el('label', 'lobby-toggle') as HTMLLabelElement;
     this.deadSpectatorToggle = el('input') as HTMLInputElement;
     this.deadSpectatorToggle.type = 'checkbox';
@@ -399,6 +418,9 @@ export class MatchLobby {
   private refresh(): void {
     this.mapSelect.value = this.state.mapId;
     this.factionSelect.value = this.state.factionId;
+    this.projectionSelect.value = this.state.projectionMode ?? 'ortho';
+    this.projectionSelect.disabled = this.opts.mode === 'guest';
+    this.projectionWarning.style.display = this.projectionSelect.value === 'oblique' ? 'block' : 'none';
     this.deadSpectatorToggle.checked = this.state.deadSpectatorReveal ?? false;
     this.deadSpectatorToggle.disabled = this.opts.mode === 'guest';
     for (let i = 0; i < 4; i++) {

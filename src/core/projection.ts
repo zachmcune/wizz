@@ -86,7 +86,7 @@ const PROJECTIONS: Record<ProjectionMode, Projection> = {
   oblique: ObliqueProjection,
 };
 
-let activeMode: ProjectionMode = 'oblique';
+let activeMode: ProjectionMode = 'ortho';
 
 export function getProjectionMode(): ProjectionMode {
   return activeMode;
@@ -102,11 +102,11 @@ export function setProjectionMode(mode: ProjectionMode): void {
 
 /** URL param ?view=2d|oblique overrides stored settings when valid. */
 export function resolveProjectionMode(stored: ProjectionMode | undefined): ProjectionMode {
-  if (typeof window === 'undefined') return stored ?? 'oblique';
+  if (typeof window === 'undefined') return stored ?? 'ortho';
   const param = new URLSearchParams(window.location.search).get('view');
   if (param === '2d' || param === 'ortho') return 'ortho';
   if (param === 'oblique') return 'oblique';
-  return stored ?? 'oblique';
+  return stored ?? 'ortho';
 }
 
 /** Map sim facing (radians) to 8-direction sprite index (0 = east, counter-clockwise). */

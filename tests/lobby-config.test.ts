@@ -104,6 +104,26 @@ describe('lobby config', () => {
     expect(config.deadSpectatorReveal).toBe(true);
   });
 
+  it('defaults lobby view mode to Classic 2D', () => {
+    expect(defaultLobbyState().projectionMode).toBe('ortho');
+    expect(defaultOnlineLobbyState().projectionMode).toBe('ortho');
+  });
+
+  it('round-trips projection mode through lobby wire', async () => {
+    const { lobbyStateToWire, lobbyStateFromWire } = await import('../src/net/lobby-wire');
+    const lobby = defaultLobbyState();
+    lobby.projectionMode = 'oblique';
+    const back = lobbyStateFromWire(lobbyStateToWire(lobby));
+    expect(back.projectionMode).toBe('oblique');
+
+    const legacy = lobbyStateFromWire({
+      mapId: lobby.mapId,
+      factionId: lobby.factionId,
+      slots: lobbyStateToWire(lobby).slots,
+    });
+    expect(legacy.projectionMode).toBe('ortho');
+  });
+
   it('builds a deterministic 4-player 2v2 AI match from lobby template', () => {
     const template = getLobbyTemplates(reg).find((t) => t.id === '2v2_ai');
     expect(template).toBeDefined();

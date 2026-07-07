@@ -1,4 +1,6 @@
 // Lobby state types for pre-match setup (solo and online).
+import type { ProjectionMode } from '../core/projection';
+
 export type TeamLabel = 'a' | 'b' | 'c' | 'd';
 export type SlotKind = 'closed' | 'human' | 'ai' | 'open';
 export type SlotId = 'player0' | 'player1' | 'player2' | 'player3';
@@ -26,6 +28,8 @@ export interface LobbyState {
   seed?: number;
   /** When true, eliminated human players see the live full map (no fog) while spectating. */
   deadSpectatorReveal?: boolean;
+  /** Locked render view for this match: Classic 2D or oblique 2.5D. Host chooses in lobby. */
+  projectionMode?: ProjectionMode;
 }
 
 export type LobbyMode = 'solo' | 'host' | 'guest';

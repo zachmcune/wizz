@@ -53,6 +53,7 @@ export class AppRouter {
       matchId: 'custom',
       localPlayerId: opts?.localPlayerId,
       deadSpectatorReveal: config.deadSpectatorReveal ?? false,
+      matchProjectionMode: state.projectionMode ?? 'ortho',
       lockstep: opts?.session?.lockstep,
       onDesync: (tick, peers, replay) => {
         console.error('[lockstep] desync at tick', tick, 'peers:', peers);
@@ -235,6 +236,7 @@ export class AppRouter {
                 this.game = null;
                 void this.showMenu();
               },
+              { matchProjectionMode: 'ortho' },
             );
             void this.game.start();
           }

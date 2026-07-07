@@ -41,6 +41,7 @@ export function getLobbyTemplates(registry: Registry): LobbyTemplate[] {
       apply: () => ({
         mapId: 'duel_glade',
         factionId: 'arcane',
+        projectionMode: 'ortho' as const,
         seed: 999,
         slots: [
           { id: 'player0', kind: 'ai', team: 'a', color: '#4f9dff', startIndex: 0, factionId: 'arcane', aiDifficulty: 'hard', claimedBy: null },
