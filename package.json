@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --exclude tests/balance.test.ts",
+    "test:slow": "vitest run tests/balance.test.ts",
+    "test:full": "vitest run",
     "relay": "node relay/server.mjs"
   },
   "dependencies": {

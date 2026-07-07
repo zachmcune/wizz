@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import type { MatchConfig } from '../src/sim/types';
 
 const reg = getRegistry();

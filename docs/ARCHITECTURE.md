@@ -30,6 +30,7 @@ See `docs/MULTIPLAYER_PREP.md` for the lockstep roadmap.
 
 ## Key modules
 
+- `src/app/` match orchestrator (`game.ts`), navigation (`app-router.ts`), sim factory (`create-simulation.ts`), and match helpers under `app/match/`.
 - `src/sim/` deterministic core: `types.ts` (contracts), `step.ts`, `simulation.ts`
   (orchestrator + command queue), systems in `systems/`, pathfinding (`flow-field.ts`),
   `nav-grid.ts`, `spatial-hash.ts`, `factory.ts` (spawning + match init), `hash.ts`, `headless.ts`.

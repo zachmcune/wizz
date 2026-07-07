@@ -12,7 +12,9 @@ state-management lib — everything gameplay is hand-rolled.
 - `npm run build` — typecheck + production build to `dist/`.
 - `npm run typecheck` — `tsc --noEmit`.
 - `npm run lint` — ESLint (includes the sim import guard).
-- `npm test` — Vitest headless tests.
+- `npm test` — Vitest headless tests (excludes slow balance harness).
+- `npm run test:slow` — AI balance harness only (~45s).
+- `npm run test:full` — all tests including balance harness.
 
 Every task must end green: `npm run typecheck && npm run lint && npm test`.
 

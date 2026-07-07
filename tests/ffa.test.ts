@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
 import { initMatch } from '../src/sim/factory';
-import { Simulation } from '../src/sim/simulation';
+import { createSimulation } from '../src/app/create-simulation';
 import { isEnemy } from '../src/sim/queries';
 import type { Command } from '../src/sim/types';
 
@@ -10,7 +10,7 @@ const reg = getRegistry();
 describe('N-player / FFA / teams & win conditions', () => {
   it('a 4-player FFA resolves to exactly one winning team, and AI never targets allies', () => {
     const { state, services } = initMatch(reg, reg.match('ffa_4'));
-    const sim = new Simulation(state, services);
+    const sim = createSimulation(state, services);
 
     // Verify no AI-issued attack command targets an ally, across the whole match.
     const originalStep = sim.step.bind(sim);
@@ -58,7 +58,7 @@ describe('N-player / FFA / teams & win conditions', () => {
       ],
     };
     const { state, services } = initMatch(reg, cfg);
-    const sim = new Simulation(state, services);
+    const sim = createSimulation(state, services);
     let ended = false;
     for (let i = 0; i < 60 * 20 * 25; i++) {
       sim.step();

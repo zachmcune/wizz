@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
+import { aiStep } from '../src/ai/controller';
 import { SimHost } from '../src/sim/worker/sim-host';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import { hashState } from '../src/sim/hash';
 import { packState } from '../src/sim/state-transfer';
 
@@ -9,7 +10,7 @@ const reg = getRegistry();
 
 describe('worker sim host (determinism across the split)', () => {
   it('message-driven stepping matches the single-thread run bit-for-bit', () => {
-    const host = new SimHost(reg);
+    const host = new SimHost(reg, aiStep);
     host.initMatch('skirmish_1v1');
     for (let i = 0; i < 800; i++) host.step();
     const workerHash = hashState(host.state);
@@ -19,7 +20,7 @@ describe('worker sim host (determinism across the split)', () => {
   });
 
   it('commands enqueued through the host match scripted commands headless', () => {
-    const host = new SimHost(reg);
+    const host = new SimHost(reg, aiStep);
     host.initMatch('skirmish_1v1');
     host.setAi(false);
     for (let i = 0; i < 30; i++) {
@@ -34,12 +35,12 @@ describe('worker sim host (determinism across the split)', () => {
   });
 
   it('initState restores mid-match state and continues deterministically', () => {
-    const host = new SimHost(reg);
+    const host = new SimHost(reg, aiStep);
     host.initMatch('skirmish_1v1');
     for (let i = 0; i < 200; i++) host.step();
     const mid = packState(host.state);
 
-    const host2 = new SimHost(reg);
+    const host2 = new SimHost(reg, aiStep);
     host2.initState(mid);
     for (let i = 0; i < 600; i++) host2.step();
 

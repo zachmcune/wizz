@@ -1,12 +1,7 @@
 // Vertical zoom control on the left edge of the screen (replaces pinch-to-zoom).
 import { MIN_ZOOM, MAX_ZOOM } from '../core/constants';
 import type { Camera } from '../render/camera';
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  return e;
-}
+import { el } from './dom';
 
 function zoomToRatio(zoom: number): number {
   return (zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM);

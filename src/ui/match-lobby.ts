@@ -1,4 +1,5 @@
 // Pre-match lobby UI: configure slots, teams, colors, positions, AI, map, and faction.
+import { el } from './dom';
 import type { Registry } from '../data/registry';
 import type { LobbyClient } from '../net/lobby-client';
 import { validateLobby } from '../lobby/build-config';
@@ -7,17 +8,6 @@ import { TEAM_LABELS, teamLabelDisplay } from '../lobby/teams';
 import type { AiDifficulty, LobbyMode, LobbySlot, LobbyState, SlotId, SlotKind } from '../lobby/types';
 import { DEFAULT_COLORS } from '../lobby/types';
 import { LobbyMapPreview } from './lobby-map-preview';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls?: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
 
 function lobbyMapSize(): number {
   const h = window.innerHeight;

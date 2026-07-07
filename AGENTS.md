@@ -11,6 +11,7 @@ database to run.
   - `npm run dev` — dev server on `http://localhost:5173/` (bound to localhost only; add
     `-- --host` if you need to reach it from another device/emulator).
   - `npm run lint` / `npm run typecheck` / `npm test` / `npm run build`.
+- `npm test` skips the slow balance harness (~45s); use `npm run test:full` for everything.
 - `npm run build` runs `tsc --noEmit` first, then `vite build`; a type error fails the build
   even though the app itself is JS-agnostic at runtime.
 - Tests run headless in Node via `vitest.config.ts` (kept separate from `vite.config.ts` to

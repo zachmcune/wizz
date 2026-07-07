@@ -9,7 +9,7 @@ const reg = getRegistry();
 function battleField() {
   const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
   const sim = new Simulation(state, services);
-  sim.aiEnabled = false;
+  sim.setAiEnabled(false);
   return { state, services, sim };
 }
 

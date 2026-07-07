@@ -6,6 +6,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer } from '../sim/views';
+import { pickEntity, pickResourceNode } from '../sim/picking';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
@@ -497,61 +498,14 @@ export class Renderer {
     this.overlayFillPool.acquire().circle(cx, cy, r).fill({ color, alpha });
   }
 
-  /** World position used for hit-testing (display-smoothed for moving units). */
-  private pickPos(e: Entity): { x: number; y: number } {
-    const n = this.nodes.get(e.id);
-    if (n && (e.kind === 'unit' || e.kind === 'projectile')) {
-      return { x: n.dispX, y: n.dispY };
-    }
-    return { x: e.pos.x, y: e.pos.y };
-  }
-
-  private pickRadius(e: Entity): number {
-    return e.radius + (e.kind === 'unit' ? 14 : e.kind === 'building' ? 8 : 6);
-  }
-
-  /** Pick a mana node at a world position (generous hit area for touch). */
+  /** @deprecated Use sim/picking.ts from input layer. Kept for renderer-internal use. */
   pickResourceNode(state: GameState, wx: number, wy: number): Entity | null {
-    const nav = this.nav;
-    let best: Entity | null = null;
-    let bestD = Infinity;
-    for (const e of state.entities.values()) {
-      if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
-      if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
-      const { x, y } = this.pickPos(e);
-      const dx = wx - x;
-      const dy = wy - y;
-      const r = this.pickRadius(e) + 8;
-      const d2 = dx * dx + dy * dy;
-      if (d2 <= r * r && d2 < bestD) {
-        bestD = d2;
-        best = e;
-      }
-    }
-    return best;
+    return pickResourceNode(state, this.viewerId, wx, wy, this.nav);
   }
 
-  /** Pick the topmost entity at a world position (units preferred over buildings). */
+  /** @deprecated Use sim/picking.ts from input layer. */
   pickEntity(state: GameState, wx: number, wy: number): Entity | null {
-    const nav = this.nav;
-    let best: Entity | null = null;
-    let bestScore = -Infinity;
-    for (const e of state.entities.values()) {
-      if (e.kind === 'projectile') continue;
-      if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
-      const { x, y } = this.pickPos(e);
-      const dx = wx - x;
-      const dy = wy - y;
-      const r = this.pickRadius(e);
-      if (dx * dx + dy * dy <= r * r) {
-        const score = (e.kind === 'unit' ? 100 : e.kind === 'building' ? 50 : 10) - (dx * dx + dy * dy) / 1000;
-        if (score > bestScore) {
-          bestScore = score;
-          best = e;
-        }
-      }
-    }
-    return best;
+    return pickEntity(state, this.viewerId, wx, wy, this.nav);
   }
 
   destroy(): void {

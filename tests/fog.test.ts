@@ -39,7 +39,7 @@ describe('fog of war', () => {
   it('powered radar is active when the grid has enough power', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     human.unlockedTech.push('attunement_spire', 'ley_conduit');
     human.mana = 8000;

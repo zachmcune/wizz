@@ -2,7 +2,8 @@
 import type { Registry } from '../data/registry';
 import type { Command, GameState, MatchConfig, PlayerId } from '../sim/types';
 import { initMatch } from '../sim/factory';
-import { Simulation } from '../sim/simulation';
+import { createSimulation } from '../app/create-simulation';
+import type { Simulation } from '../sim/simulation';
 import { hashState } from '../sim/hash';
 import { LockstepClient } from './lockstep';
 import { CHECKSUM_INTERVAL_TICKS } from './protocol';
@@ -54,8 +55,7 @@ function createPeers(
   const sims = playerIds.map(() => {
     const resolved = { ...config, seed: room.seed };
     const { state, services } = initMatch(registry, resolved);
-    const sim = new Simulation(state, services);
-    sim.aiEnabled = aiEnabled;
+    const sim = createSimulation(state, services, { aiEnabled });
     return sim;
   });
   return { clients, sims };

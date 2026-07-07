@@ -1,9 +1,5 @@
 // Record and replay command streams for desync debugging and multiplayer verification.
-import type { Registry } from '../data/registry';
-import type { Command, GameState } from './types';
-import { initMatch } from './factory';
-import { Simulation } from './simulation';
-import { hashState } from './hash';
+import type { Command } from './types';
 
 export const REPLAY_VERSION = 1;
 
@@ -31,31 +27,6 @@ export class ReplayRecorder {
   clear(): void {
     this.commands = {};
   }
-}
-
-export interface ReplayOptions {
-  ticks: number;
-  aiEnabled?: boolean;
-}
-
-/** Run a recorded command stream and return final state. */
-export function runReplay(registry: Registry, replay: Replay, opts: ReplayOptions): GameState {
-  if (replay.version !== REPLAY_VERSION) {
-    throw new Error(`Unsupported replay version ${replay.version}`);
-  }
-  const config = registry.match(replay.matchId);
-  const { state, services } = initMatch(registry, config);
-  const sim = new Simulation(state, services);
-  sim.aiEnabled = opts.aiEnabled ?? true;
-  for (const [t, cmds] of Object.entries(replay.commandsByTick)) {
-    sim.enqueue(Number(t), cmds);
-  }
-  for (let i = 0; i < opts.ticks; i++) sim.step();
-  return state;
-}
-
-export function replayHash(registry: Registry, replay: Replay, ticks: number, aiEnabled = true): string {
-  return hashState(runReplay(registry, replay, { ticks, aiEnabled }));
 }
 
 export function replayFromScripted(matchId: string, scripted: Record<number, Command[]>): Replay {

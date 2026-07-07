@@ -10,7 +10,7 @@ describe('mana weaver channeling', () => {
   it('conjures mana while sitting', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     const weaver = spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600);
     human.mana = 0;
@@ -27,7 +27,7 @@ describe('mana weaver channeling', () => {
   it('stop command ends channeling', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     const weaver = spawnEntity(state, services, null, 'mana_weaver', human.id, 600, 600);
 

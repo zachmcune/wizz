@@ -11,7 +11,7 @@ describe('building on mana pools', () => {
   it('rejects placement on a mana node tile', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     human.mana = 9999;
     human.unlockedTech.push('attunement_spire');

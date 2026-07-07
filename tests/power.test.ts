@@ -40,7 +40,7 @@ describe('RA2 low power', () => {
   it('turrets do not fire while low on power', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.id === 'player0')!;
     human.mana = 5000;
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;

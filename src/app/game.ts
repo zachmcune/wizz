@@ -1,34 +1,28 @@
 // In-match orchestrator: wires sim + renderer + input + HUD + audio + loop together.
-// Owns no gameplay rules; it only routes commands in and events out.
-import { TILE, TAP_SLOP_PX, TICK_MS } from '../core/constants';
-import { screenToWorld } from '../core/coords';
+import { TICK_MS } from '../core/constants';
 import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
-import type { GameState, Command, GameEvent, PlayerId } from '../sim/types';
+import type { GameState, Command, PlayerId } from '../sim/types';
 import type { SimServices } from '../sim/context';
-import { Simulation } from '../sim/simulation';
 import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
 import { InputController } from '../input/controller';
-import { lockLandscape } from '../ui/orientation';
 import { initViewport } from '../ui/viewport';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { ZoomSlider } from '../ui/zoom-slider';
-import { AudioManager } from '../audio/audio';
+import type { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
-import { saveGame } from '../storage/save';
-import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
+import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
-import { isWorldPointVisible, shouldRevealAllForViewer } from '../sim/views';
-import { applyTransferState, packState } from '../sim/state-transfer';
-import { rebuildBuildingNav } from '../sim/building-nav';
-import { ReplayRecorder, serializeReplay, type Replay } from '../sim/replay';
-import { WorkerSimClient } from './worker-client';
-import { LockstepClient } from '../net/lockstep';
+import { shouldRevealAllForViewer } from '../sim/views';
+import type { Replay } from '../sim/replay';
+import type { LockstepClient } from '../net/lockstep';
 import type { WebSocketTransport } from '../net/ws-transport';
-import { CHECKSUM_INTERVAL_TICKS, LOCKSTEP_DRAIN_BUDGET_MS, LOCKSTEP_STALL_MS } from '../net/protocol';
-import { hashState } from '../sim/hash';
+import { EventBridge } from './match/event-bridge';
+import { PointerBinder } from './match/pointer-binder';
+import { buildMatchOverlay } from './match/overlay-builder';
+import { SimController } from './match/sim-controller';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -47,14 +41,9 @@ function workerSupported(): boolean {
 }
 
 export class Game {
-  private sim: Simulation | null;
-  private worker: WorkerSimClient | null = null;
-  private useWorker: boolean;
-  private lockstep: LockstepClient | null = null;
-  private matchId: string;
-  private onDesync: ((tick: number, peers: string[], replay: Replay) => void) | null = null;
-  private relayTransport: WebSocketTransport | null = null;
-  private replay = new ReplayRecorder();
+  private simCtrl!: SimController;
+  private eventBridge!: EventBridge;
+  private pointerBinder: PointerBinder | null = null;
   private renderer: Renderer;
   private gesture!: GestureRecognizer;
   private controller!: InputController;
@@ -65,16 +54,19 @@ export class Game {
   private humanId: PlayerId;
   private colorByOwner = new Map<PlayerId, string>();
   private boxEl: HTMLDivElement;
-  private tickCounter = 0;
   private disposed = false;
-  private lastPointer = { x: 0, y: 0 };
   private fps = 60;
   private lastFrameTime = 0;
-  private lastSimSyncMs = 0;
-  private lockstepStallShown = false;
   private postGameCameraReady = false;
-  private deadSpectatorReveal: boolean;
-  private pointerStart = { x: 0, y: 0 };
+  private readonly lockstep: LockstepClient | null;
+  private readonly matchId: string;
+  private readonly onDesync: ((tick: number, peers: string[], replay: Replay) => void) | null;
+  private readonly relayTransport: WebSocketTransport | null;
+  private readonly useWorker: boolean;
+  private readonly deadSpectatorReveal: boolean;
+  private onKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') this.controller.clearSelection();
+  };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
     initViewport();
@@ -106,16 +98,7 @@ export class Game {
     this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
     const wantWorker = opts?.useWorker ?? workerSupported();
     this.useWorker = wantWorker && !this.lockstep && workerSupported();
-    if (this.useWorker && workerSupported()) {
-      this.worker = new WorkerSimClient();
-      this.sim = null;
-    } else {
-      this.useWorker = false;
-      this.sim = new Simulation(state, services);
-      if (this.lockstep) {
-        this.sim.aiEnabled = state.players.some((p) => p.controller === 'ai');
-      }
-    }
+
     this.humanId =
       opts?.localPlayerId ??
       state.players.find((p) => p.controller === 'human')?.id ??
@@ -128,6 +111,31 @@ export class Game {
   }
 
   async start(): Promise<void> {
+    this.eventBridge = new EventBridge(
+      () => this.state,
+      this.humanId,
+      () => this.services,
+      this.deadSpectatorReveal,
+      this.audio,
+      this.renderer.effects,
+    );
+
+    const aiEnabled = this.lockstep ? this.state.players.some((p) => p.controller === 'ai') : true;
+    this.simCtrl = new SimController(
+      this.state,
+      this.services,
+      this.registry,
+      this.lockstep,
+      this.matchId,
+      this.onDesync,
+      (events) => {
+        for (const ev of events) this.eventBridge.handle(ev);
+      },
+      () => this.renderer.syncTick(this.state),
+      this.useWorker,
+      aiEnabled,
+    );
+
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
     this.host.appendChild(canvasHost);
@@ -145,13 +153,13 @@ export class Game {
     const mapSize = Math.max(72, Math.min(112, Math.floor(window.innerHeight * 0.26)));
     this.minimap = new Minimap(this.registry.map(this.state.mapId), this.renderer.camera, this.colorByOwner, mapSize);
 
-    const enqueue = (cmd: Command) => this.enqueueCommands([cmd]);
+    const enqueue = (cmd: Command) => this.simCtrl.enqueueCommands([cmd]);
 
     this.controller = new InputController(
       () => this.state,
       this.renderer.camera,
-      this.renderer,
       this.registry,
+      this.services.nav,
       this.humanId,
       enqueue,
       (kind, world) => this.renderer.effects.spawn('ring', world.x, world.y, ORDER_COLORS[kind] ?? 0xffffff, 14),
@@ -176,17 +184,22 @@ export class Game {
     this.host.append(this.zoomSlider.root);
 
     this.setupGestures();
-    this.setupPointer();
-    this.setupKeyboard();
+    this.pointerBinder = new PointerBinder(this.renderer.app.canvas, {
+      getEnded: () => this.state.ended,
+      camera: this.renderer.camera,
+      controller: this.controller,
+      gesture: this.gesture,
+      audio: this.audio,
+    });
+    this.pointerBinder.attach();
+    window.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('visibilitychange', this.onVisibilityResume);
     window.addEventListener('pageshow', this.onVisibilityResume);
 
-    if (this.worker) {
-      const ready = await this.waitForWorkerReady();
+    if (this.simCtrl.isWorkerMode) {
+      const ready = await this.simCtrl.initWorker();
       if (!ready) {
-        this.worker.terminate();
-        this.worker = null;
-        this.sim = new Simulation(this.state, this.services);
+        this.simCtrl.fallbackToMainThread();
         this.renderer.syncTick(this.state);
         this.renderer.snapDisplay();
       }
@@ -195,27 +208,19 @@ export class Game {
       this.renderer.snapDisplay();
     }
 
-    if (this.lockstep) this.catchUpLockstep();
+    if (this.lockstep) {
+      this.simCtrl.catchUpLockstep();
+      this.renderer.snapDisplay();
+    }
 
-    this.lastSimSyncMs = performance.now();
+    this.simCtrl.markSynced();
 
     this.loop = new GameLoop(
-      () => this.step(),
+      () => this.simCtrl.stepFixed(),
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
     this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
-  }
-
-  private enqueueCommands(cmds: Command[]): void {
-    if (!cmds.length) return;
-    this.replay.record(this.state.tick, cmds);
-    if (this.lockstep) {
-      this.lockstep.submitLocal(this.state.tick, cmds);
-      return;
-    }
-    if (this.worker) this.worker.send(cmds);
-    else this.sim?.enqueueNow(cmds);
   }
 
   private setupGestures(): void {
@@ -256,291 +261,6 @@ export class Game {
     );
   }
 
-  private wallDragging = false;
-
-  private setupPointer(): void {
-    const canvas = this.renderer.app.canvas;
-    const rel = (e: PointerEvent) => {
-      const r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    };
-    canvas.addEventListener('pointerdown', (e) => {
-      this.audio.unlock();
-      void lockLandscape();
-      const p = rel(e);
-      this.lastPointer = p;
-      this.pointerStart = p;
-      canvas.setPointerCapture(e.pointerId);
-      if (this.state.ended) {
-        this.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
-        return;
-      }
-      const mode = this.controller.session.mode;
-      if (mode === 'build' && this.controller.isWallBuild()) {
-        this.wallDragging = true;
-        const w = screenToWorld(p, this.renderer.camera.view());
-        this.controller.startWallDrag(w);
-      }
-      this.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
-    });
-    canvas.addEventListener('pointermove', (e) => {
-      const p = rel(e);
-      this.lastPointer = p;
-      if (this.state.ended) {
-        this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
-        return;
-      }
-      const mode = this.controller.session.mode;
-      if (mode === 'build' && this.controller.isWallBuild() && this.wallDragging) {
-        const w = screenToWorld(p, this.renderer.camera.view());
-        this.controller.updateWallDrag(w);
-        return;
-      }
-      if (mode === 'build' || mode === 'deploy') {
-        const w = screenToWorld(p, this.renderer.camera.view());
-        if (mode === 'build') this.controller.updateGhost(w);
-        else this.controller.updateDeployGhost(w);
-      }
-      if (mode === 'rally') {
-        if (this.gesture.activePointers >= 2) {
-          this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
-        } else {
-          const w = screenToWorld(p, this.renderer.camera.view());
-          this.controller.updateRallyCursor(w);
-        }
-        return;
-      }
-      if (mode === 'normal' || mode === 'attackMove') {
-        this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
-      }
-    });
-    const up = (e: PointerEvent) => {
-      const p = rel(e);
-      if (this.state.ended) {
-        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
-        return;
-      }
-      const mode = this.controller.session.mode;
-      const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
-      if (mode === 'rally') {
-        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
-        try {
-          canvas.releasePointerCapture(e.pointerId);
-        } catch {
-          /* already released */
-        }
-        if (this.gesture.activePointers === 0) {
-          const panned = this.gesture.lastEndKind === 'pan' || this.gesture.lastEndKind === 'pinch';
-          if (!panned && drift <= TAP_SLOP_PX) this.controller.confirmRally(screenToWorld(p, this.renderer.camera.view()));
-        }
-        return;
-      }
-      if (mode === 'build' && this.controller.isWallBuild()) {
-        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
-        if (this.wallDragging) {
-          const w = screenToWorld(p, this.renderer.camera.view());
-          this.controller.updateWallDrag(w);
-          this.controller.finishWallDrag();
-          this.wallDragging = false;
-        }
-        return;
-      }
-      if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
-        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
-      }
-      // Recover taps lost to tiny camera pans (common on touch). Placement modes only move the ghost.
-      if (
-        (mode === 'normal' || mode === 'build' || mode === 'deploy') &&
-        drift <= TAP_SLOP_PX &&
-        this.gesture.lastEndKind !== 'tap' &&
-        this.gesture.lastEndKind !== 'box'
-      ) {
-        this.controller.tap(p);
-      } else if (mode === 'normal' && this.gesture.lastEndKind === 'pan' && drift <= TAP_SLOP_PX) {
-        this.controller.tap(p);
-      }
-    };
-    canvas.addEventListener('pointerup', up);
-    canvas.addEventListener('pointercancel', up);
-  }
-
-  private setupKeyboard(): void {
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.controller.clearSelection();
-    });
-  }
-
-  private step(): boolean {
-    if (this.state.ended) return false;
-
-    // Lockstep sim is network-driven; drained every frame in frame().
-    if (this.lockstep) return false;
-
-    if (this.worker) return this.worker.requestStep();
-
-    const res = this.sim!.step();
-    for (const ev of res.events) this.handleEvent(ev);
-    this.renderer.syncTick(this.state);
-    this.markSimSynced();
-    this.tickCounter++;
-    if (this.tickCounter % 200 === 0) void saveGame(this.state);
-    return true;
-  }
-
-  /** Process one confirmed lockstep tick (render sync is batched by callers). */
-  private advanceLockstepSim(): boolean {
-    const tick = this.state.tick;
-    if (!this.lockstep?.isTickReady(tick)) return false;
-    const cmds = this.lockstep.commandsForTick(tick) ?? [];
-    this.sim!.enqueue(tick, cmds);
-    const res = this.sim!.step();
-    for (const ev of res.events) this.handleEvent(ev);
-    this.tickCounter++;
-    if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
-    return true;
-  }
-
-  private finishLockstepBatch(lastTick: number): void {
-    this.lockstep?.pruneBefore(Math.max(0, lastTick - 120));
-    this.renderer.syncTick(this.state);
-    this.markSimSynced();
-  }
-
-  /** Fast-forward through relay ticks buffered during match load. */
-  private catchUpLockstep(): void {
-    if (!this.lockstep) return;
-    let safety = 0;
-    let lastTick = this.state.tick;
-    while (this.advanceLockstepSim() && safety++ < 10_000) {
-      lastTick = this.state.tick;
-    }
-    this.finishLockstepBatch(lastTick);
-    this.renderer.snapDisplay();
-  }
-
-  private markSimSynced(): void {
-    this.lastSimSyncMs = performance.now();
-  }
-
-  private waitForWorkerReady(): Promise<boolean> {
-    const worker = this.worker;
-    if (!worker) return Promise.resolve(false);
-
-    return new Promise((resolve) => {
-      const timeout = window.setTimeout(() => resolve(worker.isReady), 4000);
-      worker.onReady = (transfer) => {
-        clearTimeout(timeout);
-        applyTransferState(this.state, transfer);
-        rebuildBuildingNav(this.state, this.services, this.registry);
-        this.renderer.syncTick(this.state);
-        this.renderer.snapDisplay();
-        this.markSimSynced();
-        resolve(true);
-      };
-      worker.onTick = ({ state, events }) => {
-        applyTransferState(this.state, state);
-        rebuildBuildingNav(this.state, this.services, this.registry);
-        for (const ev of events) this.handleEvent(ev);
-        this.renderer.syncTick(this.state);
-        this.markSimSynced();
-        this.tickCounter++;
-        if (this.tickCounter % 200 === 0) void saveGame(this.state);
-      };
-      worker.initState(packState(this.state));
-    });
-  }
-
-  private reportChecksum(tick: number): void {
-    if (!this.lockstep) return;
-    const ownHash = hashState(this.state);
-    const bad = this.lockstep.detectDesync(tick, ownHash);
-    if (bad.length) {
-      const replay = this.replay.toReplay(this.matchId);
-      this.onDesync?.(tick, bad, replay);
-      console.error('[lockstep] desync at tick', tick, 'peers:', bad, 'replay:', serializeReplay(replay));
-    }
-  }
-
-  private handleEvent(ev: GameEvent): void {
-    const visible = this.isEventVisible(ev);
-    if (visible) this.audio.play(ev);
-    switch (ev.type) {
-      case 'attackFired':
-        if (visible) this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
-        break;
-      case 'damageDealt':
-        if (visible) this.renderer.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
-        break;
-      case 'entityDied':
-        if (visible) this.renderer.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
-        break;
-      case 'buildingComplete': {
-        const b = this.state.entities.get(ev.id);
-        if (b && isWorldPointVisible(this.state, this.humanId, b.pos.x, b.pos.y, this.services.nav)) {
-          this.renderer.effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
-        }
-        break;
-      }
-      case 'manaDeposited':
-        if (visible) this.renderer.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
-        break;
-      case 'spellCast':
-        if (visible) this.renderer.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
-        break;
-    }
-  }
-
-  private isEventVisible(ev: GameEvent): boolean {
-    if (this.viewerRevealAll()) return true;
-    const nav = this.services.nav;
-    switch (ev.type) {
-      case 'attackFired':
-      case 'damageDealt':
-      case 'entityDied':
-      case 'manaDeposited':
-      case 'spellCast':
-        return isWorldPointVisible(this.state, this.humanId, ev.x, ev.y, nav);
-      case 'buildingComplete': {
-        const b = this.state.entities.get(ev.id);
-        return b ? isWorldPointVisible(this.state, this.humanId, b.pos.x, b.pos.y, nav) : false;
-      }
-      default:
-        return true;
-    }
-  }
-
-  private viewerRevealAll(): boolean {
-    return shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
-  }
-
-  private checkLockstepStall(): void {
-    if (!this.lockstep?.hasReceivedTicks() || this.state.ended) return;
-    const gap = this.lockstep.msSinceLastTick();
-    if (gap < LOCKSTEP_STALL_MS) {
-      this.lockstepStallShown = false;
-      return;
-    }
-    if (!this.lockstepStallShown) {
-      this.lockstepStallShown = true;
-      this.hud.showHint('Connection stalled — check network or rejoin the match');
-    }
-  }
-
-  /** Process confirmed lockstep ticks within a per-frame time budget (keeps UI responsive). */
-  private drainLockstepTicks(): void {
-    if (!this.lockstep) return;
-    this.checkLockstepStall();
-    const deadline = performance.now() + LOCKSTEP_DRAIN_BUDGET_MS;
-    let lastTick = this.state.tick;
-    let advanced = false;
-    while (performance.now() < deadline) {
-      if (!this.advanceLockstepSim()) break;
-      advanced = true;
-      lastTick = this.state.tick;
-    }
-    if (advanced) this.finishLockstepBatch(lastTick);
-  }
-
   private frame(_loopAlpha: number): void {
     const now = performance.now();
     const dt = this.lastFrameTime ? now - this.lastFrameTime : 16;
@@ -549,18 +269,27 @@ export class Game {
     }
     this.lastFrameTime = now;
 
-    if (this.lockstep) this.drainLockstepTicks();
+    if (this.lockstep) this.simCtrl.drainLockstep((msg) => this.hud.showHint(msg));
 
     if (this.state.ended && !this.postGameCameraReady) {
       this.postGameCameraReady = true;
       this.gesture.setDragMode('pan');
     }
 
-    const renderAlpha = Math.min(1, (now - this.lastSimSyncMs) / TICK_MS);
+    const renderAlpha = Math.min(1, (now - this.simCtrl.lastSyncMs) / TICK_MS);
 
     this.gesture.update(now);
-    const overlay = this.buildOverlay();
-    const revealAll = this.viewerRevealAll();
+    const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
+    const overlay = buildMatchOverlay(
+      this.state,
+      this.services,
+      this.registry,
+      this.humanId,
+      this.controller.session,
+      this.renderer.camera,
+      lastPointer,
+    );
+    const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt, revealAll);
     this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
     this.zoomSlider.syncFromCamera();
@@ -568,56 +297,16 @@ export class Game {
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);
   }
 
-  private buildOverlay() {
-    const s = this.controller.session;
-    let ghost: { x: number; y: number; size: number; valid: boolean } | undefined;
-    let wallGhosts: { x: number; y: number; size: number; valid: boolean }[] | undefined;
-    if (s.mode === 'build' && s.buildDefId) {
-      const def = this.registry.buildings.get(s.buildDefId);
-      if (def) {
-        const size = def.footprint * TILE;
-        if (s.wallDragTiles?.length) {
-          wallGhosts = s.wallDragTiles.map((t) => ({ x: t.x, y: t.y, size, valid: t.valid }));
-        } else if (s.buildGhost) {
-          ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size, valid: s.buildGhost.valid };
-        }
-      }
-    } else if (s.mode === 'deploy' && s.buildGhost) {
-      const def = this.registry.buildings.get('waystone_camp');
-      if (def) ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size: def.footprint * TILE, valid: s.buildGhost.valid };
-    }
-    let spell: { x: number; y: number; radius: number } | undefined;
-    if (s.mode === 'spell' && s.spellId) {
-      const def = this.registry.spells.get(s.spellId);
-      if (def && def.aoeRadius > 0) {
-        const w = screenToWorld(this.lastPointer, this.renderer.camera.view());
-        spell = { x: w.x, y: w.y, radius: def.aoeRadius };
-      }
-    }
-    const confirm = s.pendingConfirm ? { x: s.pendingConfirm.x, y: s.pendingConfirm.y } : null;
-    let rallyMarker: { fromX: number; fromY: number; toX: number; toY: number } | undefined;
-    if (s.mode === 'rally' && s.rallyBuildingId && s.rallyCursor) {
-      const b = this.state.entities.get(s.rallyBuildingId);
-      if (b) rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: s.rallyCursor.x, toY: s.rallyCursor.y };
-    } else if (s.selection.size === 1) {
-      const id = [...s.selection][0]!;
-      const b = this.state.entities.get(id);
-      if (b?.kind === 'building' && b.rally) {
-        rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: b.rally.x, toY: b.rally.y };
-      }
-    }
-    const buildZones = s.mode === 'build' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
-    return { ghost, wallGhosts, spell, confirm, buildZones, rallyMarker };
-  }
-
   exit(): void {
     if (this.disposed) return;
     this.disposed = true;
     document.removeEventListener('visibilitychange', this.onVisibilityResume);
     window.removeEventListener('pageshow', this.onVisibilityResume);
+    window.removeEventListener('keydown', this.onKeyDown);
+    this.pointerBinder?.detach();
     this.loop?.stop();
-    this.worker?.terminate();
-    if (!this.lockstep) void saveGame(this.state);
+    this.simCtrl.terminate();
+    this.simCtrl.autosaveOnExit();
     this.renderer.destroy();
     this.hud.root.remove();
     this.zoomSlider.root.remove();
