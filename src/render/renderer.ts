@@ -61,7 +61,7 @@ export class Renderer {
   private overlayFillPool!: GraphicsPool;
   private overlayStrokePool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
-  private humanOwner: PlayerId = '';
+  private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
 
   constructor(
@@ -114,10 +114,9 @@ export class Renderer {
     this.nav = nav;
   }
 
-  setOwnerColors(state: GameState): void {
+  setOwnerColors(state: GameState, viewerId: PlayerId): void {
     for (const p of state.players) this.colorByOwner.set(p.id, p.color);
-    const human = state.players.find((p) => p.controller === 'human');
-    if (human) this.humanOwner = human.id;
+    this.viewerId = viewerId;
   }
 
   private buildTerrain(): void {
@@ -231,7 +230,7 @@ export class Renderer {
     this.world.scale.set(this.camera.zoom);
     this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
 
-    const viewer = getPlayer(state, this.humanOwner);
+    const viewer = getPlayer(state, this.viewerId);
     const nav = this.nav;
 
     this.overlayFillPool.releaseAll();
@@ -243,13 +242,13 @@ export class Renderer {
       const e = state.entities.get(id);
       if (!e) continue;
 
-      const liveVisible = !nav || isVisibleTo(state, this.humanOwner, e, nav);
+      const liveVisible = !nav || isVisibleTo(state, this.viewerId, e, nav);
       const showAsGhost =
         e.kind === 'building' &&
         nav &&
         !liveVisible &&
-        !isBuildingInLiveSight(state, this.registry, this.humanOwner, e, nav) &&
-        getPlayer(state, this.humanOwner)?.knownBuildings[e.id] !== undefined;
+        !isBuildingInLiveSight(state, this.registry, this.viewerId, e, nav) &&
+        getPlayer(state, this.viewerId)?.knownBuildings[e.id] !== undefined;
 
       n.sprite.visible = liveVisible && !showAsGhost;
       if (n.label) n.label.visible = liveVisible && !showAsGhost;
@@ -274,7 +273,7 @@ export class Renderer {
 
       if (n.label) {
         n.label.position.set(x, y + e.radius + 4);
-        n.label.alpha = e.kind === 'building' && e.owner !== this.humanOwner ? 0.75 : 1;
+        n.label.alpha = e.kind === 'building' && e.owner !== this.viewerId ? 0.75 : 1;
       }
 
       if (e.kind === 'resource_node') {
@@ -481,7 +480,7 @@ export class Renderer {
     let bestD = Infinity;
     for (const e of state.entities.values()) {
       if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
-      if (nav && !isVisibleTo(state, this.humanOwner, e, nav)) continue;
+      if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
       const dx = wx - e.pos.x;
       const dy = wy - e.pos.y;
       const r = e.radius + 14;
@@ -501,7 +500,7 @@ export class Renderer {
     let bestScore = -Infinity;
     for (const e of state.entities.values()) {
       if (e.kind === 'projectile') continue;
-      if (nav && !isVisibleTo(state, this.humanOwner, e, nav)) continue;
+      if (nav && !isVisibleTo(state, this.viewerId, e, nav)) continue;
       const dx = wx - e.pos.x;
       const dy = wy - e.pos.y;
       const r = e.radius + 6;

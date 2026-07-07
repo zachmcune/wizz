@@ -124,7 +124,7 @@ export class Game {
     canvasHost.appendChild(this.boxEl);
     await this.renderer.init(canvasHost);
     this.renderer.setNav(this.services.nav);
-    this.renderer.setOwnerColors(this.state);
+    this.renderer.setOwnerColors(this.state, this.humanId);
 
     const start = this.registry.map(this.state.mapId).startLocations[0]!;
     const sanctum = [...this.state.entities.values()].find((e) => e.owner === this.humanId && e.defId === 'sanctum');
