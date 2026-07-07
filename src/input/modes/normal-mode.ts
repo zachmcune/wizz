@@ -2,14 +2,20 @@ import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
 import { isHarvester } from '../../sim/entity-types';
 import { isEnemy } from '../../sim/queries';
-import { pickEntity, pickResourceNode } from '../../sim/picking';
+import {
+  pickEntityForInput,
+  pickResourceNodeForInput,
+  unitsInScreenBox,
+  useScreenPicking,
+} from '../projected-pick';
 import type { InputContext, ModeTapHandler } from '../input-context';
 
 export const normalMode: ModeTapHandler = {
-  onTap(ctx, _screen, world): void {
+  onTap(ctx, screen, world): void {
     const st = ctx.getState();
-    const node = pickResourceNode(st, ctx.playerId, world.x, world.y, ctx.nav);
-    const picked = node ?? pickEntity(st, ctx.playerId, world.x, world.y, ctx.nav);
+    const cam = ctx.camera.view();
+    const node = pickResourceNodeForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
+    const picked = node ?? pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
     const combatUnits = ctx.ownCombatSelected();
     const wisps = ctx.ownWispsSelected();
     const harvesters = wisps.length ? wisps : ctx.allOwnWisps();
@@ -71,7 +77,8 @@ export const normalMode: ModeTapHandler = {
 
 export function doubleTapSelectType(ctx: InputContext, screen: Vec2, world: Vec2): void {
   const st = ctx.getState();
-  const picked = pickEntity(st, ctx.playerId, world.x, world.y, ctx.nav);
+  const cam = ctx.camera.view();
+  const picked = pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
   if (!picked || picked.owner !== ctx.playerId || picked.kind !== 'unit') {
     normalMode.onTap(ctx, screen, world);
     return;
@@ -86,6 +93,16 @@ export function doubleTapSelectType(ctx: InputContext, screen: Vec2, world: Vec2
 }
 
 export function boxSelect(ctx: InputContext, a: Vec2, b: Vec2): void {
+  const st = ctx.getState();
+  const cam = ctx.camera.view();
+  const units = useScreenPicking()
+    ? unitsInScreenBox(st, ctx.playerId, a, b, cam)
+    : unitsInWorldBox(ctx, ctx.playerId, a, b);
+  ctx.setSelection(units);
+  ctx.session.boxRect = null;
+}
+
+function unitsInWorldBox(ctx: InputContext, ownerId: string, a: Vec2, b: Vec2): EntityId[] {
   const wa = ctx.toWorld(a);
   const wb = ctx.toWorld(b);
   const minX = Math.min(wa.x, wb.x);
@@ -95,9 +112,8 @@ export function boxSelect(ctx: InputContext, a: Vec2, b: Vec2): void {
   const st = ctx.getState();
   const units: EntityId[] = [];
   for (const e of st.entities.values()) {
-    if (e.owner !== ctx.playerId || e.kind !== 'unit') continue;
+    if (e.owner !== ownerId || e.kind !== 'unit') continue;
     if (e.pos.x >= minX && e.pos.x <= maxX && e.pos.y >= minY && e.pos.y <= maxY) units.push(e.id);
   }
-  ctx.setSelection(units);
-  ctx.session.boxRect = null;
+  return units;
 }
