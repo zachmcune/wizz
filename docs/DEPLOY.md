@@ -54,8 +54,10 @@ The client defaults to `ws://<hostname>:8787`. Override with `VITE_RELAY_URL` at
 ### Production relay deploy
 
 The relay is a small Node WebSocket server (`relay/server.mjs`). Deploy it to any host that
-supports WebSockets (Fly.io, Railway, a VPS, etc.) and set `VITE_RELAY_URL=wss://your-relay`
-when building the Pages app.
+supports WebSockets and set `VITE_RELAY_URL=wss://your-relay` when building the Pages app.
+
+**Step-by-step (Railway):** [RELAY_DEPLOY.md](RELAY_DEPLOY.md) — includes `railway.json`, health
+check, Cloudflare Pages env var, and smoke test.
 
 ### Cloudflare Workers + Durable Objects (future)
 
