@@ -66,6 +66,25 @@ const nodeTiles = [
 ];
 const manaNodes = nodeTiles.map(({ tx, ty, amount }) => ({ x: w(tx), y: w(ty), amount }));
 
+/** Render-only raised plateaus (sim ignores; oblique view lifts these tiles). */
+const visualHeights = new Array(W * H).fill(0);
+const plateau = (tx, ty, level = 1) => {
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = tx + dx;
+      const y = ty + dy;
+      if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && tiles[y * W + x] === 0) {
+        visualHeights[y * W + x] = level;
+      }
+    }
+  }
+};
+plateau(32, 22, 2);
+plateau(16, 11, 1);
+plateau(W - 17, 11, 1);
+plateau(16, H - 12, 1);
+plateau(W - 17, H - 12, 1);
+
 const map = {
   id: 'duel_glade',
   name: 'Duel Glade',
@@ -73,6 +92,7 @@ const map = {
   tileW: W,
   tileH: H,
   tiles,
+  visualHeights,
   startLocations,
   manaNodes,
 };

@@ -45,6 +45,8 @@ export class Hud {
   private commandTabBtn = el('button', 'btn panel-tab', 'Build & Train');
 
   onExit: (() => void) | null = null;
+  onProjectionToggle: (() => void) | null = null;
+  private viewBtn = el('button', 'btn view-btn', '2.5D');
 
   private setHudTab(tab: 'info' | 'command'): void {
     this.hudTab = tab;
@@ -72,10 +74,12 @@ export class Hud {
       this.debugOn = !this.debugOn;
       this.debugEl.style.display = this.debugOn ? 'block' : 'none';
     });
+    this.viewBtn.title = 'Toggle Classic 2D / Oblique view';
+    this.viewBtn.addEventListener('click', () => this.onProjectionToggle?.());
     const menuBtn = el('button', 'btn menu-btn', 'Menu');
     menuBtn.addEventListener('click', () => this.toggleMenu());
     this.spellBar = new SpellBar(registry, controller);
-    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
+    top.append(mana, this.powerStat, this.spellBar.row, this.viewBtn, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
     this.commandMenu = new CommandMenuPanel(registry, controller, false, () => this.setHudTab('command'));
@@ -149,6 +153,11 @@ export class Hud {
     setTimeout(() => {
       this.hintEl.style.display = 'none';
     }, 12000);
+  }
+
+  setProjectionMode(mode: 'ortho' | 'oblique'): void {
+    this.viewBtn.textContent = mode === 'oblique' ? '2.5D' : '2D';
+    this.viewBtn.title = mode === 'oblique' ? 'Switch to Classic 2D view' : 'Switch to Oblique (RA2-style) view';
   }
 
   setDebug(fps: number, tick: number, entities: number): void {

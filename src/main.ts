@@ -7,6 +7,7 @@ import { loadRegistry } from './data/loader';
 import { AppRouter } from './app/app-router';
 import { AudioManager } from './audio/audio';
 import { loadSettings } from './storage/settings';
+import { resolveProjectionMode, setProjectionMode } from './core/projection';
 
 async function boot(): Promise<void> {
   initPwaUpdates();
@@ -15,6 +16,7 @@ async function boot(): Promise<void> {
   const host = document.getElementById('app')!;
   const registry = loadRegistry();
   const settings = await loadSettings();
+  setProjectionMode(resolveProjectionMode(settings.projectionMode));
   const audio = new AudioManager();
   audio.setVolume(settings.volume);
   audio.setMuted(settings.muted);

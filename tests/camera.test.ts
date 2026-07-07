@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Camera } from '../src/render/camera';
 import { worldToScreen, screenToWorld, tileToWorld, worldToTileX } from '../src/core/coords';
 import { MIN_ZOOM, MAX_ZOOM, TILE } from '../src/core/constants';
+import { setProjectionMode } from '../src/core/projection';
 
 describe('camera & coordinate math', () => {
+  afterEach(() => {
+    setProjectionMode('ortho');
+  });
+
+  beforeEach(() => {
+    setProjectionMode('ortho');
+  });
   it('clamps position to map bounds', () => {
     const cam = new Camera(800, 600, 2000, 1500);
     cam.centerOn(-1000, -1000);
@@ -36,5 +44,16 @@ describe('camera & coordinate math', () => {
     const c = tileToWorld(3, 5);
     expect(c.x).toBe(3 * TILE + TILE / 2);
     expect(worldToTileX(c.x)).toBe(3);
+  });
+
+  it('screen<->world round-trips in oblique mode', () => {
+    setProjectionMode('oblique');
+    const cam = new Camera(800, 600, 4000, 4000);
+    cam.centerOn(1500, 1200);
+    const world = { x: 1450, y: 1180 };
+    const screen = worldToScreen(world, cam.view());
+    const back = screenToWorld(screen, cam.view());
+    expect(back.x).toBeCloseTo(world.x, 4);
+    expect(back.y).toBeCloseTo(world.y, 4);
   });
 });

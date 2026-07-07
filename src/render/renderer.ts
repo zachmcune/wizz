@@ -1,6 +1,8 @@
 // PixiJS renderer. Reads interpolated sim state and draws it. NEVER mutates the sim.
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
+import { projectGround, projectionSortKey } from '../core/coords';
+import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, type ProjectionMode } from '../core/projection';
 import { lerp } from '../sim/math';
 import type { ResourceNodeEntity } from '../sim/entity-types';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
@@ -14,6 +16,8 @@ import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
 import { GraphicsPool } from './graphics-pool';
+import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
+import { visualHeightAt } from './visual-height';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -54,24 +58,27 @@ export class Renderer {
   private world = new Container();
   private terrainLayer = new Container();
   private fogLayer = new Graphics();
+  private shadowLayer = new Graphics();
   private entityLayer = new Container();
   private labelLayer = new Container();
   private overlayLayer = new Container();
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
   private ghostNodes = new Map<EntityId, RenderNode>();
-  /** One primitive per pooled Graphics — shared objects stitch subpaths on Android WebGL. */
   private overlayFillPool!: GraphicsPool;
   private overlayStrokePool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
   private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
+  private projectionMode: ProjectionMode = getProjectionMode();
 
   constructor(
     private registry: Registry,
     private map: MapData,
   ) {
     this.app = new Application();
+    this.entityLayer.sortableChildren = true;
+    this.labelLayer.sortableChildren = true;
   }
 
   async init(canvasParent: HTMLElement): Promise<void> {
@@ -87,15 +94,48 @@ export class Renderer {
 
     this.overlayFillPool = new GraphicsPool(this.overlayLayer);
     this.overlayStrokePool = new GraphicsPool(this.overlayLayer);
-    this.world.addChild(this.terrainLayer, this.fogLayer, this.entityLayer, this.labelLayer, this.effects.container, this.overlayLayer);
+    this.world.addChild(
+      this.terrainLayer,
+      this.fogLayer,
+      this.shadowLayer,
+      this.entityLayer,
+      this.labelLayer,
+      this.effects.container,
+      this.overlayLayer,
+    );
     this.app.stage.addChild(this.world);
 
     const worldW = this.map.tileW * TILE;
     const worldH = this.map.tileH * TILE;
     this.camera = new Camera(this.app.screen.width, this.app.screen.height, worldW, worldH);
+    this.effects.setPositionFn((wx, wy) => this.groundPos(wx, wy));
     this.buildTerrain();
 
     this.app.renderer.on('resize', () => this.camera.setViewport(this.app.screen.width, this.app.screen.height));
+  }
+
+  setProjectionMode(mode: ProjectionMode): void {
+    if (this.projectionMode === mode) return;
+    setGlobalProjectionMode(mode);
+    this.projectionMode = mode;
+    this.buildTerrain();
+    this.applySpriteAnchors();
+  }
+
+  getProjectionMode(): ProjectionMode {
+    return this.projectionMode;
+  }
+
+  private applySpriteAnchors(): void {
+    const oblique = this.projectionMode === 'oblique';
+    for (const n of this.nodes.values()) {
+      n.sprite.anchor.set(0.5, oblique ? 0.82 : 0.5);
+      n.sprite.rotation = 0;
+    }
+    for (const n of this.ghostNodes.values()) {
+      n.sprite.anchor.set(0.5, oblique ? 0.82 : 0.5);
+      n.sprite.rotation = 0;
+    }
   }
 
   /** Re-sync canvas size and clear stale vector paths after app background/resume. */
@@ -110,6 +150,7 @@ export class Renderer {
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
     this.fogLayer.clear();
+    this.shadowLayer.clear();
     this.effects.reset();
   }
 
@@ -123,16 +164,26 @@ export class Renderer {
   }
 
   private buildTerrain(): void {
-    const g = new Graphics();
-    for (let ty = 0; ty < this.map.tileH; ty++) {
-      for (let tx = 0; tx < this.map.tileW; tx++) {
-        const blocked = this.map.tiles[ty * this.map.tileW + tx] === 1;
-        const base = blocked ? 0x24202f : (tx + ty) % 2 === 0 ? 0x1a1826 : 0x1d1b2a;
-        g.rect(tx * TILE, ty * TILE, TILE, TILE).fill(base);
-        if (blocked) g.rect(tx * TILE + 3, ty * TILE + 3, TILE - 6, TILE - 6).fill(0x342e44);
-      }
-    }
-    this.terrainLayer.addChild(g);
+    this.terrainLayer.removeChildren();
+    this.terrainLayer.addChild(buildTerrainGraphics(this.map));
+  }
+
+  /** Render-layer position for a world ground point (includes visual height). */
+  groundPos(worldX: number, worldY: number, visualHeight?: number): { x: number; y: number } {
+    const h = visualHeight ?? visualHeightAt(this.map, worldX, worldY);
+    return projectGround({ x: worldX, y: worldY }, h);
+  }
+
+  private applyCameraTransform(): void {
+    const cam = this.camera.view();
+    const camProj = projectGround({ x: cam.x, y: cam.y });
+    this.world.scale.set(cam.zoom);
+    this.world.position.set(-camProj.x * cam.zoom, -camProj.y * cam.zoom);
+  }
+
+  private sortKeyAt(worldX: number, worldY: number): number {
+    const h = visualHeightAt(this.map, worldX, worldY);
+    return projectionSortKey({ x: worldX, y: worldY }, this.camera.view(), h);
   }
 
   private artOf(e: Entity): { art: ArtDef; color: string } {
@@ -148,6 +199,13 @@ export class Renderer {
     const max = e.amountMax ?? e.amount ?? 1;
     const frac = Math.max(0, (e.amount ?? 0) / max);
     return { art: NODE_ART, color: frac <= 0 ? NODE_DEPLETED_COLOR : NEUTRAL_COLOR };
+  }
+
+  private textureFor(e: Entity, art: ArtDef, color: string): Texture {
+    if (this.projectionMode === 'oblique' && (e.kind === 'unit' || e.kind === 'projectile')) {
+      return this.provider.texture(art, color, facingToDirection(e.facing));
+    }
+    return this.provider.texture(art, color);
   }
 
   private ensureBuildingLabel(n: RenderNode, e: Entity): void {
@@ -189,14 +247,14 @@ export class Renderer {
     }
   }
 
-  /** Called once per sim tick: add/remove sprites and shift interpolation targets. */
   syncTick(state: GameState): void {
     for (const [id, e] of state.entities) {
       let n = this.nodes.get(id);
       if (!n) {
         const { art, color } = this.artOf(e);
-        const sprite = new Sprite(this.provider.texture(art, color));
-        sprite.anchor.set(0.5);
+        const sprite = new Sprite(this.textureFor(e, art, color));
+        const oblique = this.projectionMode === 'oblique';
+        sprite.anchor.set(0.5, oblique ? 0.82 : 0.5);
         this.entityLayer.addChild(sprite);
         n = { sprite, prevX: e.pos.x, prevY: e.pos.y, curX: e.pos.x, curY: e.pos.y, dispX: e.pos.x, dispY: e.pos.y, facing: e.facing };
         this.nodes.set(id, n);
@@ -207,11 +265,10 @@ export class Renderer {
         n.curY = e.pos.y;
         n.facing = e.facing;
         const { art, color } = this.artOf(e);
-        n.sprite.texture = this.provider.texture(art, color);
+        n.sprite.texture = this.textureFor(e, art, color);
       }
       this.ensureBuildingLabel(n, e);
     }
-    // remove sprites whose entity is gone
     for (const [id, n] of this.nodes) {
       if (!state.entities.has(id)) {
         n.sprite.destroy();
@@ -221,7 +278,6 @@ export class Renderer {
     }
   }
 
-  /** Snap display positions to sim (after lockstep catch-up). */
   snapDisplay(): void {
     for (const n of this.nodes.values()) {
       n.dispX = n.curX;
@@ -229,9 +285,20 @@ export class Renderer {
     }
   }
 
+  private drawShadow(worldX: number, worldY: number, radius: number): void {
+    if (this.projectionMode !== 'oblique') return;
+    const p = this.groundPos(worldX, worldY);
+    this.shadowLayer.ellipse(p.x, p.y + 2, radius * 0.55, radius * 0.28).fill({ color: 0x000000, alpha: 0.28 });
+  }
+
+  private positionOverlayAt(worldX: number, worldY: number, offsetY: number): { x: number; y: number } {
+    const p = this.groundPos(worldX, worldY);
+    if (this.projectionMode === 'ortho') return { x: p.x, y: p.y + offsetY };
+    return { x: p.x, y: p.y + offsetY * 0.5 };
+  }
+
   render(state: GameState, alpha: number, selected: Set<EntityId>, overlay?: RenderOverlay, dtMs = 16, revealAllOverride = false): void {
-    this.world.scale.set(this.camera.zoom);
-    this.world.position.set(-this.camera.x * this.camera.zoom, -this.camera.y * this.camera.zoom);
+    this.applyCameraTransform();
 
     const viewer = getPlayer(state, this.viewerId);
     const nav = this.nav;
@@ -240,6 +307,7 @@ export class Renderer {
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
     this.fogLayer.clear();
+    this.shadowLayer.clear();
     if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
 
     for (const [id, n] of this.nodes) {
@@ -258,6 +326,7 @@ export class Renderer {
       if (n.label) n.label.visible = liveVisible && !showAsGhost;
       if (!liveVisible && !showAsGhost) continue;
       if (showAsGhost) continue;
+
       const targetX = lerp(n.prevX, n.curX, alpha);
       const targetY = lerp(n.prevY, n.curY, alpha);
       let x = targetX;
@@ -272,11 +341,23 @@ export class Renderer {
         n.dispX = targetX;
         n.dispY = targetY;
       }
-      n.sprite.position.set(x, y);
-      if (e.kind === 'unit' || e.kind === 'projectile') n.sprite.rotation = n.facing + Math.PI / 2;
 
+      const pos = this.groundPos(x, y);
+      n.sprite.position.set(pos.x, pos.y);
+      n.sprite.zIndex = this.sortKeyAt(x, y);
+      if (this.projectionMode === 'ortho' && (e.kind === 'unit' || e.kind === 'projectile')) {
+        n.sprite.rotation = n.facing + Math.PI / 2;
+      } else {
+        n.sprite.rotation = 0;
+      }
+
+      if (e.kind === 'unit' || e.kind === 'building') this.drawShadow(x, y, e.radius);
+
+      const labelOff = e.radius + 4;
       if (n.label) {
-        n.label.position.set(x, y + e.radius + 4);
+        const lp = this.positionOverlayAt(x, y, labelOff);
+        n.label.position.set(lp.x, lp.y);
+        n.label.zIndex = n.sprite.zIndex + 0.01;
         if (e.kind === 'resource_node') {
           const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
           n.label.visible = !!intel;
@@ -290,7 +371,7 @@ export class Renderer {
         if (intel) {
           const { art, color } = this.artOf(e);
           n.sprite.texture = this.provider.texture(art, color);
-          this.drawNodeReserve(x, y, e);
+          this.drawNodeReserve(pos.x, pos.y, e);
           n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
         } else {
           n.sprite.texture = this.provider.texture(NODE_ART, NEUTRAL_COLOR);
@@ -298,38 +379,33 @@ export class Renderer {
         }
       } else if (e.kind === 'building' && buildingPowerUse(this.registry, e.defId) > 0 && !buildingHasPower(state, this.registry, e)) {
         n.sprite.alpha = 0.42;
-        this.drawPowerOffline(x, y, e.radius);
+        this.drawPowerOffline(pos.x, pos.y, e.radius);
       } else {
         n.sprite.alpha = 1;
       }
 
-      // owner-colored ring for buildings
       if (e.kind === 'building') {
         const ownerCol = this.colorByOwner.get(e.owner);
-        if (ownerCol) {
-          this.strokeRing(x, y, e.radius + 3, 2, hexToNumber(ownerCol), 0.9);
-        }
+        if (ownerCol) this.strokeRing(pos.x, pos.y, e.radius + 3, 2, hexToNumber(ownerCol), 0.9);
       }
 
-      // selection ring
-      if (selected.has(id)) {
-        this.strokeRing(x, y, e.radius + 6, 2, 0xffffff, 0.9);
-      }
-      // hp bar for damaged combatants + selected
+      if (selected.has(id)) this.strokeRing(pos.x, pos.y, e.radius + 6, 2, 0xffffff, 0.9);
+
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
-        this.drawHpBar(x, y - e.radius - 8, e);
+        const hp = this.positionOverlayAt(x, y, -e.radius - 8);
+        this.drawHpBar(hp.x, hp.y, e);
       }
-      // construction shimmer
       if (e.kind === 'building' && e.buildProgress !== undefined) {
-        this.fillRect(x - e.radius, y + e.radius + 3, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
+        const bar = this.positionOverlayAt(x, y, e.radius + 3);
+        this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
       }
       if ((e.kind === 'building' || e.kind === 'unit') && e.morphProgress !== undefined) {
-        const w = e.radius * 2;
-        this.fillRect(x - e.radius, y + e.radius + 6, w * e.morphProgress, 3, 0x8b6cff);
+        const bar = this.positionOverlayAt(x, y, e.radius + 6);
+        this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * e.morphProgress, 3, 0x8b6cff);
       }
-      // carry indicator for wisps
       if (e.kind === 'unit' && e.carry !== undefined && e.carry > 0) {
-        this.fillDot(x, y - e.radius - 4, 3, 0x7fe3ff);
+        const dot = this.positionOverlayAt(x, y, -e.radius - 4);
+        this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
     }
 
@@ -337,37 +413,41 @@ export class Renderer {
 
     if (overlay?.buildZones?.length) {
       for (const z of overlay.buildZones) {
-        this.strokeRing(z.x, z.y, z.r, 1.5, 0x5dff8f, 0.22);
+        const p = this.groundPos(z.x, z.y);
+        this.strokeRing(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
       }
     }
     if (overlay?.ghost) {
       const gh = overlay.ghost;
       const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-      const gx = gh.x - gh.size / 2;
-      const gy = gh.y - gh.size / 2;
-      this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
-      this.overlayStrokePool.acquire().rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+      const p = this.groundPos(gh.x, gh.y);
+      const half = gh.size / 2;
+      this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
+      this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
     }
     if (overlay?.wallGhosts?.length) {
       for (const gh of overlay.wallGhosts) {
         const col = gh.valid ? 0x5dff8f : 0xff5d5d;
-        const gx = gh.x - gh.size / 2;
-        const gy = gh.y - gh.size / 2;
-        this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
-        this.overlayStrokePool.acquire().rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+        const p = this.groundPos(gh.x, gh.y);
+        const half = gh.size / 2;
+        this.fillRect(p.x - half, p.y - half, gh.size, gh.size, col, 0.28);
+        this.overlayStrokePool.acquire().rect(p.x - half, p.y - half, gh.size, gh.size).stroke({ width: 2, color: col });
       }
     }
     if (overlay?.spell) {
-      this.strokeRing(overlay.spell.x, overlay.spell.y, overlay.spell.radius, 2, 0xffd166, 0.9);
+      const p = this.groundPos(overlay.spell.x, overlay.spell.y);
+      this.strokeRing(p.x, p.y, overlay.spell.radius, 2, 0xffd166, 0.9);
     }
     if (overlay?.confirm) {
-      this.strokeRing(overlay.confirm.x, overlay.confirm.y, 12, 3, 0xffd166, 1);
+      const p = this.groundPos(overlay.confirm.x, overlay.confirm.y);
+      this.strokeRing(p.x, p.y, 12, 3, 0xffd166, 1);
     }
     if (overlay?.rallyMarker) {
-      const { fromX, fromY, toX, toY } = overlay.rallyMarker;
-      this.overlayStrokePool.acquire().moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
-      this.fillDot(toX, toY, 5, 0x7fe3ff, 0.9);
-      this.strokeRing(toX, toY, 10, 2, 0x7fe3ff, 0.7);
+      const from = this.groundPos(overlay.rallyMarker.fromX, overlay.rallyMarker.fromY);
+      const to = this.groundPos(overlay.rallyMarker.toX, overlay.rallyMarker.toY);
+      this.overlayStrokePool.acquire().moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
+      this.fillDot(to.x, to.y, 5, 0x7fe3ff, 0.9);
+      this.strokeRing(to.x, to.y, 10, 2, 0x7fe3ff, 0.7);
     }
     this.effects.update();
   }
@@ -417,7 +497,8 @@ export class Renderer {
       const color = this.colorByOwner.get(known.owner) ?? '#888888';
       if (!n) {
         const sprite = new Sprite(this.provider.texture(b.art, color));
-        sprite.anchor.set(0.5);
+        const oblique = this.projectionMode === 'oblique';
+        sprite.anchor.set(0.5, oblique ? 0.82 : 0.5);
         sprite.tint = 0xaaaaaa;
         this.entityLayer.addChild(sprite);
         const label = new Text({
@@ -433,19 +514,26 @@ export class Renderer {
         if (n.label && n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
       }
 
-      const label = n.label!;
-      n.sprite.position.set(known.x, known.y);
+      const pos = this.groundPos(known.x, known.y);
+      n.sprite.position.set(pos.x, pos.y);
+      n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
-      label.position.set(known.x, known.y + known.radius + 4);
-      label.alpha = 0.55;
-      label.visible = true;
+      const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
+      n.label!.position.set(lp.x, lp.y);
+      n.label!.zIndex = n.sprite.zIndex + 0.01;
+      n.label!.alpha = 0.55;
+      n.label!.visible = true;
 
       const ownerCol = this.colorByOwner.get(known.owner);
-      if (ownerCol) this.strokeRing(known.x, known.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
-      if (known.hp < known.maxHp) this.drawHpBar(known.x, known.y - known.radius - 8, known);
+      if (ownerCol) this.strokeRing(pos.x, pos.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
+      if (known.hp < known.maxHp) {
+        const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
+        this.drawHpBar(hp.x, hp.y, known);
+      }
       if (known.buildProgress !== undefined) {
-        this.fillRect(known.x - known.radius, known.y + known.radius + 3, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
+        const bar = this.positionOverlayAt(known.x, known.y, known.radius + 3);
+        this.fillRect(bar.x - known.radius, bar.y, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
       }
     }
 
@@ -465,7 +553,6 @@ export class Renderer {
     if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
   }
 
-  /** Each ring gets its own Graphics — shared paths connect through (0,0) on Android WebGL. */
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
     const g = this.overlayStrokePool.acquire();
     const full = start === 0 && end >= Math.PI * 2 - 0.001;
@@ -485,7 +572,7 @@ export class Renderer {
         const i = ty * nav.w + tx;
         if (!isTileFogged(player, i)) continue;
         hasFog = true;
-        this.fogLayer.rect(tx * TILE, ty * TILE, TILE, TILE);
+        drawFogTile(this.fogLayer, this.map, tx, ty);
       }
     }
     if (hasFog) this.fogLayer.fill({ color: 0xb8b8c8, alpha: 0.42 });
@@ -499,12 +586,10 @@ export class Renderer {
     this.overlayFillPool.acquire().circle(cx, cy, r).fill({ color, alpha });
   }
 
-  /** @deprecated Use sim/picking.ts from input layer. Kept for renderer-internal use. */
   pickResourceNode(state: GameState, wx: number, wy: number): Entity | null {
     return pickResourceNode(state, this.viewerId, wx, wy, this.nav);
   }
 
-  /** @deprecated Use sim/picking.ts from input layer. */
   pickEntity(state: GameState, wx: number, wy: number): Entity | null {
     return pickEntity(state, this.viewerId, wx, wy, this.nav);
   }
@@ -518,7 +603,6 @@ export class Renderer {
     this.app.destroy(true, { children: true });
   }
 
-  // expose for texture generation reuse
   makeTexture(art: ArtDef, color: string): Texture {
     return this.provider.texture(art, color);
   }
