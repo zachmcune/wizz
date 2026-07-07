@@ -506,10 +506,11 @@ export class Hud {
     this.repairBtn.style.display = canRepair || single?.repairing ? '' : 'none';
     if (canRepair || single?.repairing) {
       const repairing = !!single?.repairing;
-      const costPerTick = Math.ceil(this.registry.balance.repairHpPerTick * this.registry.balance.repairManaPerHp);
-      this.repairBtn.textContent = repairing ? 'Stop Repair' : `Repair (${costPerTick}/tick)`;
+      const costPerTick = this.registry.balance.repairHpPerTick * this.registry.balance.repairManaPerHp;
+      const costLabel = costPerTick < 1 ? costPerTick.toFixed(1) : String(Math.round(costPerTick));
+      this.repairBtn.textContent = repairing ? 'Stop Repair' : `Repair (${costLabel}/tick)`;
       this.repairBtn.classList.toggle('active', repairing);
-      this.repairBtn.disabled = !repairing && p.mana < this.registry.balance.repairManaPerHp;
+      this.repairBtn.disabled = !repairing && p.mana < costPerTick;
     }
     this.rallyBtn.style.display = canRally ? '' : 'none';
     this.rallyBtn.classList.toggle('active', inRallyMode);
