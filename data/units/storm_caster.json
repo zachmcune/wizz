@@ -20,6 +20,7 @@
     "vs": { "light": 1.3, "heavy": 0.9, "building": 0.7 }
   },
   "producedBy": "arcane_nexus",
+  "menuCategory": "wizards",
   "requires": ["arcane_nexus"],
   "art": { "shape": "diamond", "size": 20, "accent": "#ffd166" },
   "sfx": { "select": "storm_select", "move": "storm_move", "attack": "storm_fire", "die": "unit_die" }

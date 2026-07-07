@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 150,
   "footprint": 2,
+  "menuCategory": "buildings",
   "requires": ["sanctum"],
   "isRefinery": true,
   "spawnsFreeWisp": true,

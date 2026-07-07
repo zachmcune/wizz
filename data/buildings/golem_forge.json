@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 130,
   "footprint": 3,
+  "menuCategory": "buildings",
   "requires": ["ley_conduit"],
   "producesUnits": ["stone_golem", "siege_behemoth", "waystone_wagon"],
   "powerUsed": 40,

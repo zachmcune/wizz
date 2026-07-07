@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 170,
   "footprint": 2,
+  "menuCategory": "advanced",
   "requires": ["golem_forge"],
   "producesUnits": ["storm_caster"],
   "unlocksSpells": ["meteor_storm", "aegis_ward", "blink_gate"],

@@ -7,8 +7,7 @@ import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
 import { el } from './hud/dom';
 import { Collapsible } from './hud/collapsible';
-import { BuildPanel } from './hud/build-panel';
-import { TrainPanel } from './hud/train-panel';
+import { CommandMenuPanel } from './hud/command-menu-panel';
 import { UnitOrdersPanel } from './hud/unit-orders-panel';
 import { BuildingActionsPanel } from './hud/building-actions-panel';
 import { SpellBar } from './hud/spell-bar';
@@ -32,8 +31,7 @@ export class Hud {
 
   private infoPanel: Collapsible;
   private minimapPanel: Collapsible;
-  private buildPanel: BuildPanel;
-  private trainPanel: TrainPanel;
+  private commandMenu: CommandMenuPanel;
   private unitOrdersPanel: UnitOrdersPanel;
   private buildingActions: BuildingActionsPanel;
   private spellBar: SpellBar;
@@ -65,34 +63,31 @@ export class Hud {
     top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
-    this.trainPanel = new TrainPanel(false);
+    this.commandMenu = new CommandMenuPanel(registry, controller, false);
     this.buildingActions = new BuildingActionsPanel(state, registry, controller);
     selBlock.append(
       this.selName,
       this.selDesc,
       this.selMeta,
       this.buildingActions.row,
-      this.trainPanel.trainQueueEl,
+      this.commandMenu.trainQueueEl,
     );
     this.infoPanel = new Collapsible('Selection', !compact);
     this.infoPanel.body.append(selBlock);
 
     this.unitOrdersPanel = new UnitOrdersPanel(state, registry, controller, playerId, false);
-    this.buildPanel = new BuildPanel(registry, controller, false);
 
     const cmdCard = el('div', 'cmd-card hud-scroll');
     cmdCard.append(
       this.infoPanel.root,
       this.unitOrdersPanel.panel.root,
-      this.trainPanel.panel.root,
-      this.buildPanel.panel.root,
+      this.commandMenu.panel.root,
     );
     const keepScroll = (e: Event) => e.stopPropagation();
     for (const node of [
       cmdCard,
       this.spellBar.row,
-      this.buildPanel.row,
-      this.trainPanel.produceRow,
+      ...this.commandMenu.touchRoots,
       this.unitOrdersPanel.row,
       this.buildingActions.row,
     ]) {
@@ -167,8 +162,7 @@ export class Hud {
 
   private syncPanelLayout(
     inPlaceMode: boolean,
-    showBuildPanel: boolean,
-    showTrainPanel: boolean,
+    showCommandMenu: boolean,
     showUnitPanel: boolean,
     ownBuilding: BuildingDef | null | undefined,
     selectionLabel: string,
@@ -176,8 +170,7 @@ export class Hud {
   ): void {
     const key = [
       inPlaceMode ? 'place' : 'play',
-      showBuildPanel ? 'yard' : '',
-      showTrainPanel ? 'train' : '',
+      showCommandMenu ? 'cmd' : '',
       showUnitPanel ? 'units' : '',
       selectionLabel,
     ].join('|');
@@ -187,39 +180,25 @@ export class Hud {
     if (inPlaceMode) {
       this.infoPanel.setTitle(selectionLabel.startsWith('Deploy') ? 'Deploying' : selectionLabel.startsWith('Set') ? 'Rally' : 'Placing');
       this.infoPanel.setOpen(true);
-      this.buildPanel.panel.setOpen(false);
-      this.trainPanel.panel.setOpen(false);
+      this.commandMenu.panel.setOpen(false);
       this.unitOrdersPanel.panel.setOpen(false);
       return;
     }
-    if (showBuildPanel && ownBuilding) {
-      this.buildPanel.panel.setTitle(`Build — ${ownBuilding.name}`);
-      this.buildPanel.panel.setOpen(true);
+    if (showCommandMenu && ownBuilding) {
+      this.commandMenu.panel.setOpen(true);
       this.infoPanel.setTitle(ownBuilding.name);
       this.infoPanel.setOpen(false);
-      this.trainPanel.panel.setOpen(false);
-      this.unitOrdersPanel.panel.setOpen(false);
-      return;
-    }
-    if (showTrainPanel && ownBuilding) {
-      this.trainPanel.panel.setTitle(`Train — ${ownBuilding.name}`);
-      this.trainPanel.panel.setOpen(true);
-      this.infoPanel.setTitle(ownBuilding.name);
-      this.infoPanel.setOpen(false);
-      this.buildPanel.panel.setOpen(false);
       this.unitOrdersPanel.panel.setOpen(false);
       return;
     }
     if (showUnitPanel) {
       this.unitOrdersPanel.panel.setOpen(true);
-      this.buildPanel.panel.setOpen(false);
-      this.trainPanel.panel.setOpen(false);
+      this.commandMenu.panel.setOpen(false);
       this.infoPanel.setTitle(selectionLabel);
       this.infoPanel.setOpen(!multiSelect);
       return;
     }
-    this.buildPanel.panel.setOpen(false);
-    this.trainPanel.panel.setOpen(false);
+    this.commandMenu.panel.setOpen(false);
     this.unitOrdersPanel.panel.setOpen(false);
     this.infoPanel.setTitle('Selection');
     this.infoPanel.setOpen(true);
@@ -248,7 +227,6 @@ export class Hud {
 
     const session = this.controller.session;
     this.spellBar.update(p, session);
-    this.buildPanel.update(p, session);
 
     const selIds = [...session.selection];
     const sel = selIds.map((id) => st.entities.get(id)).filter((e) => e && e.state !== 'dead') as Entity[];
@@ -261,14 +239,26 @@ export class Hud {
     const inDeployMode = session.mode === 'deploy';
     const inRallyMode = session.mode === 'rally';
     const inPlaceMode = inBuildMode || inDeployMode || inRallyMode;
-    const showBuildPanel = !inPlaceMode && !!ownBuilding?.isConstructionYard;
-    const showTrainPanel =
-      !inPlaceMode && !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
+    const isHQ = !!ownBuilding?.isConstructionYard;
+    const isProducer = !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
+    const showCommandMenu = !inPlaceMode && (isHQ || isProducer);
     const showUnitPanel = !inPlaceMode && unitsSelected;
 
-    this.setPanelVisible(this.buildPanel.panel, showBuildPanel);
-    this.setPanelVisible(this.trainPanel.panel, showTrainPanel);
+    this.setPanelVisible(this.commandMenu.panel, showCommandMenu);
     this.setPanelVisible(this.unitOrdersPanel.panel, showUnitPanel);
+
+    const commandContext = showCommandMenu
+      ? isHQ
+        ? { mode: 'hq' as const }
+        : {
+            mode: 'producer' as const,
+            producerBuildingId: single!.id,
+            producerBuildingDefId: single!.defId,
+          }
+      : null;
+    if (showCommandMenu) {
+      this.commandMenu.update(st, this.playerId, p, session, commandContext);
+    }
 
     this.unitOrdersPanel.update(single, sel, inPlaceMode);
     this.buildingActions.update(p, ownBuilding, single, inPlaceMode, inRallyMode);
@@ -277,26 +267,21 @@ export class Hud {
       this.selName.textContent = ownBuilding?.name ?? 'Set rally point';
       this.selDesc.textContent = 'Tap the map where new units should go after training.';
       this.selMeta.textContent = single?.rally ? `Current rally set` : 'No rally point';
-      this.trainPanel.clearProduceRow();
-      this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inDeployMode && session.deployEntityId) {
       const campDef = this.registry.buildings.get('waystone_camp')!;
       this.selName.textContent = 'Deploy: Waystone Camp';
       this.selDesc.textContent = campDef.description;
       this.selMeta.textContent = 'Deploys in place if clear · tap map to reposition';
-      this.trainPanel.panel.setOpen(false);
-      this.buildPanel.panel.setOpen(false);
-      this.trainPanel.clearProduceRow();
-      this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+      this.commandMenu.panel.setOpen(false);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inBuildMode && session.buildDefId) {
       const placing = this.registry.buildings.get(session.buildDefId)!;
       this.selName.textContent = `Placing: ${placing.name}`;
       this.selDesc.textContent = placing.description;
       this.selMeta.textContent = `${placing.cost} mana · tap Place to confirm`;
-      this.trainPanel.panel.setOpen(false);
-      this.buildPanel.panel.setOpen(false);
-      this.trainPanel.clearProduceRow();
-      this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+      this.commandMenu.panel.setOpen(false);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (single) {
       const def = this.registry.units.get(single.defId) ?? this.registry.buildings.get(single.defId);
       this.selName.textContent = def?.name ?? single.defId;
@@ -312,16 +297,11 @@ export class Hud {
         if (single.morphProgress !== undefined) meta.push(`Packing ${Math.round(single.morphProgress * 100)}%`);
         if (single.repairing) meta.push('repairing');
         if (single.rally) meta.push('rally set');
-        this.trainPanel.updateTrainQueue(this.registry, this.controller, single);
-        if (showTrainPanel) {
-          this.trainPanel.panel.setTitle(`Train — ${ownBuilding.name}`);
-          if (this.trainPanel.needsProduceRebuild(single.id)) {
-            this.trainPanel.rebuildProduceRow(this.registry, this.controller, single);
-          }
-          this.trainPanel.updateProduceButtons(st, this.registry, this.playerId, p, single);
-        } else {
-          this.trainPanel.clearProduceRow();
-        }
+        this.commandMenu.updateTrainQueue(
+          this.registry,
+          this.controller,
+          isProducer ? single : null,
+        );
         this.selMeta.textContent = meta.join(' · ');
       } else if (def && 'role' in def) {
         this.selDesc.textContent = def.role;
@@ -331,28 +311,24 @@ export class Hud {
         }
         if (single.channeling) meta += ' · conjuring mana';
         this.selMeta.textContent = meta;
-        this.trainPanel.clearProduceRow();
-        this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+        this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
       } else {
         this.selDesc.textContent = '';
         this.selMeta.textContent = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
-        this.trainPanel.clearProduceRow();
-        this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+        this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
       }
     } else if (sel.length > 1) {
       this.selName.textContent = `${sel.length} units selected`;
       this.selDesc.textContent = 'Tap map to move. Use orders below.';
       this.selMeta.textContent = '';
-      this.trainPanel.clearProduceRow();
-      this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else {
       this.selName.textContent = 'Nothing selected';
-      this.selDesc.textContent = 'Tap your HQ (purple) to build. Tap colored buildings to train or view info.';
+      this.selDesc.textContent = 'Tap your HQ (purple) to build and train. Tap production buildings to train from there.';
       this.selMeta.textContent = short
         ? `Low power (−${deficit}) — build Ley Conduit or destroy structures`
         : 'Drag to select · two fingers to pan the map.';
-      this.trainPanel.clearProduceRow();
-      this.trainPanel.updateTrainQueue(this.registry, this.controller, null);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     }
 
     const selectionLabel =
@@ -369,8 +345,7 @@ export class Hud {
             : 'none';
     this.syncPanelLayout(
       inPlaceMode,
-      showBuildPanel,
-      showTrainPanel,
+      showCommandMenu,
       showUnitPanel,
       ownBuilding,
       selectionLabel,

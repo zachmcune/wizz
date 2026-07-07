@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 190,
   "footprint": 1,
+  "menuCategory": "defenses",
   "requires": ["sanctum"],
   "powerUsed": 20,
   "weapon": {

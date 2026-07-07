@@ -12,6 +12,7 @@
   "radius": 16,
   "weapon": null,
   "producedBy": "golem_forge",
+  "menuCategory": "large_troops",
   "requires": ["ley_conduit", "golem_forge"],
   "deploysAs": "waystone_camp",
   "deployTime": 12,
