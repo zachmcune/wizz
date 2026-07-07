@@ -53,6 +53,18 @@ describe('lockstep scaffolding (V2)', () => {
     expect(c.commandsForTick(42)).toEqual(cmds);
   });
 
+  it('fills missing tick numbers with empty command lists', () => {
+    const t = new FakeTransport();
+    const c = new LockstepClient(t);
+    t.emitTick(0, []);
+    t.emitTick(3, [{ type: 'stop', playerId: 'player0', entityIds: [1] }]);
+    expect(c.isTickReady(1)).toBe(true);
+    expect(c.isTickReady(2)).toBe(true);
+    expect(c.commandsForTick(1)).toEqual([]);
+    expect(c.commandsForTick(2)).toEqual([]);
+    expect(c.commandsForTick(3)).toHaveLength(1);
+  });
+
   it('detects a desynced peer via mismatched checksums', () => {
     const t = new FakeTransport();
     const c = new LockstepClient(t);

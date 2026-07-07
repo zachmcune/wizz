@@ -25,7 +25,8 @@ import { rebuildBuildingNav } from '../sim/building-nav';
 import { ReplayRecorder, serializeReplay, type Replay } from '../sim/replay';
 import { WorkerSimClient } from './worker-client';
 import { LockstepClient } from '../net/lockstep';
-import { CHECKSUM_INTERVAL_TICKS } from '../net/protocol';
+import type { WebSocketTransport } from '../net/ws-transport';
+import { CHECKSUM_INTERVAL_TICKS, LOCKSTEP_DRAIN_BUDGET_MS, LOCKSTEP_STALL_MS } from '../net/protocol';
 import { hashState } from '../sim/hash';
 
 const ORDER_COLORS: Record<string, number> = {
@@ -51,6 +52,7 @@ export class Game {
   private lockstep: LockstepClient | null = null;
   private matchId: string;
   private onDesync: ((tick: number, peers: string[], replay: Replay) => void) | null = null;
+  private relayTransport: WebSocketTransport | null = null;
   private replay = new ReplayRecorder();
   private renderer: Renderer;
   private gesture!: GestureRecognizer;
@@ -68,6 +70,7 @@ export class Game {
   private fps = 60;
   private lastFrameTime = 0;
   private lastSimSyncMs = 0;
+  private lockstepStallShown = false;
   private pointerStart = { x: 0, y: 0 };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
@@ -89,11 +92,13 @@ export class Game {
       matchId?: string;
       localPlayerId?: PlayerId;
       onDesync?: (tick: number, peers: string[], replay: Replay) => void;
+      relayTransport?: WebSocketTransport;
     },
   ) {
     this.lockstep = opts?.lockstep ?? null;
     this.matchId = opts?.matchId ?? 'skirmish_1v1';
     this.onDesync = opts?.onDesync ?? null;
+    this.relayTransport = opts?.relayTransport ?? null;
     const wantWorker = opts?.useWorker ?? workerSupported();
     this.useWorker = wantWorker && !this.lockstep && workerSupported();
     if (this.useWorker && workerSupported()) {
@@ -149,6 +154,11 @@ export class Game {
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
     this.hud.onExit = () => this.exit();
+    if (this.relayTransport) {
+      this.relayTransport.onError = (message) => {
+        if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);
+      };
+    }
     this.controller.onHarvestNoRefinery = () => {
       this.hud.showHint('Tap teal mana nodes to harvest · Build Attunement Spire (MINE) to deposit');
     };
@@ -351,33 +361,35 @@ export class Game {
     return true;
   }
 
-  /** Process one confirmed lockstep tick. */
-  private advanceLockstepSim(syncRender: boolean): boolean {
+  /** Process one confirmed lockstep tick (render sync is batched by callers). */
+  private advanceLockstepSim(): boolean {
     const tick = this.state.tick;
     if (!this.lockstep?.isTickReady(tick)) return false;
     const cmds = this.lockstep.commandsForTick(tick) ?? [];
     this.sim!.enqueue(tick, cmds);
     const res = this.sim!.step();
     for (const ev of res.events) this.handleEvent(ev);
-    if (syncRender) {
-      this.renderer.syncTick(this.state);
-      this.markSimSynced();
-    }
     this.tickCounter++;
     if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
-    if (this.tickCounter % 200 === 0) void saveGame(this.state);
-    this.lockstep.pruneBefore(Math.max(0, tick - 120));
     return true;
+  }
+
+  private finishLockstepBatch(lastTick: number): void {
+    this.lockstep?.pruneBefore(Math.max(0, lastTick - 120));
+    this.renderer.syncTick(this.state);
+    this.markSimSynced();
   }
 
   /** Fast-forward through relay ticks buffered during match load. */
   private catchUpLockstep(): void {
     if (!this.lockstep) return;
     let safety = 0;
-    while (this.advanceLockstepSim(false) && safety < 10_000) safety++;
-    this.renderer.syncTick(this.state);
+    let lastTick = this.state.tick;
+    while (this.advanceLockstepSim() && safety++ < 10_000) {
+      lastTick = this.state.tick;
+    }
+    this.finishLockstepBatch(lastTick);
     this.renderer.snapDisplay();
-    this.markSimSynced();
   }
 
   private markSimSynced(): void {
@@ -470,13 +482,32 @@ export class Game {
     }
   }
 
-  /** Process every confirmed lockstep tick available (keeps client synced with relay). */
+  private checkLockstepStall(): void {
+    if (!this.lockstep?.hasReceivedTicks() || this.state.ended) return;
+    const gap = this.lockstep.msSinceLastTick();
+    if (gap < LOCKSTEP_STALL_MS) {
+      this.lockstepStallShown = false;
+      return;
+    }
+    if (!this.lockstepStallShown) {
+      this.lockstepStallShown = true;
+      this.hud.showHint('Connection stalled — check network or rejoin the match');
+    }
+  }
+
+  /** Process confirmed lockstep ticks within a per-frame time budget (keeps UI responsive). */
   private drainLockstepTicks(): void {
     if (!this.lockstep) return;
-    let safety = 0;
-    while (this.advanceLockstepSim(true) && safety++ < 128) {
-      /* catch up */
+    this.checkLockstepStall();
+    const deadline = performance.now() + LOCKSTEP_DRAIN_BUDGET_MS;
+    let lastTick = this.state.tick;
+    let advanced = false;
+    while (performance.now() < deadline) {
+      if (!this.advanceLockstepSim()) break;
+      advanced = true;
+      lastTick = this.state.tick;
     }
+    if (advanced) this.finishLockstepBatch(lastTick);
   }
 
   private frame(_loopAlpha: number): void {
@@ -549,7 +580,7 @@ export class Game {
     window.removeEventListener('pageshow', this.onVisibilityResume);
     this.loop?.stop();
     this.worker?.terminate();
-    void saveGame(this.state);
+    if (!this.lockstep) void saveGame(this.state);
     this.renderer.destroy();
     this.hud.root.remove();
     this.zoomSlider.root.remove();
