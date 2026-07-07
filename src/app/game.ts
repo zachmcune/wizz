@@ -19,8 +19,7 @@ import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
 import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
-import { isTileVisible } from '../sim/fog';
-import { getPlayer } from '../sim/queries';
+import { isWorldPointVisible } from '../sim/fog';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -251,7 +250,7 @@ export class Game {
         break;
       case 'buildingComplete': {
         const b = this.state.entities.get(ev.id);
-        if (b && this.isEffectVisibleAt(b.pos.x, b.pos.y)) {
+        if (b && isWorldPointVisible(this.state, this.humanId, b.pos.x, b.pos.y, this.services.nav)) {
           this.renderer.effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
         }
         break;
@@ -265,25 +264,19 @@ export class Game {
     }
   }
 
-  /** True when the human player has line-of-sight on a world point (fog of war). */
-  private isEffectVisibleAt(x: number, y: number): boolean {
-    const viewer = getPlayer(this.state, this.humanId);
-    if (!viewer) return false;
-    return isTileVisible(viewer, x, y, this.services.nav);
-  }
-
   /** Whether combat/economy VFX and audio for this event should play for the human. */
   private isEventVisible(ev: GameEvent): boolean {
+    const nav = this.services.nav;
     switch (ev.type) {
       case 'attackFired':
       case 'damageDealt':
       case 'entityDied':
       case 'manaDeposited':
       case 'spellCast':
-        return this.isEffectVisibleAt(ev.x, ev.y);
+        return isWorldPointVisible(this.state, this.humanId, ev.x, ev.y, nav);
       case 'buildingComplete': {
         const b = this.state.entities.get(ev.id);
-        return b ? this.isEffectVisibleAt(b.pos.x, b.pos.y) : false;
+        return b ? isWorldPointVisible(this.state, this.humanId, b.pos.x, b.pos.y, nav) : false;
       }
       default:
         return true;

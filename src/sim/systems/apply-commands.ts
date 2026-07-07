@@ -3,7 +3,7 @@
 import { TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Command, Entity, EntityId, PlayerId } from '../types';
-import { getPlayer, isAlive, relationBetween } from '../queries';
+import { getPlayer, isAlive, entitiesSorted } from '../queries';
 import { spawnEntity, recomputePower } from '../factory';
 import { canBuildNearBase } from '../build-zone';
 import { applyDamage } from '../combat-util';
@@ -27,6 +27,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       case 'move':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
           e.channeling = false;
+          e.channelTicks = undefined;
           e.orders = [{ type: 'move', x: cmd.x, y: cmd.y }];
           e.targetId = undefined;
           e.state = 'moving';
@@ -36,6 +37,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       case 'attackMove':
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
           e.channeling = false;
+          e.channelTicks = undefined;
           e.orders = [{ type: 'attackMove', x: cmd.x, y: cmd.y }];
           e.targetId = undefined;
           e.state = 'moving';
@@ -47,6 +49,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         if (!isAlive(target)) break;
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
           e.channeling = false;
+          e.channelTicks = undefined;
           e.orders = [{ type: 'attack', targetId: cmd.targetId }];
           e.targetId = cmd.targetId;
           e.state = 'attacking';
@@ -69,6 +72,7 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
           if (e.morphProgress !== undefined) continue;
           e.channeling = false;
+          e.channelTicks = undefined;
           e.orders = [];
           e.targetId = undefined;
           e.vel = { x: 0, y: 0 };
@@ -295,10 +299,12 @@ function handleChannel(state: GameState, ctx: StepContext, cmd: Extract<Command,
     if (!udef?.canConjureMana) continue;
     if (!cmd.enabled) {
       e.channeling = false;
+      e.channelTicks = undefined;
       if (e.state === 'channeling') e.state = 'idle';
       continue;
     }
     e.channeling = true;
+    e.channelTicks = 0;
     e.state = 'channeling';
     e.orders = [];
     e.targetId = undefined;
@@ -330,7 +336,7 @@ function handleSpell(state: GameState, ctx: StepContext, cmd: Extract<Command, {
 
   const eff = spell.effect;
   if (eff.kind === 'damage') {
-    for (const e of state.entities.values()) {
+    for (const e of entitiesSorted(state)) {
       if (e.kind === 'resource_node' || e.state === 'dead') continue;
       const dx = e.pos.x - cmd.x;
       const dy = e.pos.y - cmd.y;
@@ -353,7 +359,5 @@ function handleSpell(state: GameState, ctx: StepContext, cmd: Extract<Command, {
       }
     }
   }
-  recomputePower(state, ctx.services);
-  void relationBetween;
   ctx.events.push({ type: 'spellCast', playerId: cmd.playerId, spellId: cmd.spellId, x: cmd.x, y: cmd.y });
 }

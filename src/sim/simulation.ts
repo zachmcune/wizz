@@ -2,7 +2,7 @@
 // Commands from input/UI/AI/network all funnel through enqueue(); AI is an injected hook.
 import type { SimServices } from './context';
 import type { GameState, Command } from './types';
-import { stepSimulation, type StepResult } from './step';
+import { stepSimulation, type AiHook, type StepResult } from './step';
 import { aiStep } from '../ai/controller';
 
 export class Simulation {
@@ -12,6 +12,7 @@ export class Simulation {
   constructor(
     public state: GameState,
     public services: SimServices,
+    private aiHook: AiHook = aiStep,
   ) {}
 
   /** Queue commands to be applied on a specific tick. */
@@ -31,8 +32,7 @@ export class Simulation {
     const t = this.state.tick;
     const cmds = this.queued.get(t) ?? [];
     this.queued.delete(t);
-    const res = stepSimulation(this.state, this.services, cmds, this.aiEnabled ? aiStep : undefined);
-    // AI emitted commands for the next tick (state.tick was just incremented).
+    const res = stepSimulation(this.state, this.services, cmds, this.aiEnabled ? this.aiHook : undefined);
     if (res.nextCommands.length) this.enqueue(this.state.tick, res.nextCommands);
     return res;
   }

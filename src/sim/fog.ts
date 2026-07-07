@@ -191,6 +191,19 @@ export function isTileVisible(player: Player, x: number, y: number, nav: NavGrid
   return player.visible[ty * nav.w + tx] === 1;
 }
 
+/** Whether a viewer has line-of-sight on a world point (VFX, audio, UI gating). */
+export function isWorldPointVisible(
+  state: GameState,
+  viewerId: PlayerId,
+  x: number,
+  y: number,
+  nav: NavGrid,
+): boolean {
+  const viewer = getPlayer(state, viewerId);
+  if (!viewer) return false;
+  return isTileVisible(viewer, x, y, nav);
+}
+
 export function isVisibleTo(
   state: GameState,
   viewerId: PlayerId,
