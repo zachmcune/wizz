@@ -24,12 +24,12 @@ describe('worker sim host (determinism across the split)', () => {
     host.initMatch('skirmish_1v1');
     host.setAi(false);
     for (let i = 0; i < 30; i++) {
-      if (i === 5) host.enqueue([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
+      if (i === 5) host.enqueue([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
       host.step();
     }
     const direct = runHeadless(reg, reg.match('skirmish_1v1'), 30, {
       aiEnabled: false,
-      scriptedCommands: { 5: [{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }] },
+      scriptedCommands: { 5: [{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }] },
     });
     expect(hashState(host.state)).toBe(hashState(direct));
   });

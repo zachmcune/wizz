@@ -18,6 +18,7 @@ import { EffectsLayer } from './effects';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
+import { isUnitOccludedByBuilding, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -218,6 +219,11 @@ export class Renderer {
     return projectionSortKey({ x: worldX, y: worldY }, this.camera.view(), h);
   }
 
+  private buildingOccluderRadius(defId: string, entityRadius: number): number {
+    const footprint = this.registry.building(defId).footprint;
+    return Math.max(entityRadius * 1.45, (footprint * TILE) / 2);
+  }
+
   private artOf(e: Entity): { art: ArtDef; color: string } {
     if (e.kind === 'unit') return { art: this.registry.unit(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
     if (e.kind === 'building') {
@@ -341,6 +347,9 @@ export class Renderer {
     this.shadowLayer.clear();
     if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
 
+    const buildingOccluders: OcclusionBounds[] = [];
+    const friendlyUnits: Array<{ pos: { x: number; y: number }; radius: number; depth: number; color: number }> = [];
+
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
@@ -437,6 +446,30 @@ export class Renderer {
         const dot = this.positionOverlayAt(x, y, -e.radius - 4);
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
+
+      const depth = this.sortKeyAt(x, y);
+      if (e.kind === 'building') {
+        buildingOccluders.push({
+          x: pos.x,
+          y: pos.y,
+          radius: this.buildingOccluderRadius(e.defId, e.radius),
+          depth,
+        });
+      } else if (e.kind === 'unit' && e.owner === this.viewerId) {
+        friendlyUnits.push({
+          pos,
+          radius: e.radius + 2,
+          depth,
+          color: parseOwnerColor(this.colorByOwner.get(e.owner) ?? '#ffffff'),
+        });
+      }
+    }
+
+    for (const unit of friendlyUnits) {
+      if (!isUnitOccludedByBuilding({ x: unit.pos.x, y: unit.pos.y, radius: unit.radius, depth: unit.depth }, buildingOccluders)) {
+        continue;
+      }
+      this.strokeRing(unit.pos.x, unit.pos.y, unit.radius + 5, 2.5, unit.color, 0.92);
     }
 
     if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);

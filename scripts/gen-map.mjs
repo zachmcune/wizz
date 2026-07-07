@@ -3,8 +3,8 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const TILE = 32;
-const W = 64;
-const H = 44;
+const W = 128;
+const H = 88;
 const BASE_POOL = 25000;
 const SMALL_POOL = 3000;
 const tiles = new Array(W * H).fill(0);
@@ -24,11 +24,11 @@ for (let y = 0; y < H; y++) {
 
 // a few rock clusters (kept away from starts and lanes)
 const rocks = [
-  [20, 14],
-  [44, 14],
-  [20, 30],
-  [44, 30],
-  [32, 22],
+  [40, 28],
+  [88, 28],
+  [40, 60],
+  [88, 60],
+  [64, 44],
 ];
 for (const [rx, ry] of rocks) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) set(rx + dx, ry + dy, 1);
@@ -36,33 +36,33 @@ for (const [rx, ry] of rocks) {
 
 const w = (tx) => tx * TILE + TILE / 2;
 const startTiles = [
-  [7, 7],
-  [W - 8, 7],
-  [7, H - 8],
-  [W - 8, H - 8],
+  [14, 14],
+  [W - 15, 14],
+  [14, H - 15],
+  [W - 15, H - 15],
 ];
 const startLocations = startTiles.map(([tx, ty]) => ({ x: w(tx), y: w(ty) }));
 
 /** Large pool beside each corner base + smaller pools spread across the map. */
 const nodeTiles = [
   // corner base pools
-  { tx: 12, ty: 12, amount: BASE_POOL },
-  { tx: W - 13, ty: 12, amount: BASE_POOL },
-  { tx: 12, ty: H - 13, amount: BASE_POOL },
-  { tx: W - 13, ty: H - 13, amount: BASE_POOL },
+  { tx: 24, ty: 24, amount: BASE_POOL },
+  { tx: W - 25, ty: 24, amount: BASE_POOL },
+  { tx: 24, ty: H - 25, amount: BASE_POOL },
+  { tx: W - 25, ty: H - 25, amount: BASE_POOL },
   // north / south lane
-  { tx: 32, ty: 10, amount: SMALL_POOL },
-  { tx: 32, ty: H - 11, amount: SMALL_POOL },
+  { tx: 64, ty: 20, amount: SMALL_POOL },
+  { tx: 64, ty: H - 21, amount: SMALL_POOL },
   // east / west mid
-  { tx: 10, ty: 22, amount: SMALL_POOL },
-  { tx: W - 11, ty: 22, amount: SMALL_POOL },
+  { tx: 20, ty: 44, amount: SMALL_POOL },
+  { tx: W - 21, ty: 44, amount: SMALL_POOL },
   // inner quadrants
-  { tx: 22, ty: 17, amount: SMALL_POOL },
-  { tx: W - 23, ty: 17, amount: SMALL_POOL },
-  { tx: 22, ty: H - 18, amount: SMALL_POOL },
-  { tx: W - 23, ty: H - 18, amount: SMALL_POOL },
+  { tx: 44, ty: 34, amount: SMALL_POOL },
+  { tx: W - 45, ty: 34, amount: SMALL_POOL },
+  { tx: 44, ty: H - 35, amount: SMALL_POOL },
+  { tx: W - 45, ty: H - 35, amount: SMALL_POOL },
   // map center
-  { tx: 32, ty: 22, amount: SMALL_POOL },
+  { tx: 64, ty: 44, amount: SMALL_POOL },
 ];
 const manaNodes = nodeTiles.map(({ tx, ty, amount }) => ({ x: w(tx), y: w(ty), amount }));
 
@@ -79,11 +79,11 @@ const plateau = (tx, ty, level = 1) => {
     }
   }
 };
-plateau(32, 22, 2);
-plateau(16, 11, 1);
-plateau(W - 17, 11, 1);
-plateau(16, H - 12, 1);
-plateau(W - 17, H - 12, 1);
+plateau(64, 44, 2);
+plateau(32, 22, 1);
+plateau(W - 33, 22, 1);
+plateau(32, H - 23, 1);
+plateau(W - 33, H - 23, 1);
 
 const map = {
   id: 'duel_glade',

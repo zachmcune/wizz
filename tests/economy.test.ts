@@ -19,7 +19,7 @@ describe('economy & production (data-driven)', () => {
     const wispsBefore = ownedBy(state, 'player0').filter((e) => e.defId === 'wisp').length;
 
     // place the spire on a known-free tile near the top-left start
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
     sim.step();
     expect(p.mana).toBe(startMana - spireDef.cost); // charged upfront, from data
 
@@ -42,7 +42,7 @@ describe('economy & production (data-driven)', () => {
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
     // build + finish a spire so wisps have a dropoff
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
@@ -76,11 +76,11 @@ describe('economy & production (data-driven)', () => {
     sim.setAiEnabled(false);
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 520, y: 240 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 1040, y: 464 }]);
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 5; i++) sim.step();
 

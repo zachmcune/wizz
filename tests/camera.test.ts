@@ -26,13 +26,13 @@ describe('camera & coordinate math', () => {
 
   it('allows extra horizontal overscroll in oblique mode', () => {
     setProjectionMode('ortho');
-    let cam = new Camera(800, 600, 2048, 1408);
+    let cam = new Camera(800, 600, 4096, 2816);
     cam.x = -1000;
     cam.setViewport(800, 600);
     const orthoMinX = cam.x;
 
     setProjectionMode('oblique');
-    cam = new Camera(800, 600, 2048, 1408);
+    cam = new Camera(800, 600, 4096, 2816);
     cam.x = -1000;
     cam.setViewport(800, 600);
     expect(cam.x).toBeLessThan(orthoMinX);

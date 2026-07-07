@@ -10,7 +10,7 @@ const reg = getRegistry();
 describe('replay harness', () => {
   it('replaying scripted commands matches headless run', () => {
     const scripted = {
-      5: [{ type: 'build' as const, playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }],
+      5: [{ type: 'build' as const, playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }],
       40: [{ type: 'move' as const, playerId: 'player0', entityIds: [2, 3], x: 500, y: 500 }],
     };
     const replay = replayFromScripted('skirmish_1v1', scripted);
@@ -24,7 +24,7 @@ describe('replay harness', () => {
 
   it('replayHash helper matches direct hash', () => {
     const scripted = {
-      5: [{ type: 'build' as const, playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }],
+      5: [{ type: 'build' as const, playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }],
     };
     const replay = replayFromScripted('skirmish_1v1', scripted);
     const h1 = replayHash(reg, replay, 100, false);
