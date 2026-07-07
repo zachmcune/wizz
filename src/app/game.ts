@@ -7,6 +7,7 @@ import type { SimServices } from '../sim/context';
 import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
 import { InputController } from '../input/controller';
+import { KeyboardControls } from '../input/keyboard-controls';
 import { initViewport } from '../ui/viewport';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
@@ -49,6 +50,7 @@ export class Game {
   private renderer: Renderer;
   private gesture!: GestureRecognizer;
   private controller!: InputController;
+  private keyboard!: KeyboardControls;
   private hud!: Hud;
   private minimap!: Minimap;
   private zoomSlider!: ZoomSlider;
@@ -67,9 +69,6 @@ export class Game {
   private readonly useWorker: boolean;
   private readonly deadSpectatorReveal: boolean;
   private readonly matchProjectionMode: ProjectionMode;
-  private onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') this.controller.clearSelection();
-  };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
     initViewport();
@@ -208,7 +207,8 @@ export class Game {
       audio: this.audio,
     });
     this.pointerBinder.attach();
-    window.addEventListener('keydown', this.onKeyDown);
+    this.keyboard = new KeyboardControls(this.controller);
+    this.keyboard.attach();
     document.addEventListener('visibilitychange', this.onVisibilityResume);
     window.addEventListener('pageshow', this.onVisibilityResume);
 
@@ -294,6 +294,7 @@ export class Game {
 
     const renderAlpha = Math.min(1, (now - this.simCtrl.lastSyncMs) / TICK_MS);
 
+    this.keyboard.updateCamera(this.renderer.camera, dt);
     this.gesture.update(now);
     this.controller.syncSuperweaponMode();
     const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
@@ -319,7 +320,7 @@ export class Game {
     this.disposed = true;
     document.removeEventListener('visibilitychange', this.onVisibilityResume);
     window.removeEventListener('pageshow', this.onVisibilityResume);
-    window.removeEventListener('keydown', this.onKeyDown);
+    this.keyboard?.detach();
     this.pointerBinder?.detach();
     this.loop?.stop();
     this.simCtrl.terminate();

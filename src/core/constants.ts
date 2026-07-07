@@ -29,6 +29,10 @@ export const BUILD_SPACING_TILES = 1;
 export const MIN_ZOOM = 0.4;
 export const MAX_ZOOM = 2.0;
 
+/** Desktop camera panning speeds (screen px). */
+export const KEYBOARD_PAN_SPEED = 900;
+export const WHEEL_PAN_SCALE = 1;
+
 /** How far past the map edge the camera may scroll (fraction of viewport world size). */
 export const CAMERA_OVERSCROLL_RATIO = 0.45;
 /** Extra horizontal overscroll in oblique mode (screen left/right needs more world slack). */
