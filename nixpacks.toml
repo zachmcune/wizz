@@ -1,0 +1,13 @@
+# Railway/Nixpacks: install devDependencies (TypeScript, Vite) during build.
+# NODE_ENV=production otherwise skips devDeps and `npm run build` fails.
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node relay/production.mjs"
