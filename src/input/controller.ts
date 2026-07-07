@@ -102,6 +102,18 @@ export class InputController {
       this.castSpellAt(world);
       return;
     }
+    if (this.session.mode === 'rally' && this.session.rallyBuildingId) {
+      this.emit({
+        type: 'setRally',
+        playerId: this.playerId,
+        buildingId: this.session.rallyBuildingId,
+        x: world.x,
+        y: world.y,
+      });
+      this.onOrderFeedback('rally', world);
+      this.setMode('normal');
+      return;
+    }
 
     const st = this.getState();
     const node = this.renderer.pickResourceNode(st, world.x, world.y);
@@ -156,14 +168,6 @@ export class InputController {
     // empty ground
     if (movable.length) {
       this.emit({ type: 'move', playerId: this.playerId, entityIds: movable, x: world.x, y: world.y });
-      this.onOrderFeedback('move', world);
-      return;
-    }
-    const prodBuilding = this.selectionEntities().find(
-      (e) => e.owner === this.playerId && e.kind === 'building' && !!e.productionQueue,
-    );
-    if (prodBuilding) {
-      this.emit({ type: 'setRally', playerId: this.playerId, buildingId: prodBuilding.id, x: world.x, y: world.y });
       this.onOrderFeedback('move', world);
       return;
     }
@@ -232,6 +236,10 @@ export class InputController {
       if (mode !== 'build') this.session.buildGhost = null;
     }
     if (mode !== 'spell') this.session.spellId = null;
+    if (mode !== 'rally') {
+      this.session.rallyBuildingId = null;
+      this.session.rallyCursor = null;
+    }
   }
 
   startBuild(defId: string): void {
@@ -319,6 +327,30 @@ export class InputController {
     if (b) this.onOrderFeedback('pack', b.pos);
   }
 
+  sellBuilding(buildingId: EntityId): void {
+    this.emit({ type: 'sellBuilding', playerId: this.playerId, buildingId });
+    this.session.selection.delete(buildingId);
+    this.setMode('normal');
+  }
+
+  setRepair(buildingId: EntityId, enabled: boolean): void {
+    this.emit({ type: 'setRepair', playerId: this.playerId, buildingId, enabled });
+  }
+
+  startRally(buildingId: EntityId): void {
+    const b = this.getState().entities.get(buildingId);
+    if (!b || b.owner !== this.playerId || b.kind !== 'building') return;
+    const bdef = this.registry.buildings.get(b.defId);
+    if (!bdef?.producesUnits?.length) return;
+    this.session.mode = 'rally';
+    this.session.rallyBuildingId = buildingId;
+    this.session.rallyCursor = { ...b.pos };
+  }
+
+  updateRallyCursor(world: Vec2): void {
+    if (this.session.mode === 'rally') this.session.rallyCursor = { x: world.x, y: world.y };
+  }
+
   produce(buildingId: EntityId, defId: string): void {
     this.emit({ type: 'produce', playerId: this.playerId, buildingId, defId });
   }
@@ -380,7 +412,13 @@ export class InputController {
 
   clearSelection(): void {
     this.setSelection([]);
-    if (this.session.mode === 'build' || this.session.mode === 'spell' || this.session.mode === 'attackMove' || this.session.mode === 'deploy') {
+    if (
+      this.session.mode === 'build' ||
+      this.session.mode === 'spell' ||
+      this.session.mode === 'attackMove' ||
+      this.session.mode === 'deploy' ||
+      this.session.mode === 'rally'
+    ) {
       this.setMode('normal');
     }
     this.session.pendingConfirm = null;

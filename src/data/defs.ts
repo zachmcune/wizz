@@ -113,6 +113,9 @@ export interface BalanceData {
   startingMana: number;
   siphonPerSecond: number;
   manaNodeCapacity: number;
+  sellRefundRatio: number;
+  repairManaPerHp: number;
+  repairHpPerTick: number;
   ai: Record<'easy' | 'normal' | 'hard', AiParams>;
 }
 

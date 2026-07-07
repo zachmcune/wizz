@@ -6,6 +6,9 @@ const DEFAULT_BALANCE: BalanceData = {
   startingMana: 1500,
   siphonPerSecond: 40,
   manaNodeCapacity: 5000,
+  sellRefundRatio: 0.5,
+  repairManaPerHp: 3,
+  repairHpPerTick: 2,
   ai: {
     easy: { interval: 20, wispTarget: 3, armyThreshold: 8 },
     normal: { interval: 15, wispTarget: 4, armyThreshold: 12 },

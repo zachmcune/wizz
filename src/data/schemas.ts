@@ -134,6 +134,9 @@ export const balanceSchema = z.object({
   startingMana: z.number().nonnegative(),
   siphonPerSecond: z.number().positive(),
   manaNodeCapacity: z.number().positive(),
+  sellRefundRatio: z.number().min(0).max(1),
+  repairManaPerHp: z.number().positive(),
+  repairHpPerTick: z.number().positive(),
   ai: z.object({ easy: aiParamsSchema, normal: aiParamsSchema, hard: aiParamsSchema }),
 });
 

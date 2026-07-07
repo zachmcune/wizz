@@ -88,11 +88,15 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       case 'cancelProduce':
         handleCancel(state, ctx, cmd);
         break;
-      case 'setRally': {
-        const b = state.entities.get(cmd.buildingId);
-        if (b && b.owner === cmd.playerId && b.kind === 'building') b.rally = { x: cmd.x, y: cmd.y };
+      case 'setRally':
+        handleSetRally(state, ctx, cmd);
         break;
-      }
+      case 'sellBuilding':
+        handleSellBuilding(state, ctx, cmd);
+        break;
+      case 'setRepair':
+        handleSetRepair(state, ctx, cmd);
+        break;
       case 'castSpell':
         handleSpell(state, ctx, cmd);
         break;
@@ -213,6 +217,67 @@ function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command,
   b.productionQueue ??= [];
   b.productionQueue.push({ defId: cmd.defId, progress: 0, required: Math.round(udef.buildTime * 20) });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
+}
+
+function handleSetRally(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRally' }>): void {
+  const b = state.entities.get(cmd.buildingId);
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
+  if (b.buildProgress !== undefined || b.morphProgress !== undefined) return;
+  const bdef = ctx.services.registry.buildings.get(b.defId);
+  if (!bdef?.producesUnits?.length) return;
+  b.rally = { x: cmd.x, y: cmd.y };
+  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'rally', x: cmd.x, y: cmd.y });
+}
+
+function removeBuildingFromWorld(state: GameState, ctx: StepContext, building: Entity): void {
+  const bdef = ctx.services.registry.buildings.get(building.defId);
+  if (bdef) {
+    const tx = Math.floor((building.pos.x - (bdef.footprint * TILE) / 2) / TILE);
+    const ty = Math.floor((building.pos.y - (bdef.footprint * TILE) / 2) / TILE);
+    ctx.services.nav.setBuildingBlock(tx, ty, bdef.footprint, false);
+    ctx.services.flow.invalidate();
+  }
+  state.entities.delete(building.id);
+  recomputePower(state, ctx.services);
+}
+
+function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'sellBuilding' }>): void {
+  const player = getPlayer(state, cmd.playerId)!;
+  const b = state.entities.get(cmd.buildingId);
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
+  const bdef = ctx.services.registry.buildings.get(b.defId);
+  if (!bdef || bdef.isConstructionYard) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'cannot_sell' });
+    return;
+  }
+  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+  if (b.productionQueue && b.productionQueue.length > 0) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+  const refund = Math.floor(bdef.cost * ctx.services.registry.balance.sellRefundRatio);
+  removeBuildingFromWorld(state, ctx, b);
+  player.mana += refund;
+  ctx.events.push({ type: 'buildingSold', id: b.id, defId: b.defId, owner: cmd.playerId, refund });
+  ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
+}
+
+function handleSetRepair(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRepair' }>): void {
+  const b = state.entities.get(cmd.buildingId);
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
+  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
+  if (!cmd.enabled) {
+    b.repairing = false;
+    return;
+  }
+  if (b.hp >= b.maxHp) return;
+  b.repairing = true;
 }
 
 function handleCancel(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'cancelProduce' }>): void {

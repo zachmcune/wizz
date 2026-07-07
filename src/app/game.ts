@@ -29,6 +29,7 @@ const ORDER_COLORS: Record<string, number> = {
   deploy: 0x8b6cff,
   pack: 0x8b6cff,
   spell: 0xffd166,
+  rally: 0x7fe3ff,
 };
 
 export class Game {
@@ -187,6 +188,10 @@ export class Game {
         if (mode === 'build') this.controller.updateGhost(w);
         else this.controller.updateDeployGhost(w);
       }
+      if (mode === 'rally') {
+        const w = screenToWorld(p, this.renderer.camera.view());
+        this.controller.updateRallyCursor(w);
+      }
       if (mode === 'normal' || mode === 'attackMove') {
         this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
       }
@@ -195,6 +200,10 @@ export class Game {
       const p = rel(e);
       const mode = this.controller.session.mode;
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
+      if (mode === 'rally') {
+        this.controller.tap(p);
+        return;
+      }
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
         this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       }
@@ -287,9 +296,20 @@ export class Game {
       }
     }
     const confirm = s.pendingConfirm ? { x: s.pendingConfirm.x, y: s.pendingConfirm.y } : null;
+    let rallyMarker: { fromX: number; fromY: number; toX: number; toY: number } | undefined;
+    if (s.mode === 'rally' && s.rallyBuildingId && s.rallyCursor) {
+      const b = this.state.entities.get(s.rallyBuildingId);
+      if (b) rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: s.rallyCursor.x, toY: s.rallyCursor.y };
+    } else if (s.selection.size === 1) {
+      const id = [...s.selection][0]!;
+      const b = this.state.entities.get(id);
+      if (b?.kind === 'building' && b.rally) {
+        rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: b.rally.x, toY: b.rally.y };
+      }
+    }
     const buildZones =
       s.mode === 'build' || s.mode === 'deploy' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
-    return { ghost, spell, confirm, buildZones };
+    return { ghost, spell, confirm, buildZones, rallyMarker };
   }
 
   exit(): void {

@@ -39,6 +39,23 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
+    // Slow paid repair for completed buildings.
+    if (e.repairing && e.buildProgress === undefined && e.hp < e.maxHp) {
+      const balance = ctx.services.registry.balance;
+      const hpNeeded = e.maxHp - e.hp;
+      const hpGain = Math.min(hpNeeded, balance.repairHpPerTick * rate);
+      const cost = Math.ceil(hpGain * balance.repairManaPerHp);
+      if (cost > 0 && player.mana >= cost) {
+        player.mana -= cost;
+        e.hp = Math.min(e.maxHp, e.hp + hpGain);
+        ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
+      } else if (player.mana < balance.repairManaPerHp) {
+        e.repairing = false;
+      }
+      if (e.hp >= e.maxHp) e.repairing = false;
+      continue;
+    }
+
     // Unit production queue.
     if (e.productionQueue && e.productionQueue.length) {
       const item = e.productionQueue[0]!;

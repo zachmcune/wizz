@@ -57,6 +57,10 @@ export class Hud {
   private buildRow = el('div', 'card-row build-row');
   private produceRow = el('div', 'card-row produce-row');
   private stanceRow = el('div', 'card-row stance-row');
+  private buildingRow = el('div', 'card-row building-row');
+  private sellBtn = el('button', 'btn', 'Sell');
+  private repairBtn = el('button', 'btn', 'Repair');
+  private rallyBtn = el('button', 'btn', 'Set Rally');
   private buildConfirm = el('div', 'build-confirm');
   private buildConfirmLabel = el('span', 'confirm-label');
   private buildConfirmBtn = el('button', 'btn confirm', 'Place');
@@ -102,7 +106,7 @@ export class Hud {
     top.append(mana, this.powerStat, this.spellRow, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
-    selBlock.append(this.selName, this.selDesc, this.selMeta, this.trainQueueEl);
+    selBlock.append(this.selName, this.selDesc, this.selMeta, this.buildingRow, this.trainQueueEl);
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     this.infoPanel = new Collapsible('Selection', !compact);
     this.infoPanel.body.append(selBlock);
@@ -120,7 +124,7 @@ export class Hud {
     cmdCard.append(this.infoPanel.root, this.unitPanel.root, this.trainPanel.root, this.buildPanel.root);
     // Keep touch scrolling inside HUD (canvas uses touch-action: none).
     const keepScroll = (e: Event) => e.stopPropagation();
-    for (const node of [cmdCard, this.spellRow, this.buildRow, this.produceRow, this.stanceRow]) {
+    for (const node of [cmdCard, this.spellRow, this.buildRow, this.produceRow, this.stanceRow, this.buildingRow]) {
       node.addEventListener('touchstart', keepScroll, { passive: true });
       node.addEventListener('touchmove', keepScroll, { passive: true });
     }
@@ -142,6 +146,7 @@ export class Hud {
     this.root.append(top, this.minimapPanel.root, cmdCard, this.buildConfirm, this.spellConfirm, this.debugEl, this.hintEl, this.result);
     this.buildBuildButtons();
     this.buildStanceButtons();
+    this.buildBuildingButtons();
     this.buildSpellButtons();
     this.result.style.display = 'none';
     this.spellConfirm.style.display = 'none';
@@ -204,6 +209,26 @@ export class Hud {
       if (id !== undefined) this.controller.pack(id);
     });
     this.stanceRow.append(deselect, stop, am, this.deployBtn, this.packBtn);
+  }
+
+  private buildBuildingButtons(): void {
+    this.buildingRow.style.display = 'none';
+    this.sellBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id !== undefined) this.controller.sellBuilding(id);
+    });
+    this.repairBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id === undefined) return;
+      const st = this.state();
+      const b = st.entities.get(id);
+      this.controller.setRepair(id, !b?.repairing);
+    });
+    this.rallyBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id !== undefined) this.controller.startRally(id);
+    });
+    this.buildingRow.append(this.sellBtn, this.repairBtn, this.rallyBtn);
   }
 
   private clearProduceRow(): void {
@@ -349,7 +374,7 @@ export class Hud {
     this.panelContext = key;
 
     if (inPlaceMode) {
-      this.infoPanel.setTitle(selectionLabel.startsWith('Deploy') ? 'Deploying' : 'Placing');
+      this.infoPanel.setTitle(selectionLabel.startsWith('Deploy') ? 'Deploying' : selectionLabel.startsWith('Set') ? 'Rally' : 'Placing');
       this.infoPanel.setOpen(true);
       this.buildPanel.setOpen(false);
       this.trainPanel.setOpen(false);
@@ -436,7 +461,8 @@ export class Hud {
 
     const inBuildMode = session.mode === 'build';
     const inDeployMode = session.mode === 'deploy';
-    const inPlaceMode = inBuildMode || inDeployMode;
+    const inRallyMode = session.mode === 'rally';
+    const inPlaceMode = inBuildMode || inDeployMode || inRallyMode;
     const showBuildPanel = !inPlaceMode && !!ownBuilding?.isConstructionYard;
     const showTrainPanel =
       !inPlaceMode && !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
@@ -460,7 +486,41 @@ export class Hud {
     this.deployBtn.style.display = wagonReady && !inPlaceMode ? '' : 'none';
     this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';
 
-    if (inDeployMode && session.deployEntityId) {
+    const completeBuilding = ownBuilding && single && single.buildProgress === undefined && single.morphProgress === undefined;
+    const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
+    const canRepair = !!completeBuilding && single!.hp < single!.maxHp;
+    const canRally = !!completeBuilding && !!ownBuilding.producesUnits?.length && !ownBuilding.isConstructionYard;
+    const showBuildingRow = !inPlaceMode && !!ownBuilding && (canSell || canRepair || canRally || single?.repairing);
+    this.buildingRow.style.display = showBuildingRow ? 'flex' : 'none';
+    this.sellBtn.style.display = canSell ? '' : 'none';
+    if (canSell && ownBuilding) {
+      const refund = Math.floor(ownBuilding.cost * this.registry.balance.sellRefundRatio);
+      this.sellBtn.textContent = `Sell (+${refund})`;
+      this.sellBtn.disabled = !!(single?.productionQueue?.length || single?.repairing);
+    }
+    this.repairBtn.style.display = canRepair || single?.repairing ? '' : 'none';
+    if (canRepair || single?.repairing) {
+      const repairing = !!single?.repairing;
+      const costPerTick = Math.ceil(this.registry.balance.repairHpPerTick * this.registry.balance.repairManaPerHp);
+      this.repairBtn.textContent = repairing ? 'Stop Repair' : `Repair (${costPerTick}/tick)`;
+      this.repairBtn.classList.toggle('active', repairing);
+      this.repairBtn.disabled = !repairing && p.mana < this.registry.balance.repairManaPerHp;
+    }
+    this.rallyBtn.style.display = canRally ? '' : 'none';
+    this.rallyBtn.classList.toggle('active', inRallyMode);
+    if (canRally && single?.rally) {
+      this.rallyBtn.textContent = 'Set Rally ✓';
+    } else {
+      this.rallyBtn.textContent = inRallyMode ? 'Tap map…' : 'Set Rally';
+    }
+
+    if (inRallyMode) {
+      this.selName.textContent = ownBuilding?.name ?? 'Set rally point';
+      this.selDesc.textContent = 'Tap the map where new units should go after training.';
+      this.selMeta.textContent = single?.rally ? `Current rally set` : 'No rally point';
+      this.clearProduceRow();
+      this.updateTrainQueue(null);
+    } else if (inDeployMode && session.deployEntityId) {
       const campDef = this.registry.buildings.get('waystone_camp')!;
       this.selName.textContent = 'Deploy: Waystone Camp';
       this.selDesc.textContent = campDef.description;
@@ -491,6 +551,8 @@ export class Hud {
           meta.unshift('⚡ SLOW — low power');
         }
         if (single.morphProgress !== undefined) meta.push(`Packing ${Math.round(single.morphProgress * 100)}%`);
+        if (single.repairing) meta.push('repairing');
+        if (single.rally) meta.push('rally set');
         this.updateTrainQueue(single);
         if (showTrainPanel) {
           this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
@@ -532,7 +594,9 @@ export class Hud {
     }
 
     const selectionLabel =
-      inDeployMode
+      inRallyMode
+        ? 'Set rally'
+        : inDeployMode
         ? 'Deploy camp'
         : inBuildMode && session.buildDefId
         ? this.registry.buildings.get(session.buildDefId)!.name
