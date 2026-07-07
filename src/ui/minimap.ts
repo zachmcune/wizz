@@ -5,7 +5,7 @@ import type { GameState, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
-import { getPlayer, radarActive, isMinimapTileFogged, isVisibleOnMinimap, listBuildingGhosts } from '../sim/views';
+import { getPlayer, radarActive, isMinimapTileFogged, isVisibleOnMinimap, isNodeIntelVisible, listBuildingGhosts } from '../sim/views';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
@@ -90,10 +90,15 @@ export class Minimap {
     for (const e of state.entities.values()) {
       if (!isVisibleOnMinimap(state, registry, viewerId, e, nav)) continue;
       if (e.kind === 'resource_node') {
-        const max = e.amountMax ?? e.amount ?? 1;
-        const frac = Math.max(0, (e.amount ?? 0) / max);
-        const g = Math.round(160 + 57 * frac);
-        c.fillStyle = frac <= 0 ? '#444455' : `rgb(57, ${g}, 192)`;
+        const intel = isNodeIntelVisible(state, viewerId, e, nav);
+        if (!intel) {
+          c.fillStyle = '#39d0c0';
+        } else {
+          const max = e.amountMax ?? e.amount ?? 1;
+          const frac = Math.max(0, (e.amount ?? 0) / max);
+          const g = Math.round(160 + 57 * frac);
+          c.fillStyle = frac <= 0 ? '#444455' : `rgb(57, ${g}, 192)`;
+        }
       } else c.fillStyle = this.colorByOwner.get(e.owner) ?? '#ffffff';
       const size = e.kind === 'building' ? 4 : e.kind === 'resource_node' ? 3 : 2;
       c.fillRect(e.pos.x * s - size / 2, e.pos.y * s - size / 2, size, size);

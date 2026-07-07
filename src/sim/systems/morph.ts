@@ -1,5 +1,7 @@
 // Mobile HQ deploy (unit → building) and pack (building → unit) progress.
+import { TILE } from '../../core/constants';
 import { clearBuildingNav } from '../building-nav';
+import { removeNodesUnderFootprint } from '../resource-nodes';
 import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted } from '../queries';
@@ -45,6 +47,9 @@ function finishDeploy(state: GameState, ctx: StepContext, unit: Entity, building
   }
   const ratio = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
   const pos = unit.morphTargetPos;
+  const tx = Math.floor((pos.x - (bdef.footprint * TILE) / 2) / TILE);
+  const ty = Math.floor((pos.y - (bdef.footprint * TILE) / 2) / TILE);
+  removeNodesUnderFootprint(state, tx, ty, bdef.footprint);
   const b = spawnEntity(state, ctx.services, ctx, buildingDefId, unit.owner, pos.x, pos.y);
   b.hp = Math.max(1, Math.floor(b.maxHp * ratio));
   unlockTech(state, unit.owner, buildingDefId);

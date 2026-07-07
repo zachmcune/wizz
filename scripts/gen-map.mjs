@@ -5,6 +5,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 const TILE = 32;
 const W = 64;
 const H = 44;
+const BASE_POOL = 25000;
+const SMALL_POOL = 3000;
 const tiles = new Array(W * H).fill(0);
 const set = (tx, ty, v) => {
   if (tx >= 0 && ty >= 0 && tx < W && ty < H) tiles[ty * W + tx] = v;
@@ -41,15 +43,28 @@ const startTiles = [
 ];
 const startLocations = startTiles.map(([tx, ty]) => ({ x: w(tx), y: w(ty) }));
 
+/** Large pool beside each corner base + smaller pools spread across the map. */
 const nodeTiles = [
-  [12, 12],
-  [W - 13, 12],
-  [12, H - 13],
-  [W - 13, H - 13],
-  [32, 10],
-  [32, H - 11],
+  // corner base pools
+  { tx: 12, ty: 12, amount: BASE_POOL },
+  { tx: W - 13, ty: 12, amount: BASE_POOL },
+  { tx: 12, ty: H - 13, amount: BASE_POOL },
+  { tx: W - 13, ty: H - 13, amount: BASE_POOL },
+  // north / south lane
+  { tx: 32, ty: 10, amount: SMALL_POOL },
+  { tx: 32, ty: H - 11, amount: SMALL_POOL },
+  // east / west mid
+  { tx: 10, ty: 22, amount: SMALL_POOL },
+  { tx: W - 11, ty: 22, amount: SMALL_POOL },
+  // inner quadrants
+  { tx: 22, ty: 17, amount: SMALL_POOL },
+  { tx: W - 23, ty: 17, amount: SMALL_POOL },
+  { tx: 22, ty: H - 18, amount: SMALL_POOL },
+  { tx: W - 23, ty: H - 18, amount: SMALL_POOL },
+  // map center
+  { tx: 32, ty: 22, amount: SMALL_POOL },
 ];
-const manaNodes = nodeTiles.map(([tx, ty]) => ({ x: w(tx), y: w(ty), amount: 20000 }));
+const manaNodes = nodeTiles.map(({ tx, ty, amount }) => ({ x: w(tx), y: w(ty), amount }));
 
 const map = {
   id: 'duel_glade',
@@ -64,4 +79,4 @@ const map = {
 
 mkdirSync('data/maps', { recursive: true });
 writeFileSync('data/maps/duel_glade.json', JSON.stringify(map));
-console.log('wrote data/maps/duel_glade.json', W, 'x', H);
+console.log('wrote data/maps/duel_glade.json', W, 'x', H, 'nodes', manaNodes.length);

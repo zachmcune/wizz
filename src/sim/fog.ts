@@ -30,9 +30,9 @@ export function isTileFogged(player: Player, tileIdx: number): boolean {
   return player.visible[tileIdx] === 0;
 }
 
-/** Minimap fog — powered radar reveals the full overview. */
-export function isMinimapTileFogged(player: Player, tileIdx: number, radarOn: boolean): boolean {
-  return !radarOn && player.visible[tileIdx] === 0;
+/** Minimap fog — mirrors main-map line of sight (radar enables the widget, not full intel). */
+export function isMinimapTileFogged(player: Player, tileIdx: number, _radarOn: boolean): boolean {
+  return player.visible[tileIdx] === 0;
 }
 
 function visionPartners(state: GameState, viewerId: PlayerId): PlayerId[] {
@@ -221,7 +221,20 @@ export function isVisibleTo(
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
 }
 
-/** Minimap entity visibility — radar shows all units/buildings on the overview. */
+/** True when the viewer can see a mana node's reserve level (ring, bar, % label). */
+export function isNodeIntelVisible(
+  state: GameState,
+  viewerId: PlayerId,
+  entity: Entity,
+  nav: NavGrid,
+): boolean {
+  if (entity.kind !== 'resource_node') return true;
+  const viewer = getPlayer(state, viewerId);
+  if (!viewer) return false;
+  return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
+}
+
+/** Minimap entity visibility — same line-of-sight rules as the main map. */
 export function isVisibleOnMinimap(
   state: GameState,
   registry: Registry,
@@ -230,10 +243,6 @@ export function isVisibleOnMinimap(
   nav: NavGrid,
 ): boolean {
   if (entity.kind === 'projectile') return false;
-  if (radarActive(state, registry, viewerId)) {
-    if (entity.owner === viewerId || isAlly(state, viewerId, entity.owner)) return true;
-    if (entity.kind === 'resource_node') return true;
-    return entity.kind === 'unit' || entity.kind === 'building';
-  }
+  void registry;
   return isVisibleTo(state, viewerId, entity, nav);
 }

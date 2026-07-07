@@ -9,6 +9,7 @@ export {
   radarActive,
   isMinimapTileFogged,
   isVisibleOnMinimap,
+  isNodeIntelVisible,
 } from './fog';
 export { isPowerShort, powerDeficit, buildingHasPower, buildingPowerUse } from './power';
 export { getPlayer } from './queries';

@@ -60,7 +60,7 @@ describe('economy & production (data-driven)', () => {
     const sim = new Simulation(state, services);
     sim.aiEnabled = false;
     const nodes = [...state.entities.values()].filter((e) => e.kind === 'resource_node');
-    const node = nodes[0]!;
+    const node = nodes.find((n) => (n.amountMax ?? n.amount) === reg.balance.manaNodeCapacity) ?? nodes[0]!;
     const start = node.amount ?? 0;
     expect(start).toBe(reg.balance.manaNodeCapacity);
     const wisps = ownedBy(state, 'player0').filter((e) => e.defId === 'wisp').map((e) => e.id);

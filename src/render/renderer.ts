@@ -5,7 +5,7 @@ import { lerp } from '../sim/math';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
-import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, getPlayer } from '../sim/views';
+import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer } from '../sim/views';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
@@ -274,12 +274,25 @@ export class Renderer {
 
       if (n.label) {
         n.label.position.set(x, y + e.radius + 4);
-        n.label.alpha = e.kind === 'building' && e.owner !== this.viewerId ? 0.75 : 1;
+        if (e.kind === 'resource_node') {
+          const intel = viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav);
+          n.label.visible = !!intel;
+        } else {
+          n.label.alpha = e.kind === 'building' && e.owner !== this.viewerId ? 0.75 : 1;
+        }
       }
 
       if (e.kind === 'resource_node') {
-        this.drawNodeReserve(x, y, e);
-        n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
+        const intel = viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav);
+        if (intel) {
+          const { art, color } = this.artOf(e);
+          n.sprite.texture = this.provider.texture(art, color);
+          this.drawNodeReserve(x, y, e);
+          n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
+        } else {
+          n.sprite.texture = this.provider.texture(NODE_ART, NEUTRAL_COLOR);
+          n.sprite.alpha = 1;
+        }
       } else if (e.kind === 'building' && buildingPowerUse(this.registry, e.defId) > 0 && !buildingHasPower(state, this.registry, e)) {
         n.sprite.alpha = 0.42;
         this.drawPowerOffline(x, y, e.radius);

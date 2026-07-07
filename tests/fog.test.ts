@@ -3,7 +3,7 @@ import { TILE } from '../src/core/constants';
 import { getRegistry } from './helpers';
 import { initMatch, spawnEntity, recomputePower } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../src/sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isNodeIntelVisible, isMinimapTileFogged } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
 import { visibilitySystem } from '../src/sim/systems/visibility';
@@ -25,7 +25,7 @@ describe('fog of war', () => {
     expect(fogged).toBeGreaterThanOrEqual(0);
   });
 
-  it('always shows mana nodes through fog', () => {
+  it('shows mana node markers through fog but hides reserve intel', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.controller === 'human')!;
     const farNode = [...state.entities.values()].find(
@@ -33,6 +33,7 @@ describe('fog of war', () => {
     );
     expect(farNode).toBeTruthy();
     expect(isVisibleTo(state, human.id, farNode!, services.nav)).toBe(true);
+    expect(isNodeIntelVisible(state, human.id, farNode!, services.nav)).toBe(false);
   });
 
   it('powered radar is active when the grid has enough power', () => {
@@ -101,6 +102,8 @@ describe('fog of war', () => {
     expect(radarActive(state, reg, human.id)).toBe(true);
     const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i));
     expect(fogged).toBeGreaterThanOrEqual(0);
+    const minimapFogged = human.visible.findIndex((v, i) => v === 0 && isMinimapTileFogged(human, i, true));
+    expect(minimapFogged).toBeGreaterThanOrEqual(0);
   });
 });
 

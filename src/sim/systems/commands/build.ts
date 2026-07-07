@@ -4,6 +4,7 @@ import type { GameState, Command } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { spawnEntity } from '../../factory';
 import { canBuildNearBase } from '../../build-zone';
+import { removeNodesUnderFootprint } from '../../resource-nodes';
 import { requirementsMet, removeBuildingFromWorld } from './shared';
 
 export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
@@ -31,6 +32,7 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
   player.mana -= def.cost;
   const cx = (tx + def.footprint / 2) * TILE;
   const cy = (ty + def.footprint / 2) * TILE;
+  removeNodesUnderFootprint(state, tx, ty, def.footprint);
   const e = spawnEntity(state, ctx.services, ctx, def.id, cmd.playerId, cx, cy);
   e.buildProgress = 0;
   e.hp = Math.max(1, Math.floor(def.hp * 0.1));
