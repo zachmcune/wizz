@@ -27,6 +27,23 @@ describe('mobile HQ (Waystone Wagon)', () => {
     expect(hasHQ(state, 'player0')).toBe(true);
   });
 
+  it('deploys far from build zone without range restriction', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+
+    const sanctum = [...state.entities.values()].find((e) => e.owner === 'player0' && e.defId === 'sanctum')!;
+    const wagon = spawnEntity(state, services, null, 'waystone_wagon', 'player0', sanctum.pos.x + TILE * 20, sanctum.pos.y + TILE * 20);
+    const deployX = wagon.pos.x;
+    const deployY = wagon.pos.y;
+
+    sim.enqueueNow([{ type: 'deploy', playerId: 'player0', entityId: wagon.id, x: deployX, y: deployY }]);
+    for (let i = 0; i < reg.unit('waystone_wagon').deployTime! * 20 + 5; i++) sim.step();
+
+    expect(state.entities.has(wagon.id)).toBe(false);
+    expect([...state.entities.values()].some((e) => e.owner === 'player0' && e.defId === 'waystone_camp')).toBe(true);
+  });
+
   it('packs back into a Waystone Wagon', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);

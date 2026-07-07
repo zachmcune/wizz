@@ -56,10 +56,6 @@ export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Co
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }
-  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, bdef.footprint)) {
-    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
-    return;
-  }
 
   const cx = (tx + bdef.footprint / 2) * TILE;
   const cy = (ty + bdef.footprint / 2) * TILE;

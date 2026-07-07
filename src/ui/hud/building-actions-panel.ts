@@ -45,7 +45,8 @@ export class BuildingActionsPanel {
     const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
     const canRepair = !!completeBuilding && single!.hp < single!.maxHp;
     const canRally = !!completeBuilding && !!ownBuilding.producesUnits?.length && !ownBuilding.isConstructionYard;
-    const showBuildingRow = !inPlaceMode && !!ownBuilding && (canSell || canRepair || canRally || single?.repairing);
+    const showBuildingRow =
+      (!inPlaceMode || inRallyMode) && !!ownBuilding && (canSell || canRepair || canRally || single?.repairing);
     this.row.style.display = showBuildingRow ? 'flex' : 'none';
     this.sellBtn.style.display = canSell ? '' : 'none';
     if (canSell && ownBuilding) {
@@ -67,7 +68,7 @@ export class BuildingActionsPanel {
     if (canRally && single?.rally) {
       this.rallyBtn.textContent = 'Set Rally ✓';
     } else {
-      this.rallyBtn.textContent = inRallyMode ? 'Tap map…' : 'Set Rally';
+      this.rallyBtn.textContent = inRallyMode ? 'Cancel Rally' : 'Set Rally';
     }
   }
 }

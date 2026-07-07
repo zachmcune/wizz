@@ -82,4 +82,13 @@ describe('gesture FSM', () => {
     expect(h.onPinch).not.toHaveBeenCalled();
     expect(h.onTwoFingerPan).toHaveBeenCalled();
   });
+
+  it('cancel() resets stuck pending state', () => {
+    const { g, h } = make();
+    g.pointerDown(1, 100, 100, 0);
+    g.cancel();
+    g.pointerDown(2, 200, 200, 0);
+    g.pointerUp(2, 200, 200, 120);
+    expect(h.onTap).toHaveBeenCalledTimes(1);
+  });
 });

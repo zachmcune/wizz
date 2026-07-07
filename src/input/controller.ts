@@ -105,15 +105,7 @@ export class InputController {
       return;
     }
     if (this.session.mode === 'rally' && this.session.rallyBuildingId) {
-      this.emit({
-        type: 'setRally',
-        playerId: this.playerId,
-        buildingId: this.session.rallyBuildingId,
-        x: world.x,
-        y: world.y,
-      });
-      this.onOrderFeedback('rally', world);
-      this.setMode('normal');
+      this.confirmRally(world);
       return;
     }
 
@@ -135,6 +127,10 @@ export class InputController {
         return;
       }
       if (picked && picked.owner === this.playerId && picked.kind === 'unit') {
+        this.setSelection([picked.id]);
+        return;
+      }
+      if (picked && picked.owner === this.playerId && picked.kind === 'building') {
         this.setSelection([picked.id]);
         return;
       }
@@ -232,6 +228,8 @@ export class InputController {
     if (mode !== 'build') {
       this.session.buildDefId = null;
       this.session.buildGhost = null;
+      this.session.wallDragTiles = null;
+      this.session.wallDragStart = null;
     }
     if (mode !== 'deploy') {
       this.session.deployEntityId = null;
@@ -247,9 +245,93 @@ export class InputController {
   startBuild(defId: string): void {
     this.session.mode = 'build';
     this.session.buildDefId = defId;
+    this.session.wallDragTiles = null;
+    this.session.wallDragStart = null;
     const sel = this.selectionEntities()[0];
     const anchor = sel?.pos ?? { x: this.camera.visibleWorldRect().x + 100, y: this.camera.visibleWorldRect().y + 100 };
     this.updateGhost(anchor);
+  }
+
+  isWallBuild(): boolean {
+    if (this.session.mode !== 'build' || !this.session.buildDefId) return false;
+    return !!this.registry.buildings.get(this.session.buildDefId)?.isWall;
+  }
+
+  hasWallDragTiles(): boolean {
+    return (this.session.wallDragTiles?.length ?? 0) > 0;
+  }
+
+  private tileAt(world: Vec2, footprint: number): { tx: number; ty: number; cx: number; cy: number } {
+    const tx = Math.floor((world.x - (footprint * TILE) / 2) / TILE);
+    const ty = Math.floor((world.y - (footprint * TILE) / 2) / TILE);
+    const cx = (tx + footprint / 2) * TILE;
+    const cy = (ty + footprint / 2) * TILE;
+    return { tx, ty, cx, cy };
+  }
+
+  private wallLineTiles(tx0: number, ty0: number, tx1: number, ty1: number): { tx: number; ty: number }[] {
+    const dx = tx1 - tx0;
+    const dy = ty1 - ty0;
+    const tiles: { tx: number; ty: number }[] = [];
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const step = dx >= 0 ? 1 : -1;
+      for (let tx = tx0; step > 0 ? tx <= tx1 : tx >= tx1; tx += step) tiles.push({ tx, ty: ty0 });
+    } else {
+      const step = dy >= 0 ? 1 : -1;
+      for (let ty = ty0; step > 0 ? ty <= ty1 : ty >= ty1; ty += step) tiles.push({ tx: tx0, ty });
+    }
+    return tiles;
+  }
+
+  private ghostAtTile(tx: number, ty: number, footprint: number): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } {
+    const cx = (tx + footprint / 2) * TILE;
+    const cy = (ty + footprint / 2) * TILE;
+    const navOk = this.canPlace(tx, ty, footprint);
+    const zoneOk = this.canBuildNear(tx, ty, footprint);
+    const valid = navOk && zoneOk;
+    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
+    return { x: cx, y: cy, valid, issue };
+  }
+
+  startWallDrag(world: Vec2): void {
+    if (!this.isWallBuild() || !this.session.buildDefId) return;
+    const def = this.registry.buildings.get(this.session.buildDefId)!;
+    const { tx, ty } = this.tileAt(world, def.footprint);
+    this.session.wallDragStart = { tx, ty };
+    this.session.wallDragTiles = [this.ghostAtTile(tx, ty, def.footprint)];
+    this.session.buildGhost = this.session.wallDragTiles[0]!;
+  }
+
+  updateWallDrag(world: Vec2): void {
+    if (!this.isWallBuild() || !this.session.buildDefId || !this.session.wallDragStart) return;
+    const def = this.registry.buildings.get(this.session.buildDefId)!;
+    const { tx, ty } = this.tileAt(world, def.footprint);
+    const start = this.session.wallDragStart;
+    this.session.wallDragTiles = this.wallLineTiles(start.tx, start.ty, tx, ty).map((t) =>
+      this.ghostAtTile(t.tx, t.ty, def.footprint),
+    );
+    const last = this.session.wallDragTiles[this.session.wallDragTiles.length - 1];
+    if (last) this.session.buildGhost = last;
+  }
+
+  confirmWallDrag(): void {
+    if (!this.isWallBuild() || !this.session.buildDefId || !this.session.wallDragTiles?.length) return;
+    const defId = this.session.buildDefId;
+    let placed = false;
+    for (const tile of this.session.wallDragTiles) {
+      if (!tile.valid) continue;
+      this.emit({ type: 'build', playerId: this.playerId, defId, x: tile.x, y: tile.y });
+      placed = true;
+    }
+    if (placed) this.onOrderFeedback('build', this.session.wallDragTiles[0]!);
+    this.session.wallDragTiles = null;
+    this.session.wallDragStart = null;
+    this.session.buildGhost = null;
+  }
+
+  endWallDrag(): void {
+    this.session.wallDragTiles = null;
+    this.session.wallDragStart = null;
   }
 
   updateGhost(world: Vec2): void {
@@ -286,27 +368,34 @@ export class InputController {
     if (!unit || unit.owner !== this.playerId || unit.kind !== 'unit') return;
     const udef = this.registry.units.get(unit.defId);
     if (!udef?.deploysAs) return;
-    this.session.mode = 'deploy';
     this.session.deployEntityId = entityId;
-    this.updateDeployGhost(unit.pos);
+    const ghost = this.computeDeployGhost(unit.pos);
+    if (ghost.valid) {
+      this.session.mode = 'deploy';
+      this.session.buildGhost = ghost;
+      this.confirmDeploy();
+      return;
+    }
+    this.session.mode = 'deploy';
+    this.session.buildGhost = ghost;
+  }
+
+  private computeDeployGhost(world: Vec2): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } {
+    const entityId = this.session.deployEntityId;
+    const unit = entityId ? this.getState().entities.get(entityId) : null;
+    const udef = unit ? this.registry.units.get(unit.defId) : null;
+    const def = udef?.deploysAs ? this.registry.buildings.get(udef.deploysAs) : null;
+    if (!def) return { x: world.x, y: world.y, valid: false, issue: 'blocked' };
+    const { tx, ty, cx, cy } = this.tileAt(world, def.footprint);
+    const navOk = this.canPlace(tx, ty, def.footprint);
+    const valid = navOk;
+    const issue = !navOk ? 'blocked' : undefined;
+    return { x: cx, y: cy, valid, issue };
   }
 
   updateDeployGhost(world: Vec2): void {
-    const entityId = this.session.deployEntityId;
-    if (!entityId) return;
-    const unit = this.getState().entities.get(entityId);
-    const udef = unit ? this.registry.units.get(unit.defId) : null;
-    const def = udef?.deploysAs ? this.registry.buildings.get(udef.deploysAs) : null;
-    if (!def) return;
-    const tx = Math.floor((world.x - (def.footprint * TILE) / 2) / TILE);
-    const ty = Math.floor((world.y - (def.footprint * TILE) / 2) / TILE);
-    const cx = (tx + def.footprint / 2) * TILE;
-    const cy = (ty + def.footprint / 2) * TILE;
-    const navOk = this.canPlace(tx, ty, def.footprint);
-    const zoneOk = this.canBuildNear(tx, ty, def.footprint);
-    const valid = navOk && zoneOk;
-    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
-    this.session.buildGhost = { x: cx, y: cy, valid, issue };
+    if (!this.session.deployEntityId) return;
+    this.session.buildGhost = this.computeDeployGhost(world);
   }
 
   confirmDeploy(): void {
@@ -345,6 +434,10 @@ export class InputController {
   }
 
   startRally(buildingId: EntityId): void {
+    if (this.session.mode === 'rally' && this.session.rallyBuildingId === buildingId) {
+      this.setMode('normal');
+      return;
+    }
     const b = this.getState().entities.get(buildingId);
     if (!b || b.owner !== this.playerId || b.kind !== 'building') return;
     const bdef = this.registry.buildings.get(b.defId);
@@ -352,6 +445,19 @@ export class InputController {
     this.session.mode = 'rally';
     this.session.rallyBuildingId = buildingId;
     this.session.rallyCursor = { ...b.pos };
+  }
+
+  confirmRally(world: Vec2): void {
+    if (this.session.mode !== 'rally' || !this.session.rallyBuildingId) return;
+    this.emit({
+      type: 'setRally',
+      playerId: this.playerId,
+      buildingId: this.session.rallyBuildingId,
+      x: world.x,
+      y: world.y,
+    });
+    this.onOrderFeedback('rally', world);
+    this.setMode('normal');
   }
 
   updateRallyCursor(world: Vec2): void {
