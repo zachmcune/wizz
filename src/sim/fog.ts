@@ -1,4 +1,5 @@
-// Red Alert 2-style fog of war: shroud (unexplored), fog (explored but not seen), visible.
+// C&C Generals-style fog: the full map stays visible but grayed without line of sight.
+// Terrain, obstacles, and mana nodes always show; enemy units/buildings need sight.
 // Radar reveals the full map only while its building is powered.
 import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
@@ -22,9 +23,9 @@ export function radarActive(state: GameState, registry: Registry, playerId: Play
   return false;
 }
 
-/** Shrouded tiles are hidden until explored by sight or revealed by an online radar. */
-export function isShrouded(player: Player, tileIdx: number, radarOn: boolean): boolean {
-  return player.explored[tileIdx] === 0 && !radarOn;
+/** True when a tile is outside current sight and not revealed by radar. */
+export function isTileFogged(player: Player, tileIdx: number, radarOn: boolean): boolean {
+  return !radarOn && player.visible[tileIdx] === 0;
 }
 
 function visionPartners(state: GameState, viewerId: PlayerId): PlayerId[] {
@@ -118,11 +119,8 @@ export function isVisibleTo(
   const viewer = getPlayer(state, viewerId);
   if (!viewer) return false;
 
-  if (entity.kind === 'resource_node') {
-    const tx = Math.floor(entity.pos.x / TILE);
-    const ty = Math.floor(entity.pos.y / TILE);
-    return isTileExplored(viewer, tx, ty, nav);
-  }
+  // Static map features (mana nodes) are always visible through fog.
+  if (entity.kind === 'resource_node') return true;
 
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
 }

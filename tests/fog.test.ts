@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { TILE } from '../src/core/constants';
 import { getRegistry } from './helpers';
 import { initMatch, spawnEntity, recomputePower } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { isVisibleTo, radarActive } from '../src/sim/fog';
+import { isVisibleTo, radarActive, isTileFogged } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
 import { visibilitySystem } from '../src/sim/systems/visibility';
@@ -10,13 +11,28 @@ import { visibilitySystem } from '../src/sim/systems/visibility';
 const reg = getRegistry();
 
 describe('fog of war', () => {
-  it('starts with unexplored tiles outside starting vision', () => {
+  it('fogs tiles outside current sight but keeps the full map drawable', () => {
     const { state } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.controller === 'human')!;
     const explored = human.explored.filter((v) => v === 1).length;
+    const visible = human.visible.filter((v) => v === 1).length;
     const total = human.explored.length;
     expect(explored).toBeGreaterThan(0);
     expect(explored).toBeLessThan(total);
+    expect(visible).toBeGreaterThan(0);
+    expect(visible).toBeLessThan(total);
+    const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i, false));
+    expect(fogged).toBeGreaterThanOrEqual(0);
+  });
+
+  it('always shows mana nodes through fog', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.controller === 'human')!;
+    const farNode = [...state.entities.values()].find(
+      (e) => e.kind === 'resource_node' && human.explored[Math.floor(e.pos.y / TILE) * services.nav.w + Math.floor(e.pos.x / TILE)] === 0,
+    );
+    expect(farNode).toBeTruthy();
+    expect(isVisibleTo(state, human.id, farNode!, services.nav)).toBe(true);
   });
 
   it('powered radar is active when the grid has enough power', () => {
