@@ -85,6 +85,10 @@ export class InputController {
       this.updateGhost(world);
       return;
     }
+    if (this.session.mode === 'deploy') {
+      this.updateDeployGhost(world);
+      return;
+    }
     if (this.session.mode === 'attackMove') {
       const ids = this.ownCombatSelected();
       if (ids.length) {
@@ -223,6 +227,10 @@ export class InputController {
       this.session.buildDefId = null;
       this.session.buildGhost = null;
     }
+    if (mode !== 'deploy') {
+      this.session.deployEntityId = null;
+      if (mode !== 'build') this.session.buildGhost = null;
+    }
     if (mode !== 'spell') this.session.spellId = null;
   }
 
@@ -261,6 +269,54 @@ export class InputController {
     });
     this.onOrderFeedback('build', this.session.buildGhost);
     this.setMode('normal');
+  }
+
+  startDeploy(entityId: EntityId): void {
+    const unit = this.getState().entities.get(entityId);
+    if (!unit || unit.owner !== this.playerId || unit.kind !== 'unit') return;
+    const udef = this.registry.units.get(unit.defId);
+    if (!udef?.deploysAs) return;
+    this.session.mode = 'deploy';
+    this.session.deployEntityId = entityId;
+    this.updateDeployGhost(unit.pos);
+  }
+
+  updateDeployGhost(world: Vec2): void {
+    const entityId = this.session.deployEntityId;
+    if (!entityId) return;
+    const unit = this.getState().entities.get(entityId);
+    const udef = unit ? this.registry.units.get(unit.defId) : null;
+    const def = udef?.deploysAs ? this.registry.buildings.get(udef.deploysAs) : null;
+    if (!def) return;
+    const tx = Math.floor((world.x - (def.footprint * TILE) / 2) / TILE);
+    const ty = Math.floor((world.y - (def.footprint * TILE) / 2) / TILE);
+    const cx = (tx + def.footprint / 2) * TILE;
+    const cy = (ty + def.footprint / 2) * TILE;
+    const navOk = this.canPlace(tx, ty, def.footprint);
+    const zoneOk = this.canBuildNear(tx, ty, def.footprint);
+    const valid = navOk && zoneOk;
+    const issue = !navOk ? 'blocked' : !zoneOk ? 'range' : undefined;
+    this.session.buildGhost = { x: cx, y: cy, valid, issue };
+  }
+
+  confirmDeploy(): void {
+    if (this.session.mode !== 'deploy' || !this.session.deployEntityId || !this.session.buildGhost) return;
+    if (!this.session.buildGhost.valid) return;
+    this.emit({
+      type: 'deploy',
+      playerId: this.playerId,
+      entityId: this.session.deployEntityId,
+      x: this.session.buildGhost.x,
+      y: this.session.buildGhost.y,
+    });
+    this.onOrderFeedback('deploy', this.session.buildGhost);
+    this.setMode('normal');
+  }
+
+  pack(buildingId: EntityId): void {
+    this.emit({ type: 'pack', playerId: this.playerId, buildingId });
+    const b = this.getState().entities.get(buildingId);
+    if (b) this.onOrderFeedback('pack', b.pos);
   }
 
   produce(buildingId: EntityId, defId: string): void {
@@ -324,7 +380,7 @@ export class InputController {
 
   clearSelection(): void {
     this.setSelection([]);
-    if (this.session.mode === 'build' || this.session.mode === 'spell' || this.session.mode === 'attackMove') {
+    if (this.session.mode === 'build' || this.session.mode === 'spell' || this.session.mode === 'attackMove' || this.session.mode === 'deploy') {
       this.setMode('normal');
     }
     this.session.pendingConfirm = null;

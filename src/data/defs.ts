@@ -45,6 +45,8 @@ export interface UnitDef {
   requires: string[]; // building defIds required to unlock
   carry?: number; // Wisp harvest capacity
   isHarvester?: boolean;
+  deploysAs?: string; // building defId when deployed (mobile HQ)
+  deployTime?: number; // seconds to deploy
   art: ArtDef;
   sfx?: SfxDef;
 }
@@ -63,7 +65,10 @@ export interface BuildingDef {
   footprint: number; // tiles (square)
   requires: string[];
   producesUnits?: string[]; // unit defIds this building can produce
-  isConstructionYard?: boolean; // Sanctum
+  isConstructionYard?: boolean; // Sanctum / mobile camp
+  isMobileHQ?: boolean; // deployed Waystone Camp (packable)
+  packsInto?: string; // unit defId when packed
+  packTime?: number; // seconds to pack up
   isRefinery?: boolean; // Attunement Spire (drop-off)
   spawnsFreeWisp?: boolean;
   powerProduced?: number;

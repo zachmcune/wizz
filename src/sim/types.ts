@@ -79,6 +79,12 @@ export interface Entity {
   productionQueue?: ProductionItem[];
   rally?: Vec2;
 
+  // deploy / pack (mobile HQ)
+  morphProgress?: number; // 0..1 while deploying or packing
+  morphAction?: 'deploy' | 'pack';
+  morphTargetPos?: Vec2;
+  morphTargetDefId?: string;
+
   // projectile
   projTargetId?: EntityId;
   projDamage?: number;
@@ -99,6 +105,8 @@ export type Command =
   | { type: 'stop'; playerId: PlayerId; entityIds: EntityId[] }
   | { type: 'setStance'; playerId: PlayerId; entityIds: EntityId[]; stance: Stance }
   | { type: 'build'; playerId: PlayerId; defId: string; x: number; y: number }
+  | { type: 'deploy'; playerId: PlayerId; entityId: EntityId; x: number; y: number }
+  | { type: 'pack'; playerId: PlayerId; buildingId: EntityId }
   | { type: 'produce'; playerId: PlayerId; buildingId: EntityId; defId: string }
   | { type: 'cancelProduce'; playerId: PlayerId; buildingId: EntityId; index: number }
   | { type: 'setRally'; playerId: PlayerId; buildingId: EntityId; x: number; y: number }
@@ -109,6 +117,8 @@ export type GameEvent =
   | { type: 'entitySpawned'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'entityDied'; id: EntityId; defId: string; owner: PlayerId; x: number; y: number; killerId?: EntityId }
   | { type: 'buildingComplete'; id: EntityId; defId: string; owner: PlayerId }
+  | { type: 'mobileHQDeployed'; id: EntityId; defId: string; owner: PlayerId }
+  | { type: 'mobileHQPacked'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'buildingPlaced'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }

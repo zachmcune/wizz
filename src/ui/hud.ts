@@ -61,6 +61,8 @@ export class Hud {
   private buildConfirmLabel = el('span', 'confirm-label');
   private buildConfirmBtn = el('button', 'btn confirm', 'Place');
   private buildCancelBtn = el('button', 'btn', 'Cancel');
+  private deployBtn = el('button', 'btn', 'Deploy');
+  private packBtn = el('button', 'btn', 'Pack Up');
   private spellRow = el('div', 'spell-row');
   private spellConfirm = el('div', 'spell-confirm');
   private result = el('div', 'result-overlay');
@@ -129,7 +131,10 @@ export class Hud {
     this.minimapPanel.body.append(minimapWrap);
     this.minimapPanel.root.classList.add('minimap-panel');
 
-    this.buildConfirmBtn.addEventListener('click', () => this.controller.confirmBuild());
+    this.buildConfirmBtn.addEventListener('click', () => {
+      if (this.controller.session.mode === 'deploy') this.controller.confirmDeploy();
+      else this.controller.confirmBuild();
+    });
     this.buildCancelBtn.addEventListener('click', () => this.controller.setMode('normal'));
     this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
     this.buildConfirm.style.display = 'none';
@@ -188,7 +193,17 @@ export class Hud {
     stop.addEventListener('click', () => this.controller.stop());
     const am = el('button', 'btn', 'Attack-Move');
     am.addEventListener('click', () => this.controller.setMode('attackMove'));
-    this.stanceRow.append(deselect, stop, am);
+    this.deployBtn.style.display = 'none';
+    this.packBtn.style.display = 'none';
+    this.deployBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id !== undefined) this.controller.startDeploy(id);
+    });
+    this.packBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id !== undefined) this.controller.pack(id);
+    });
+    this.stanceRow.append(deselect, stop, am, this.deployBtn, this.packBtn);
   }
 
   private clearProduceRow(): void {
@@ -313,7 +328,7 @@ export class Hud {
 
   /** Open one primary panel when context changes so small screens stay usable. */
   private syncPanelLayout(
-    inBuildMode: boolean,
+    inPlaceMode: boolean,
     showBuildPanel: boolean,
     showTrainPanel: boolean,
     showUnitPanel: boolean,
@@ -322,7 +337,7 @@ export class Hud {
     multiSelect: boolean,
   ): void {
     const key = [
-      inBuildMode ? 'build' : 'play',
+      inPlaceMode ? 'place' : 'play',
       showBuildPanel ? 'yard' : '',
       showTrainPanel ? 'train' : '',
       showUnitPanel ? 'units' : '',
@@ -331,8 +346,8 @@ export class Hud {
     if (key === this.panelContext) return;
     this.panelContext = key;
 
-    if (inBuildMode) {
-      this.infoPanel.setTitle('Placing');
+    if (inPlaceMode) {
+      this.infoPanel.setTitle(selectionLabel.startsWith('Deploy') ? 'Deploying' : 'Placing');
       this.infoPanel.setOpen(true);
       this.buildPanel.setOpen(false);
       this.trainPanel.setOpen(false);
@@ -418,16 +433,41 @@ export class Hud {
       single?.owner === this.playerId && single.kind === 'building' ? this.registry.buildings.get(single.defId) : null;
 
     const inBuildMode = session.mode === 'build';
-    const showBuildPanel = !inBuildMode && !!ownBuilding?.isConstructionYard;
+    const inDeployMode = session.mode === 'deploy';
+    const inPlaceMode = inBuildMode || inDeployMode;
+    const showBuildPanel = !inPlaceMode && !!ownBuilding?.isConstructionYard;
     const showTrainPanel =
-      !inBuildMode && !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
-    const showUnitPanel = !inBuildMode && unitsSelected;
+      !inPlaceMode && !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
+    const showUnitPanel = !inPlaceMode && unitsSelected;
 
     this.setPanelVisible(this.buildPanel, showBuildPanel);
     this.setPanelVisible(this.trainPanel, showTrainPanel);
     this.setPanelVisible(this.unitPanel, showUnitPanel);
 
-    if (inBuildMode && session.buildDefId) {
+    const wagonReady =
+      single?.owner === this.playerId &&
+      single.defId === 'waystone_wagon' &&
+      single.morphProgress === undefined &&
+      single.state === 'idle' &&
+      single.orders.length === 0;
+    const campReady =
+      single?.owner === this.playerId &&
+      single.defId === 'waystone_camp' &&
+      single.morphProgress === undefined &&
+      !(single.productionQueue?.length);
+    this.deployBtn.style.display = wagonReady && !inPlaceMode ? '' : 'none';
+    this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';
+
+    if (inDeployMode && session.deployEntityId) {
+      const campDef = this.registry.buildings.get('waystone_camp')!;
+      this.selName.textContent = 'Deploy: Waystone Camp';
+      this.selDesc.textContent = campDef.description;
+      this.selMeta.textContent = 'Choose a spot in your build zone · tap Place to confirm';
+      this.trainPanel.setOpen(false);
+      this.buildPanel.setOpen(false);
+      this.clearProduceRow();
+      this.updateTrainQueue(null);
+    } else if (inBuildMode && session.buildDefId) {
       const placing = this.registry.buildings.get(session.buildDefId)!;
       this.selName.textContent = `Placing: ${placing.name}`;
       this.selDesc.textContent = placing.description;
@@ -445,6 +485,7 @@ export class Hud {
         if (ownBuilding.powerUsed) meta.push(`uses ${ownBuilding.powerUsed} power`);
         if (ownBuilding.powerProduced) meta.push(`+${ownBuilding.powerProduced} power`);
         if (!buildingHasPower(st, this.registry, single)) meta.unshift('⚡ OFFLINE — low power');
+        if (single.morphProgress !== undefined) meta.push(`Packing ${Math.round(single.morphProgress * 100)}%`);
         this.updateTrainQueue(single);
         if (showTrainPanel) {
           this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
@@ -456,7 +497,11 @@ export class Hud {
         this.selMeta.textContent = meta.join(' · ');
       } else if (def && 'role' in def) {
         this.selDesc.textContent = def.role;
-        this.selMeta.textContent = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
+        let meta = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
+        if (single.morphProgress !== undefined) {
+          meta += ` · ${single.morphAction === 'deploy' ? 'Deploying' : 'Packing'} ${Math.round(single.morphProgress * 100)}%`;
+        }
+        this.selMeta.textContent = meta;
         this.clearProduceRow();
         this.updateTrainQueue(null);
       } else {
@@ -482,7 +527,9 @@ export class Hud {
     }
 
     const selectionLabel =
-      inBuildMode && session.buildDefId
+      inDeployMode
+        ? 'Deploy camp'
+        : inBuildMode && session.buildDefId
         ? this.registry.buildings.get(session.buildDefId)!.name
         : single
           ? (this.registry.units.get(single.defId) ?? this.registry.buildings.get(single.defId))?.name ?? single.defId
@@ -490,7 +537,7 @@ export class Hud {
             ? `${sel.length} units`
             : 'none';
     this.syncPanelLayout(
-      inBuildMode,
+      inPlaceMode,
       showBuildPanel,
       showTrainPanel,
       showUnitPanel,
@@ -499,13 +546,17 @@ export class Hud {
       sel.length > 1,
     );
 
-    if (session.mode === 'build' && session.buildGhost && session.buildDefId) {
-      const def = this.registry.buildings.get(session.buildDefId)!;
-      const ok = session.buildGhost.valid;
+    if ((session.mode === 'build' && session.buildGhost && session.buildDefId) || (session.mode === 'deploy' && session.buildGhost)) {
+      const def =
+        session.mode === 'deploy'
+          ? this.registry.buildings.get('waystone_camp')!
+          : this.registry.buildings.get(session.buildDefId!)!;
+      const ok = session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
       const hint =
-        ok ? '· tap Place to confirm' : session.buildGhost.issue === 'range' ? '· too far from base' : '· blocked';
-      this.buildConfirmLabel.textContent = `${def.name} (${def.cost}) ${hint}`;
+        ok ? '· tap Place to confirm' : session.buildGhost!.issue === 'range' ? '· too far from base' : '· blocked';
+      const prefix = session.mode === 'deploy' ? 'Deploy' : def.name;
+      this.buildConfirmLabel.textContent = `${prefix} (${session.mode === 'deploy' ? 'free' : def.cost}) ${hint}`;
       this.buildConfirmBtn.disabled = !ok;
     } else {
       this.buildConfirm.style.display = 'none';

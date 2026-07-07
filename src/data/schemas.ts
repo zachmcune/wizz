@@ -49,6 +49,8 @@ export const unitSchema = z.object({
   requires: z.array(z.string()),
   carry: z.number().positive().optional(),
   isHarvester: z.boolean().optional(),
+  deploysAs: z.string().optional(),
+  deployTime: z.number().positive().optional(),
   art: artSchema,
   sfx: sfxSchema,
 });
@@ -68,6 +70,9 @@ export const buildingSchema = z.object({
   requires: z.array(z.string()),
   producesUnits: z.array(z.string()).optional(),
   isConstructionYard: z.boolean().optional(),
+  isMobileHQ: z.boolean().optional(),
+  packsInto: z.string().optional(),
+  packTime: z.number().positive().optional(),
   isRefinery: z.boolean().optional(),
   spawnsFreeWisp: z.boolean().optional(),
   powerProduced: z.number().nonnegative().optional(),

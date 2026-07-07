@@ -246,6 +246,10 @@ export class Renderer {
       if (e.buildProgress !== undefined) {
         this.fillRect(x - e.radius, y + e.radius + 3, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
       }
+      if (e.morphProgress !== undefined) {
+        const w = e.kind === 'building' ? e.radius * 2 : e.radius * 2;
+        this.fillRect(x - e.radius, y + e.radius + 6, w * e.morphProgress, 3, 0x8b6cff);
+      }
       // carry indicator for wisps
       if (e.carry !== undefined && e.carry > 0) {
         this.fillDot(x, y - e.radius - 4, 3, 0x7fe3ff);

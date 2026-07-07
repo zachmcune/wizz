@@ -22,6 +22,10 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'unit' || !isAlive(e)) continue;
+    if (e.morphProgress !== undefined) {
+      e.vel = { x: 0, y: 0 };
+      continue;
+    }
     const udef = ctx.services.registry.unit(e.defId);
     let speed = udef.speed;
     if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;

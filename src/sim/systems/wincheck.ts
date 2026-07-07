@@ -1,14 +1,14 @@
 // Match ends when only one team still has an HQ (Sanctum). Losing your HQ eliminates you.
 import type { StepContext } from '../context';
 import type { GameState } from '../types';
-import { hasSanctum } from '../queries';
+import { hasHQ } from '../queries';
 import { purgePlayer } from '../factory';
 
 export function winCheckSystem(state: GameState, ctx: StepContext): void {
   if (state.ended) return;
   for (const p of state.players) {
     if (p.defeated) continue;
-    if (hasSanctum(state, p.id)) continue;
+    if (hasHQ(state, p.id)) continue;
     p.defeated = true;
     ctx.events.push({ type: 'playerDefeated', playerId: p.id });
     purgePlayer(state, ctx.services, p.id);
