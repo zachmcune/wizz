@@ -44,12 +44,12 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
       const balance = ctx.services.registry.balance;
       const hpNeeded = e.maxHp - e.hp;
       const hpGain = Math.min(hpNeeded, balance.repairHpPerTick * rate);
-      const cost = Math.ceil(hpGain * balance.repairManaPerHp);
+      const cost = hpGain * balance.repairManaPerHp;
       if (cost > 0 && player.mana >= cost) {
         player.mana -= cost;
         e.hp = Math.min(e.maxHp, e.hp + hpGain);
         ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
-      } else if (player.mana < balance.repairManaPerHp) {
+      } else if (player.mana < balance.repairHpPerTick * balance.repairManaPerHp) {
         e.repairing = false;
       }
       if (e.hp >= e.maxHp) e.repairing = false;
