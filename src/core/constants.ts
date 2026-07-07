@@ -25,3 +25,6 @@ export const DOUBLE_TAP_MS = 300;
 /** Camera zoom clamps. */
 export const MIN_ZOOM = 0.4;
 export const MAX_ZOOM = 2.0;
+
+/** How far past the map edge the camera may scroll (fraction of viewport world size). */
+export const CAMERA_OVERSCROLL_RATIO = 0.45;
