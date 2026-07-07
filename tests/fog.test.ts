@@ -6,6 +6,7 @@ import { Simulation } from '../src/sim/simulation';
 import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
+import { visibilitySystem } from '../src/sim/systems/visibility';
 
 const reg = getRegistry();
 
