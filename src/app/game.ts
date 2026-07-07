@@ -22,8 +22,11 @@ import { canBuildNearBase, buildZoneCircles } from '../sim/build-zone';
 import { isWorldPointVisible } from '../sim/views';
 import { applyTransferState, packState } from '../sim/state-transfer';
 import { rebuildBuildingNav } from '../sim/building-nav';
-import { ReplayRecorder } from '../sim/replay';
+import { ReplayRecorder, serializeReplay, type Replay } from '../sim/replay';
 import { WorkerSimClient } from './worker-client';
+import { LockstepClient } from '../net/lockstep';
+import { CHECKSUM_INTERVAL_TICKS } from '../net/protocol';
+import { hashState } from '../sim/hash';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -45,6 +48,9 @@ export class Game {
   private sim: Simulation | null;
   private worker: WorkerSimClient | null = null;
   private useWorker: boolean;
+  private lockstep: LockstepClient | null = null;
+  private matchId: string;
+  private onDesync: ((tick: number, peers: string[], replay: Replay) => void) | null = null;
   private replay = new ReplayRecorder();
   private renderer: Renderer;
   private gesture!: GestureRecognizer;
@@ -76,9 +82,13 @@ export class Game {
     private audio: AudioManager,
     private settings: Settings,
     private onExit: () => void,
-    opts?: { useWorker?: boolean },
+    opts?: { useWorker?: boolean; lockstep?: LockstepClient; matchId?: string; onDesync?: (tick: number, peers: string[], replay: Replay) => void },
   ) {
-    this.useWorker = opts?.useWorker ?? workerSupported();
+    this.lockstep = opts?.lockstep ?? null;
+    this.matchId = opts?.matchId ?? 'skirmish_1v1';
+    this.onDesync = opts?.onDesync ?? null;
+    const wantWorker = opts?.useWorker ?? workerSupported();
+    this.useWorker = wantWorker && !this.lockstep && workerSupported();
     if (this.useWorker && workerSupported()) {
       this.worker = new WorkerSimClient();
       this.sim = null;
@@ -172,6 +182,10 @@ export class Game {
   private enqueueCommands(cmds: Command[]): void {
     if (!cmds.length) return;
     this.replay.record(this.state.tick, cmds);
+    if (this.lockstep) {
+      this.lockstep.submitLocal(this.state.tick, cmds);
+      return;
+    }
     if (this.worker) this.worker.send(cmds);
     else this.sim?.enqueueNow(cmds);
   }
@@ -265,6 +279,21 @@ export class Game {
   private step(): void {
     if (this.state.ended) return;
 
+    if (this.lockstep) {
+      const tick = this.state.tick;
+      if (!this.lockstep.isTickReady(tick)) return;
+      const cmds = this.lockstep.commandsForTick(tick) ?? [];
+      this.sim!.enqueue(tick, cmds);
+      const res = this.sim!.step();
+      for (const ev of res.events) this.handleEvent(ev);
+      this.renderer.syncTick(this.state);
+      this.tickCounter++;
+      if (this.tickCounter % CHECKSUM_INTERVAL_TICKS === 0) this.reportChecksum(tick);
+      if (this.tickCounter % 200 === 0) void saveGame(this.state);
+      this.lockstep.pruneBefore(Math.max(0, tick - 120));
+      return;
+    }
+
     if (this.worker) {
       this.worker.requestStep();
       return;
@@ -275,6 +304,17 @@ export class Game {
     this.renderer.syncTick(this.state);
     this.tickCounter++;
     if (this.tickCounter % 200 === 0) void saveGame(this.state);
+  }
+
+  private reportChecksum(tick: number): void {
+    if (!this.lockstep) return;
+    const ownHash = hashState(this.state);
+    const bad = this.lockstep.detectDesync(tick, ownHash);
+    if (bad.length) {
+      const replay = this.replay.toReplay(this.matchId);
+      this.onDesync?.(tick, bad, replay);
+      console.error('[lockstep] desync at tick', tick, 'peers:', bad, 'replay:', serializeReplay(replay));
+    }
   }
 
   private handleEvent(ev: GameEvent): void {

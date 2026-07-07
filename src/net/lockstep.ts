@@ -1,8 +1,5 @@
-// V2 lockstep client scaffolding. Deterministic lockstep only sends per-tick command lists;
-// every client runs the identical sim. This file defines the seams; it is NOT used in V1.
-//
-// Do NOT start wiring multiplayer before V1 ships and the sim is proven deterministic
-// (see tests/determinism.test.ts and docs/DETERMINISM.md).
+// Lockstep client: buffers local commands with input delay and surfaces confirmed per-tick lists.
+// Every peer runs the identical sim; transport merges all players' commands per tick.
 import type { Command } from '../sim/types';
 import { INPUT_DELAY_TICKS } from './protocol';
 
@@ -15,7 +12,7 @@ export interface Transport {
 
 /**
  * Buffers local commands with input delay and surfaces confirmed per-tick command lists.
- * A future integration point for Simulation.enqueue(tick, cmds).
+ * Integrates with Simulation.enqueue(tick, cmds) once the relay confirms a tick.
  */
 export class LockstepClient {
   private confirmed = new Map<number, Command[]>();
@@ -34,11 +31,26 @@ export class LockstepClient {
   }
 
   submitLocal(currentTick: number, cmds: Command[]): void {
+    if (!cmds.length) return;
     this.transport.send(currentTick + INPUT_DELAY_TICKS, cmds);
+  }
+
+  isTickReady(tick: number): boolean {
+    return this.confirmed.has(tick);
   }
 
   commandsForTick(tick: number): Command[] | undefined {
     return this.confirmed.get(tick);
+  }
+
+  /** Drop confirmed ticks and peer checksums older than `before` to bound memory. */
+  pruneBefore(before: number): void {
+    for (const tick of [...this.confirmed.keys()]) {
+      if (tick < before) this.confirmed.delete(tick);
+    }
+    for (const tick of [...this.peerHashes.keys()]) {
+      if (tick < before) this.peerHashes.delete(tick);
+    }
   }
 
   /** Compare our checksum against peers; returns the set of desynced players (if known). */
