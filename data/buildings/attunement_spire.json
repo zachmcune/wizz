@@ -11,10 +11,20 @@
   "sight": 150,
   "footprint": 2,
   "menuCategory": "buildings",
-  "requires": ["sanctum"],
+  "requires": [
+    "sanctum"
+  ],
   "isRefinery": true,
   "spawnsFreeWisp": true,
-  "producesUnits": ["wisp", "mana_weaver"],
+  "producesUnits": [
+    "wisp",
+    "mana_weaver"
+  ],
   "powerUsed": 10,
-  "art": { "shape": "building", "size": 60, "accent": "#4fb6c9" }
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#4fb6c9",
+    "sprite": "attunement_spire"
+  }
 }

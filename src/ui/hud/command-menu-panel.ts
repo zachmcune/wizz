@@ -1,5 +1,5 @@
 import type { Registry } from '../../data/registry';
-import type { BuildingDef, MenuCategory, UnitDef } from '../../data/defs';
+import type { ArtDef, BuildingDef, MenuCategory, UnitDef } from '../../data/defs';
 import type { BuildingEntity } from '../../sim/entity-types';
 import type { GameState, Player, PlayerId } from '../../sim/types';
 import type { InputController } from '../../input/controller';
@@ -48,6 +48,7 @@ export class CommandMenuPanel {
   constructor(
     private registry: Registry,
     private controller: InputController,
+    private iconFor: (art: ArtDef, color: string) => HTMLCanvasElement,
     startOpen: boolean,
     onHeadClick?: () => void,
   ) {
@@ -173,8 +174,8 @@ export class CommandMenuPanel {
       const udef = registry.units.get(item.defId);
       if (!udef) continue;
       const row = el('div', 'train-queue-item');
-      const icon = el('span', `queue-icon shape-${udef.art.shape}`);
-      icon.style.backgroundColor = udef.art.accent;
+      const icon = el('span', 'queue-icon');
+      icon.appendChild(this.iconFor(udef.art, this.lastPlayer?.color ?? '#4f9dff'));
       const meta = el('div', 'queue-meta');
       meta.append(el('span', 'queue-name', udef.name));
       const bar = el('div', 'queue-bar');
@@ -269,6 +270,12 @@ export class CommandMenuPanel {
     }
   }
 
+  private makeIcon(art: ArtDef): HTMLElement {
+    const wrap = el('span', 'btn-icon');
+    wrap.appendChild(this.iconFor(art, this.lastPlayer?.color ?? '#4f9dff'));
+    return wrap;
+  }
+
   private makeBuildButton(def: BuildingDef): HTMLElement {
     const btn = el('button', 'btn build-btn');
     btn.dataset.def = def.id;
@@ -279,7 +286,7 @@ export class CommandMenuPanel {
     if (def.powerUsed) costParts.push(`${def.powerUsed} pwr`);
     if (def.powerProduced) costParts.push(`+${def.powerProduced} pwr`);
     wrap.append(el('span', 'btn-sub', costParts.join(' · ')));
-    btn.append(wrap);
+    btn.append(this.makeIcon(def.art), wrap);
     btn.addEventListener('click', () => this.controller.startBuild(def.id));
     return btn;
   }
@@ -289,7 +296,7 @@ export class CommandMenuPanel {
     btn.dataset.unit = udef.id;
     const wrap = el('div', 'btn-stack');
     wrap.append(el('span', 'btn-title', udef.name), el('span', 'btn-sub', udef.role));
-    btn.append(wrap);
+    btn.append(this.makeIcon(udef.art), wrap);
     btn.addEventListener('click', () => this.queueUnit(udef.id));
     return btn;
   }

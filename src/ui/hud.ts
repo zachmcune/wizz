@@ -3,7 +3,7 @@ import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
 import { isAlive } from '../sim/queries';
 import type { Registry } from '../data/registry';
-import type { BuildingDef } from '../data/defs';
+import type { ArtDef, BuildingDef } from '../data/defs';
 import { isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
 import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
@@ -80,6 +80,7 @@ export class Hud {
     private controller: InputController,
     private playerId: PlayerId,
     minimap: Minimap,
+    iconFor: (art: ArtDef, color: string) => HTMLCanvasElement,
   ) {
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     const top = el('div', 'topbar');
@@ -99,7 +100,7 @@ export class Hud {
     top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
-    this.commandMenu = new CommandMenuPanel(registry, controller, false, () => this.setHudTab('command'));
+    this.commandMenu = new CommandMenuPanel(registry, controller, iconFor, false, () => this.setHudTab('command'));
     this.buildingActions = new BuildingActionsPanel(state, registry, controller);
     selBlock.append(
       this.selName,

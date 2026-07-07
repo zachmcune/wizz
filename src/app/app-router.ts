@@ -5,6 +5,7 @@ import { serializeReplay } from '../sim/replay';
 import { generateRoomCode, joinMultiplayerRoom } from '../net/multiplayer';
 import { clearSave, loadGame, hasSave } from '../storage/save';
 import { Game } from './game';
+import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -29,6 +30,10 @@ export class AppRouter {
   constructor(private deps: AppRouterDeps) {}
 
   async start(): Promise<void> {
+    if (shouldOpenArtGallery()) {
+      await this.showArtGallery();
+      return;
+    }
     await this.showMenu();
   }
 
@@ -204,6 +209,16 @@ export class AppRouter {
     this.deps.host.appendChild(form.root);
   }
 
+  async showArtGallery(): Promise<void> {
+    this.clearHost();
+    const gallery = new ArtGallery(this.deps.registry, () => {
+      gallery.destroy();
+      void this.showMenu();
+    });
+    this.deps.host.appendChild(gallery.root);
+    await gallery.init();
+  }
+
   async showMenu(): Promise<void> {
     this.clearHost();
     const saved = await hasSave();
@@ -241,6 +256,10 @@ export class AppRouter {
             void this.game.start();
           }
         : null,
+      onDevGallery: () => {
+        menu.destroy();
+        void this.showArtGallery();
+      },
     });
     this.deps.host.appendChild(menu.root);
   }
