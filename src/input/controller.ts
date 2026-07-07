@@ -4,10 +4,11 @@ import { TILE } from '../core/constants';
 import { screenToWorld } from '../core/coords';
 import type { Vec2 } from '../core/coords';
 import type { Camera } from '../render/camera';
-import type { Renderer } from '../render/renderer';
 import type { Registry } from '../data/registry';
+import type { NavGrid } from '../sim/nav-grid';
 import type { GameState, Command, EntityId, Entity, Stance } from '../sim/types';
 import { isEnemy, isAlive } from '../sim/queries';
+import { pickEntity, pickResourceNode } from '../sim/picking';
 import { createSession, type SessionState, type InputMode } from './session';
 
 export class InputController {
@@ -17,8 +18,8 @@ export class InputController {
   constructor(
     private getState: () => GameState,
     private camera: Camera,
-    private renderer: Renderer,
     private registry: Registry,
+    private nav: NavGrid,
     private playerId: string,
     private emit: (cmd: Command) => void,
     private onOrderFeedback: (kind: string, world: Vec2) => void,
@@ -113,8 +114,8 @@ export class InputController {
     }
 
     const st = this.getState();
-    const node = this.renderer.pickResourceNode(st, world.x, world.y);
-    const picked = node ?? this.renderer.pickEntity(st, world.x, world.y);
+    const node = pickResourceNode(st, this.playerId, world.x, world.y, this.nav);
+    const picked = node ?? pickEntity(st, this.playerId, world.x, world.y, this.nav);
     const combatUnits = this.ownCombatSelected();
     const wisps = this.ownWispsSelected();
     const harvesters = wisps.length ? wisps : this.allOwnWisps();
@@ -178,7 +179,7 @@ export class InputController {
   doubleTap(screen: Vec2): void {
     const world = this.toWorld(screen);
     const st = this.getState();
-    const picked = this.renderer.pickEntity(st, world.x, world.y);
+    const picked = pickEntity(st, this.playerId, world.x, world.y, this.nav);
     if (!picked || picked.owner !== this.playerId || picked.kind !== 'unit') {
       this.tap(screen);
       return;

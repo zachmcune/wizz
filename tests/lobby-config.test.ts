@@ -3,7 +3,7 @@ import { getRegistry } from './helpers';
 import { buildMatchConfig, validateLobby, defaultLobbyState, defaultOnlineLobbyState } from '../src/lobby/build-config';
 import { getLobbyTemplates } from '../src/lobby/templates';
 import { teamLabelToId, teamIdToLabel } from '../src/lobby/teams';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import { hashState } from '../src/sim/hash';
 
 const reg = getRegistry();

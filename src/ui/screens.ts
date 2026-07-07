@@ -1,10 +1,5 @@
 // Out-of-match screens (main menu). Plain DOM. Chooses a match config and starts the game.
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
+import { el } from './dom';
 
 export interface MenuOptions {
   onCustomGame: () => void;

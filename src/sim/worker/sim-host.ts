@@ -1,6 +1,7 @@
 // Hosts a Simulation and exposes it via the message protocol. Pure logic (no Worker/DOM
 // globals) so it is unit-testable in Node and reuses the exact same deterministic sim.
 import type { Registry } from '../../data/registry';
+import type { AiHook } from '../step';
 import type { Command, GameState, GameEvent } from '../types';
 import { initMatch } from '../factory';
 import { Simulation } from '../simulation';
@@ -12,12 +13,15 @@ import { rebuildBuildingNav } from '../building-nav';
 export class SimHost {
   private sim: Simulation | null = null;
 
-  constructor(private registry: Registry) {}
+  constructor(
+    private registry: Registry,
+    private defaultAiHook?: AiHook,
+  ) {}
 
   initMatch(matchId: string): TransferState {
     const config = this.registry.match(matchId);
     const { state, services } = initMatch(this.registry, config);
-    this.sim = new Simulation(state, services);
+    this.sim = new Simulation(state, services, this.defaultAiHook);
     return packState(state);
   }
 
@@ -27,7 +31,7 @@ export class SimHost {
     const nav = new NavGrid(map);
     const services = createServices(this.registry, nav);
     rebuildBuildingNav(state, services, this.registry);
-    this.sim = new Simulation(state, services);
+    this.sim = new Simulation(state, services, this.defaultAiHook);
     return packState(state);
   }
 
@@ -36,7 +40,7 @@ export class SimHost {
   }
 
   setAi(enabled: boolean): void {
-    if (this.sim) this.sim.aiEnabled = enabled;
+    this.sim?.setAiEnabled(enabled);
   }
 
   /** Advance one tick; returns packed state + events for that tick. */

@@ -1,9 +1,9 @@
-// Headless simulation harness: run the sim with no renderer. The primary safety net.
-// Used by determinism/replay/balance tests and (later) multiplayer verification.
+// Headless simulation harness for tests and verification. Lives outside src/sim so it can
+// inject AI without violating the sim purity boundary.
 import type { Registry } from '../data/registry';
-import type { MatchConfig, Command, GameState } from './types';
-import { initMatch } from './factory';
-import { Simulation } from './simulation';
+import { createSimulation } from '../app/create-simulation';
+import type { MatchConfig, Command, GameState } from '../sim/types';
+import { initMatch } from '../sim/factory';
 
 export interface HeadlessOptions {
   scriptedCommands?: Record<number, Command[]>;
@@ -17,8 +17,7 @@ export function runHeadless(
   opts: HeadlessOptions = {},
 ): GameState {
   const { state, services } = initMatch(registry, config);
-  const sim = new Simulation(state, services);
-  sim.aiEnabled = opts.aiEnabled ?? true;
+  const sim = createSimulation(state, services, { aiEnabled: opts.aiEnabled });
   if (opts.scriptedCommands) {
     for (const [t, cmds] of Object.entries(opts.scriptedCommands)) sim.enqueue(Number(t), cmds);
   }

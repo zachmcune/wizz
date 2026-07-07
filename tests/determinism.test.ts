@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import { hashState } from '../src/sim/hash';
 import type { MatchConfig, Command } from '../src/sim/types';
 

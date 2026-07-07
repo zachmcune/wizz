@@ -182,6 +182,8 @@ export interface MatchPlayerConfig {
 }
 
 export interface MatchConfig {
+  /** Stable lookup key in data/match/*.json; optional for runtime-built configs. */
+  id?: string;
   mapId: string;
   seed: number;
   players: MatchPlayerConfig[];

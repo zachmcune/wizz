@@ -1,14 +1,5 @@
 // Online multiplayer lobby: waiting room before the relay starts the match.
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls?: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
+import { el } from './dom';
 
 export interface OnlineLobbyOptions {
   room: string;

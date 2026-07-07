@@ -10,7 +10,7 @@ describe('economy & production (data-driven)', () => {
   it('build -> complete -> free wisp; costs come from data', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const p = state.players.find((pl) => pl.id === 'player0')!;
     const startMana = p.mana;
@@ -37,7 +37,7 @@ describe('economy & production (data-driven)', () => {
   it('wisps harvest mana and deposit it back, raising the balance', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
     // build + finish a spire so wisps have a dropoff
@@ -58,7 +58,7 @@ describe('economy & production (data-driven)', () => {
   it('mana nodes deplete as wisps harvest', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const nodes = [...state.entities.values()].filter((e) => e.kind === 'resource_node');
     const node = nodes.find((n) => (n.amountMax ?? n.amount) === reg.balance.manaNodeCapacity) ?? nodes[0]!;
     const start = node.amount ?? 0;
@@ -72,7 +72,7 @@ describe('economy & production (data-driven)', () => {
   it('low power slows training but production buildings keep working', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);

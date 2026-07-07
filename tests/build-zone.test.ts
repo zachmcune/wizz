@@ -22,7 +22,7 @@ describe('build zone (RA2-style)', () => {
   it('completed structures extend the build zone outward', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 400, y: 240 }]);
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
@@ -34,7 +34,7 @@ describe('build zone (RA2-style)', () => {
   it('sim rejects build commands outside the base build zone', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const before = state.entities.size;
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 1200, y: 900 }]);
     sim.step();

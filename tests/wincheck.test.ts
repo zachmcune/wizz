@@ -10,7 +10,7 @@ describe('win conditions', () => {
   it('destroying the enemy HQ ends the match even if they had other buildings', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     sim.enqueueNow([{ type: 'build', playerId: 'player1', defId: 'attunement_spire', x: 1648, y: 1168 }]);
     sim.step();

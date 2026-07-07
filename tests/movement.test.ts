@@ -11,7 +11,7 @@ describe('movement & pathfinding', () => {
   it('unit paths around a building obstacle to reach its target', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const start = { x: 400, y: 800 };
     const target = { x: 1400, y: 800 };
@@ -34,7 +34,7 @@ describe('movement & pathfinding', () => {
   it('60+ units move to a point as a coherent group without overlapping', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const ids: number[] = [];
     let x = 500;

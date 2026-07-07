@@ -10,7 +10,7 @@ describe('building actions', () => {
   it('sells a structure for half its cost', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
     circle.buildProgress = undefined;
@@ -26,7 +26,7 @@ describe('building actions', () => {
   it('repairs a damaged building while spending mana', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
     circle.buildProgress = undefined;
@@ -44,7 +44,7 @@ describe('building actions', () => {
   it('sets a rally point for producer buildings', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const human = state.players.find((p) => p.controller === 'human')!;
     const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctumX(state, human.id) + 96, sanctumY(state, human.id));
     circle.buildProgress = undefined;

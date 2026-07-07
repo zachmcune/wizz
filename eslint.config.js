@@ -56,7 +56,7 @@ export default [
             { name: 'idb-keyval', message: 'The sim core must not import storage code.' },
           ],
           patterns: [
-            { group: ['../render/*', '../ui/*', '../audio/*', '../input/*', '../storage/*'], message: 'The sim core must not import render/ui/audio/input/storage layers.' },
+            { group: ['../render/*', '../ui/*', '../audio/*', '../input/*', '../storage/*', '../ai/*'], message: 'The sim core must not import render/ui/audio/input/storage/ai layers.' },
           ],
         },
       ],

@@ -32,7 +32,7 @@ describe('pathing', () => {
   it('unit reaches target by detouring around obstacle', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const start = { x: 400, y: 800 };
     const target = { x: 1400, y: 800 };
@@ -54,7 +54,7 @@ describe('pathing', () => {
   it('group detours around a wall without getting stuck on corners', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const start = { x: 400, y: 800 };
     const target = { x: 1400, y: 800 };
@@ -89,7 +89,7 @@ describe('pathing', () => {
     expect(nav.isBlockedFor('player1', gateTx, gateTy, state.relations)).toBe(true);
 
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     const ally = spawnEntity(state, services, null, 'imp_swarmling', 'player0', gateX - TILE * 3, gateY);
     sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [ally.id], x: gateX + TILE * 3, y: gateY }]);
     for (let i = 0; i < 400; i++) sim.step();

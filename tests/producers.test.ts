@@ -18,7 +18,7 @@ describe('producer helpers', () => {
   it('lists a completed summoning circle as an imp producer', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 420, y: 260 }]);
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 10; i++) sim.step();

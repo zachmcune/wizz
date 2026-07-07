@@ -55,10 +55,9 @@ export function loadRegistry(): Registry {
       reg.factions.set(d.id, d);
     } else if (path.includes('/match/')) {
       const d = validate(matchConfigSchema, raw, path) as MatchConfig;
-      reg.matches.set(d.mapId + ':' + d.players.length, d);
-      // also register by filename stem for direct lookup
-      const stem = path.split('/').pop()!.replace('.json', '');
-      reg.matches.set(stem, d);
+      reg.matches.set(d.id!, d);
+      // Legacy alias: mapId + player count (avoid for new configs).
+      reg.matches.set(`${d.mapId}:${d.players.length}`, d);
     }
   }
   return reg;

@@ -1,6 +1,7 @@
 // Simulation Web Worker entry. Runs the deterministic sim off the main thread.
 // Main thread drives ticks via { type: 'step' } for lockstep with the render loop.
 import { loadRegistry } from '../data/loader';
+import { aiStep } from '../ai/controller';
 import { SimHost } from '../sim/worker/sim-host';
 import type { ToWorker, FromWorker } from '../sim/worker/messages';
 
@@ -10,7 +11,7 @@ const ctx = self as unknown as {
 };
 
 const registry = loadRegistry();
-const host = new SimHost(registry);
+const host = new SimHost(registry, aiStep);
 
 ctx.onmessage = (ev) => {
   const msg = ev.data;

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import { hashState } from '../src/sim/hash';
-import { replayFromScripted, replayHash, runReplay } from '../src/sim/replay';
+import { replayFromScripted } from '../src/sim/replay';
+import { replayHash, runReplay } from '../src/testing/replay-runner';
 
 const reg = getRegistry();
 

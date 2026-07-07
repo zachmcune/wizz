@@ -11,7 +11,7 @@ describe('mobile HQ (Waystone Wagon)', () => {
   it('deploys into a Waystone Camp that counts as HQ', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const sanctum = [...state.entities.values()].find((e) => e.owner === 'player0' && e.defId === 'sanctum')!;
     const wagon = spawnEntity(state, services, null, 'waystone_wagon', 'player0', sanctum.pos.x + TILE * 6, sanctum.pos.y);
@@ -30,7 +30,7 @@ describe('mobile HQ (Waystone Wagon)', () => {
   it('deploys far from build zone without range restriction', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const sanctum = [...state.entities.values()].find((e) => e.owner === 'player0' && e.defId === 'sanctum')!;
     const wagon = spawnEntity(state, services, null, 'waystone_wagon', 'player0', sanctum.pos.x + TILE * 20, sanctum.pos.y + TILE * 20);
@@ -47,7 +47,7 @@ describe('mobile HQ (Waystone Wagon)', () => {
   it('packs back into a Waystone Wagon', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
-    sim.aiEnabled = false;
+    sim.setAiEnabled(false);
 
     const sanctum = [...state.entities.values()].find((e) => e.owner === 'player0' && e.defId === 'sanctum')!;
     const wagon = spawnEntity(state, services, null, 'waystone_wagon', 'player0', sanctum.pos.x + TILE * 6, sanctum.pos.y);

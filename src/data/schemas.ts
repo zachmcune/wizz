@@ -154,6 +154,7 @@ export const balanceSchema = z.object({
 });
 
 export const matchConfigSchema = z.object({
+  id: z.string(),
   mapId: z.string(),
   seed: z.number().int(),
   players: z.array(

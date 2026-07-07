@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
 import { runLockstepPeers } from '../src/net/lockstep-runner';
 import { hashState } from '../src/sim/hash';
-import { runHeadless } from '../src/sim/headless';
+import { runHeadless } from '../src/testing/headless';
 import type { Command } from '../src/sim/types';
 import { INPUT_DELAY_TICKS } from '../src/net/protocol';
 import { buildMatchConfig, defaultOnlineLobbyState } from '../src/lobby/build-config';
