@@ -105,6 +105,27 @@ export class InputController {
     const combatUnits = this.ownCombatSelected();
     const wisps = this.ownWispsSelected();
     const harvesters = wisps.length ? wisps : this.allOwnWisps();
+    const movable = this.selectionEntities()
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit')
+      .map((e) => e.id);
+
+    // Combat selection: attack enemies, re-select friendly units, otherwise move.
+    if (combatUnits.length > 0) {
+      if (picked && isEnemy(st, this.playerId, picked.owner)) {
+        this.emit({ type: 'attack', playerId: this.playerId, entityIds: combatUnits, targetId: picked.id });
+        this.onOrderFeedback('attack', picked.pos);
+        return;
+      }
+      if (picked && picked.owner === this.playerId && picked.kind === 'unit') {
+        this.setSelection([picked.id]);
+        return;
+      }
+      if (movable.length) {
+        this.emit({ type: 'move', playerId: this.playerId, entityIds: movable, x: world.x, y: world.y });
+        this.onOrderFeedback('move', world);
+        return;
+      }
+    }
 
     if (node && harvesters.length) {
       this.issueHarvest(node, harvesters);
@@ -114,11 +135,6 @@ export class InputController {
     if (picked) {
       if (picked.owner === this.playerId && this.session.selection.has(picked.id)) {
         this.setSelection([...this.session.selection].filter((id) => id !== picked.id));
-        return;
-      }
-      if (isEnemy(st, this.playerId, picked.owner) && combatUnits.length) {
-        this.emit({ type: 'attack', playerId: this.playerId, entityIds: combatUnits, targetId: picked.id });
-        this.onOrderFeedback('attack', picked.pos);
         return;
       }
       if (picked.kind === 'resource_node' && harvesters.length) {
@@ -134,9 +150,6 @@ export class InputController {
     }
 
     // empty ground
-    const movable = this.selectionEntities()
-      .filter((e) => e.owner === this.playerId && e.kind === 'unit')
-      .map((e) => e.id);
     if (movable.length) {
       this.emit({ type: 'move', playerId: this.playerId, entityIds: movable, x: world.x, y: world.y });
       this.onOrderFeedback('move', world);

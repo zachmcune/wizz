@@ -53,6 +53,7 @@ export class Hud {
   private selName = el('div', 'sel-name');
   private selDesc = el('div', 'sel-desc');
   private selMeta = el('div', 'sel-meta');
+  private trainQueueEl = el('div', 'train-queue');
   private buildRow = el('div', 'card-row build-row');
   private produceRow = el('div', 'card-row produce-row');
   private stanceRow = el('div', 'card-row stance-row');
@@ -99,7 +100,7 @@ export class Hud {
     top.append(mana, this.powerStat, this.spellRow, dbgBtn, menuBtn);
 
     const selBlock = el('div', 'sel-block');
-    selBlock.append(this.selName, this.selDesc, this.selMeta);
+    selBlock.append(this.selName, this.selDesc, this.selMeta, this.trainQueueEl);
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     this.infoPanel = new Collapsible('Selection', !compact);
     this.infoPanel.body.append(selBlock);
@@ -194,6 +195,48 @@ export class Hud {
     if (this.produceBuildingId === null) return;
     this.produceRow.innerHTML = '';
     this.produceBuildingId = null;
+  }
+
+  private shapeClass(shape: string): string {
+    return `shape-${shape}`;
+  }
+
+  private updateTrainQueue(building: Entity | null): void {
+    this.trainQueueEl.innerHTML = '';
+    const queue = building?.productionQueue;
+    if (!building || !queue?.length) {
+      this.trainQueueEl.style.display = 'none';
+      return;
+    }
+    this.trainQueueEl.style.display = 'flex';
+    const heading = el('div', 'train-queue-label', 'Training');
+    this.trainQueueEl.appendChild(heading);
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i]!;
+      const udef = this.registry.units.get(item.defId);
+      if (!udef) continue;
+      const row = el('div', 'train-queue-item');
+      row.dataset.index = String(i);
+      const icon = el('span', `queue-icon ${this.shapeClass(udef.art.shape)}`);
+      icon.style.backgroundColor = udef.art.accent;
+      const meta = el('div', 'queue-meta');
+      meta.append(el('span', 'queue-name', udef.name));
+      const bar = el('div', 'queue-bar');
+      const fill = el('div', 'queue-fill');
+      const pct = Math.min(100, Math.round((item.progress / Math.max(1, item.required)) * 100));
+      fill.style.width = `${pct}%`;
+      bar.appendChild(fill);
+      meta.append(bar);
+      row.append(icon, meta);
+      const cancel = el('button', 'queue-cancel', '×');
+      cancel.title = 'Cancel';
+      cancel.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this.controller.cancelProduce(building.id, i);
+      });
+      row.appendChild(cancel);
+      this.trainQueueEl.appendChild(row);
+    }
   }
 
   private rebuildProduceRow(building: Entity): void {
@@ -388,10 +431,11 @@ export class Hud {
       const placing = this.registry.buildings.get(session.buildDefId)!;
       this.selName.textContent = `Placing: ${placing.name}`;
       this.selDesc.textContent = placing.description;
-      this.selMeta.textContent = `${placing.cost} mana · release finger or tap Place`;
+      this.selMeta.textContent = `${placing.cost} mana · tap Place to confirm`;
       this.trainPanel.setOpen(false);
       this.buildPanel.setOpen(false);
       this.clearProduceRow();
+      this.updateTrainQueue(null);
     } else if (single) {
       const def = this.registry.units.get(single.defId) ?? this.registry.buildings.get(single.defId);
       this.selName.textContent = def?.name ?? single.defId;
@@ -401,8 +445,7 @@ export class Hud {
         if (ownBuilding.powerUsed) meta.push(`uses ${ownBuilding.powerUsed} power`);
         if (ownBuilding.powerProduced) meta.push(`+${ownBuilding.powerProduced} power`);
         if (!buildingHasPower(st, this.registry, single)) meta.unshift('⚡ OFFLINE — low power');
-        if (single.productionQueue?.length) meta.push(`queue ${single.productionQueue.length}`);
-        this.selMeta.textContent = meta.join(' · ');
+        this.updateTrainQueue(single);
         if (showTrainPanel) {
           this.trainPanel.setTitle(`Train — ${ownBuilding.name}`);
           if (this.produceBuildingId !== single.id) this.rebuildProduceRow(single);
@@ -410,27 +453,32 @@ export class Hud {
         } else {
           this.clearProduceRow();
         }
+        this.selMeta.textContent = meta.join(' · ');
       } else if (def && 'role' in def) {
         this.selDesc.textContent = def.role;
         this.selMeta.textContent = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
         this.clearProduceRow();
+        this.updateTrainQueue(null);
       } else {
         this.selDesc.textContent = '';
         this.selMeta.textContent = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
         this.clearProduceRow();
+        this.updateTrainQueue(null);
       }
     } else if (sel.length > 1) {
       this.selName.textContent = `${sel.length} units selected`;
       this.selDesc.textContent = 'Tap map to move. Use orders below.';
       this.selMeta.textContent = '';
       this.clearProduceRow();
+      this.updateTrainQueue(null);
     } else {
       this.selName.textContent = 'Nothing selected';
       this.selDesc.textContent = 'Tap your HQ (purple) to build. Tap colored buildings to train or view info.';
       this.selMeta.textContent = short
         ? `Low power (−${deficit}) — build Ley Conduit or destroy structures`
-        : 'Labels on map match building colors.';
+        : 'Drag to select · two fingers to pan the map.';
       this.clearProduceRow();
+      this.updateTrainQueue(null);
     }
 
     const selectionLabel =
