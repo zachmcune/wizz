@@ -58,7 +58,7 @@ export class EffectsLayer {
       } else if (e.kind === 'puff') {
         g.circle(e.x, e.y, e.radius * (0.5 + t * 1.2)).stroke({ width: 2, color: e.color, alpha });
       } else if (e.kind === 'ring') {
-        g.moveTo(e.x + e.radius * (0.3 + t), e.y).arc(e.x, e.y, e.radius * (0.3 + t), 0, Math.PI * 2).stroke({ width: 3, color: e.color, alpha });
+        g.circle(e.x, e.y, e.radius * (0.3 + t)).stroke({ width: 3, color: e.color, alpha });
       } else {
         g.circle(e.x, e.y - t * 20, e.radius * (1 - t)).fill({ color: e.color, alpha });
       }
