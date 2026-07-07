@@ -19,19 +19,11 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
-function appendField(grid: HTMLElement, label: string, control: HTMLElement): void {
-  const lbl = el('span', 'lobby-field-label', label);
-  const wrap = el('div', 'lobby-field-control');
-  wrap.appendChild(control);
-  grid.append(lbl, wrap);
-}
-
 function lobbyMapSize(): number {
   const h = window.innerHeight;
-  const w = window.innerWidth;
-  if (h <= 420) return Math.min(132, Math.floor(w * 0.3));
-  if (h <= 520) return Math.min(168, Math.floor(w * 0.32));
-  return Math.min(200, Math.floor(w * 0.34));
+  if (h <= 380) return 108;
+  if (h <= 460) return 124;
+  return 140;
 }
 
 export interface MatchLobbyOptions {
@@ -50,24 +42,21 @@ export interface MatchLobbyOptions {
 export class MatchLobby {
   readonly root = el('div', 'menu-screen match-lobby');
   private state: LobbyState;
-  private statusEl = el('p', 'lobby-status');
-  private errorEl = el('p', 'lobby-error');
+  private hintEl = el('p', 'lobby-hint');
   private actionBtn = el('button', 'btn big', 'Start');
   private slotEls: HTMLElement[] = [];
   private mapSelect!: HTMLSelectElement;
   private factionSelect!: HTMLSelectElement;
   private templateSelect!: HTMLSelectElement;
   private roomEl: HTMLElement | null = null;
-  private bodyEl = el('div', 'lobby-body');
-  private slotsWrap = el('div', 'lobby-slots');
-  private bannerEl = el('div', 'lobby-banner');
+  private playersEl = el('div', 'lobby-players');
   private mapPreview: LobbyMapPreview;
   private pickSlotId: SlotId | null = null;
 
   constructor(private opts: MatchLobbyOptions) {
     this.state = structuredClone(opts.initialState);
     this.mapPreview = new LobbyMapPreview(this.opts.registry.map(this.state.mapId), lobbyMapSize());
-    this.errorEl.style.display = 'none';
+    this.hintEl.style.display = 'none';
     this.build();
     if (opts.lobbyClient) this.wireNetwork(opts.lobbyClient);
     this.pickSlotId = this.defaultPickSlot();
@@ -82,10 +71,15 @@ export class MatchLobby {
   }
 
   private build(): void {
-    const top = el('div', 'lobby-top');
-    const title = el('h1', 'menu-title lobby-title', 'Match Setup');
-    const header = el('div', 'lobby-header');
+    const topRow = el('div', 'lobby-top-row');
+    const titleBlock = el('div', 'lobby-title-block');
+    titleBlock.append(
+      el('h1', 'menu-title lobby-title', 'Match Setup'),
+      el('p', 'lobby-map-hint', 'Tap a slot, then tap a number on the map'),
+    );
+    topRow.append(titleBlock, this.mapPreview.root);
 
+    const header = el('div', 'lobby-header');
     this.mapSelect = el('select', 'lobby-select') as HTMLSelectElement;
     for (const map of this.opts.registry.maps.values()) {
       const opt = el('option', undefined, map.name) as HTMLOptionElement;
@@ -116,7 +110,7 @@ export class MatchLobby {
     this.factionSelect.addEventListener('change', () => {
       this.state.factionId = this.factionSelect.value;
       for (const slot of this.state.slots) {
-        if (!slot.factionId || slot.factionId === this.factionSelect.value) slot.factionId = this.factionSelect.value;
+        slot.factionId = this.factionSelect.value;
       }
       this.pushUpdate();
       this.refresh();
@@ -128,7 +122,6 @@ export class MatchLobby {
       el('label', 'lobby-field-label', 'Faction'),
       this.factionSelect,
     );
-    top.append(title, header);
 
     if (this.opts.room) {
       this.roomEl = el('div', 'lobby-room');
@@ -138,7 +131,7 @@ export class MatchLobby {
     for (let i = 0; i < 4; i++) {
       const panel = this.buildSlotPanel(i);
       this.slotEls.push(panel);
-      this.slotsWrap.appendChild(panel);
+      this.playersEl.appendChild(panel);
     }
 
     this.mapPreview.onPositionPick((index) => {
@@ -150,12 +143,6 @@ export class MatchLobby {
       this.pushUpdate();
       this.refresh();
     });
-
-    this.bodyEl.append(this.slotsWrap, this.mapPreview.root);
-
-    this.bannerEl.append(this.errorEl, this.statusEl);
-    this.errorEl.classList.add('lobby-banner-error');
-    this.statusEl.classList.add('lobby-banner-status');
 
     this.templateSelect = el('select', 'lobby-select') as HTMLSelectElement;
     const blank = el('option', undefined, 'Load template…') as HTMLOptionElement;
@@ -187,18 +174,20 @@ export class MatchLobby {
     });
 
     const footer = el('div', 'lobby-footer');
+    const footerActions = el('div', 'lobby-footer-actions');
     const backBtn = el('button', 'btn', 'Back');
     backBtn.addEventListener('click', () => this.opts.onBack());
     this.actionBtn.addEventListener('click', () => this.onAction());
-    footer.append(backBtn, this.templateSelect, this.actionBtn);
+    footerActions.append(backBtn, this.templateSelect, this.actionBtn);
+    footer.append(this.hintEl, footerActions);
 
     const shell = el('div', 'lobby-shell');
-    shell.append(top, this.roomEl ?? '', this.bodyEl, this.bannerEl, footer);
+    shell.append(topRow, header, this.roomEl ?? '', this.playersEl, footer);
     this.root.appendChild(shell);
   }
 
   private buildSlotPanel(index: number): HTMLElement {
-    const panel = el('div', 'lobby-slot');
+    const panel = el('div', 'lobby-player');
     panel.dataset.index = String(index);
     panel.addEventListener('pointerdown', () => {
       const slot = this.state.slots[index]!;
@@ -227,16 +216,16 @@ export class MatchLobby {
     const isPickTarget = this.pickSlotId === slot.id;
 
     panel.classList.toggle('pick-target', isPickTarget);
+    panel.classList.toggle('closed', slot.kind === 'closed');
 
-    const head = el('div', 'lobby-slot-head');
-    head.append(el('span', 'lobby-slot-title', `Player ${index + 1}`));
+    const name = el('span', 'lobby-player-name', `P${index + 1}`);
     if (slot.claimedBy) {
-      const tag = slot.claimedBy === this.opts.connId ? ' (You)' : slot.claimedBy === 'local' ? ' (You)' : ' (Taken)';
-      head.append(el('span', 'lobby-slot-claim', tag));
+      const you = slot.claimedBy === this.opts.connId || slot.claimedBy === 'local';
+      if (you) name.title = 'You';
     }
-    panel.appendChild(head);
+    panel.appendChild(name);
 
-    const kindSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    const kindSelect = el('select', 'lobby-select lobby-kind-select') as HTMLSelectElement;
     for (const kind of ['closed', 'human', 'ai', 'open'] as SlotKind[]) {
       if (this.opts.mode === 'solo' && kind === 'open') continue;
       const opt = el('option', undefined, kind.charAt(0).toUpperCase() + kind.slice(1)) as HTMLOptionElement;
@@ -254,11 +243,15 @@ export class MatchLobby {
         slot.ready = false;
       }
       if (slot.kind === 'closed') slot.startIndex = null;
+      slot.factionId = this.state.factionId;
       this.pushUpdate();
       this.refresh();
     });
+    panel.appendChild(kindSelect);
 
-    const teamSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    if (slot.kind === 'closed') return;
+
+    const teamSelect = el('select', 'lobby-select lobby-team-select') as HTMLSelectElement;
     for (const team of TEAM_LABELS) {
       const opt = el('option', undefined, teamLabelDisplay(team)) as HTMLOptionElement;
       opt.value = team;
@@ -266,30 +259,50 @@ export class MatchLobby {
     }
     teamSelect.value = slot.team;
     teamSelect.disabled = !canEdit;
+    teamSelect.title = 'Team';
     teamSelect.addEventListener('change', () => {
       slot.team = teamSelect.value as LobbySlot['team'];
       this.pushUpdate();
       this.refresh();
     });
+    panel.appendChild(teamSelect);
 
-    const posSelect = el('select', 'lobby-select lobby-select-narrow') as HTMLSelectElement;
+    const posSelect = el('select', 'lobby-select lobby-pos-select') as HTMLSelectElement;
+    posSelect.title = 'Starting position';
     const dash = el('option', undefined, '-') as HTMLOptionElement;
     dash.value = '';
     posSelect.appendChild(dash);
-    const count = this.spawnCount();
-    for (let p = 0; p < count; p++) {
+    for (let p = 0; p < this.spawnCount(); p++) {
       const opt = el('option', undefined, String(p + 1)) as HTMLOptionElement;
       opt.value = String(p);
       if (this.isPositionTaken(p, slot.id)) opt.disabled = true;
       posSelect.appendChild(opt);
     }
     posSelect.value = slot.startIndex === null ? '' : String(slot.startIndex);
-    posSelect.disabled = !canEdit || slot.kind === 'closed';
+    posSelect.disabled = !canEdit;
     posSelect.addEventListener('change', () => {
       slot.startIndex = posSelect.value === '' ? null : Number(posSelect.value);
       this.pushUpdate();
       this.refresh();
     });
+    panel.appendChild(posSelect);
+
+    if (slot.kind === 'ai') {
+      const diffSelect = el('select', 'lobby-select lobby-ai-select') as HTMLSelectElement;
+      diffSelect.title = 'AI difficulty';
+      for (const d of ['easy', 'normal', 'hard'] as AiDifficulty[]) {
+        const opt = el('option', undefined, d.charAt(0).toUpperCase() + d.slice(1)) as HTMLOptionElement;
+        opt.value = d;
+        diffSelect.appendChild(opt);
+      }
+      diffSelect.value = slot.aiDifficulty ?? 'normal';
+      diffSelect.disabled = !canEdit;
+      diffSelect.addEventListener('change', () => {
+        slot.aiDifficulty = diffSelect.value as AiDifficulty;
+        this.pushUpdate();
+      });
+      panel.appendChild(diffSelect);
+    }
 
     const swatches = el('div', 'lobby-swatches');
     for (const color of DEFAULT_COLORS) {
@@ -297,76 +310,39 @@ export class MatchLobby {
       sw.type = 'button';
       sw.style.background = color;
       sw.disabled = !canEdit;
+      sw.title = 'Color';
       if (slot.color.toLowerCase() === color.toLowerCase()) sw.classList.add('active');
-      sw.addEventListener('click', () => {
+      sw.addEventListener('click', (e) => {
+        e.stopPropagation();
         slot.color = color;
         this.pushUpdate();
         this.refresh();
       });
       swatches.appendChild(sw);
     }
-
-    const diffSelect = el('select', 'lobby-select') as HTMLSelectElement;
-    for (const d of ['easy', 'normal', 'hard'] as AiDifficulty[]) {
-      const opt = el('option', undefined, d.charAt(0).toUpperCase() + d.slice(1)) as HTMLOptionElement;
-      opt.value = d;
-      diffSelect.appendChild(opt);
-    }
-    diffSelect.value = slot.aiDifficulty ?? 'normal';
-    diffSelect.disabled = !canEdit || slot.kind !== 'ai';
-    diffSelect.addEventListener('change', () => {
-      slot.aiDifficulty = diffSelect.value as AiDifficulty;
-      this.pushUpdate();
-    });
-
-    const factionSelect = el('select', 'lobby-select') as HTMLSelectElement;
-    for (const faction of this.opts.registry.factions.values()) {
-      const opt = el('option', undefined, faction.name) as HTMLOptionElement;
-      opt.value = faction.id;
-      factionSelect.appendChild(opt);
-    }
-    factionSelect.value = slot.factionId || this.state.factionId;
-    factionSelect.disabled = !canEdit;
-    factionSelect.addEventListener('change', () => {
-      slot.factionId = factionSelect.value;
-      this.pushUpdate();
-    });
-
-    const grid = el('div', 'lobby-slot-grid');
-    appendField(grid, 'Type', kindSelect);
-    appendField(grid, 'Team', teamSelect);
-    if (slot.kind !== 'closed') {
-      appendField(grid, 'Position', posSelect);
-      appendField(grid, 'Color', swatches);
-    }
-    if (slot.kind === 'ai') appendField(grid, 'AI', diffSelect);
-    if (slot.kind !== 'closed') appendField(grid, 'Faction', factionSelect);
-    panel.appendChild(grid);
-
-    const actions = el('div', 'lobby-slot-actions');
+    panel.appendChild(swatches);
 
     if (this.opts.mode === 'guest' && isMine && slot.claimedBy === this.opts.connId) {
-      const readyBtn = el('button', 'btn', slot.ready ? 'Unready' : 'Ready');
-      readyBtn.addEventListener('click', () => {
+      const readyBtn = el('button', 'btn lobby-mini-btn', slot.ready ? '…' : '✓');
+      readyBtn.title = slot.ready ? 'Unready' : 'Ready';
+      readyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         slot.ready = !slot.ready;
         this.opts.lobbyClient?.setReady(slot.id, slot.ready ?? false);
         this.refresh();
       });
-      actions.appendChild(readyBtn);
+      panel.appendChild(readyBtn);
     }
 
     if (this.opts.mode === 'guest' && !slot.claimedBy && (slot.kind === 'human' || slot.kind === 'open')) {
-      const claimBtn = el('button', 'btn', 'Claim Slot');
-      claimBtn.addEventListener('click', () => {
+      const claimBtn = el('button', 'btn lobby-mini-btn', '+');
+      claimBtn.title = 'Claim slot';
+      claimBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.opts.lobbyClient?.claimSlot(slot.id, slot.team, slot.color, slot.startIndex, slot.factionId);
       });
-      actions.appendChild(claimBtn);
+      panel.appendChild(claimBtn);
     }
-
-    if (actions.childElementCount > 0) panel.appendChild(actions);
-
-    if (slot.kind === 'closed') panel.classList.add('closed');
-    else panel.classList.remove('closed');
   }
 
   private canEditSlot(slot: LobbySlot): boolean {
@@ -382,13 +358,9 @@ export class MatchLobby {
   }
 
   private wireNetwork(client: LobbyClient): void {
-    client.onLobbyState = (state) => {
-      this.setRemoteState(state);
-    };
-    client.onWaiting = (count, max) => {
-      this.setStatus(`Players connected: ${count}/${max}`);
-    };
-    client.onError = (msg) => this.showError(msg);
+    client.onLobbyState = (state) => this.setRemoteState(state);
+    client.onWaiting = (count, max) => this.setHint(`Players connected: ${count}/${max}`);
+    client.onError = (msg) => this.setHint(msg, true);
   }
 
   private pushUpdate(): void {
@@ -409,10 +381,12 @@ export class MatchLobby {
 
     const map = this.opts.registry.map(this.state.mapId);
     const validation = validateLobby(this.state, this.opts.mode, map, this.opts.localSlotId);
-    const hasError = !validation.valid;
-    this.errorEl.style.display = hasError ? 'block' : 'none';
-    this.errorEl.textContent = hasError ? validation.errors[0] ?? '' : '';
-    this.bannerEl.style.display = hasError || this.statusEl.textContent ? 'block' : 'none';
+    if (!validation.valid) {
+      this.setHint(validation.errors[0] ?? 'Invalid setup', true);
+    } else {
+      this.hintEl.style.display = 'none';
+      this.hintEl.textContent = '';
+    }
 
     if (this.opts.mode === 'solo') {
       this.actionBtn.textContent = 'Start';
@@ -421,7 +395,7 @@ export class MatchLobby {
       this.actionBtn.textContent = 'Start Match';
       this.actionBtn.disabled = !validation.valid;
     } else {
-      this.actionBtn.textContent = 'Waiting for host…';
+      this.actionBtn.textContent = 'Waiting…';
       this.actionBtn.disabled = true;
     }
 
@@ -431,13 +405,18 @@ export class MatchLobby {
     this.templateSelect.disabled = this.opts.mode === 'guest';
   }
 
+  setHint(text: string, isError = false): void {
+    this.hintEl.textContent = text;
+    this.hintEl.style.display = text ? 'block' : 'none';
+    this.hintEl.classList.toggle('error', isError);
+  }
+
   setStatus(text: string): void {
-    this.statusEl.textContent = text;
+    this.setHint(text, false);
   }
 
   showError(text: string): void {
-    this.errorEl.textContent = text;
-    this.errorEl.style.display = 'block';
+    this.setHint(text, true);
   }
 
   getState(): LobbyState {
