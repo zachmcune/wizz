@@ -8,6 +8,11 @@ const artSchema = z.object({
   shape: shapeKind,
   size: z.number().positive(),
   accent: z.string(),
+  atlas: z.string().optional(),
+  frameWidth: z.number().positive().optional(),
+  frameHeight: z.number().positive().optional(),
+  directions: z.number().int().positive().optional(),
+  anchor: z.object({ x: z.number(), y: z.number() }).optional(),
 });
 
 const sfxSchema = z
@@ -124,16 +129,22 @@ export const factionSchema = z.object({
   description: z.string(),
 });
 
-export const mapSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  maxPlayers: z.number().int().positive(),
-  tileW: z.number().int().positive(),
-  tileH: z.number().int().positive(),
-  tiles: z.array(z.number().int()),
-  startLocations: z.array(z.object({ x: z.number(), y: z.number() })),
-  manaNodes: z.array(z.object({ x: z.number(), y: z.number(), amount: z.number().positive() })),
-});
+export const mapSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    maxPlayers: z.number().int().positive(),
+    tileW: z.number().int().positive(),
+    tileH: z.number().int().positive(),
+    tiles: z.array(z.number().int()),
+    visualHeights: z.array(z.number().int().nonnegative()).optional(),
+    startLocations: z.array(z.object({ x: z.number(), y: z.number() })),
+    manaNodes: z.array(z.object({ x: z.number(), y: z.number(), amount: z.number().positive() })),
+  })
+  .refine(
+    (m) => !m.visualHeights || m.visualHeights.length === m.tiles.length,
+    { message: 'visualHeights must match tiles length' },
+  );
 
 const aiParamsSchema = z.object({
   interval: z.number().int().positive(),

@@ -13,10 +13,17 @@ interface Effect {
   radius: number;
 }
 
+export type EffectPositionFn = (worldX: number, worldY: number) => { x: number; y: number };
+
 export class EffectsLayer {
   readonly container = new Container();
   private active: Effect[] = [];
   private pool: Graphics[] = [];
+  private positionFn: EffectPositionFn = (x, y) => ({ x, y });
+
+  setPositionFn(fn: EffectPositionFn): void {
+    this.positionFn = fn;
+  }
 
   private take(): Graphics {
     const g = this.pool.pop() ?? new Graphics();
@@ -40,7 +47,7 @@ export class EffectsLayer {
   }
 
   spawn(kind: Effect['kind'], x: number, y: number, color: number, radius: number): void {
-    if (this.active.length > 400) return; // safety cap
+    if (this.active.length > 400) return;
     const life = kind === 'ring' ? 30 : kind === 'puff' ? 18 : 10;
     this.active.push({ g: this.take(), age: 0, life, x, y, kind, color, radius });
   }
@@ -53,14 +60,15 @@ export class EffectsLayer {
       const g = e.g;
       g.clear();
       const alpha = 1 - t;
+      const pos = this.positionFn(e.x, e.y);
       if (e.kind === 'flash') {
-        g.circle(e.x, e.y, e.radius * (0.6 + t)).fill({ color: e.color, alpha });
+        g.circle(pos.x, pos.y, e.radius * (0.6 + t)).fill({ color: e.color, alpha });
       } else if (e.kind === 'puff') {
-        g.circle(e.x, e.y, e.radius * (0.5 + t * 1.2)).stroke({ width: 2, color: e.color, alpha });
+        g.circle(pos.x, pos.y, e.radius * (0.5 + t * 1.2)).stroke({ width: 2, color: e.color, alpha });
       } else if (e.kind === 'ring') {
-        g.circle(e.x, e.y, e.radius * (0.3 + t)).stroke({ width: 3, color: e.color, alpha });
+        g.circle(pos.x, pos.y, e.radius * (0.3 + t)).stroke({ width: 3, color: e.color, alpha });
       } else {
-        g.circle(e.x, e.y - t * 20, e.radius * (1 - t)).fill({ color: e.color, alpha });
+        g.circle(pos.x, pos.y - t * 20, e.radius * (1 - t)).fill({ color: e.color, alpha });
       }
       if (e.age >= e.life) {
         this.release(g);

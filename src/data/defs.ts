@@ -12,6 +12,12 @@ export interface ArtDef {
   shape: ShapeKind;
   size: number; // draw size in world units
   accent: string; // hex accent color layered over the team color
+  /** Phase 3: sprite atlas path (when set, AtlasSpriteProvider uses this instead of shape). */
+  atlas?: string;
+  frameWidth?: number;
+  frameHeight?: number;
+  directions?: number;
+  anchor?: { x: number; y: number };
 }
 
 export interface SfxDef {
@@ -144,6 +150,8 @@ export interface MapData {
   tileH: number;
   // Row-major tile codes. 0 = passable ground, 1 = blocked (impassable).
   tiles: number[];
+  /** Render-only height levels (row-major, same length as tiles). Sim ignores this in Phase 1. */
+  visualHeights?: number[];
   startLocations: { x: number; y: number }[]; // world coords
   manaNodes: { x: number; y: number; amount: number }[];
 }

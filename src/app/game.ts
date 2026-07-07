@@ -12,7 +12,8 @@ import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { ZoomSlider } from '../ui/zoom-slider';
 import type { AudioManager } from '../audio/audio';
-import type { Settings } from '../storage/settings';
+import { resolveProjectionMode, setProjectionMode, getProjectionMode } from '../core/projection';
+import { saveSettings, type Settings } from '../storage/settings';
 import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { shouldRevealAllForViewer } from '../sim/views';
@@ -144,6 +145,9 @@ export class Game {
     this.boxEl.style.pointerEvents = 'none';
     canvasHost.appendChild(this.boxEl);
     await this.renderer.init(canvasHost);
+    const projMode = resolveProjectionMode(this.settings.projectionMode);
+    setProjectionMode(projMode);
+    this.renderer.setProjectionMode(projMode);
     this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state, this.humanId);
 
@@ -171,6 +175,10 @@ export class Game {
 
     this.hud = new Hud(() => this.state, this.registry, this.controller, this.humanId, this.minimap);
     this.hud.onExit = () => this.exit();
+    this.hud.onProjectionToggle = () => {
+      void this.toggleProjectionMode();
+    };
+    this.hud.setProjectionMode(projMode);
     if (this.relayTransport) {
       this.relayTransport.onError = (message) => {
         if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);
@@ -222,6 +230,17 @@ export class Game {
     );
     this.loop.start();
     this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
+  }
+
+  private async toggleProjectionMode(): Promise<void> {
+    const next = getProjectionMode() === 'ortho' ? 'oblique' : 'ortho';
+    setProjectionMode(next);
+    this.renderer.setProjectionMode(next);
+    this.settings.projectionMode = next;
+    await saveSettings(this.settings);
+    this.renderer.syncTick(this.state);
+    this.hud.setProjectionMode(next);
+    this.hud.showHint(next === 'oblique' ? 'Oblique view (RA2-style)' : 'Classic 2D view');
   }
 
   private setupGestures(): void {

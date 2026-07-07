@@ -1,6 +1,7 @@
 // Single source of truth for coordinate conversions. ALL conversions go through here.
 // World units: floating-point sim space. Tile: integer grid. Screen: pixels after camera.
 import { TILE } from './constants';
+import { getProjection } from './projection';
 
 export interface Vec2 {
   x: number;
@@ -26,10 +27,19 @@ export function tileToWorld(tileX: number, tileY: number): Vec2 {
   return { x: tileX * TILE + TILE / 2, y: tileY * TILE + TILE / 2 };
 }
 
-export function worldToScreen(world: Vec2, cam: CameraView): Vec2 {
-  return { x: (world.x - cam.x) * cam.zoom, y: (world.y - cam.y) * cam.zoom };
+/** Project world ground position into render-layer coordinates (before camera zoom/pan). */
+export function projectGround(world: Vec2, visualHeight = 0): Vec2 {
+  return getProjection().projectGround(world, visualHeight);
+}
+
+export function worldToScreen(world: Vec2, cam: CameraView, visualHeight = 0): Vec2 {
+  return getProjection().worldToScreen(world, cam, visualHeight);
 }
 
 export function screenToWorld(screen: Vec2, cam: CameraView): Vec2 {
-  return { x: screen.x / cam.zoom + cam.x, y: screen.y / cam.zoom + cam.y };
+  return getProjection().screenToWorld(screen, cam);
+}
+
+export function projectionSortKey(world: Vec2, cam: CameraView, visualHeight = 0): number {
+  return getProjection().sortKey(world, cam, visualHeight);
 }
