@@ -94,8 +94,6 @@ export class GestureRecognizer {
           const panDx = center.x - this.pinchCenter.x;
           const panDy = center.y - this.pinchCenter.y;
           if (Math.hypot(panDx, panDy) > 0.5) this.h.onTwoFingerPan?.(panDx, panDy);
-          const factor = d / this.pinchDist;
-          if (Math.abs(factor - 1) > 0.015) this.h.onPinch?.(factor, center);
         }
         this.pinchDist = d;
         this.pinchCenter = center;

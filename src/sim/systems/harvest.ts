@@ -4,23 +4,11 @@ import type { StepContext } from '../context';
 import type { GameState, Entity } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { buildingHasPower } from '../power';
-import { len, normalize } from '../math';
+import { len } from '../math';
+import { moveTowardGoal } from '../pathing';
 
-function moveToward(e: Entity, tx: number, ty: number, speed: number, nav: StepContext['services']['nav']): number {
-  const dx = tx - e.pos.x;
-  const dy = ty - e.pos.y;
-  const d = len(dx, dy);
-  if (d < 1) return 0;
-  const n = normalize(dx, dy);
-  const dt = 1 / TICK_HZ;
-  let nx = e.pos.x + n.x * speed * dt;
-  let ny = e.pos.y + n.y * speed * dt;
-  if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
-  if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
-  e.pos.x = nx;
-  e.pos.y = ny;
-  e.facing = Math.atan2(n.y, n.x);
-  return d;
+function moveToward(e: Entity, tx: number, ty: number, speed: number, ctx: StepContext): number {
+  return moveTowardGoal(ctx.services.nav, ctx.services.flow, e, { x: tx, y: ty }, speed, 1 / TICK_HZ);
 }
 
 function nearestSpire(state: GameState, ctx: StepContext, e: Entity): Entity | null {
@@ -67,7 +55,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
         e.state = 'harvesting';
         continue;
       }
-      const d = moveToward(e, spire.pos.x, spire.pos.y, udef.speed, ctx.services.nav);
+      const d = moveToward(e, spire.pos.x, spire.pos.y, udef.speed, ctx);
       if (d <= spire.radius + e.radius + 4) {
         if (!buildingHasPower(state, ctx.services.registry, spire)) continue;
         const player = state.players.find((p) => p.id === e.owner)!;
@@ -92,7 +80,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
       node = alt;
       e.orders = [{ type: 'harvest', nodeId: alt.id }];
     }
-    const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx.services.nav);
+    const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx);
     if (d <= node.radius + e.radius + 4) {
       const room = e.carryMax - carry;
       const siphonPerSec = ctx.services.registry.balance.siphonPerSecond;

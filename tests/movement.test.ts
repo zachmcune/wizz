@@ -3,10 +3,34 @@ import { getRegistry } from './helpers';
 import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { dist } from '../src/sim/math';
+import { TILE } from '../src/core/constants';
 
 const reg = getRegistry();
 
 describe('movement & pathfinding', () => {
+  it('unit paths around a building obstacle to reach its target', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+
+    const start = { x: 400, y: 800 };
+    const target = { x: 1400, y: 800 };
+    const unit = spawnEntity(state, services, null, 'imp_swarmling', 'player0', start.x, start.y);
+    // Block the direct horizontal path with a 3x3 structure.
+    spawnEntity(state, services, null, 'golem_forge', 'player0', 900, 800);
+
+    sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [unit.id], x: target.x, y: target.y }]);
+
+    let detoured = false;
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      if (Math.abs(unit.pos.y - start.y) > TILE * 1.2) detoured = true;
+    }
+
+    expect(detoured).toBe(true);
+    expect(dist(unit.pos, target)).toBeLessThan(TILE * 3);
+  });
+
   it('60+ units move to a point as a coherent group without overlapping', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);

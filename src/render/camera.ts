@@ -51,6 +51,17 @@ export class Camera implements CameraView {
     this.clampToBounds();
   }
 
+  /** Set zoom level, keeping the viewport center fixed in world space. */
+  setZoom(zoom: number): void {
+    const anchor: Vec2 = { x: this.viewW / 2, y: this.viewH / 2 };
+    const before = screenToWorld(anchor, this);
+    this.zoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
+    const after = screenToWorld(anchor, this);
+    this.x += before.x - after.x;
+    this.y += before.y - after.y;
+    this.clampToBounds();
+  }
+
   private clampToBounds(): void {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
