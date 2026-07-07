@@ -97,6 +97,7 @@ export interface Entity {
   buildProgress?: number; // 0..1 while under construction; undefined when complete
   productionQueue?: ProductionItem[];
   rally?: Vec2;
+  repairing?: boolean; // slow HP restore while spending mana
 
   // deploy / pack (mobile HQ)
   morphProgress?: number; // 0..1 while deploying or packing
@@ -129,6 +130,8 @@ export type Command =
   | { type: 'produce'; playerId: PlayerId; buildingId: EntityId; defId: string }
   | { type: 'cancelProduce'; playerId: PlayerId; buildingId: EntityId; index: number }
   | { type: 'setRally'; playerId: PlayerId; buildingId: EntityId; x: number; y: number }
+  | { type: 'sellBuilding'; playerId: PlayerId; buildingId: EntityId }
+  | { type: 'setRepair'; playerId: PlayerId; buildingId: EntityId; enabled: boolean }
   | { type: 'castSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
   | { type: 'surrender'; playerId: PlayerId };
 
@@ -138,6 +141,7 @@ export type GameEvent =
   | { type: 'buildingComplete'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'mobileHQDeployed'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'mobileHQPacked'; id: EntityId; defId: string; owner: PlayerId }
+  | { type: 'buildingSold'; id: EntityId; defId: string; owner: PlayerId; refund: number }
   | { type: 'buildingPlaced'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }

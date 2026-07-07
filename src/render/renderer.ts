@@ -27,6 +27,7 @@ export interface RenderOverlay {
   spell?: { x: number; y: number; radius: number };
   confirm?: { x: number; y: number } | null;
   buildZones?: { x: number; y: number; r: number }[];
+  rallyMarker?: { fromX: number; fromY: number; toX: number; toY: number };
 }
 
 interface RenderNode {
@@ -311,6 +312,12 @@ export class Renderer {
     }
     if (overlay?.confirm) {
       this.strokeRing(overlay.confirm.x, overlay.confirm.y, 12, 3, 0xffd166, 1);
+    }
+    if (overlay?.rallyMarker) {
+      const { fromX, fromY, toX, toY } = overlay.rallyMarker;
+      this.overlayStroke.moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: 2, color: 0x7fe3ff, alpha: 0.85 });
+      this.fillDot(toX, toY, 5, 0x7fe3ff, 0.9);
+      this.strokeRing(toX, toY, 10, 2, 0x7fe3ff, 0.7);
     }
     this.effects.update();
   }
