@@ -6,6 +6,7 @@ export interface MenuOptions {
   onCreateOnline: () => void;
   onJoinOnline: () => void;
   onContinue: (() => void) | null;
+  onDevGallery?: () => void;
 }
 
 export class MainMenu {
@@ -33,6 +34,15 @@ export class MainMenu {
     joinOnline.addEventListener('click', () => opts.onJoinOnline());
 
     list.append(custom, onlineLabel, createOnline, joinOnline);
+
+    if (opts.onDevGallery) {
+      const devLabel = el('p', 'menu-section', 'Developer');
+      const gallery = el('button', 'btn big', 'Entity Designs');
+      gallery.title = 'Preview troop and building art (also ?gallery=1)';
+      gallery.addEventListener('click', () => opts.onDevGallery?.());
+      list.append(devLabel, gallery);
+    }
+
     this.root.append(title, sub, list);
   }
 
