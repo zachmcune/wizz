@@ -4,7 +4,7 @@ import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, hasBuff } from '../queries';
-import { steerToGoal, applyVelocityMove, slidePosition } from '../pathing';
+import { steerToGoal, applyVelocityMove, slidePosition, makePathContext } from '../pathing';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
@@ -23,7 +23,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'unit' || !isAlive(e)) continue;
-    if (e.morphProgress !== undefined) {
+    if (e.morphProgress !== undefined || e.channeling) {
       e.vel = { x: 0, y: 0 };
       continue;
     }
@@ -37,6 +37,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
+    const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
     const dx = goal.x - e.pos.x;
     const dy = goal.y - e.pos.y;
     const d = Math.hypot(dx, dy);
@@ -49,8 +50,9 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
     const goalTx = Math.floor(goal.x / TILE);
     const goalTy = Math.floor(goal.y / TILE);
-    const field = flow.get(nav, goalTx, goalTy);
-    const steer = steerToGoal(nav, flow, e.pos, goal);
+    const block = (tx: number, ty: number) => nav.isBlockedFor(e.owner, tx, ty, state.relations);
+    const field = flow.getFor(nav, goalTx, goalTy, e.owner, block);
+    const steer = steerToGoal(pathCtx, e.pos, goal);
 
     let moveX = steer.x * speed;
     let moveY = steer.y * speed;
@@ -77,7 +79,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     moveY += sepY * speed * SEP_BLEND;
 
     if (moveX !== 0 || moveY !== 0) {
-      const moved = applyVelocityMove(e, moveX, moveY, nav, dt, field);
+      const moved = applyVelocityMove(e, moveX, moveY, pathCtx, dt, field);
       if (moved) e.facing = Math.atan2(moveY, moveX);
       else e.vel = { x: 0, y: 0 };
     } else {
@@ -85,9 +87,9 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     }
   }
 
-  // Idle crowding relief so units don't glue together after reaching a waypoint.
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0) continue;
+    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || e.channeling) continue;
+    const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
     const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 2.5, scratch);
     let sepX = 0;
     let sepY = 0;
@@ -106,7 +108,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       }
     }
     if (sepX === 0 && sepY === 0) continue;
-    const nudge = slidePosition(nav, e.pos.x, e.pos.y, e.pos.x + sepX * 8 * dt, e.pos.y + sepY * 8 * dt);
+    const nudge = slidePosition(pathCtx, e.pos.x, e.pos.y, e.pos.x + sepX * 8 * dt, e.pos.y + sepY * 8 * dt);
     if (nudge) {
       e.pos.x = nudge.x;
       e.pos.y = nudge.y;

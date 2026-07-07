@@ -1,0 +1,16 @@
+{
+  "id": "arcane_gate",
+  "name": "Arcane Gate",
+  "shortLabel": "GATE",
+  "description": "Your troops can pass through. Enemies must break it down.",
+  "kind": "building",
+  "cost": 60,
+  "buildTime": 3,
+  "hp": 400,
+  "armor": "building",
+  "sight": 80,
+  "footprint": 1,
+  "requires": ["sanctum"],
+  "isGate": true,
+  "art": { "shape": "building", "size": 28, "accent": "#6b8cff" }
+}

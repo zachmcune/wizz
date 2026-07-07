@@ -4,7 +4,7 @@ import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { TILE } from '../src/core/constants';
 import { sampleFlow, computeFlowField } from '../src/sim/flow-field';
-import { steerToGoal } from '../src/sim/pathing';
+import { steerToGoal, makePathContext } from '../src/sim/pathing';
 import { dist } from '../src/sim/math';
 
 const reg = getRegistry();
@@ -16,7 +16,7 @@ describe('pathing', () => {
     const nav = services.nav;
     const goalTx = Math.floor(1400 / TILE);
     const goalTy = Math.floor(800 / TILE);
-    const field = computeFlowField(nav, goalTx, goalTy);
+    const field = computeFlowField(nav, goalTx, goalTy, (tx, ty) => nav.isBlocked(tx, ty));
 
     expect(nav.isBlocked(27, 25)).toBe(true);
     expect(nav.isBlocked(25, 25)).toBe(false);
@@ -24,7 +24,8 @@ describe('pathing', () => {
     expect(westOfWall.x === 0 && westOfWall.y === 0).toBe(false);
     expect(westOfWall.x).not.toBe(1);
 
-    const steer = steerToGoal(nav, services.flow, { x: 400, y: 800 }, { x: 1400, y: 800 });
+    const pathCtx = makePathContext(nav, services.flow, state.relations, 'player0');
+    const steer = steerToGoal(pathCtx, { x: 400, y: 800 }, { x: 1400, y: 800 });
     expect(Math.abs(steer.y)).toBeGreaterThan(0.1);
   });
 
@@ -72,5 +73,26 @@ describe('pathing', () => {
     const units = ids.map((id) => state.entities.get(id)!).filter(Boolean);
     const arrived = units.filter((u) => dist(u.pos, target) < TILE * 4).length;
     expect(arrived).toBeGreaterThanOrEqual(units.length * 0.75);
+  });
+
+  it('friendly units path through own gates but enemies cannot', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const nav = services.nav;
+    const gateX = 800;
+    const gateY = 800;
+    spawnEntity(state, services, null, 'arcane_gate', 'player0', gateX, gateY);
+    const gateTx = Math.floor((gateX - TILE / 2) / TILE);
+    const gateTy = Math.floor((gateY - TILE / 2) / TILE);
+
+    expect(nav.isBlocked(gateTx, gateTy)).toBe(false);
+    expect(nav.isBlockedFor('player0', gateTx, gateTy, state.relations)).toBe(false);
+    expect(nav.isBlockedFor('player1', gateTx, gateTy, state.relations)).toBe(true);
+
+    const sim = new Simulation(state, services);
+    sim.aiEnabled = false;
+    const ally = spawnEntity(state, services, null, 'imp_swarmling', 'player0', gateX - TILE * 3, gateY);
+    sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [ally.id], x: gateX + TILE * 3, y: gateY }]);
+    for (let i = 0; i < 400; i++) sim.step();
+    expect(dist(ally.pos, { x: gateX + TILE * 3, y: gateY })).toBeLessThan(TILE * 4);
   });
 });

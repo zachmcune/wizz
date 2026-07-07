@@ -51,6 +51,7 @@ export const unitSchema = z.object({
   isHarvester: z.boolean().optional(),
   deploysAs: z.string().optional(),
   deployTime: z.number().positive().optional(),
+  canConjureMana: z.boolean().optional(),
   art: artSchema,
   sfx: sfxSchema,
 });
@@ -79,6 +80,8 @@ export const buildingSchema = z.object({
   powerUsed: z.number().nonnegative().optional(),
   unlocksSpells: z.array(z.string()).optional(),
   isRadar: z.boolean().optional(),
+  isWall: z.boolean().optional(),
+  isGate: z.boolean().optional(),
   weapon: weaponSchema.nullable().optional(),
   art: artSchema,
   sfx: sfxSchema,
@@ -137,6 +140,8 @@ export const balanceSchema = z.object({
   sellRefundRatio: z.number().min(0).max(1),
   repairManaPerHp: z.number().positive(),
   repairHpPerTick: z.number().positive(),
+  conjureManaAmount: z.number().positive(),
+  conjureManaIntervalSeconds: z.number().positive(),
   ai: z.object({ easy: aiParamsSchema, normal: aiParamsSchema, hard: aiParamsSchema }),
 });
 
