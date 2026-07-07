@@ -128,10 +128,18 @@ class Room {
     const prevReady = new Map(this.lobbyState.slots.map((s) => [s.id, s.ready]));
     this.lobbyState = cloneLobby(state);
     for (const slot of this.lobbyState.slots) {
-      if (prevClaims.has(slot.id) && slot.claimedBy == null) {
-        slot.claimedBy = prevClaims.get(slot.id) ?? null;
+      const prevClaim = prevClaims.get(slot.id);
+      const prevRd = prevReady.get(slot.id);
+      const claimable = slot.kind === 'human' || slot.kind === 'open';
+      if (claimable && slot.claimedBy == null && prevClaim) {
+        slot.claimedBy = prevClaim;
       }
-      if (prevReady.has(slot.id)) slot.ready = prevReady.get(slot.id) ?? false;
+      if (!claimable) {
+        slot.claimedBy = null;
+        slot.ready = false;
+      } else if (prevRd !== undefined) {
+        slot.ready = prevRd;
+      }
     }
     const hostInfo = this.clients.get(this.hostWs);
     if (hostInfo) {

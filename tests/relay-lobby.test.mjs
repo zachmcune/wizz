@@ -107,4 +107,41 @@ describe('relay lobby', () => {
     expect(host.sent.some((m) => m.t === 'error' && m.message.includes('starting position'))).toBe(true);
     expect(room.started).toBe(false);
   });
+
+  it('clears guest claims when host closes or AI-fills a slot', () => {
+    const rooms = new Map();
+    const room = new Room('KICK', rooms);
+    const lobby = lobbyWithSlots(2);
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+    claimGuest(room, guest, 'player1', 1);
+
+    const closed = cloneLobby(room.lobbyState);
+    closed.slots[1].kind = 'closed';
+    closed.slots[1].claimedBy = null;
+    closed.slots[1].ready = false;
+    closed.slots[1].startIndex = null;
+    room.updateLobby(host, closed);
+
+    expect(room.lobbyState.slots[1].kind).toBe('closed');
+    expect(room.lobbyState.slots[1].claimedBy).toBeNull();
+    expect(room.lobbyState.slots[1].ready).toBe(false);
+
+    const reopened = cloneLobby(DEFAULT_LOBBY);
+    for (let i = 0; i < 2; i++) reopened.slots[i].startIndex = i;
+    room.updateLobby(host, reopened);
+    claimGuest(room, guest, 'player1', 1);
+
+    const ai = cloneLobby(room.lobbyState);
+    ai.slots[1].kind = 'ai';
+    ai.slots[1].claimedBy = null;
+    ai.slots[1].ready = false;
+    room.updateLobby(host, ai);
+
+    expect(room.lobbyState.slots[1].kind).toBe('ai');
+    expect(room.lobbyState.slots[1].claimedBy).toBeNull();
+  });
 });

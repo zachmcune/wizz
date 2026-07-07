@@ -199,7 +199,8 @@ export class MatchLobby {
   private buildSlotPanel(index: number): HTMLElement {
     const panel = el('div', 'lobby-player');
     panel.dataset.index = String(index);
-    panel.addEventListener('pointerdown', () => {
+    panel.addEventListener('pointerdown', (e) => {
+      if (this.isInteractiveTarget(e.target)) return;
       const slot = this.state.slots[index]!;
       if (slot.kind !== 'closed' && this.canEditSlot(slot)) {
         this.pickSlotId = slot.id;
@@ -207,6 +208,11 @@ export class MatchLobby {
       }
     });
     return panel;
+  }
+
+  private isInteractiveTarget(target: EventTarget | null): boolean {
+    const el = target instanceof HTMLElement ? target : null;
+    return !!el?.closest('select, button, .lobby-swatch, label');
   }
 
   private spawnCount(): number {
@@ -248,6 +254,10 @@ export class MatchLobby {
       slot.kind = kindSelect.value as SlotKind;
       if (slot.kind === 'ai' && !slot.aiDifficulty) slot.aiDifficulty = 'normal';
       if (slot.kind === 'human' && this.opts.mode === 'solo' && index === 0) slot.claimedBy = 'local';
+      if (slot.kind === 'human' && this.opts.mode === 'host' && slot.claimedBy == null && slot.id === this.opts.localSlotId && this.opts.connId) {
+        slot.claimedBy = this.opts.connId;
+        slot.ready = true;
+      }
       if (slot.kind !== 'human' && slot.kind !== 'open') {
         slot.claimedBy = null;
         slot.ready = false;
