@@ -67,12 +67,15 @@ body {
 }
 .hud button,
 .hud .minimap-panel,
-.hud .cmd-card,
 .hud .topbar,
 .hud .build-confirm,
 .hud .spell-confirm,
 .hud .result-overlay,
 .hud .menu-screen {
+  pointer-events: auto;
+}
+/* Pass clicks through empty cmd-card area; only panels capture input */
+.hud .cmd-card .panel {
   pointer-events: auto;
 }
 
@@ -320,7 +323,7 @@ body {
   top: calc(var(--topbar-h) + var(--hud-gap));
   right: var(--hud-gap);
   width: min(42vw, 248px);
-  height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
+  height: auto;
   max-height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
   min-height: 0;
   display: flex;
