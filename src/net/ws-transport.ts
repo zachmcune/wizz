@@ -99,7 +99,7 @@ function openSocket(url: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url);
     ws.addEventListener('open', () => resolve(ws), { once: true });
-    ws.addEventListener('error', () => reject(new Error('Could not connect to relay')), { once: true });
+    ws.addEventListener('error', () => reject(new Error(`Could not connect to relay (${url})`)), { once: true });
   });
 }
 
