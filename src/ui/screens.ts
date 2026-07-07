@@ -7,7 +7,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 }
 
 export interface MenuOptions {
-  onStart: (matchId: string) => void;
+  onCustomGame: () => void;
   onCreateOnline: () => void;
   onJoinOnline: () => void;
   onContinue: (() => void) | null;
@@ -27,18 +27,16 @@ export class MainMenu {
       list.appendChild(cont);
     }
 
-    const skirmish = el('button', 'btn big', 'Skirmish (1v1)');
-    skirmish.addEventListener('click', () => opts.onStart('skirmish_1v1'));
-    const ffa = el('button', 'btn big', 'Free-For-All (4)');
-    ffa.addEventListener('click', () => opts.onStart('ffa_4'));
+    const custom = el('button', 'btn big', 'Custom Game');
+    custom.addEventListener('click', () => opts.onCustomGame());
 
     const onlineLabel = el('p', 'menu-section', 'Multiplayer');
-    const createOnline = el('button', 'btn big online-btn', 'Create Online 1v1');
+    const createOnline = el('button', 'btn big online-btn', 'Create Online');
     createOnline.addEventListener('click', () => opts.onCreateOnline());
-    const joinOnline = el('button', 'btn big online-btn', 'Join Online 1v1');
+    const joinOnline = el('button', 'btn big online-btn', 'Join Online');
     joinOnline.addEventListener('click', () => opts.onJoinOnline());
 
-    list.append(skirmish, ffa, onlineLabel, createOnline, joinOnline);
+    list.append(custom, onlineLabel, createOnline, joinOnline);
     this.root.append(title, sub, list);
   }
 

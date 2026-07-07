@@ -124,6 +124,12 @@ export interface BalanceData {
   ai: Record<'easy' | 'normal' | 'hard', AiParams>;
 }
 
+export interface FactionDef {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface MapData {
   id: string;
   name: string;

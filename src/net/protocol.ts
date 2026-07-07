@@ -1,19 +1,51 @@
 // V2 multiplayer wire protocol. The relay forwards these messages; it never simulates.
 import type { Command } from '../sim/types';
 
+export interface LobbySlotWire {
+  id: string;
+  kind: 'closed' | 'human' | 'ai' | 'open';
+  team: string;
+  color: string;
+  startIndex: number;
+  factionId: string;
+  aiDifficulty?: 'easy' | 'normal' | 'hard';
+  claimedBy?: string | null;
+  ready?: boolean;
+}
+
+export interface LobbyStateWire {
+  mapId: string;
+  factionId: string;
+  slots: LobbySlotWire[];
+}
+
 export type ClientMessage =
-  | { t: 'join'; room: string; matchId: string }
+  | { t: 'join'; room: string; lobbyState?: LobbyStateWire }
+  | { t: 'lobbyUpdate'; state: LobbyStateWire }
+  | { t: 'claimSlot'; slotId: string; team: string; color: string; startIndex: number; factionId: string }
+  | { t: 'slotReady'; slotId: string; ready: boolean }
+  | { t: 'startMatch' }
   | { t: 'commands'; forTick: number; cmds: Command[] }
   | { t: 'checksum'; tick: number; hash: string };
 
 export type ServerMessage =
-  | { t: 'joined'; playerId: string; seed: number; startTick: number; waiting: boolean }
+  | {
+      t: 'joined';
+      connId: string;
+      playerId: string;
+      seed: number;
+      startTick: number;
+      isHost: boolean;
+      lobbyState: LobbyStateWire;
+      waiting: boolean;
+    }
+  | { t: 'lobbyState'; state: LobbyStateWire }
   | { t: 'waiting'; playerCount: number; maxPlayers: number }
   | { t: 'peerJoined'; playerId: string }
-  | { t: 'matchStart'; startTick: number }
+  | { t: 'peerLeft'; playerId: string }
+  | { t: 'matchStart'; startTick: number; seed: number; state: LobbyStateWire }
   | { t: 'tick'; tick: number; cmds: Command[] }
   | { t: 'peerChecksum'; playerId: string; tick: number; hash: string }
-  | { t: 'peerLeft'; playerId: string }
   | { t: 'error'; message: string };
 
 /** Ticks of input delay before a command is executed (lockstep buffering). */

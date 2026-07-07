@@ -116,6 +116,12 @@ export const projectileSchema = z.object({
   art: artSchema,
 });
 
+export const factionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+
 export const mapSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -155,6 +161,7 @@ export const matchConfigSchema = z.object({
       team: z.number().int(),
       color: z.string(),
       startIndex: z.number().int().nonnegative(),
+      factionId: z.string().optional(),
       aiDifficulty: z.enum(['easy', 'normal', 'hard']).optional(),
     }),
   ),
