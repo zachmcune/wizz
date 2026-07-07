@@ -1,6 +1,6 @@
 {
   "startingMana": 1500,
-  "siphonPerSecond": 40,
+  "siphonPerSecond": 25,
   "manaNodeCapacity": 25000,
   "sellRefundRatio": 0.5,
   "repairManaPerHp": 0.05,

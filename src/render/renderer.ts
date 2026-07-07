@@ -2,7 +2,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { projectGround, projectionSortKey } from '../core/coords';
-import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, type ProjectionMode } from '../core/projection';
+import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y, type ProjectionMode } from '../core/projection';
 import { lerp } from '../sim/math';
 import type { ResourceNodeEntity } from '../sim/entity-types';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
@@ -18,7 +18,6 @@ import { EffectsLayer } from './effects';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
-import { isUnitOccludedByBuilding, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -65,6 +64,7 @@ export class Renderer {
   private fogLayer = new Graphics();
   private shadowLayer = new Graphics();
   private entityLayer = new Container();
+  private selectionRingLayer = new Container();
   private labelLayer = new Container();
   private overlayLayer = new Container();
   effects = new EffectsLayer();
@@ -73,6 +73,7 @@ export class Renderer {
   private placementGhosts: Sprite[] = [];
   private overlayFillPool!: GraphicsPool;
   private overlayStrokePool!: GraphicsPool;
+  private selectionRingPool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
   private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
@@ -96,9 +97,9 @@ export class Renderer {
   }
 
   private updateLayerSort(): void {
-    const oblique = this.isOblique();
-    this.entityLayer.sortableChildren = oblique;
-    this.labelLayer.sortableChildren = oblique;
+    this.entityLayer.sortableChildren = true;
+    this.selectionRingLayer.sortableChildren = true;
+    this.labelLayer.sortableChildren = this.isOblique();
   }
 
   private updateEffectsPositionFn(): void {
@@ -118,11 +119,13 @@ export class Renderer {
 
     this.overlayFillPool = new GraphicsPool(this.overlayLayer);
     this.overlayStrokePool = new GraphicsPool(this.overlayLayer);
+    this.selectionRingPool = new GraphicsPool(this.selectionRingLayer);
     this.world.addChild(
       this.terrainLayer,
       this.fogLayer,
       this.shadowLayer,
       this.entityLayer,
+      this.selectionRingLayer,
       this.labelLayer,
       this.effects.container,
       this.overlayLayer,
@@ -178,6 +181,7 @@ export class Renderer {
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
+    this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
     this.shadowLayer.clear();
     this.effects.reset();
@@ -217,11 +221,6 @@ export class Renderer {
   private sortKeyAt(worldX: number, worldY: number): number {
     const h = visualHeightAt(this.map, worldX, worldY);
     return projectionSortKey({ x: worldX, y: worldY }, this.camera.view(), h);
-  }
-
-  private buildingOccluderRadius(defId: string, entityRadius: number): number {
-    const footprint = this.registry.building(defId).footprint;
-    return Math.max(entityRadius * 1.45, (footprint * TILE) / 2);
   }
 
   private artOf(e: Entity): { art: ArtDef; color: string } {
@@ -343,12 +342,10 @@ export class Renderer {
 
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
+    this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
     this.shadowLayer.clear();
     if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
-
-    const buildingOccluders: OcclusionBounds[] = [];
-    const friendlyUnits: Array<{ pos: { x: number; y: number }; radius: number; depth: number; color: number }> = [];
 
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
@@ -383,8 +380,9 @@ export class Renderer {
       }
 
       const pos = this.drawPos(x, y);
+      const depth = this.sortKeyAt(x, y);
       n.sprite.position.set(pos.x, pos.y);
-      if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(x, y);
+      n.sprite.zIndex = depth;
       if (!this.isOblique() && (e.kind === 'unit' || e.kind === 'projectile')) {
         n.sprite.rotation = n.facing + Math.PI / 2;
       } else if (this.isOblique()) {
@@ -428,7 +426,7 @@ export class Renderer {
         n.sprite.alpha = 1;
       }
 
-      if (selected.has(id)) this.strokeRing(pos.x, pos.y, e.radius + 6, 2, 0xffffff, 0.9);
+      if (selected.has(id)) this.strokeSelectionRing(x, y, e.radius + 6, 2, 0xffffff, 0.9, depth);
 
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
         const hp = this.positionOverlayAt(x, y, -e.radius - 8);
@@ -446,30 +444,6 @@ export class Renderer {
         const dot = this.positionOverlayAt(x, y, -e.radius - 4);
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
-
-      const depth = this.sortKeyAt(x, y);
-      if (e.kind === 'building') {
-        buildingOccluders.push({
-          x: pos.x,
-          y: pos.y,
-          radius: this.buildingOccluderRadius(e.defId, e.radius),
-          depth,
-        });
-      } else if (e.kind === 'unit' && e.owner === this.viewerId) {
-        friendlyUnits.push({
-          pos,
-          radius: e.radius + 2,
-          depth,
-          color: parseOwnerColor(this.colorByOwner.get(e.owner) ?? '#ffffff'),
-        });
-      }
-    }
-
-    for (const unit of friendlyUnits) {
-      if (!isUnitOccludedByBuilding({ x: unit.pos.x, y: unit.pos.y, radius: unit.radius, depth: unit.depth }, buildingOccluders)) {
-        continue;
-      }
-      this.strokeRing(unit.pos.x, unit.pos.y, unit.radius + 5, 2.5, unit.color, 0.92);
     }
 
     if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);
@@ -643,6 +617,25 @@ export class Renderer {
     const col = frac > 0.5 ? 0x5dff8f : frac > 0.25 ? 0xffd166 : 0xff5d5d;
     this.fillRect(x - w / 2, y, w, 4, 0x000000, 0.6);
     if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
+  }
+
+  private strokeSelectionRing(
+    worldX: number,
+    worldY: number,
+    radius: number,
+    width: number,
+    color: number,
+    alpha: number,
+    depth: number,
+  ): void {
+    const pos = this.drawPos(worldX, worldY);
+    const g = this.selectionRingPool.acquire();
+    g.zIndex = depth - 0.001;
+    if (this.isOblique()) {
+      g.ellipse(pos.x, pos.y, radius * OBLIQUE_SCALE_X, radius * OBLIQUE_SCALE_Y).stroke({ width, color, alpha });
+    } else {
+      g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
+    }
   }
 
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
