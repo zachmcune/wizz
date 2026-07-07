@@ -15,8 +15,8 @@ const DEFAULT_LOBBY = {
   slots: [
     { id: 'player0', kind: 'human', team: 'a', color: '#4f9dff', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
     { id: 'player1', kind: 'open', team: 'b', color: '#ff5d5d', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
-    { id: 'player2', kind: 'closed', team: 'c', color: '#5dff8f', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
-    { id: 'player3', kind: 'closed', team: 'd', color: '#ffd166', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player2', kind: 'open', team: 'c', color: '#5dff8f', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
+    { id: 'player3', kind: 'open', team: 'd', color: '#ffd166', startIndex: null, factionId: 'arcane', claimedBy: null, ready: false },
   ],
 };
 
@@ -83,6 +83,7 @@ class Room {
 
     const connId = randomBytes(8).toString('hex');
     const isHost = this.clients.size === 0;
+    let slotId = null;
     if (isHost) {
       this.hostWs = ws;
       if (initialLobby) this.lobbyState = cloneLobby(initialLobby);
@@ -90,10 +91,11 @@ class Room {
       if (hostSlot) {
         hostSlot.claimedBy = connId;
         hostSlot.ready = true;
+        slotId = hostSlot.id;
       }
     }
 
-    this.clients.set(ws, { connId, slotId: null });
+    this.clients.set(ws, { connId, slotId });
 
     const waiting = connectedHumans(this) < maxHumans(this.lobbyState);
 
@@ -101,7 +103,7 @@ class Room {
       JSON.stringify({
         t: 'joined',
         connId,
-        playerId: connId,
+        playerId: slotId ?? connId,
         seed: this.seed,
         startTick: 0,
         isHost,
@@ -199,6 +201,20 @@ class Room {
       ws.send(JSON.stringify({ t: 'error', message: 'Only the host can start the match' }));
       return;
     }
+    const active = this.lobbyState.slots.filter((s) => s.kind !== 'closed');
+    const corners = new Set();
+    for (const slot of active) {
+      if (slot.startIndex === null || slot.startIndex === undefined) {
+        ws.send(JSON.stringify({ t: 'error', message: 'Each player must choose a starting position' }));
+        return;
+      }
+      if (corners.has(slot.startIndex)) {
+        ws.send(JSON.stringify({ t: 'error', message: 'Each player needs a unique starting position' }));
+        return;
+      }
+      corners.add(slot.startIndex);
+    }
+
     const needed = humanSlots(this.lobbyState);
     for (const slot of needed) {
       if (!slot.claimedBy) {
@@ -315,6 +331,8 @@ class Room {
  * Attach lockstep relay WebSocket handling to an existing HTTP server.
  * @param {import('node:http').Server} server
  */
+export { Room, DEFAULT_LOBBY };
+
 export function attachRelay(server) {
   /** @type {Map<string, Room>} */
   const rooms = new Map();

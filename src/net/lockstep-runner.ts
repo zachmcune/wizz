@@ -1,6 +1,6 @@
 // Headless lockstep runner for integration tests and multiplayer verification.
 import type { Registry } from '../data/registry';
-import type { Command, GameState, PlayerId } from '../sim/types';
+import type { Command, GameState, MatchConfig, PlayerId } from '../sim/types';
 import { initMatch } from '../sim/factory';
 import { Simulation } from '../sim/simulation';
 import { hashState } from '../sim/hash';
@@ -12,7 +12,8 @@ export { CHECKSUM_INTERVAL_TICKS };
 
 export interface LockstepPeerOptions {
   registry: Registry;
-  matchId: string;
+  matchId?: string;
+  matchConfig?: MatchConfig;
   playerIds: PlayerId[];
   ticks: number;
   seed?: number;
@@ -28,24 +29,31 @@ export interface LockstepPeerResult {
   desyncAt: number | null;
 }
 
-function createRoom(registry: Registry, matchId: string, playerIds: PlayerId[], seed?: number): InMemoryRelayRoom {
-  const config = registry.match(matchId);
+function createRoom(
+  registry: Registry,
+  matchId: string | undefined,
+  matchConfig: MatchConfig | undefined,
+  playerIds: PlayerId[],
+  seed?: number,
+): InMemoryRelayRoom {
+  const config = matchConfig ?? registry.match(matchId!);
   const relay = new InMemoryRelay();
-  return relay.createRoom(matchId, seed ?? config.seed, playerIds);
+  return relay.createRoom(matchId ?? 'custom', seed ?? config.seed, playerIds);
 }
 
 function createPeers(
   registry: Registry,
-  matchId: string,
+  matchId: string | undefined,
+  matchConfig: MatchConfig | undefined,
   playerIds: PlayerId[],
   aiEnabled: boolean,
   room: InMemoryRelayRoom,
 ): { clients: LockstepClient[]; sims: Simulation[] } {
-  const config = registry.match(matchId);
+  const config = matchConfig ?? registry.match(matchId!);
   const clients = playerIds.map((id) => new LockstepClient(room.connect(id)));
   const sims = playerIds.map(() => {
-    const matchConfig = { ...config, seed: room.seed };
-    const { state, services } = initMatch(registry, matchConfig);
+    const resolved = { ...config, seed: room.seed };
+    const { state, services } = initMatch(registry, resolved);
     const sim = new Simulation(state, services);
     sim.aiEnabled = aiEnabled;
     return sim;
@@ -55,9 +63,19 @@ function createPeers(
 
 /** Run N peers through an in-memory relay and return final states. Throws on hash mismatch. */
 export function runLockstepPeers(opts: LockstepPeerOptions): LockstepPeerResult {
-  const room = createRoom(opts.registry, opts.matchId, opts.playerIds, opts.seed);
+  if (!opts.matchConfig && !opts.matchId) {
+    throw new Error('runLockstepPeers requires matchId or matchConfig');
+  }
+  const room = createRoom(opts.registry, opts.matchId, opts.matchConfig, opts.playerIds, opts.seed);
   const aiEnabled = opts.aiEnabled ?? false;
-  const { clients, sims } = createPeers(opts.registry, opts.matchId, opts.playerIds, aiEnabled, room);
+  const { clients, sims } = createPeers(
+    opts.registry,
+    opts.matchId,
+    opts.matchConfig,
+    opts.playerIds,
+    aiEnabled,
+    room,
+  );
   const checksumEvery = opts.checksumEvery ?? CHECKSUM_INTERVAL_TICKS;
   let desyncAt: number | null = null;
 

@@ -160,10 +160,20 @@ export class MatchLobby {
       if (!template) return;
       this.state = template.apply(this.opts.registry);
       if (this.opts.mode === 'host' && this.opts.connId) {
-        const hostSlot = this.state.slots.find((s) => s.kind === 'human');
-        if (hostSlot) {
-          hostSlot.claimedBy = this.opts.connId;
-          hostSlot.ready = true;
+        let assignedHost = false;
+        for (const slot of this.state.slots) {
+          if (slot.kind === 'human' && !assignedHost) {
+            slot.claimedBy = this.opts.connId;
+            slot.ready = true;
+            assignedHost = true;
+          } else if (slot.kind === 'human') {
+            slot.kind = 'open';
+            slot.claimedBy = null;
+            slot.ready = false;
+          } else if (slot.kind === 'open') {
+            slot.claimedBy = null;
+            slot.ready = false;
+          }
         }
       }
       this.templateSelect.value = '';

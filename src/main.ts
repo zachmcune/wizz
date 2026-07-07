@@ -5,7 +5,7 @@ import { initViewport } from './ui/viewport';
 import { initPwaUpdates } from './pwa';
 import { loadRegistry } from './data/loader';
 import { buildMatchConfig } from './lobby/build-config';
-import { defaultLobbyState } from './lobby/build-config';
+import { defaultLobbyState, defaultOnlineLobbyState } from './lobby/build-config';
 import { initMatch } from './sim/factory';
 import { Game } from './app/game';
 import { MainMenu } from './ui/screens';
@@ -77,7 +77,7 @@ async function boot(): Promise<void> {
   };
 
   const showHostLobby = async (room: string): Promise<void> => {
-    const initialState = defaultLobbyState();
+    const initialState = defaultOnlineLobbyState();
     const hostSlot = initialState.slots[0]!;
     hostSlot.claimedBy = 'pending';
     hostSlot.ready = true;
@@ -86,13 +86,16 @@ async function boot(): Promise<void> {
       session = await joinMultiplayerRoom(room, initialState);
       hostSlot.claimedBy = session.connId;
 
+      const mine = session.lobbyState.slots.find((s) => s.claimedBy === session!.connId);
+      const localSlotId = mine?.id ?? session.localPlayerId;
+
       lobby = new MatchLobby({
         mode: 'host',
         registry,
         initialState: session.lobbyState,
         room,
         connId: session.connId,
-        localSlotId: 'player0',
+        localSlotId,
         isHost: true,
         lobbyClient: session.lobby,
         onStart: () => {},
@@ -107,11 +110,19 @@ async function boot(): Promise<void> {
       app.appendChild(lobby.root);
       lobby.setStatus('Share the room code. Configure slots, then start when everyone is ready.');
 
+      session.lobby.onLobbyState = (state) => {
+        const hostMine = state.slots.find((s) => s.claimedBy === session?.connId);
+        if (hostMine) lobby?.setLocalSlotId(hostMine.id);
+        session!.lobbyState = state;
+        lobby?.setRemoteState(state);
+      };
+
       session.lobby.onMatchStart = (seed, state) => {
+        const hostMine = state.slots.find((s) => s.claimedBy === session?.connId);
         lobby?.destroy();
         lobby = null;
         void clearSave();
-        startFromLobby({ ...state, seed }, { session: session!, localPlayerId: 'player0' });
+        startFromLobby({ ...state, seed }, { session: session!, localPlayerId: hostMine?.id ?? session!.localPlayerId });
       };
       session.transport.onError = (msg) => lobby?.showError(msg);
     } catch (err) {
