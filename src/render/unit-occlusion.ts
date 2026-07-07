@@ -29,6 +29,15 @@ export function isUnitOccludedByBuilding(unit: OcclusionBounds, buildings: Occlu
   return false;
 }
 
+/** Returns the subset of units hidden behind at least one deeper building. */
+export function filterOccludedUnits<T extends OcclusionBounds>(
+  units: T[],
+  buildings: OcclusionBounds[],
+): T[] {
+  if (buildings.length === 0) return [];
+  return units.filter((u) => isUnitOccludedByBuilding(u, buildings));
+}
+
 export function parseOwnerColor(hex: string): number {
   return Number.parseInt(hex.replace('#', ''), 16);
 }
