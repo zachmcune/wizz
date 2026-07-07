@@ -14,6 +14,15 @@ import { UnitOrdersPanel } from './hud/unit-orders-panel';
 import { BuildingActionsPanel } from './hud/building-actions-panel';
 import { SpellBar } from './hud/spell-bar';
 import { SuperweaponStatus } from './hud/superweapon-status';
+import { MatchSettingsScreen } from './hud/settings-screen';
+import type { Settings } from '../storage/settings';
+import type { AudioManager } from '../audio/audio';
+
+export interface HudOptions {
+  settings: Settings;
+  audio: AudioManager;
+  onSettingsChange: (settings: Settings) => void;
+}
 
 export class Hud {
   root = el('div', 'hud');
@@ -28,6 +37,7 @@ export class Hud {
   private buildConfirmBtn = el('button', 'btn confirm', 'Place');
   private buildCancelBtn = el('button', 'btn', 'Cancel');
   private result = el('div', 'result-overlay');
+  private settingsScreen: MatchSettingsScreen;
   private debugEl = el('div', 'debug-overlay');
   private hintEl = el('div', 'hint-banner');
   private debugOn = false;
@@ -81,6 +91,7 @@ export class Hud {
     private playerId: PlayerId,
     minimap: Minimap,
     iconFor: (art: ArtDef, color: string) => HTMLCanvasElement,
+    hudOptions: HudOptions,
   ) {
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     const top = el('div', 'topbar');
@@ -93,11 +104,11 @@ export class Hud {
       this.debugOn = !this.debugOn;
       this.debugEl.style.display = this.debugOn ? 'block' : 'none';
     });
-    const menuBtn = el('button', 'btn menu-btn', 'Menu');
-    menuBtn.addEventListener('click', () => this.toggleMenu());
+    const settingsBtn = el('button', 'btn menu-btn', 'Settings');
+    settingsBtn.addEventListener('click', () => this.toggleSettings());
     this.spellBar = new SpellBar(registry, controller);
     this.superweaponStatus = new SuperweaponStatus(registry);
-    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
+    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, settingsBtn);
 
     const selBlock = el('div', 'sel-block');
     this.commandMenu = new CommandMenuPanel(registry, controller, iconFor, false, () => this.setHudTab('command'));
@@ -156,6 +167,13 @@ export class Hud {
     this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
     this.buildConfirm.style.display = 'none';
 
+    this.settingsScreen = new MatchSettingsScreen({
+      settings: hudOptions.settings,
+      audio: hudOptions.audio,
+      onSettingsChange: hudOptions.onSettingsChange,
+      onLeaveMatch: () => this.onExit?.(),
+    });
+
     this.root.append(
       top,
       this.superweaponStatus.root,
@@ -166,6 +184,7 @@ export class Hud {
       this.debugEl,
       this.hintEl,
       this.result,
+      this.settingsScreen.root,
     );
     this.result.style.display = 'none';
     this.debugEl.style.display = 'none';
@@ -186,8 +205,9 @@ export class Hud {
     this.debugEl.textContent = `${fps.toFixed(0)} fps · tick ${tick} · entities ${entities} · sel ${sel}`;
   }
 
-  private toggleMenu(): void {
-    if (this.onExit) this.onExit();
+  private toggleSettings(): void {
+    if (this.settingsScreen.isOpen()) this.settingsScreen.close();
+    else this.settingsScreen.open();
   }
 
   showResult(win: boolean): void {
