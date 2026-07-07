@@ -41,6 +41,8 @@ export class LobbyMapPreview {
   setSize(size: number): void {
     this.canvas.width = size;
     this.canvas.height = size;
+    this.canvas.style.width = `${size}px`;
+    this.canvas.style.height = `${size}px`;
     this.scale = size / Math.max(this.worldW, this.worldH);
     this.render();
   }
