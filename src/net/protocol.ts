@@ -24,6 +24,7 @@ export interface LobbyStateWire {
 
 export type ClientMessage =
   | { t: 'join'; room: string; lobbyState?: LobbyStateWire }
+  | { t: 'rejoin'; room: string; connId: string; fromTick: number }
   | { t: 'lobbyUpdate'; state: LobbyStateWire }
   | { t: 'claimSlot'; slotId: string; team: string; color: string; startIndex: number | null; factionId: string }
   | { t: 'slotReady'; slotId: string; ready: boolean }
@@ -47,6 +48,15 @@ export type ServerMessage =
   | { t: 'peerJoined'; playerId: string }
   | { t: 'peerLeft'; playerId: string }
   | { t: 'matchStart'; startTick: number; seed: number; state: LobbyStateWire }
+  | {
+      t: 'rejoined';
+      connId: string;
+      playerId: string;
+      seed: number;
+      startTick: number;
+      lobbyState: LobbyStateWire;
+      currentTick: number;
+    }
   | { t: 'tick'; tick: number; cmds: Command[] }
   | { t: 'peerChecksum'; playerId: string; tick: number; hash: string }
   | { t: 'error'; message: string };
@@ -68,3 +78,6 @@ export const LOCKSTEP_DRAIN_BUDGET_MS = 8;
 
 /** No relay tick for this long → show a connection-stall hint. */
 export const LOCKSTEP_STALL_MS = 3000;
+
+/** Relay retains this many ticks so mobile clients can rejoin after backgrounding. */
+export const RELAY_TICK_HISTORY = 1200;

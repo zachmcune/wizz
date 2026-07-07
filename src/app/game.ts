@@ -70,10 +70,38 @@ export class Game {
   private onKeyDown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') this.controller.clearSelection();
   };
-  private onVisibilityResume = (): void => {
-    if (document.visibilityState !== 'visible' || this.disposed) return;
+  private onVisibilityChange = (): void => {
+    if (this.disposed) return;
+    if (document.visibilityState === 'hidden') {
+      this.simCtrl.setBackgrounded(true);
+      return;
+    }
+    void this.handleForegroundResume();
+  };
+
+  private async handleForegroundResume(): Promise<void> {
+    this.simCtrl.setBackgrounded(false);
     initViewport();
     this.renderer.handleResume();
+    this.loop?.resetAfterGap();
+    this.audio.unlock();
+
+    if (this.relayTransport && !this.relayTransport.connected) {
+      try {
+        this.hud.showHint('Reconnecting…');
+        await this.relayTransport.reconnect(this.state.tick);
+        this.hud.showHint('Reconnected');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'rejoin failed';
+        this.hud.showHint(`Disconnected — ${message}`);
+        return;
+      }
+    }
+
+    if (this.lockstep) {
+      this.simCtrl.resumeLockstep();
+      this.renderer.snapDisplay();
+    }
   };
 
   constructor(
@@ -182,6 +210,11 @@ export class Game {
       this.relayTransport.onError = (message) => {
         if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);
       };
+      this.relayTransport.onDisconnected = () => {
+        if (!this.disposed && document.visibilityState === 'visible') {
+          this.hud.showHint('Connection lost — tap the app to reconnect');
+        }
+      };
     }
     this.controller.onHarvestNoRefinery = () => {
       this.hud.showHint('Tap teal mana nodes to harvest · Build Attunement Spire (MINE) to deposit');
@@ -201,8 +234,8 @@ export class Game {
     });
     this.pointerBinder.attach();
     window.addEventListener('keydown', this.onKeyDown);
-    document.addEventListener('visibilitychange', this.onVisibilityResume);
-    window.addEventListener('pageshow', this.onVisibilityResume);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('pageshow', this.onVisibilityChange);
 
     if (this.simCtrl.isWorkerMode) {
       const ready = await this.simCtrl.initWorker();
@@ -308,8 +341,8 @@ export class Game {
   exit(): void {
     if (this.disposed) return;
     this.disposed = true;
-    document.removeEventListener('visibilitychange', this.onVisibilityResume);
-    window.removeEventListener('pageshow', this.onVisibilityResume);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    window.removeEventListener('pageshow', this.onVisibilityChange);
     window.removeEventListener('keydown', this.onKeyDown);
     this.pointerBinder?.detach();
     this.loop?.stop();
