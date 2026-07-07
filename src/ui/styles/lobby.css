@@ -369,7 +369,9 @@
   font-size: 10px;
 }
 .compact-ui .command-row {
-  max-height: min(34vh, 180px);
+  /* Single scroll container (cmd-card) on short screens — nested scroll traps touches. */
+  max-height: none;
+  overflow-y: visible;
 }
 .compact-ui .minimap-panel {
   width: min(18vw, 88px);
