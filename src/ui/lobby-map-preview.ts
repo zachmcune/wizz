@@ -38,6 +38,13 @@ export class LobbyMapPreview {
     this.canvas.addEventListener('pointerdown', (e) => this.handlePick(e));
   }
 
+  setSize(size: number): void {
+    this.canvas.width = size;
+    this.canvas.height = size;
+    this.scale = size / Math.max(this.worldW, this.worldH);
+    this.render();
+  }
+
   setMap(map: MapData): void {
     this.map = map;
     this.worldW = map.tileW * TILE;

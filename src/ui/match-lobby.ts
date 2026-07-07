@@ -19,6 +19,21 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
+function appendField(grid: HTMLElement, label: string, control: HTMLElement): void {
+  const lbl = el('span', 'lobby-field-label', label);
+  const wrap = el('div', 'lobby-field-control');
+  wrap.appendChild(control);
+  grid.append(lbl, wrap);
+}
+
+function lobbyMapSize(): number {
+  const h = window.innerHeight;
+  const w = window.innerWidth;
+  if (h <= 420) return Math.min(132, Math.floor(w * 0.3));
+  if (h <= 520) return Math.min(168, Math.floor(w * 0.32));
+  return Math.min(200, Math.floor(w * 0.34));
+}
+
 export interface MatchLobbyOptions {
   mode: LobbyMode;
   registry: Registry;
@@ -45,12 +60,13 @@ export class MatchLobby {
   private roomEl: HTMLElement | null = null;
   private bodyEl = el('div', 'lobby-body');
   private slotsWrap = el('div', 'lobby-slots');
+  private bannerEl = el('div', 'lobby-banner');
   private mapPreview: LobbyMapPreview;
   private pickSlotId: SlotId | null = null;
 
   constructor(private opts: MatchLobbyOptions) {
     this.state = structuredClone(opts.initialState);
-    this.mapPreview = new LobbyMapPreview(this.opts.registry.map(this.state.mapId));
+    this.mapPreview = new LobbyMapPreview(this.opts.registry.map(this.state.mapId), lobbyMapSize());
     this.errorEl.style.display = 'none';
     this.build();
     if (opts.lobbyClient) this.wireNetwork(opts.lobbyClient);
@@ -66,7 +82,8 @@ export class MatchLobby {
   }
 
   private build(): void {
-    const title = el('h1', 'menu-title', 'Match Setup');
+    const top = el('div', 'lobby-top');
+    const title = el('h1', 'menu-title lobby-title', 'Match Setup');
     const header = el('div', 'lobby-header');
 
     this.mapSelect = el('select', 'lobby-select') as HTMLSelectElement;
@@ -111,6 +128,7 @@ export class MatchLobby {
       el('label', 'lobby-field-label', 'Faction'),
       this.factionSelect,
     );
+    top.append(title, header);
 
     if (this.opts.room) {
       this.roomEl = el('div', 'lobby-room');
@@ -134,6 +152,10 @@ export class MatchLobby {
     });
 
     this.bodyEl.append(this.slotsWrap, this.mapPreview.root);
+
+    this.bannerEl.append(this.errorEl, this.statusEl);
+    this.errorEl.classList.add('lobby-banner-error');
+    this.statusEl.classList.add('lobby-banner-status');
 
     this.templateSelect = el('select', 'lobby-select') as HTMLSelectElement;
     const blank = el('option', undefined, 'Load template…') as HTMLOptionElement;
@@ -170,7 +192,9 @@ export class MatchLobby {
     this.actionBtn.addEventListener('click', () => this.onAction());
     footer.append(backBtn, this.templateSelect, this.actionBtn);
 
-    this.root.append(title, header, this.roomEl ?? '', this.bodyEl, this.statusEl, this.errorEl, footer);
+    const shell = el('div', 'lobby-shell');
+    shell.append(top, this.roomEl ?? '', this.bodyEl, this.bannerEl, footer);
+    this.root.appendChild(shell);
   }
 
   private buildSlotPanel(index: number): HTMLElement {
@@ -248,7 +272,7 @@ export class MatchLobby {
       this.refresh();
     });
 
-    const posSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    const posSelect = el('select', 'lobby-select lobby-select-narrow') as HTMLSelectElement;
     const dash = el('option', undefined, '-') as HTMLOptionElement;
     dash.value = '';
     posSelect.appendChild(dash);
@@ -267,21 +291,13 @@ export class MatchLobby {
       this.refresh();
     });
 
-    const colorInput = el('input', 'lobby-color-input') as HTMLInputElement;
-    colorInput.type = 'color';
-    colorInput.value = slot.color;
-    colorInput.disabled = !canEdit;
-    colorInput.addEventListener('input', () => {
-      slot.color = colorInput.value;
-      this.pushUpdate();
-      this.refresh();
-    });
-
     const swatches = el('div', 'lobby-swatches');
     for (const color of DEFAULT_COLORS) {
       const sw = el('button', 'lobby-swatch');
+      sw.type = 'button';
       sw.style.background = color;
       sw.disabled = !canEdit;
+      if (slot.color.toLowerCase() === color.toLowerCase()) sw.classList.add('active');
       sw.addEventListener('click', () => {
         slot.color = color;
         this.pushUpdate();
@@ -316,21 +332,18 @@ export class MatchLobby {
       this.pushUpdate();
     });
 
-    const row1 = el('div', 'lobby-slot-row');
-    row1.append(el('label', 'lobby-field-label', 'Type'), kindSelect, el('label', 'lobby-field-label', 'Team'), teamSelect);
-    const row2 = el('div', 'lobby-slot-row');
-    row2.append(el('label', 'lobby-field-label', 'Position'), posSelect, colorInput, swatches);
-    panel.append(row1, row2);
-
-    if (slot.kind === 'ai') {
-      const row3 = el('div', 'lobby-slot-row');
-      row3.append(el('label', 'lobby-field-label', 'AI'), diffSelect);
-      panel.appendChild(row3);
+    const grid = el('div', 'lobby-slot-grid');
+    appendField(grid, 'Type', kindSelect);
+    appendField(grid, 'Team', teamSelect);
+    if (slot.kind !== 'closed') {
+      appendField(grid, 'Position', posSelect);
+      appendField(grid, 'Color', swatches);
     }
+    if (slot.kind === 'ai') appendField(grid, 'AI', diffSelect);
+    if (slot.kind !== 'closed') appendField(grid, 'Faction', factionSelect);
+    panel.appendChild(grid);
 
-    const row4 = el('div', 'lobby-slot-row');
-    row4.append(el('label', 'lobby-field-label', 'Faction'), factionSelect);
-    panel.appendChild(row4);
+    const actions = el('div', 'lobby-slot-actions');
 
     if (this.opts.mode === 'guest' && isMine && slot.claimedBy === this.opts.connId) {
       const readyBtn = el('button', 'btn', slot.ready ? 'Unready' : 'Ready');
@@ -339,7 +352,7 @@ export class MatchLobby {
         this.opts.lobbyClient?.setReady(slot.id, slot.ready ?? false);
         this.refresh();
       });
-      panel.appendChild(readyBtn);
+      actions.appendChild(readyBtn);
     }
 
     if (this.opts.mode === 'guest' && !slot.claimedBy && (slot.kind === 'human' || slot.kind === 'open')) {
@@ -347,8 +360,10 @@ export class MatchLobby {
       claimBtn.addEventListener('click', () => {
         this.opts.lobbyClient?.claimSlot(slot.id, slot.team, slot.color, slot.startIndex, slot.factionId);
       });
-      panel.appendChild(claimBtn);
+      actions.appendChild(claimBtn);
     }
+
+    if (actions.childElementCount > 0) panel.appendChild(actions);
 
     if (slot.kind === 'closed') panel.classList.add('closed');
     else panel.classList.remove('closed');
@@ -388,13 +403,16 @@ export class MatchLobby {
       this.renderSlotPanel(this.slotEls[i]!, this.state.slots[i]!, i);
     }
 
+    this.mapPreview.setSize(lobbyMapSize());
     this.mapPreview.setAssignments(this.state.slots);
     this.mapPreview.render();
 
     const map = this.opts.registry.map(this.state.mapId);
     const validation = validateLobby(this.state, this.opts.mode, map, this.opts.localSlotId);
-    this.errorEl.style.display = validation.valid ? 'none' : 'block';
-    this.errorEl.textContent = validation.errors.join(' · ');
+    const hasError = !validation.valid;
+    this.errorEl.style.display = hasError ? 'block' : 'none';
+    this.errorEl.textContent = hasError ? validation.errors[0] ?? '' : '';
+    this.bannerEl.style.display = hasError || this.statusEl.textContent ? 'block' : 'none';
 
     if (this.opts.mode === 'solo') {
       this.actionBtn.textContent = 'Start';
