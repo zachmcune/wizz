@@ -49,6 +49,8 @@ solid **before** wiring transport.
 | Game wiring | Done | Optional `lockstep` in `Game` opts (disables worker) |
 | Two-client hash test | Done | `tests/lockstep-integration.test.ts` at tick 1200 |
 | Fog per client | Done | Presentation-only (already true) |
+| Playable online UI | Done | Create/Join room menu + `npm run relay` |
+| PvP match config | Done | `data/match/skirmish_1v1_online.json` |
 
 **Note:** `Game` with `lockstep` waits for the transport to deliver confirmed per-tick commands
 (`{ t: 'tick', tick, cmds }` from the relay). Use `InMemoryRelay.advanceTick()` in tests or a

@@ -8,6 +8,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 
 export interface MenuOptions {
   onStart: (matchId: string) => void;
+  onCreateOnline: () => void;
+  onJoinOnline: () => void;
   onContinue: (() => void) | null;
 }
 
@@ -30,7 +32,13 @@ export class MainMenu {
     const ffa = el('button', 'btn big', 'Free-For-All (4)');
     ffa.addEventListener('click', () => opts.onStart('ffa_4'));
 
-    list.append(skirmish, ffa);
+    const onlineLabel = el('p', 'menu-section', 'Multiplayer');
+    const createOnline = el('button', 'btn big online-btn', 'Create Online 1v1');
+    createOnline.addEventListener('click', () => opts.onCreateOnline());
+    const joinOnline = el('button', 'btn big online-btn', 'Join Online 1v1');
+    joinOnline.addEventListener('click', () => opts.onJoinOnline());
+
+    list.append(skirmish, ffa, onlineLabel, createOnline, joinOnline);
     this.root.append(title, sub, list);
   }
 
