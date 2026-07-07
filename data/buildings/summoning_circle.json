@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 130,
   "footprint": 2,
+  "menuCategory": "buildings",
   "requires": ["sanctum"],
   "producesUnits": ["imp_swarmling", "arcane_archer", "rift_familiar"],
   "powerUsed": 20,

@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 110,
   "footprint": 2,
+  "menuCategory": "buildings",
   "requires": ["sanctum"],
   "powerProduced": 60,
   "art": { "shape": "building", "size": 60, "accent": "#e0c24a" }

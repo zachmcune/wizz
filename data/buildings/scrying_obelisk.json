@@ -10,6 +10,7 @@
   "armor": "building",
   "sight": 140,
   "footprint": 2,
+  "menuCategory": "advanced",
   "requires": ["attunement_spire", "ley_conduit"],
   "isRadar": true,
   "powerUsed": 15,

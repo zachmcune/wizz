@@ -18,6 +18,7 @@
     "vs": { "light": 1.1, "heavy": 0.4, "building": 0.3 }
   },
   "producedBy": "summoning_circle",
+  "menuCategory": "small_troops",
   "requires": ["summoning_circle"],
   "art": { "shape": "triangle", "size": 14, "accent": "#5cffb0" },
   "sfx": { "select": "familiar_select", "move": "familiar_move", "attack": "melee_hit", "die": "unit_die" }

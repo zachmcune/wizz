@@ -12,6 +12,7 @@
   "radius": 9,
   "weapon": null,
   "producedBy": "attunement_spire",
+  "menuCategory": "workers",
   "requires": ["attunement_spire"],
   "canConjureMana": true,
   "art": { "shape": "pentagon", "size": 18, "accent": "#b57fff" },

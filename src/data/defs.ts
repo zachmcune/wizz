@@ -4,6 +4,10 @@
 export type ArmorClass = 'light' | 'heavy' | 'building';
 export type ShapeKind = 'triangle' | 'circle' | 'square' | 'diamond' | 'hexagon' | 'pentagon' | 'building';
 
+export type BuildMenuCategory = 'buildings' | 'defenses' | 'advanced';
+export type TrainMenuCategory = 'workers' | 'small_troops' | 'large_troops' | 'wizards';
+export type MenuCategory = BuildMenuCategory | TrainMenuCategory;
+
 export interface ArtDef {
   shape: ShapeKind;
   size: number; // draw size in world units
@@ -42,6 +46,7 @@ export interface UnitDef {
   radius: number;
   weapon: WeaponDef | null;
   producedBy: string; // building defId
+  menuCategory: TrainMenuCategory;
   requires: string[]; // building defIds required to unlock
   carry?: number; // Wisp harvest capacity
   isHarvester?: boolean;
@@ -64,6 +69,7 @@ export interface BuildingDef {
   armor: ArmorClass;
   sight: number;
   footprint: number; // tiles (square)
+  menuCategory?: BuildMenuCategory;
   requires: string[];
   producesUnits?: string[]; // unit defIds this building can produce
   isConstructionYard?: boolean; // Sanctum / mobile camp

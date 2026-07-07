@@ -273,6 +273,89 @@ body {
   min-width: 0;
   flex: 1 1 100%;
 }
+.category-chips {
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+.category-chips-scroll {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0 4px;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.category-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+.category-chip {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(10, 8, 18, 0.55);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.category-chip.active {
+  border-color: var(--accent);
+  background: rgba(127, 227, 255, 0.14);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.producer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 2px 0;
+}
+.producer-row-label {
+  flex: 0 0 100%;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.producer-chip {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: rgba(10, 8, 18, 0.55);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.producer-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.producer-chip.offline {
+  opacity: 0.45;
+  border-color: #8a4040;
+}
+.producer-chip.slow {
+  border-color: #9a7a30;
+}
+.command-row {
+  max-height: min(38vh, 220px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
 .btn:active {
   transform: translateY(1px);
 }
@@ -847,6 +930,18 @@ body {
 }
 .compact-ui .cmd-card {
   width: min(46vw, 228px);
+}
+.compact-ui .category-chip {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 10px;
+}
+.compact-ui .producer-chip {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+.compact-ui .command-row {
+  max-height: min(34vh, 180px);
 }
 .compact-ui .minimap-panel {
   width: min(18vw, 88px);
