@@ -229,6 +229,8 @@ export class Game {
     );
   }
 
+  private wallDragging = false;
+
   private setupPointer(): void {
     const canvas = this.renderer.app.canvas;
     const rel = (e: PointerEvent) => {
@@ -242,20 +244,36 @@ export class Game {
       this.lastPointer = p;
       this.pointerStart = p;
       canvas.setPointerCapture(e.pointerId);
+      const mode = this.controller.session.mode;
+      if (mode === 'build' && this.controller.isWallBuild()) {
+        this.wallDragging = true;
+        const w = screenToWorld(p, this.renderer.camera.view());
+        this.controller.startWallDrag(w);
+      }
       this.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
     });
     canvas.addEventListener('pointermove', (e) => {
       const p = rel(e);
       this.lastPointer = p;
       const mode = this.controller.session.mode;
+      if (mode === 'build' && this.controller.isWallBuild() && this.wallDragging) {
+        const w = screenToWorld(p, this.renderer.camera.view());
+        this.controller.updateWallDrag(w);
+        return;
+      }
       if (mode === 'build' || mode === 'deploy') {
         const w = screenToWorld(p, this.renderer.camera.view());
         if (mode === 'build') this.controller.updateGhost(w);
         else this.controller.updateDeployGhost(w);
       }
       if (mode === 'rally') {
-        const w = screenToWorld(p, this.renderer.camera.view());
-        this.controller.updateRallyCursor(w);
+        if (this.gesture.activePointers >= 2) {
+          this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
+        } else {
+          const w = screenToWorld(p, this.renderer.camera.view());
+          this.controller.updateRallyCursor(w);
+        }
+        return;
       }
       if (mode === 'normal' || mode === 'attackMove') {
         this.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
@@ -266,7 +284,29 @@ export class Game {
       const mode = this.controller.session.mode;
       const drift = Math.hypot(p.x - this.pointerStart.x, p.y - this.pointerStart.y);
       if (mode === 'rally') {
-        this.controller.tap(p);
+        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch {
+          /* already released */
+        }
+        if (this.gesture.activePointers === 0) {
+          const panned = this.gesture.lastEndKind === 'pan' || this.gesture.lastEndKind === 'pinch';
+          if (!panned && drift <= TAP_SLOP_PX) this.controller.confirmRally(screenToWorld(p, this.renderer.camera.view()));
+        }
+        return;
+      }
+      if (mode === 'build' && this.controller.isWallBuild()) {
+        this.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
+        if (this.wallDragging) {
+          if (drift > TAP_SLOP_PX && this.controller.hasWallDragTiles()) {
+            this.controller.confirmWallDrag();
+          } else if (drift <= TAP_SLOP_PX) {
+            this.controller.tap(p);
+          }
+          this.controller.endWallDrag();
+          this.wallDragging = false;
+        }
         return;
       }
       if (mode === 'normal' || mode === 'attackMove' || mode === 'build' || mode === 'deploy') {
@@ -463,9 +503,17 @@ export class Game {
   private buildOverlay() {
     const s = this.controller.session;
     let ghost: { x: number; y: number; size: number; valid: boolean } | undefined;
-    if (s.mode === 'build' && s.buildGhost && s.buildDefId) {
+    let wallGhosts: { x: number; y: number; size: number; valid: boolean }[] | undefined;
+    if (s.mode === 'build' && s.buildDefId) {
       const def = this.registry.buildings.get(s.buildDefId);
-      if (def) ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size: def.footprint * TILE, valid: s.buildGhost.valid };
+      if (def) {
+        const size = def.footprint * TILE;
+        if (s.wallDragTiles?.length) {
+          wallGhosts = s.wallDragTiles.map((t) => ({ x: t.x, y: t.y, size, valid: t.valid }));
+        } else if (s.buildGhost) {
+          ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size, valid: s.buildGhost.valid };
+        }
+      }
     } else if (s.mode === 'deploy' && s.buildGhost) {
       const def = this.registry.buildings.get('waystone_camp');
       if (def) ghost = { x: s.buildGhost.x, y: s.buildGhost.y, size: def.footprint * TILE, valid: s.buildGhost.valid };
@@ -490,9 +538,8 @@ export class Game {
         rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: b.rally.x, toY: b.rally.y };
       }
     }
-    const buildZones =
-      s.mode === 'build' || s.mode === 'deploy' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
-    return { ghost, spell, confirm, buildZones, rallyMarker };
+    const buildZones = s.mode === 'build' ? buildZoneCircles(this.state, this.services, this.humanId) : undefined;
+    return { ghost, wallGhosts, spell, confirm, buildZones, rallyMarker };
   }
 
   exit(): void {

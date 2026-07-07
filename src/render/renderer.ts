@@ -23,6 +23,7 @@ function hexToNumber(hex: string): number {
 
 export interface RenderOverlay {
   ghost?: { x: number; y: number; size: number; valid: boolean };
+  wallGhosts?: { x: number; y: number; size: number; valid: boolean }[];
   spell?: { x: number; y: number; radius: number };
   confirm?: { x: number; y: number } | null;
   buildZones?: { x: number; y: number; r: number }[];
@@ -330,6 +331,15 @@ export class Renderer {
       const gy = gh.y - gh.size / 2;
       this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
       this.overlayStrokePool.acquire().rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+    }
+    if (overlay?.wallGhosts?.length) {
+      for (const gh of overlay.wallGhosts) {
+        const col = gh.valid ? 0x5dff8f : 0xff5d5d;
+        const gx = gh.x - gh.size / 2;
+        const gy = gh.y - gh.size / 2;
+        this.fillRect(gx, gy, gh.size, gh.size, col, 0.28);
+        this.overlayStrokePool.acquire().rect(gx, gy, gh.size, gh.size).stroke({ width: 2, color: col });
+      }
     }
     if (overlay?.spell) {
       this.strokeRing(overlay.spell.x, overlay.spell.y, overlay.spell.radius, 2, 0xffd166, 0.9);

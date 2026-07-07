@@ -8,6 +8,9 @@ export interface SessionState {
   mode: InputMode;
   buildDefId: string | null;
   buildGhost: { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' } | null;
+  /** Preview tiles while drag-placing walls. */
+  wallDragTiles: { x: number; y: number; valid: boolean }[] | null;
+  wallDragStart: { tx: number; ty: number } | null;
   deployEntityId: EntityId | null;
   rallyBuildingId: EntityId | null;
   rallyCursor: { x: number; y: number } | null;
@@ -22,6 +25,8 @@ export function createSession(): SessionState {
     mode: 'normal',
     buildDefId: null,
     buildGhost: null,
+    wallDragTiles: null,
+    wallDragStart: null,
     deployEntityId: null,
     rallyBuildingId: null,
     rallyCursor: null,

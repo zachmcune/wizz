@@ -184,6 +184,17 @@ export class GestureRecognizer {
     }
   }
 
+  /** Drop all active pointers and return to idle (e.g. after modes that bypass gesture pointerUp). */
+  cancel(): void {
+    this.pointers.clear();
+    this.state = 'idle';
+    this.lastEndKind = 'none';
+  }
+
+  get activePointers(): number {
+    return this.pointers.size;
+  }
+
   /** True while a one-finger pan gesture is active (before pointerUp). */
   wasPanning(): boolean {
     return this.state === 'pan';

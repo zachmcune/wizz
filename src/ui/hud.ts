@@ -277,7 +277,7 @@ export class Hud {
       const campDef = this.registry.buildings.get('waystone_camp')!;
       this.selName.textContent = 'Deploy: Waystone Camp';
       this.selDesc.textContent = campDef.description;
-      this.selMeta.textContent = 'Choose a spot in your build zone · tap Place to confirm';
+      this.selMeta.textContent = 'Deploys in place if clear · tap map to reposition';
       this.trainPanel.panel.setOpen(false);
       this.buildPanel.panel.setOpen(false);
       this.trainPanel.clearProduceRow();
@@ -371,7 +371,12 @@ export class Hud {
       sel.length > 1,
     );
 
-    if ((session.mode === 'build' && session.buildGhost && session.buildDefId) || (session.mode === 'deploy' && session.buildGhost)) {
+    if (inRallyMode) {
+      this.buildConfirm.style.display = 'flex';
+      this.buildConfirmLabel.textContent = 'Tap map to set rally point';
+      this.buildConfirmBtn.style.display = 'none';
+    } else if ((session.mode === 'build' && session.buildGhost && session.buildDefId) || (session.mode === 'deploy' && session.buildGhost)) {
+      this.buildConfirmBtn.style.display = '';
       const def =
         session.mode === 'deploy'
           ? this.registry.buildings.get('waystone_camp')!
@@ -379,12 +384,19 @@ export class Hud {
       const ok = session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
       const hint =
-        ok ? '· tap Place to confirm' : session.buildGhost!.issue === 'range' ? '· too far from base' : '· blocked';
+        ok
+          ? '· tap Place to confirm'
+          : session.mode === 'deploy'
+            ? '· blocked'
+            : session.buildGhost!.issue === 'range'
+              ? '· too far from base'
+              : '· blocked';
       const prefix = session.mode === 'deploy' ? 'Deploy' : def.name;
       this.buildConfirmLabel.textContent = `${prefix} (${session.mode === 'deploy' ? 'free' : def.cost}) ${hint}`;
       this.buildConfirmBtn.disabled = !ok;
     } else {
       this.buildConfirm.style.display = 'none';
+      this.buildConfirmBtn.style.display = '';
     }
 
     if (st.ended && this.result.style.display === 'none') {
