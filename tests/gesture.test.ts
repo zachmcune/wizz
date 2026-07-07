@@ -11,6 +11,7 @@ function make(dragMode: 'pan' | 'select' = 'pan') {
     onBoxStart: vi.fn(),
     onBoxMove: vi.fn(),
     onBoxEnd: vi.fn(),
+    onTwoFingerPan: vi.fn(),
     onPinch: vi.fn(),
   };
   return { g: new GestureRecognizer(h, dragMode), h };
@@ -73,13 +74,12 @@ describe('gesture FSM', () => {
     expect(h.onPanStart).not.toHaveBeenCalled();
   });
 
-  it('two fingers = pinch', () => {
+  it('two fingers pan only (no pinch zoom)', () => {
     const { g, h } = make();
     g.pointerDown(1, 100, 100, 0);
     g.pointerDown(2, 200, 100, 10);
-    g.pointerMove(2, 260, 100, 20); // fingers spread apart -> zoom in
-    expect(h.onPinch).toHaveBeenCalled();
-    const [factor] = h.onPinch.mock.calls[0]!;
-    expect(factor).toBeGreaterThan(1);
+    g.pointerMove(2, 260, 100, 20);
+    expect(h.onPinch).not.toHaveBeenCalled();
+    expect(h.onTwoFingerPan).toHaveBeenCalled();
   });
 });

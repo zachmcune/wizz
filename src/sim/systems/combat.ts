@@ -4,8 +4,9 @@ import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { buildingHasPower } from '../power';
-import { len, normalize, distSq } from '../math';
+import { len, distSq } from '../math';
 import { applyDamage } from '../combat-util';
+import { moveTowardGoal } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 
 const scratch: EntityId[] = [];
@@ -107,27 +108,11 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     if (d <= reach) {
       if ((e.cooldowns.attack ?? 0) <= 0) fire(state, ctx, e, target, w);
     } else if (order && order.type === 'attack' && e.kind === 'unit') {
-      // chase the explicitly-ordered target
-      const n = normalize(target.pos.x - e.pos.x, target.pos.y - e.pos.y);
       const udef = ctx.services.registry.unit(e.defId);
-      const nx = e.pos.x + n.x * udef.speed * dt;
-      const ny = e.pos.y + n.y * udef.speed * dt;
-      if (!ctx.services.nav.isBlockedWorld(nx, ny)) {
-        e.pos.x = nx;
-        e.pos.y = ny;
-      }
-      e.facing = Math.atan2(n.y, n.x);
+      moveTowardGoal(ctx.services.nav, ctx.services.flow, e, target.pos, udef.speed, dt);
     } else if (!order && canRoam && d <= sightOf(ctx, e)) {
-      // aggressive idle unit: step toward the enemy it spotted
-      const n = normalize(target.pos.x - e.pos.x, target.pos.y - e.pos.y);
       const udef = ctx.services.registry.unit(e.defId);
-      const nx = e.pos.x + n.x * udef.speed * dt;
-      const ny = e.pos.y + n.y * udef.speed * dt;
-      if (!ctx.services.nav.isBlockedWorld(nx, ny)) {
-        e.pos.x = nx;
-        e.pos.y = ny;
-      }
-      e.facing = Math.atan2(n.y, n.x);
+      moveTowardGoal(ctx.services.nav, ctx.services.flow, e, target.pos, udef.speed, dt);
     }
   }
 }

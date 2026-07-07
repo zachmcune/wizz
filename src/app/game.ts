@@ -14,6 +14,7 @@ import { lockLandscape } from '../ui/orientation';
 import { initViewport } from '../ui/viewport';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
+import { ZoomSlider } from '../ui/zoom-slider';
 import { AudioManager } from '../audio/audio';
 import type { Settings } from '../storage/settings';
 import { saveGame } from '../storage/save';
@@ -37,6 +38,7 @@ export class Game {
   private controller!: InputController;
   private hud!: Hud;
   private minimap!: Minimap;
+  private zoomSlider!: ZoomSlider;
   private loop!: GameLoop;
   private humanId: PlayerId;
   private colorByOwner = new Map<PlayerId, string>();
@@ -113,6 +115,9 @@ export class Game {
     };
     this.host.append(this.hud.root);
 
+    this.zoomSlider = new ZoomSlider(this.renderer.camera);
+    this.host.append(this.zoomSlider.root);
+
     this.setupGestures();
     this.setupPointer();
     this.setupKeyboard();
@@ -152,7 +157,6 @@ export class Game {
           this.boxEl.style.display = 'none';
           this.controller.boxSelect(a, b);
         },
-        onPinch: (factor, center) => this.controller.pinch(factor, center),
       },
       this.settings.dragMode,
     );
@@ -258,6 +262,7 @@ export class Game {
     const overlay = this.buildOverlay();
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay);
     this.minimap.render(this.state);
+    this.zoomSlider.syncFromCamera();
     this.hud.update();
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);
   }
@@ -295,6 +300,7 @@ export class Game {
     void saveGame(this.state);
     this.renderer.destroy();
     this.hud.root.remove();
+    this.zoomSlider.root.remove();
     this.boxEl.remove();
     this.onExit();
   }

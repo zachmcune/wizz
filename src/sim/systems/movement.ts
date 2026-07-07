@@ -4,8 +4,7 @@ import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, hasBuff } from '../queries';
-import { sampleFlow } from '../flow-field';
-import { normalize, len } from '../math';
+import { steerToGoal, bestNeighborSteer } from '../pathing';
 
 const scratch: EntityId[] = [];
 
@@ -18,6 +17,7 @@ function goalOf(e: Entity): { x: number; y: number } | null {
 
 export function movementSystem(state: GameState, ctx: StepContext): void {
   const nav = ctx.services.nav;
+  const flow = ctx.services.flow;
   const dt = 1 / TICK_HZ;
 
   for (const e of entitiesSorted(state)) {
@@ -37,29 +37,15 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     if (goal) {
       const dx = goal.x - e.pos.x;
       const dy = goal.y - e.pos.y;
-      const d = len(dx, dy);
+      const d = Math.hypot(dx, dy);
       if (d <= TILE * 0.4) {
-        // arrived
         e.orders.shift();
         e.vel = { x: 0, y: 0 };
         if (e.orders.length === 0 && e.state === 'moving') e.state = 'idle';
-      } else if (d < TILE * 1.5) {
-        // close: steer straight to avoid flow-field snapping near goal
-        const n = normalize(dx, dy);
-        steerX = n.x;
-        steerY = n.y;
       } else {
-        const gt = { tx: Math.floor(goal.x / TILE), ty: Math.floor(goal.y / TILE) };
-        const field = ctx.services.flow.get(nav, gt.tx, gt.ty);
-        const flow = sampleFlow(field, nav, e.pos.x, e.pos.y);
-        if (flow.x === 0 && flow.y === 0) {
-          const n = normalize(dx, dy);
-          steerX = n.x;
-          steerY = n.y;
-        } else {
-          steerX = flow.x;
-          steerY = flow.y;
-        }
+        const steer = steerToGoal(nav, flow, e.pos, goal);
+        steerX = steer.x;
+        steerY = steer.y;
       }
     }
 
@@ -73,7 +59,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       if (!other || other.kind === 'resource_node') continue;
       const ox = e.pos.x - other.pos.x;
       const oy = e.pos.y - other.pos.y;
-      const dd = len(ox, oy);
+      const dd = Math.hypot(ox, oy);
       const minDist = e.radius + other.radius;
       if (dd > 0 && dd < minDist) {
         const push = (minDist - dd) / minDist;
@@ -88,9 +74,22 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     if (moveX !== 0 || moveY !== 0) {
       let nx = e.pos.x + moveX * dt;
       let ny = e.pos.y + moveY * dt;
-      // collision with blocked terrain/buildings: axis-separated slide
       if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
       if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
+      if (nx === e.pos.x && ny === e.pos.y && goal) {
+        const goalTx = Math.floor(goal.x / TILE);
+        const goalTy = Math.floor(goal.y / TILE);
+        const field = flow.get(nav, goalTx, goalTy);
+        const tx = Math.floor(e.pos.x / TILE);
+        const ty = Math.floor(e.pos.y / TILE);
+        const escape = bestNeighborSteer(field, nav, tx, ty);
+        if (escape.x !== 0 || escape.y !== 0) {
+          nx = e.pos.x + escape.x * speed * dt;
+          ny = e.pos.y + escape.y * speed * dt;
+          if (nav.isBlockedWorld(nx, e.pos.y)) nx = e.pos.x;
+          if (nav.isBlockedWorld(e.pos.x, ny)) ny = e.pos.y;
+        }
+      }
       e.pos.x = nx;
       e.pos.y = ny;
       e.vel = { x: moveX, y: moveY };

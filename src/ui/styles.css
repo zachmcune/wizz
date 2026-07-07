@@ -76,6 +76,49 @@ body {
   pointer-events: auto;
 }
 
+.zoom-slider {
+  position: absolute;
+  left: var(--hud-gap);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  pointer-events: auto;
+  touch-action: none;
+}
+.zoom-slider-input {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 28px;
+  height: min(28vh, 120px);
+  margin: 0;
+  accent-color: var(--accent);
+}
+.zoom-slider-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: rgba(36, 32, 56, 0.95);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.zoom-slider-btn:active {
+  background: rgba(139, 108, 255, 0.35);
+}
+
 .hud-scroll {
   overflow-y: auto;
   overflow-x: hidden;
