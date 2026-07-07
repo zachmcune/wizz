@@ -653,41 +653,46 @@
 }
 
 .superweapon-status {
-  position: fixed;
-  top: 52px;
+  position: absolute;
+  top: calc(var(--topbar-h) + var(--hud-gap));
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  padding: 6px 12px;
-  background: rgba(10, 8, 18, 0.88);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(10, 8, 18, 0.72);
+  border: 1px solid rgba(58, 51, 88, 0.55);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.2;
   pointer-events: none;
+  white-space: nowrap;
+}
+.superweapon-status .sw-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .superweapon-status .sw-title {
   font-weight: 600;
-  text-align: center;
-  margin-bottom: 4px;
   color: #9fdcff;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  opacity: 0.9;
 }
 .superweapon-status .sw-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  line-height: 1.4;
+  gap: 3px;
 }
 .superweapon-status .sw-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   flex-shrink: 0;
-}
-.superweapon-status .sw-name {
-  min-width: 56px;
 }
 .superweapon-status .sw-time {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  font-size: 9px;
 }
 
