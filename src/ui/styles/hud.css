@@ -314,6 +314,14 @@
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
+/* Buttons default to touch-action: manipulation (body), which blocks vertical
+   pan scrolling inside overflow containers on mobile. */
+.hud-scroll .build-btn,
+.hud-scroll .produce-btn,
+.command-row .build-btn,
+.command-row .produce-btn {
+  touch-action: pan-y;
+}
 .btn:active {
   transform: translateY(1px);
 }
@@ -365,7 +373,7 @@
   right: var(--hud-gap);
   width: min(42vw, 248px);
   height: auto;
-  max-height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
+  max-height: calc(var(--app-h) - var(--topbar-h) - var(--hud-gap) * 2);
   min-height: 0;
   display: flex;
   flex-direction: column;
