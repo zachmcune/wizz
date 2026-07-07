@@ -37,12 +37,22 @@ solid **before** wiring transport.
 
 ## Phase 4 — Multiplayer integration
 
-1. **Transport** — WebSocket or WebRTC data channel; implement `Transport` from `lockstep.ts`
-2. **Input delay** — `INPUT_DELAY_TICKS = 3` already defined in `protocol.ts`
-3. **Command merge** — All players' commands for tick N merged before `Simulation.enqueue(N, …)`
-4. **Checksum cadence** — `hashState(state)` every N ticks via `LockstepClient.detectDesync`
-5. **Save/replay** — Record `(seed, matchConfig, commandsByTick[])` for replays and debugging desyncs
-6. **Fog per client** — Each peer runs full sim; only **presentation** is local (already true)
+| Item | Status | Notes |
+|------|--------|-------|
+| Transport interface | Done | `Transport` in `lockstep.ts` |
+| In-memory relay | Done | `in-memory-relay.ts` for tests/local dev |
+| WebSocket transport | Done | `ws-transport.ts` (client; relay server TBD) |
+| Input delay | Done | `INPUT_DELAY_TICKS = 3` |
+| Command merge | Done | Relay merges per-tick cmds; `Game` uses `Simulation.enqueue` |
+| Checksum cadence | Done | Every 60 ticks via `LockstepClient.detectDesync` |
+| Replay export | Done | `serializeReplay()` + desync logging in `Game` |
+| Game wiring | Done | Optional `lockstep` in `Game` opts (disables worker) |
+| Two-client hash test | Done | `tests/lockstep-integration.test.ts` at tick 1200 |
+| Fog per client | Done | Presentation-only (already true) |
+
+**Note:** `Game` with `lockstep` waits for the transport to deliver confirmed per-tick commands
+(`{ t: 'tick', tick, cmds }` from the relay). Use `InMemoryRelay.advanceTick()` in tests or a
+WebSocket relay in production.
 
 ## What we are NOT doing (yet)
 
@@ -57,6 +67,6 @@ npm run typecheck
 npm test                    # determinism + balance harness must pass
 ```
 
-- [ ] Two clients, same seed + commands → identical `hashState` at tick 1200
-- [ ] Sim runs in Worker without hash drift (`tests/worker.test.ts`)
-- [ ] No `Math.random` / wall-clock in `src/sim/**` (ESLint enforced)
+- [x] Two clients, same seed + commands → identical `hashState` at tick 1200
+- [x] Sim runs in Worker without hash drift (`tests/worker.test.ts`)
+- [x] No `Math.random` / wall-clock in `src/sim/**` (ESLint enforced)

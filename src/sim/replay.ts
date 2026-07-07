@@ -65,3 +65,15 @@ export function replayFromScripted(matchId: string, scripted: Record<number, Com
 export function replayFromMatch(matchId: string, commandsByTick: Record<number, Command[]>): Replay {
   return { version: REPLAY_VERSION, matchId, commandsByTick };
 }
+
+export function serializeReplay(replay: Replay): string {
+  return JSON.stringify(replay);
+}
+
+export function parseReplay(json: string): Replay {
+  const replay = JSON.parse(json) as Replay;
+  if (replay.version !== REPLAY_VERSION) {
+    throw new Error(`Unsupported replay version ${replay.version}`);
+  }
+  return replay;
+}
