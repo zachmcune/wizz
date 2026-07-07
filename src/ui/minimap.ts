@@ -6,7 +6,7 @@ import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import { getPlayer } from '../sim/queries';
-import { isVisibleTo, radarActive, isShrouded } from '../sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../sim/fog';
 import type { NavGrid } from '../sim/nav-grid';
 
 export class Minimap {
@@ -51,8 +51,6 @@ export class Minimap {
     const s = this.scale;
     const viewer = getPlayer(state, viewerId);
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    c.fillStyle = '#000000';
-    c.fillRect(0, 0, this.worldW * s, this.worldH * s);
 
     if (!viewer) return;
 
@@ -61,12 +59,11 @@ export class Minimap {
     for (let ty = 0; ty < this.map.tileH; ty++) {
       for (let tx = 0; tx < this.map.tileW; tx++) {
         const i = ty * this.map.tileW + tx;
-        if (isShrouded(viewer, i, radarOn)) continue;
         const blocked = this.map.tiles[i] === 1;
         c.fillStyle = blocked ? '#2a2540' : '#1a1826';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
-        if (viewer.explored[i] === 1 && viewer.visible[i] === 0) {
-          c.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        if (isTileFogged(viewer, i, radarOn)) {
+          c.fillStyle = 'rgba(184, 184, 200, 0.42)';
           c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
         }
       }
@@ -83,6 +80,11 @@ export class Minimap {
       } else c.fillStyle = this.colorByOwner.get(e.owner) ?? '#ffffff';
       const size = e.kind === 'building' ? 4 : e.kind === 'resource_node' ? 3 : 2;
       c.fillRect(e.pos.x * s - size / 2, e.pos.y * s - size / 2, size, size);
+    }
+
+    for (const known of listBuildingGhosts(state, registry, viewerId, nav)) {
+      c.fillStyle = 'rgba(140, 140, 155, 0.75)';
+      c.fillRect(known.x * s - 2, known.y * s - 2, 4, 4);
     }
 
     const v = this.camera.visibleWorldRect();

@@ -2,11 +2,11 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { lerp } from '../sim/math';
-import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
+import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse } from '../sim/power';
-import { isVisibleTo, radarActive, isShrouded } from '../sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts, isBuildingInLiveSight } from '../sim/fog';
 import { getPlayer } from '../sim/queries';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
@@ -51,6 +51,7 @@ export class Renderer {
   private overlayLayer = new Container();
   effects = new EffectsLayer();
   private nodes = new Map<EntityId, RenderNode>();
+  private ghostNodes = new Map<EntityId, RenderNode>();
   /** Separate fill/stroke graphics — mixing both on one object causes stray connector lines on Android WebGL. */
   private overlayFill = new Graphics();
   private overlayStroke = new Graphics();
@@ -228,10 +229,18 @@ export class Renderer {
       const e = state.entities.get(id);
       if (!e) continue;
 
-      const entityVisible = !nav || isVisibleTo(state, this.humanOwner, e, nav);
-      n.sprite.visible = entityVisible;
-      if (n.label) n.label.visible = entityVisible;
-      if (!entityVisible) continue;
+      const liveVisible = !nav || isVisibleTo(state, this.humanOwner, e, nav);
+      const showAsGhost =
+        e.kind === 'building' &&
+        nav &&
+        !liveVisible &&
+        !isBuildingInLiveSight(state, this.registry, this.humanOwner, e, nav) &&
+        getPlayer(state, this.humanOwner)?.knownBuildings[e.id] !== undefined;
+
+      n.sprite.visible = liveVisible && !showAsGhost;
+      if (n.label) n.label.visible = liveVisible && !showAsGhost;
+      if (!liveVisible && !showAsGhost) continue;
+      if (showAsGhost) continue;
       const x = lerp(n.prevX, n.curX, alpha);
       const y = lerp(n.prevY, n.curY, alpha);
       n.sprite.position.set(x, y);
@@ -281,6 +290,8 @@ export class Renderer {
         this.fillDot(x, y - e.radius - 4, 3, 0x7fe3ff);
       }
     }
+
+    if (viewer && nav) this.renderBuildingGhosts(state, viewer, nav);
 
     if (overlay?.buildZones?.length) {
       for (const z of overlay.buildZones) {
@@ -336,7 +347,57 @@ export class Renderer {
     if (frac > 0) this.fillRect(barX, barY, barW * frac, barH, fill, 0.9);
   }
 
-  private drawHpBar(x: number, y: number, e: Entity): void {
+  private renderBuildingGhosts(state: GameState, viewer: Player, nav: NavGrid): void {
+    const ghosts = listBuildingGhosts(state, this.registry, viewer.id, nav);
+    const active = new Set<EntityId>();
+
+    for (const known of ghosts) {
+      active.add(known.id);
+      let n = this.ghostNodes.get(known.id);
+      const b = this.registry.building(known.defId);
+      const color = this.colorByOwner.get(known.owner) ?? '#888888';
+      if (!n) {
+        const sprite = new Sprite(this.provider.texture(b.art, color));
+        sprite.anchor.set(0.5);
+        sprite.tint = 0xaaaaaa;
+        this.entityLayer.addChild(sprite);
+        const label = new Text({
+          text: b.shortLabel,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#aaaaaa' },
+        });
+        label.anchor.set(0.5, 0);
+        this.labelLayer.addChild(label);
+        n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, facing: 0 };
+        this.ghostNodes.set(known.id, n);
+      } else {
+        n.sprite.texture = this.provider.texture(b.art, color);
+        if (n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
+      }
+
+      n.sprite.position.set(known.x, known.y);
+      n.sprite.alpha = 0.48;
+      n.sprite.visible = true;
+      n.label.position.set(known.x, known.y + known.radius + 4);
+      n.label.alpha = 0.55;
+      n.label.visible = true;
+
+      const ownerCol = this.colorByOwner.get(known.owner);
+      if (ownerCol) this.strokeRing(known.x, known.y, known.radius + 3, 2, hexToNumber(ownerCol), 0.35);
+      if (known.hp < known.maxHp) this.drawHpBar(known.x, known.y - known.radius - 8, known);
+      if (known.buildProgress !== undefined) {
+        this.fillRect(known.x - known.radius, known.y + known.radius + 3, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
+      }
+    }
+
+    for (const [id, n] of this.ghostNodes) {
+      if (active.has(id)) continue;
+      n.sprite.destroy();
+      n.label?.destroy();
+      this.ghostNodes.delete(id);
+    }
+  }
+
+  private drawHpBar(x: number, y: number, e: Entity | KnownBuilding): void {
     const w = Math.max(16, e.radius * 2);
     const frac = Math.max(0, e.hp / e.maxHp);
     const col = frac > 0.5 ? 0x5dff8f : frac > 0.25 ? 0xffd166 : 0xff5d5d;
@@ -361,13 +422,10 @@ export class Renderer {
     for (let ty = 0; ty < nav.h; ty++) {
       for (let tx = 0; tx < nav.w; tx++) {
         const i = ty * nav.w + tx;
+        if (!isTileFogged(player, i, radarOn)) continue;
         const x = tx * TILE;
         const y = ty * TILE;
-        if (isShrouded(player, i, radarOn)) {
-          this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 1 });
-        } else if (player.visible[i] === 0) {
-          this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0x000000, alpha: 0.58 });
-        }
+        this.fogLayer.rect(x, y, TILE, TILE).fill({ color: 0xb8b8c8, alpha: 0.42 });
       }
     }
   }
@@ -423,6 +481,11 @@ export class Renderer {
   }
 
   destroy(): void {
+    for (const n of this.ghostNodes.values()) {
+      n.sprite.destroy();
+      n.label?.destroy();
+    }
+    this.ghostNodes.clear();
     this.app.destroy(true, { children: true });
   }
 

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { TILE } from '../src/core/constants';
 import { getRegistry } from './helpers';
 import { initMatch, spawnEntity, recomputePower } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { isVisibleTo, radarActive } from '../src/sim/fog';
+import { isVisibleTo, radarActive, isTileFogged, listBuildingGhosts } from '../src/sim/fog';
 import { ownedBy } from '../src/sim/queries';
 import { isPowerShort } from '../src/sim/power';
 import { visibilitySystem } from '../src/sim/systems/visibility';
@@ -10,13 +11,28 @@ import { visibilitySystem } from '../src/sim/systems/visibility';
 const reg = getRegistry();
 
 describe('fog of war', () => {
-  it('starts with unexplored tiles outside starting vision', () => {
+  it('fogs tiles outside current sight but keeps the full map drawable', () => {
     const { state } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.controller === 'human')!;
     const explored = human.explored.filter((v) => v === 1).length;
+    const visible = human.visible.filter((v) => v === 1).length;
     const total = human.explored.length;
     expect(explored).toBeGreaterThan(0);
     expect(explored).toBeLessThan(total);
+    expect(visible).toBeGreaterThan(0);
+    expect(visible).toBeLessThan(total);
+    const fogged = human.visible.findIndex((v, i) => v === 0 && isTileFogged(human, i, false));
+    expect(fogged).toBeGreaterThanOrEqual(0);
+  });
+
+  it('always shows mana nodes through fog', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.controller === 'human')!;
+    const farNode = [...state.entities.values()].find(
+      (e) => e.kind === 'resource_node' && human.explored[Math.floor(e.pos.y / TILE) * services.nav.w + Math.floor(e.pos.x / TILE)] === 0,
+    );
+    expect(farNode).toBeTruthy();
+    expect(isVisibleTo(state, human.id, farNode!, services.nav)).toBe(true);
   });
 
   it('powered radar is active when the grid has enough power', () => {
@@ -46,6 +62,31 @@ describe('fog of war', () => {
     const farEnemy = [...state.entities.values()].find((e) => e.owner === enemy.id && e.kind === 'unit');
     expect(farEnemy).toBeTruthy();
     expect(isVisibleTo(state, human.id, farEnemy!, services.nav)).toBe(false);
+  });
+
+  it('keeps a frozen ghost of scouted enemy buildings out of sight', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.controller === 'human')!;
+    const enemy = state.players.find((p) => p.id !== human.id)!;
+    const enemySanctum = [...state.entities.values()].find((e) => e.owner === enemy.id && e.defId === 'sanctum')!;
+    expect(enemySanctum).toBeTruthy();
+
+    const humanWisp = [...state.entities.values()].find((e) => e.owner === human.id && e.defId === 'wisp')!;
+    humanWisp!.pos.x = enemySanctum!.pos.x;
+    humanWisp!.pos.y = enemySanctum!.pos.y;
+    visibilitySystem(state, { services, events: [] });
+
+    expect(human.knownBuildings[enemySanctum!.id]).toBeTruthy();
+    const snapshotHp = human.knownBuildings[enemySanctum!.id]!.hp;
+
+    enemySanctum!.hp = Math.max(1, enemySanctum!.hp - 500);
+    humanWisp!.pos.x = 0;
+    humanWisp!.pos.y = 0;
+    visibilitySystem(state, { services, events: [] });
+
+    expect(human.knownBuildings[enemySanctum!.id]!.hp).toBe(snapshotHp);
+    expect(listBuildingGhosts(state, reg, human.id, services.nav).some((g) => g.id === enemySanctum!.id)).toBe(true);
+    expect(isVisibleTo(state, human.id, enemySanctum!, services.nav)).toBe(false);
   });
 });
 

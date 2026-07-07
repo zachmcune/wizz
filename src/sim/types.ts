@@ -21,10 +21,25 @@ export interface Player {
   unlockedTech: string[]; // building defIds this player has built (enables tech gating)
   spellCooldowns: Record<string, number>; // spellId -> ticks remaining
   defeated: boolean;
-  /** RA2-style fog: 1 = tile has been seen at least once (unit/building sight). */
+  /** Tiles seen at least once (tracked for fog; terrain always renders). */
   explored: number[];
   /** Recomputed each tick: 1 = currently in sight. */
   visible: number[];
+  /** Last-seen enemy buildings shown as gray ghosts when out of sight (Generals-style). */
+  knownBuildings: Record<EntityId, KnownBuilding>;
+}
+
+/** Frozen snapshot of an enemy building the player has scouted. */
+export interface KnownBuilding {
+  id: EntityId;
+  owner: PlayerId;
+  defId: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  radius: number;
+  buildProgress?: number;
 }
 
 export type UnitState =
