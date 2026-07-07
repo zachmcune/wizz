@@ -33,3 +33,5 @@ Files `kebab-case.ts`; types `PascalCase`; funcs/vars `camelCase`; data ids `sna
 - Mutate gameplay state only via commands processed in `applyCommands`.
 - Small steps; keep functions short; avoid premature abstraction and new dependencies.
 - Add placeholder art via `shape` in the data file; do not commit binary sprite assets.
+- New player-facing controls must be declared in `src/input/actions.ts` with a desktop binding
+  (`mouse` or `keyboard`); `tests/input-parity.test.ts` enforces this.

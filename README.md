@@ -31,6 +31,8 @@ node scripts/gen-map.mjs     # data/maps/duel_glade.json
   validated by Zod.
 - Touch controls: tap-select, double-tap type-select, long-press box select, context commands,
   pan/pinch-zoom, build placement, spell targeting, production/rally, minimap.
+- Desktop/touchpad controls: left-click select/order, left-drag box-select, middle-drag camera pan,
+  two-finger touchpad scroll to pan, WASD/arrow-key pan, Escape to deselect, zoom slider/buttons.
 - Layered AI opponent(s); supports 2–8 players, FFA and teams.
 - Single resource (Mana), base building, harvesting, unit counters, 3 spells.
 
