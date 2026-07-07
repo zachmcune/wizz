@@ -42,9 +42,12 @@ node scripts/gen-map.mjs     # data/maps/duel_glade.json
 - [CONVENTIONS.md](docs/CONVENTIONS.md) — stack, scripts, naming.
 - [GLOSSARY.md](docs/GLOSSARY.md) — canonical names.
 - [DEPLOY.md](docs/DEPLOY.md) — Cloudflare Pages (V1) + Workers/DO relay (V2).
-- [RELAY_DEPLOY.md](docs/RELAY_DEPLOY.md) — Railway relay deploy for online 1v1.
+- [RELAY_DEPLOY.md](docs/RELAY_DEPLOY.md) — Railway all-in-one (game + online 1v1).
 
 ## Hosting
 
-Static PWA on Cloudflare Pages (`dist/`). No backend for single-player. Online multiplayer
-(V2) will add a Cloudflare Workers + Durable Object lockstep relay. See `public/_headers`.
+**Online multiplayer (recommended):** one [Railway](docs/RELAY_DEPLOY.md) deploy — game + relay,
+~$5/month.
+
+**Single-player only:** static PWA on Cloudflare Pages (`dist/`), no backend. See `public/_headers`
+and [DEPLOY.md](docs/DEPLOY.md).

@@ -51,13 +51,19 @@ domain registration costs money; the free `*.pages.dev` subdomain is $0.
 The client defaults to `ws://<hostname>:8787`. Override with `VITE_RELAY_URL` at build time
 (see `.env.example`).
 
-### Production relay deploy
+### Production deploy (Railway, all-in-one)
 
-The relay is a small Node WebSocket server (`relay/server.mjs`). Deploy it to any host that
-supports WebSockets and set `VITE_RELAY_URL=wss://your-relay` when building the Pages app.
+**Recommended:** one Railway service serves the built game and the relay on the same domain. No
+`VITE_RELAY_URL` required — the client uses `wss://` on the page host when served over HTTPS.
 
-**Step-by-step (Railway):** [RELAY_DEPLOY.md](RELAY_DEPLOY.md) — includes `railway.json`, health
-check, Cloudflare Pages env var, and smoke test.
+**Step-by-step:** [RELAY_DEPLOY.md](RELAY_DEPLOY.md).
+
+Build locally: `npm run build && npm run start` (game + relay on `PORT`, default 8787).
+
+### Production relay only (optional split)
+
+Host the static PWA on Cloudflare Pages and deploy only `relay/server.mjs` elsewhere. Set
+`VITE_RELAY_URL=wss://your-relay` when building the Pages app (see `.env.example`).
 
 ### Cloudflare Workers + Durable Objects (future)
 

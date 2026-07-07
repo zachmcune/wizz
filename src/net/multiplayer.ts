@@ -9,12 +9,15 @@ import {
 
 export const ONLINE_MATCH_ID = 'skirmish_1v1_online';
 
-/** Resolve relay WebSocket URL from build-time env or local dev default. */
+/** Resolve relay WebSocket URL from build-time env or page origin. */
 export function relayWsUrl(): string {
   const env = import.meta.env.VITE_RELAY_URL as string | undefined;
   if (env) return env;
   if (typeof location !== 'undefined') {
     const host = location.hostname || 'localhost';
+    if (location.protocol === 'https:') {
+      return `wss://${host}`;
+    }
     return `ws://${host}:8787`;
   }
   return 'ws://localhost:8787';

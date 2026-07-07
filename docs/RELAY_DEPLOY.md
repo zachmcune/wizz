@@ -1,111 +1,84 @@
-# Relay deployment (Railway)
+# Railway deployment (game + multiplayer)
 
-The lockstep multiplayer relay is a small Node WebSocket server (`relay/server.mjs`). It forwards
-and merges player commands at 20 Hz; it does **not** run the game simulation. Deploy it separately
-from the static PWA on Cloudflare Pages.
-
-**Architecture:**
+One Railway service hosts **both** the static PWA (`dist/`) and the lockstep WebSocket relay on the
+same URL. No Cloudflare Pages required; no `VITE_RELAY_URL` env var needed.
 
 ```text
-Players → Cloudflare Pages (HTTPS, static game)
-Players → Railway relay (WSS, command sync)
+Players → https://your-app.up.railway.app  (HTML/JS/assets)
+Players → wss://your-app.up.railway.app    (command sync, same host)
 ```
 
-See also [DEPLOY.md](DEPLOY.md) for Pages setup and local dev.
+Local dev is unchanged: `npm run relay` + `npm run dev` (relay on port 8787).
+
+See [DEPLOY.md](DEPLOY.md) for Cloudflare Pages–only hosting (single-player, no relay).
 
 ## Prerequisites
 
-- A [Railway](https://railway.com) account (Hobby plan for always-on WebSockets).
-- Cloudflare Pages already building this repo (`npm run build` → `dist/`).
+- A [Railway](https://railway.com) account (Hobby plan, ~$5/month).
 - Local multiplayer working (`npm run relay` + `npm run dev`, two tabs).
 
-## 1. Create the Railway service
+## 1. Deploy to Railway
 
-1. In Railway: **New Project** → **Deploy from GitHub repo** → select this repository.
-2. Railway creates one service from the repo. The checked-in `railway.json` configures it:
-   - **Build:** `npm ci` (installs the `ws` dependency only; no Vite build).
-   - **Start:** `node relay/server.mjs`
-   - **Health check:** `GET /health` (returns `{ "ok": true, "rooms": N }`).
-3. Under **Settings → Networking**, click **Generate Domain**. Railway assigns a public HTTPS
-   URL, e.g. `arcane-relay-production.up.railway.app`.
+1. **New Project** → **Deploy from GitHub repo** → select this repository.
+2. `railway.json` configures the service automatically:
+   - **Build:** `npm ci && npm run build` (typecheck + Vite → `dist/`)
+   - **Start:** `node relay/production.mjs` (static files + WebSocket relay)
+   - **Health check:** `GET /health`
+3. **Settings → Networking** → **Generate Domain** (e.g. `arcane-dominion.up.railway.app`).
+4. **Settings → Deploy** → ensure **Serverless** is **off** (relay must stay always-on).
 
-No database, volume, or extra env vars are required. Railway injects `PORT` automatically; the
-relay listens on that port.
+No database, volumes, or environment variables are required. Railway injects `PORT`.
 
-### Optional: custom domain
-
-In **Settings → Networking → Custom Domain**, add e.g. `relay.yourdomain.com`. Railway provisions
-TLS. Use that hostname in `VITE_RELAY_URL` below.
-
-## 2. Verify the relay
+## 2. Verify
 
 ```bash
-curl https://YOUR-RAILWAY-DOMAIN.up.railway.app/health
+curl https://YOUR-DOMAIN.up.railway.app/health
+# {"ok":true,"rooms":0}
+
+curl -I https://YOUR-DOMAIN.up.railway.app/
+# 200, text/html
 ```
 
-Expected: `{"ok":true,"rooms":0}`
+Open `https://YOUR-DOMAIN.up.railway.app/` in two browser tabs → **Create Online 1v1** /
+**Join Online 1v1**. The client auto-connects to `wss://` on the same host (see
+`src/net/multiplayer.ts`).
 
-WebSocket test (optional, requires [websocat](https://github.com/nickel-org/nickel) or similar):
+## 3. Local production smoke test
 
 ```bash
-websocat "wss://YOUR-RAILWAY-DOMAIN.up.railway.app"
-# then send: {"t":"join","room":"TEST01","matchId":"skirmish_1v1_online"}
+npm run build
+npm run start
+# http://localhost:8787 — game + relay on one port
 ```
-
-You should receive a `joined` message with `playerId` and `seed`.
-
-## 3. Point the game client at the relay
-
-`VITE_RELAY_URL` is baked in at **build time** (see `src/net/multiplayer.ts`). Set it in
-Cloudflare Pages, not Railway.
-
-1. Cloudflare dashboard → **Workers & Pages** → your Pages project.
-2. **Settings → Environment variables** → **Production** (and Preview if you want):
-   - Name: `VITE_RELAY_URL`
-   - Value: `wss://YOUR-RAILWAY-DOMAIN.up.railway.app` (no trailing slash)
-3. **Deployments** → **Retry deployment** on the latest build (or push a commit) so the new env
-   var is picked up.
-
-For local production-like testing before Pages deploy:
-
-```bash
-VITE_RELAY_URL=wss://YOUR-RAILWAY-DOMAIN.up.railway.app npm run build
-npm run preview
-```
-
-Open two tabs on the preview URL → **Create Online 1v1** / **Join Online 1v1**.
-
-## 4. End-to-end smoke test
-
-1. Open your live Pages URL on two devices or browser profiles.
-2. Player A: **Create Online 1v1** — note the room code.
-3. Player B: **Join Online 1v1** — enter the code.
-4. Match should start when both players are in the lobby.
-
-If the lobby spins forever, check the browser devtools **Network → WS** tab: the client should
-connect to your `wss://` URL, not `ws://…:8787`.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| WS connects to `:8787` in production | `VITE_RELAY_URL` unset or Pages not rebuilt | Set env var; redeploy Pages |
-| `502` / health check fails | Relay crashed or wrong start command | Railway logs; confirm `node relay/server.mjs` |
-| CORS / mixed content errors | `VITE_RELAY_URL` uses `ws://` on HTTPS site | Use `wss://` |
-| Room works locally, not online | Firewall or wrong relay URL | Verify `/health` and WS on Railway domain |
-| Deploy runs Vite build (slow, unnecessary) | Dashboard overrides `railway.json` | Remove custom build command; rely on repo config |
+| `503 Game build missing` | `dist/` not built | Build step failed; check Railway build logs |
+| Health check fails | Wrong start command or crash on boot | Logs; confirm `node relay/production.mjs` |
+| WS connects to `:8787` on Railway | Old client build | Redeploy; HTTPS pages use `wss://host` with no port |
+| Lobby spins forever | Serverless sleep enabled | Disable Serverless in Deploy settings |
+| Stale PWA after deploy | Browser/service worker cache | Hard refresh; `index.html` is served with `no-cache` |
 
 ## Cost
 
-- **Railway Hobby:** small always-on Node process, typically a few dollars per month.
-- **Cloudflare Pages:** static hosting remains free at hobby scale.
-- No database; rooms are in-memory and disappear when empty.
+- **Railway Hobby:** ~$5/month subscription; included usage usually covers a small Node process
+  plus static traffic for a hobby game.
+- No database; match rooms are in-memory and disappear when empty.
+
+## Split hosting (optional)
+
+You can still host the static game on **Cloudflare Pages** (free CDN) and run **only** the relay on
+Railway:
+
+1. Railway: change start to `node relay/server.mjs`, build to `npm ci` only.
+2. Pages: set `VITE_RELAY_URL=wss://your-relay.up.railway.app` and redeploy.
+
+The all-in-one setup above is simpler when you are already paying for Railway.
 
 ## Alternatives
 
-The same relay runs on any host with Node 20+ and WebSocket support (Fly.io, a VPS, etc.). Set
-`PORT` if the platform requires it. Always expose `wss://` to browsers on HTTPS Pages.
-
-A future **Cloudflare Workers + Durable Objects** port would colocate relay and Pages on
-Cloudflare; see [DEPLOY.md](DEPLOY.md#v2--multiplayer-relay). The client wire protocol in
-`src/net/protocol.ts` is already compatible.
+- **Fly.io / VPS:** run `npm run build && npm run start` the same way.
+- **Cloudflare Workers + Durable Objects:** future all-on-Cloudflare relay; see
+  [DEPLOY.md](DEPLOY.md#cloudflare-workers--durable-objects-future).

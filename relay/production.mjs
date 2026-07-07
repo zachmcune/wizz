@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Local/dev lockstep relay. Merges per-tick commands and broadcasts at 20 Hz.
- * Run: npm run relay
+ * Production server: static PWA (`dist/`) + lockstep WebSocket relay on one port.
+ * Run: npm run start (Railway) after `npm run build`.
  */
 import { createServer } from 'node:http';
 import { attachRelay } from './relay-app.mjs';
+import { serveStatic } from './static.mjs';
 
 const PORT = Number(process.env.PORT ?? 8787);
 
@@ -12,17 +13,14 @@ const PORT = Number(process.env.PORT ?? 8787);
 let relay = null;
 
 const server = createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: relay?.roomCount ?? 0 }));
     return;
   }
+
+  if (serveStatic(req, res)) return;
+
   res.writeHead(404);
   res.end();
 });
@@ -30,5 +28,5 @@ const server = createServer((req, res) => {
 relay = attachRelay(server);
 
 server.listen(PORT, () => {
-  console.log(`[relay] lockstep relay listening on :${PORT}`);
+  console.log(`[production] game + relay listening on :${PORT}`);
 });

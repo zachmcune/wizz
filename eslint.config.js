@@ -73,4 +73,18 @@ export default [
       ],
     },
   },
+  {
+    files: ['relay/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        clearInterval: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+        setInterval: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
 ];
