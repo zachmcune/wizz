@@ -31,6 +31,8 @@ export class UnitOrdersPanel {
     stop.addEventListener('click', () => this.controller.stop());
     const am = el('button', 'btn', 'Attack-Move');
     am.addEventListener('click', () => this.controller.setMode('attackMove'));
+    const mio = el('button', 'btn', 'Move in Order');
+    mio.addEventListener('click', () => this.controller.setMode('moveInOrder'));
     this.deployBtn.style.display = 'none';
     this.packBtn.style.display = 'none';
     this.deployBtn.addEventListener('click', () => {
@@ -52,7 +54,7 @@ export class UnitOrdersPanel {
       const single = st.entities.get(ids[0]!);
       this.controller.channel(ids, !(single && isUnit(single) && single.channeling));
     });
-    this.row.append(deselect, stop, am, this.deployBtn, this.packBtn, this.conjureBtn);
+    this.row.append(deselect, stop, am, mio, this.deployBtn, this.packBtn, this.conjureBtn);
   }
 
   update(

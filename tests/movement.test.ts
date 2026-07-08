@@ -4,6 +4,7 @@ import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { dist } from '../src/sim/math';
 import { TILE } from '../src/core/constants';
+import { isUnit } from '../src/sim/types';
 
 const reg = getRegistry();
 
@@ -68,5 +69,30 @@ describe('movement & pathfinding', () => {
     }
     const r = units[0]!.radius;
     expect(minPair).toBeGreaterThanOrEqual(0.6 * (2 * r));
+  });
+
+  it('moveInOrder keeps units together at the slowest unit speed', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+
+    const start = { x: 900, y: 1200 };
+    const fast = spawnEntity(state, services, null, 'imp_swarmling', 'player0', start.x, start.y);
+    const slow = spawnEntity(state, services, null, 'siege_behemoth', 'player0', start.x + 24, start.y);
+    const target = { x: 2400, y: 1200 };
+    const slowSpeed = reg.units.get('siege_behemoth')!.speed;
+
+    sim.enqueueNow([
+      { type: 'moveInOrder', playerId: 'player0', entityIds: [fast.id, slow.id], x: target.x, y: target.y },
+    ]);
+    for (let i = 0; i < 180; i++) sim.step();
+
+    const fastOrder = isUnit(fast) ? fast.orders[0] : undefined;
+    expect(fastOrder?.type).toBe('moveInOrder');
+    if (fastOrder?.type === 'moveInOrder') expect(fastOrder.groupSpeed).toBe(slowSpeed);
+
+    const fastDist = dist(fast.pos, start);
+    const slowDist = dist(slow.pos, { x: start.x + 24, y: start.y });
+    expect(Math.abs(fastDist - slowDist)).toBeLessThan(TILE * 2.5);
   });
 });

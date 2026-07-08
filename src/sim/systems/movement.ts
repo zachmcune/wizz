@@ -30,7 +30,7 @@ function separationForPair(e: UnitEntity, other: { id: EntityId; pos: { x: numbe
 function goalOf(e: UnitEntity): { x: number; y: number } | null {
   const o = e.orders[0];
   if (!o) return null;
-  if (o.type === 'move' || o.type === 'attackMove') return { x: o.x, y: o.y };
+  if (o.type === 'move' || o.type === 'attackMove' || o.type === 'moveInOrder') return { x: o.x, y: o.y };
   return null;
 }
 
@@ -45,9 +45,11 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       e.vel = { x: 0, y: 0 };
       continue;
     }
+    const order = e.orders[0];
     const udef = ctx.services.registry.unit(e.defId);
     let speed = udef.speed;
     if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;
+    if (order?.type === 'moveInOrder') speed = order.groupSpeed;
 
     const goal = goalOf(e);
     if (!goal) {

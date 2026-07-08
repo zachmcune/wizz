@@ -10,6 +10,7 @@ export const CONTROL_ACTIONS = {
   deployUnit: 'deployUnit',
   setRallyPoint: 'setRallyPoint',
   attackMoveTarget: 'attackMoveTarget',
+  moveInOrderTarget: 'moveInOrderTarget',
 } as const;
 
 export type ControlAction = (typeof CONTROL_ACTIONS)[keyof typeof CONTROL_ACTIONS];
@@ -87,5 +88,11 @@ export const CONTROL_BINDINGS = {
     mouse: true,
     keyboard: false,
     description: 'Tap/click the map while attack-move targeting is active.',
+  },
+  [CONTROL_ACTIONS.moveInOrderTarget]: {
+    touch: true,
+    mouse: true,
+    keyboard: false,
+    description: 'Tap/click the map while move-in-order targeting is active.',
   },
 } satisfies Record<ControlAction, ControlBinding>;

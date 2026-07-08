@@ -119,7 +119,7 @@ export class PointerBinder {
       }
       return;
     }
-    if (mode === 'normal' || mode === 'attackMove' || mode === 'spell' || mode === 'superweapon') {
+    if (mode === 'normal' || mode === 'attackMove' || mode === 'moveInOrder' || mode === 'spell' || mode === 'superweapon') {
       this.deps.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
     }
   };
@@ -171,6 +171,7 @@ export class PointerBinder {
     if (
       mode === 'normal' ||
       mode === 'attackMove' ||
+      mode === 'moveInOrder' ||
       mode === 'build' ||
       mode === 'deploy' ||
       mode === 'spell' ||
