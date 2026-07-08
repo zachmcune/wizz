@@ -16,6 +16,7 @@ import type { Player } from '../sim/types';
 import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
+import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
@@ -502,9 +503,15 @@ export class Renderer {
         }
       } else if (e.kind === 'building' && buildingPowerUse(this.registry, e.defId) > 0 && !buildingHasPower(state, this.registry, e)) {
         n.sprite.alpha = 0.42;
+        n.sprite.tint = 0xffffff;
         this.drawPowerOffline(pos.x, pos.y, e.radius);
       } else {
         n.sprite.alpha = 1;
+        if (e.kind === 'unit' || e.kind === 'building') {
+          n.sprite.tint = frostExposureTint(e.frostExposure);
+        } else {
+          n.sprite.tint = 0xffffff;
+        }
       }
 
       if (selected.has(id)) this.strokeSelectionRing(x, y, e.radius + 6, 2, 0xffffff, 0.9, depth);
@@ -579,6 +586,17 @@ export class Renderer {
           .stroke({ width: 6, color: 0x9fdcff, alpha: 0.7 });
       }
     }
+    renderTowerBeams(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
+    );
     this.effects.update();
   }
 

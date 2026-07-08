@@ -31,6 +31,11 @@ export function hashState(state: GameState): string {
       e.kind === 'building' && e.buildProgress !== undefined ? `B${r(e.buildProgress)}` : '',
       (e.kind === 'unit' || e.kind === 'building') && e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
       e.kind === 'building' && e.chargingAttack ? `Q${e.chargingAttack.targetId}:${e.chargingAttack.remainingTicks}` : '',
+      e.kind === 'building' && e.beamAttack
+        ? `B${e.beamAttack.targetId}:${r(e.beamAttack.facing)}:${e.beamAttack.ticksSinceDamage}`
+        : '',
+      (e.kind === 'unit' || e.kind === 'building') && e.frostExposure ? `F${e.frostExposure}` : '',
+      (e.kind === 'unit' || e.kind === 'building') && e.burnLinger ? `L${e.burnLinger.remaining}` : '',
     ].join('');
     const stateStr = e.kind === 'resource_node' ? 'node' : e.state;
     const carryStr = e.kind === 'unit' ? r(e.carry ?? 0) : 0;

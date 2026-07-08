@@ -2,7 +2,7 @@
   "id": "inferno_beacon",
   "name": "Inferno Beacon",
   "shortLabel": "INFR",
-  "description": "Advanced anti-swarm defense. Its burning orb splashes through clusters of light attackers but struggles against heavy armor.",
+  "description": "Advanced anti-swarm defense. Channels a continuous flamethrower that burns every enemy caught in the stream, with a brief lingering burn after they escape.",
   "kind": "building",
   "cost": 800,
   "buildTime": 12,
@@ -14,12 +14,21 @@
   "requires": ["arcane_nexus"],
   "powerUsed": 40,
   "weapon": {
-    "damage": 20,
+    "damage": 4,
     "range": 155,
-    "cooldownTicks": 28,
-    "projectile": "inferno_orb",
-    "splashRadius": 56,
+    "cooldownTicks": 2,
+    "projectile": null,
     "preferSwarms": true,
+    "splashRadius": 52,
+    "beam": {
+      "kind": "flame",
+      "startWidth": 14,
+      "endWidth": 52,
+      "damageIntervalTicks": 2,
+      "rotationSpeed": 4.5,
+      "lingerTicks": 6,
+      "lingerDamageFactor": 0.35
+    },
     "vs": { "light": 1.6, "heavy": 0.65, "building": 0.35 }
   },
   "art": {

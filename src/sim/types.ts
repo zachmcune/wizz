@@ -143,6 +143,8 @@ export type GameEvent =
   | { type: 'healApplied'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
   | { type: 'attackCharging'; sourceId: EntityId; x: number; y: number }
+  | { type: 'beamStarted'; sourceId: EntityId; x: number; y: number }
+  | { type: 'beamStopped'; sourceId: EntityId; x: number; y: number }
   | { type: 'manaChanged'; playerId: PlayerId; mana: number }
   | { type: 'manaDeposited'; playerId: PlayerId; amount: number; x: number; y: number }
   | { type: 'manaConjured'; playerId: PlayerId; amount: number; x: number; y: number }

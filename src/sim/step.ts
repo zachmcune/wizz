@@ -17,6 +17,7 @@ import { morphSystem } from './systems/morph';
 import { visibilitySystem } from './systems/visibility';
 import { winCheckSystem } from './systems/wincheck';
 import { superweaponSystem } from './systems/superweapon';
+import { beamWeaponSystem } from './systems/beam-weapon';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
 
@@ -43,9 +44,10 @@ export function stepSimulation(
   movementSystem(state, ctx); // 4/5 (pathing computed on demand inside)
   visibilitySystem(state, ctx); // 5b fog of war
   combatSystem(state, ctx); // 6
-  garrisonSystem(state, ctx); // 6a garrisoned units fire from bunkers
-  projectileSystem(state, ctx); // 6b projectiles
-  superweaponSystem(state, ctx); // 6c superweapon beams
+  beamWeaponSystem(state, ctx); // 6a continuous tower beams
+  garrisonSystem(state, ctx); // 6b garrisoned units fire from bunkers
+  projectileSystem(state, ctx); // 6c projectiles
+  superweaponSystem(state, ctx); // 6d superweapon beams
   auraSystem(state, ctx); // 6d passive support auras
   harvestSystem(state, ctx); // 7
   channelSystem(state, ctx); // 7b mana weaver conjuring

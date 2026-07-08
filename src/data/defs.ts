@@ -30,11 +30,26 @@ export interface SfxDef {
   ready?: string;
 }
 
+export type BeamKind = 'flame' | 'frost';
+
+/** Continuous beam weapon — towers track a target and damage/slow all enemies in the beam volume. */
+export interface BeamWeaponDef {
+  kind: BeamKind;
+  startWidth: number; // mouth width at tower (world units)
+  endWidth: number; // width at max range
+  damageIntervalTicks: number; // effect cadence (~0.1s = 2 ticks at 20 Hz)
+  rotationSpeed: number; // radians per second for smooth aim
+  lingerTicks?: number; // flame: short burn after leaving the beam
+  lingerDamageFactor?: number; // flame: fraction of weapon.damage per linger tick
+  maxFrostExposure?: number; // frost: ticks to reach full slow buildup
+}
+
 export interface WeaponDef {
   damage: number;
   range: number; // world units
   cooldownTicks: number;
   projectile: string | null; // projectile defId, or null for instant/melee
+  beam?: BeamWeaponDef; // continuous beam (replaces projectile for beam towers)
   splashRadius?: number;
   impactRadius?: number;
   minRange?: number;

@@ -23,6 +23,11 @@ export class EventBridge {
       case 'attackFired':
         if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
         break;
+      case 'beamStarted':
+        if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffa060, 8);
+        break;
+      case 'beamStopped':
+        break;
       case 'damageDealt':
         if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
         break;
@@ -73,6 +78,7 @@ export class EventBridge {
     const nav = this.getServices().nav;
     switch (ev.type) {
       case 'attackFired':
+      case 'beamStarted':
       case 'damageDealt':
       case 'healApplied':
       case 'attackCharging':
