@@ -58,6 +58,21 @@ solid **before** wiring transport.
 (`{ t: 'tick', tick, cmds }` from the relay). Use `InMemoryRelay.advanceTick()` in tests or a
 WebSocket relay in production.
 
+## Phase 5 — Sync robustness & mobile performance (done)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Peer-paced relay clock | Done | Relay advances only within `LEAD_TICKS` of the slowest acked peer (`relay/relay-app.mjs`) |
+| Client progress acks | Done | `{ t: 'ack', tick }`; `LockstepClient.ackProcessed` throttled by `ACK_EVERY_TICKS` |
+| Stalled-peer handling | Done | Peers silent > `STALL_DROP_MS` dropped from pacing (no whole-match freeze) |
+| Snapshot resync | Done | `snapshotRequest`/`snapshot` relay-forwarded; host packs `TransferState`, lagging peer jumps forward |
+| Sim in Worker for MP | Done | `Game` runs the worker in lockstep too; confirmed ticks sent as `lockstepBatch` |
+| Catch-up tuning | Done | `LOCKSTEP_DRAIN_BUDGET_MS` + `LOCKSTEP_MAX_BATCH_TICKS` bound per-frame work |
+| "Syncing…" HUD hint | Done | Shown while a client is catching up behind the relay head |
+
+The upshot: cross-client drift is bounded to ~`LEAD_TICKS / TICK_HZ` seconds instead of
+growing without limit. The old free-running relay could leave a slow phone minutes behind.
+
 ## What we are NOT doing (yet)
 
 - Server-authoritative model (lockstep only — all peers simulate)

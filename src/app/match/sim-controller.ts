@@ -1,5 +1,6 @@
 import {
   CHECKSUM_INTERVAL_TICKS,
+  LEAD_TICKS,
   LOCKSTEP_DRAIN_BUDGET_MS,
   LOCKSTEP_MAX_BATCH_TICKS,
   LOCKSTEP_STALL_MS,
@@ -33,6 +34,7 @@ export class SimController {
   private tickCounter = 0;
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
+  private syncingShown = false;
   private lastSnapshotRequestMs = 0;
   private readonly aiEnabled: boolean;
   /** Set by the owner (Game) to snap render interpolation after a snapshot jump. */
@@ -307,13 +309,24 @@ export class SimController {
   private checkLockstepStall(hudHint: (msg: string) => void): void {
     if (!this.lockstep?.hasReceivedTicks() || this.state.ended) return;
     const gap = this.lockstep.msSinceLastTick();
-    if (gap < LOCKSTEP_STALL_MS) {
-      this.lockstepStallShown = false;
+    if (gap >= LOCKSTEP_STALL_MS) {
+      if (!this.lockstepStallShown) {
+        this.lockstepStallShown = true;
+        hudHint('Connection stalled — check network or rejoin the match');
+      }
       return;
     }
-    if (!this.lockstepStallShown) {
-      this.lockstepStallShown = true;
-      hudHint('Connection stalled — check network or rejoin the match');
+    this.lockstepStallShown = false;
+
+    // Ticks are flowing but we are catching up (e.g. after a hitch or backgrounding).
+    const backlog = this.lockstep.backlog(this.state.tick);
+    if (backlog > LEAD_TICKS * 2) {
+      if (!this.syncingShown) {
+        this.syncingShown = true;
+        hudHint('Syncing…');
+      }
+    } else {
+      this.syncingShown = false;
     }
   }
 }
