@@ -101,7 +101,9 @@ export class Game {
     this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
     this.matchProjectionMode = opts?.matchProjectionMode ?? 'ortho';
     const wantWorker = opts?.useWorker ?? workerSupported();
-    this.useWorker = wantWorker && !this.lockstep && workerSupported();
+    // The sim runs in a Web Worker in both solo and multiplayer so heavy tick work never
+    // competes with rendering — critical for smooth catch-up on weaker phones.
+    this.useWorker = wantWorker && workerSupported();
 
     this.humanId =
       opts?.localPlayerId ??
@@ -139,7 +141,12 @@ export class Game {
       () => this.renderer.syncTick(this.state),
       this.useWorker,
       aiEnabled,
+      this.relayTransport,
     );
+    this.simCtrl.onResync = () => {
+      this.renderer.syncTick(this.state);
+      this.renderer.snapDisplay();
+    };
 
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';

@@ -32,6 +32,11 @@ class RelayTransport implements Transport {
     this.room.receiveChecksum(this.playerId, tick, hash);
   }
 
+  // The in-memory relay is driven manually via advanceTick(); acks are a no-op here.
+  ackTick(_tick: number): void {
+    void _tick;
+  }
+
   onTickCommands(cb: (tick: number, cmds: Command[]) => void): void {
     this.tickCb = cb;
   }

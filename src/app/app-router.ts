@@ -54,7 +54,7 @@ export class AppRouter {
       this.game = null;
       void this.showMenu();
     }, {
-      useWorker: !opts?.session,
+      useWorker: true,
       matchId: 'custom',
       localPlayerId: opts?.localPlayerId,
       deadSpectatorReveal: config.deadSpectatorReveal ?? false,

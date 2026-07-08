@@ -11,6 +11,10 @@ export type PeerJoinedHandler = (playerId: string) => void;
 export type PeerLeftHandler = (playerId: string) => void;
 export type ErrorHandler = (message: string) => void;
 export type LobbyMessageHandler = (msg: ServerMessage) => void;
+/** Relay asks this client (the host) to produce a snapshot for a lagging peer. */
+export type SnapshotRequestHandler = (forConnId: string) => void;
+/** Relay delivers a host snapshot to this client so it can jump forward. */
+export type SnapshotHandler = (fromTick: number, state: unknown) => void;
 
 export class WebSocketTransport implements Transport {
   private tickCb: ((tick: number, cmds: Command[]) => void) | null = null;
@@ -23,6 +27,8 @@ export class WebSocketTransport implements Transport {
   onPeerLeft: PeerLeftHandler | null = null;
   onError: ErrorHandler | null = null;
   onLobbyMessage: LobbyMessageHandler | null = null;
+  onSnapshotRequest: SnapshotRequestHandler | null = null;
+  onSnapshot: SnapshotHandler | null = null;
 
   constructor(private ws: WebSocket) {
     ws.addEventListener('message', (ev) => this.handleMessage(ev));
@@ -35,6 +41,20 @@ export class WebSocketTransport implements Transport {
 
   reportChecksum(tick: number, hash: string): void {
     this.sendRaw({ t: 'checksum', tick, hash });
+  }
+
+  ackTick(tick: number): void {
+    this.sendRaw({ t: 'ack', tick });
+  }
+
+  /** Ask the host (via relay) for an authoritative state snapshot. */
+  requestSnapshot(): void {
+    this.sendRaw({ t: 'snapshotRequest' });
+  }
+
+  /** Host reply: publish a serialized sim state at `fromTick` to lagging peers. */
+  sendSnapshot(fromTick: number, state: unknown): void {
+    this.sendRaw({ t: 'snapshot', tick: fromTick, state });
   }
 
   sendRaw(msg: ClientMessage): void {
@@ -78,6 +98,12 @@ export class WebSocketTransport implements Transport {
       case 'peerChecksum':
         if (this.peerCb) this.peerCb(msg.playerId, msg.tick, msg.hash);
         else this.peerChecksumBuffer.push({ playerId: msg.playerId, tick: msg.tick, hash: msg.hash });
+        break;
+      case 'snapshotRequest':
+        this.onSnapshotRequest?.(msg.forConnId);
+        break;
+      case 'snapshot':
+        this.onSnapshot?.(msg.fromTick, msg.state);
         break;
       case 'matchStart':
         this.onMatchStart?.(msg.startTick, msg.seed, msg.state);

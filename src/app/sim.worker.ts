@@ -37,5 +37,18 @@ ctx.onmessage = (ev) => {
     case 'setAi':
       host.setAi(msg.enabled);
       break;
+    case 'lockstepBatch': {
+      const { state, events, lastTick, checksums } = host.stepLockstepBatch(msg.entries, msg.checksumEvery);
+      ctx.postMessage({ type: 'lockstepResult', state, events, lastTick, checksums });
+      break;
+    }
+    case 'requestSnapshot':
+      ctx.postMessage({ type: 'snapshot', state: host.snapshot() });
+      break;
+    case 'applySnapshot': {
+      const state = host.applySnapshot(msg.state);
+      ctx.postMessage({ type: 'ready', state });
+      break;
+    }
   }
 };

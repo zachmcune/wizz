@@ -9,6 +9,12 @@ const TICK_MS = 50;
 const MATCH_LOAD_GRACE_MS = 2500;
 const WS_KEEPALIVE_MS = 30_000;
 
+// Keep these in sync with src/net/protocol.ts (LEAD_TICKS / STALL_DROP_MS).
+// The relay is a peer-paced clock: it only advances while it is within LEAD_TICKS
+// of the slowest acknowledged peer, so a slow phone can never fall minutes behind.
+const LEAD_TICKS = 20;
+const STALL_DROP_MS = 4000;
+
 const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
   factionId: 'arcane',
@@ -73,6 +79,8 @@ class Room {
     /** @type {ReturnType<typeof setInterval> | null} */
     this.interval = null;
     this.started = false;
+    /** connIds waiting for the host to answer with a state snapshot. */
+    this.snapshotRequesters = new Set();
   }
 
   /** @param {import('ws').WebSocket} ws @param {import('./relay-types').LobbyStateWire | undefined} initialLobby */
@@ -97,7 +105,10 @@ class Room {
       }
     }
 
-    this.clients.set(ws, { connId, slotId });
+    // lastAckTick: highest sim tick this client reports processed (-1 = none yet).
+    // lastAckAtMs seeds to join time so a still-loading client counts as active
+    // during the load grace instead of being treated as stalled.
+    this.clients.set(ws, { connId, slotId, lastAckTick: -1, lastAckAtMs: Date.now() });
 
     const waiting = connectedHumans(this) < maxHumans(this.lobbyState);
 
@@ -258,8 +269,37 @@ class Room {
     if (this.interval) return;
     setTimeout(() => {
       if (this.clients.size === 0) return;
-      this.interval = setInterval(() => this.advance(), TICK_MS);
+      // Measure the stall window from when ticking begins, not from join time.
+      const now = Date.now();
+      for (const info of this.clients.values()) info.lastAckAtMs = now;
+      this.interval = setInterval(() => this.tryAdvance(), TICK_MS);
     }, MATCH_LOAD_GRACE_MS);
+  }
+
+  /**
+   * Peer-paced clock: advance only while the relay is within LEAD_TICKS of the
+   * slowest responsive peer. Returns false when the clock is intentionally paused
+   * waiting for a lagging peer (which bounds cross-client drift to LEAD_TICKS).
+   */
+  canAdvance() {
+    const now = Date.now();
+    let minAcked = Infinity;
+    let active = 0;
+    for (const info of this.clients.values()) {
+      if (!info.slotId) continue;
+      if (now - info.lastAckAtMs > STALL_DROP_MS) continue; // stalled peer: excluded from pacing
+      active++;
+      if (info.lastAckTick < minAcked) minAcked = info.lastAckTick;
+    }
+    // No responsive peers: keep the clock running so the room can recover instead of
+    // deadlocking; returning peers resync via a state snapshot.
+    if (active === 0) return true;
+    return this.tick <= minAcked + LEAD_TICKS;
+  }
+
+  tryAdvance() {
+    if (!this.canAdvance()) return;
+    this.advance();
   }
 
   advance() {
@@ -272,12 +312,54 @@ class Room {
     this.tick++;
   }
 
+  /** @param {import('ws').WebSocket} ws @param {number} tick */
+  receiveAck(ws, tick) {
+    const info = this.clients.get(ws);
+    if (!info || !info.slotId) return;
+    if (typeof tick !== 'number' || !Number.isFinite(tick)) return;
+    if (tick > info.lastAckTick) info.lastAckTick = tick;
+    info.lastAckAtMs = Date.now();
+  }
+
   /** @param {import('ws').WebSocket} ws @param {number} forTick @param {import('../src/sim/types').Command[]} cmds */
   receiveCommands(ws, forTick, cmds) {
     const info = this.clients.get(ws);
     if (!info || !info.slotId || !cmds?.length) return;
     const effective = forTick < this.tick ? this.tick : forTick;
     this.pending.push({ playerId: info.slotId, forTick: effective, cmds });
+  }
+
+  /**
+   * A peer that fell too far behind asks the host for an authoritative snapshot.
+   * The relay forwards the request to the host and remembers who to reply to.
+   * @param {import('ws').WebSocket} ws
+   */
+  requestSnapshot(ws) {
+    const info = this.clients.get(ws);
+    if (!info) return;
+    if (!this.hostWs || this.hostWs.readyState !== 1) return;
+    this.snapshotRequesters.add(info.connId);
+    this.hostWs.send(JSON.stringify({ t: 'snapshotRequest', forConnId: info.connId }));
+  }
+
+  /**
+   * The host answers a snapshot request with a serialized sim state. The relay
+   * forwards it to every pending requester and treats delivery as progress so the
+   * paced clock does not stall on the peer that was catching up.
+   * @param {import('ws').WebSocket} ws @param {number} fromTick @param {unknown} state
+   */
+  receiveSnapshot(ws, fromTick, state) {
+    if (ws !== this.hostWs) return;
+    if (this.snapshotRequesters.size === 0) return;
+    const msg = JSON.stringify({ t: 'snapshot', fromTick, state });
+    const now = Date.now();
+    for (const [clientWs, info] of this.clients) {
+      if (!this.snapshotRequesters.has(info.connId)) continue;
+      if (clientWs.readyState === 1) clientWs.send(msg);
+      if (typeof fromTick === 'number') info.lastAckTick = Math.max(info.lastAckTick, fromTick);
+      info.lastAckAtMs = now;
+    }
+    this.snapshotRequesters.clear();
   }
 
   /** @param {import('ws').WebSocket} ws @param {number} tick @param {string} hash */
@@ -296,6 +378,7 @@ class Room {
     const info = this.clients.get(ws);
     this.clients.delete(ws);
     if (info) {
+      this.snapshotRequesters.delete(info.connId);
       for (const slot of this.lobbyState.slots) {
         if (slot.claimedBy === info.connId) {
           slot.claimedBy = null;
@@ -396,6 +479,9 @@ export function attachRelay(server) {
       else if (msg.t === 'startMatch') room.tryStartMatch(ws);
       else if (msg.t === 'commands') room.receiveCommands(ws, msg.forTick, msg.cmds);
       else if (msg.t === 'checksum') room.receiveChecksum(ws, msg.tick, msg.hash);
+      else if (msg.t === 'ack') room.receiveAck(ws, msg.tick);
+      else if (msg.t === 'snapshotRequest') room.requestSnapshot(ws);
+      else if (msg.t === 'snapshot') room.receiveSnapshot(ws, msg.tick, msg.state);
     });
 
     ws.on('close', () => room?.removeClient(ws));
