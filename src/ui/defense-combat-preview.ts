@@ -12,8 +12,9 @@ import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
 import { Renderer } from '../render/renderer';
 import { el } from './dom';
 
-const DEFENSE_X = 2064;
-const DEFENSE_Y = 1424;
+// Open meadow tile — away from the center mana node at (2064, 1424).
+const DEFENSE_X = 2384;
+const DEFENSE_Y = 1184;
 const DEFENDER: PlayerId = 'player0';
 const ATTACKER: PlayerId = 'player1';
 const RESET_TICKS = 360;
@@ -169,6 +170,7 @@ export class DefenseCombatPreview {
   private panel = el('div', 'art-gallery-combat-panel');
   private titleEl = el('h2', 'art-gallery-combat-title');
   private captionEl = el('p', 'art-gallery-combat-caption');
+  private panHintEl = el('p', 'art-gallery-combat-pan-hint', 'Drag to pan the battlefield.');
   private canvasHost = el('div', 'art-gallery-combat-canvas');
   private closeBtn = el('button', 'btn art-gallery-combat-close', 'Close');
   private renderer: Renderer | null = null;
@@ -178,7 +180,10 @@ export class DefenseCombatPreview {
   private attackerIds: EntityId[] = [];
   private ticksSinceReset = 0;
   private destroyed = false;
-  private readonly onResize = (): void => this.frameCamera();
+  private panActive = false;
+  private lastPanX = 0;
+  private lastPanY = 0;
+  private readonly onResize = (): void => this.applyViewport();
 
   constructor(
     private registry: Registry,
@@ -193,7 +198,7 @@ export class DefenseCombatPreview {
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
     });
-    this.panel.append(this.titleEl, this.captionEl, this.canvasHost, this.closeBtn);
+    this.panel.append(this.titleEl, this.captionEl, this.panHintEl, this.canvasHost, this.closeBtn);
     this.overlay.appendChild(this.panel);
   }
 
@@ -209,6 +214,7 @@ export class DefenseCombatPreview {
     this.renderer.setNav(this.sim!.services.nav);
     this.renderer.setOwnerColors(this.sim!.state, DEFENDER);
     this.frameCamera();
+    this.bindPan();
     this.renderer.syncTick(this.sim!.state);
     this.renderer.app.renderer.on('resize', this.onResize);
 
@@ -219,17 +225,58 @@ export class DefenseCombatPreview {
     this.loop.start();
   }
 
-  private frameCamera(): void {
-    if (!this.renderer || !this.sim) return;
+  private applyViewport(): void {
+    if (!this.renderer) return;
     const w = this.canvasHost.clientWidth || 640;
     const h = this.canvasHost.clientHeight || 360;
+    this.renderer.camera.setViewport(w, h);
+  }
+
+  private frameCamera(): void {
+    if (!this.renderer || !this.sim) return;
+    this.applyViewport();
     const cam = this.renderer.camera;
-    cam.setViewport(w, h);
     const defense = this.sim.state.entities.get(this.defenseEntityId);
     const focusX = defense?.pos.x ?? DEFENSE_X;
     const focusY = defense?.pos.y ?? DEFENSE_Y;
     cam.centerOn(focusX, focusY);
     cam.setZoom(PREVIEW_ZOOM);
+  }
+
+  private bindPan(): void {
+    const host = this.canvasHost;
+    host.style.touchAction = 'none';
+    host.title = 'Drag to pan';
+
+    const onPointerDown = (e: PointerEvent): void => {
+      if (e.button !== 0) return;
+      this.panActive = true;
+      this.lastPanX = e.clientX;
+      this.lastPanY = e.clientY;
+      host.classList.add('art-gallery-combat-canvas-grabbing');
+      host.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e: PointerEvent): void => {
+      if (!this.panActive || !this.renderer) return;
+      const dx = e.clientX - this.lastPanX;
+      const dy = e.clientY - this.lastPanY;
+      this.lastPanX = e.clientX;
+      this.lastPanY = e.clientY;
+      this.renderer.camera.panByScreen(dx, dy);
+    };
+
+    const onPointerEnd = (e: PointerEvent): void => {
+      if (!this.panActive) return;
+      this.panActive = false;
+      host.classList.remove('art-gallery-combat-canvas-grabbing');
+      if (host.hasPointerCapture(e.pointerId)) host.releasePointerCapture(e.pointerId);
+    };
+
+    host.addEventListener('pointerdown', onPointerDown);
+    host.addEventListener('pointermove', onPointerMove);
+    host.addEventListener('pointerup', onPointerEnd);
+    host.addEventListener('pointercancel', onPointerEnd);
   }
 
   private bootstrapScene(): void {

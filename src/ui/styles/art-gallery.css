@@ -198,6 +198,13 @@
   opacity: 0.7;
   line-height: 1.4;
 }
+.art-gallery-combat-pan-hint {
+  margin: 0;
+  font-size: 11px;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
 .art-gallery-combat-canvas {
   width: 100%;
   height: min(52vh, 380px);
@@ -206,6 +213,10 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: #12101c;
+  cursor: grab;
+}
+.art-gallery-combat-canvas-grabbing {
+  cursor: grabbing;
 }
 .art-gallery-combat-canvas canvas {
   display: block;

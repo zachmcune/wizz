@@ -8,7 +8,7 @@ import {
   MAX_ZOOM,
 } from '../core/constants';
 import { clamp } from '../sim/math';
-import type { CameraView } from '../core/coords';
+import type { CameraView, Vec2 } from '../core/coords';
 import { projectGround, screenPanToCameraDelta, screenToWorld } from '../core/coords';
 import { getProjectionMode, OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
 
