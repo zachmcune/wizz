@@ -4,6 +4,7 @@ import { initMatch, spawnEntity, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { expectBuilding, expectUnit } from './entity-helpers';
+import { TILE } from '../src/core/constants';
 
 const reg = getRegistry();
 
@@ -18,8 +19,12 @@ describe('economy & production (data-driven)', () => {
     const spireDef = reg.building('attunement_spire');
     const wispsBefore = ownedBy(state, 'player0').filter((e) => e.defId === 'wisp').length;
 
-    // place the spire on a known-free tile near the top-left start
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
+    const sanctum = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const spireX = sanctum.pos.x + 4 * TILE;
+    const spireY = sanctum.pos.y;
+
+    // place the spire on a known-free tile near the Sanctum
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: spireX, y: spireY }]);
     sim.step();
     expect(p.mana).toBe(startMana - spireDef.cost); // charged upfront, from data
 
@@ -41,8 +46,12 @@ describe('economy & production (data-driven)', () => {
     sim.setAiEnabled(false);
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
+    const sanctum = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const spireX = sanctum.pos.x + 4 * TILE;
+    const spireY = sanctum.pos.y;
+
     // build + finish a spire so wisps have a dropoff
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: spireX, y: spireY }]);
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
@@ -76,12 +85,18 @@ describe('economy & production (data-driven)', () => {
     sim.setAiEnabled(false);
     const p = state.players.find((pl) => pl.id === 'player0')!;
 
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
+    const sanctum = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const spireX = sanctum.pos.x + 4 * TILE;
+    const spireY = sanctum.pos.y;
+    const circleX = sanctum.pos.x;
+    const circleY = sanctum.pos.y + 4 * TILE;
+
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: spireX, y: spireY }]);
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
     p.mana = 9999;
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 1040, y: 464 }]);
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: circleX, y: circleY }]);
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 5; i++) sim.step();
 

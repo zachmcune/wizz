@@ -542,7 +542,7 @@ export class Renderer {
     if (overlay?.buildZones?.length) {
       for (const z of overlay.buildZones) {
         const p = this.drawPos(z.x, z.y);
-        this.strokeRing(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
+        this.strokeSquare(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
       }
     }
     const placementGhosts: BuildPlacementGhost[] = [];
@@ -780,6 +780,11 @@ export class Renderer {
     // behind anything drawn in front (higher depth).
     g.zIndex = depth + 0.001;
     g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
+  }
+
+  private strokeSquare(cx: number, cy: number, half: number, width: number, color: number, alpha: number): void {
+    const g = this.overlayStrokePool.acquire();
+    g.rect(cx - half, cy - half, half * 2, half * 2).stroke({ width, color, alpha });
   }
 
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {

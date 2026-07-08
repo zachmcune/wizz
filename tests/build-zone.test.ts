@@ -7,11 +7,18 @@ import { TILE } from '../src/core/constants';
 
 const reg = getRegistry();
 
+function sanctumFor(state: ReturnType<typeof initMatch>['state']) {
+  return [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+}
+
 describe('build zone (RA2-style)', () => {
   it('allows placement near the Sanctum and rejects far-away tiles', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
-    const nearTx = Math.floor((800 - TILE) / TILE);
-    const nearTy = Math.floor((464 - TILE) / TILE);
+    const sanctum = sanctumFor(state);
+    const nearX = sanctum.pos.x + 4 * TILE;
+    const nearY = sanctum.pos.y;
+    const nearTx = Math.floor((nearX - TILE) / TILE);
+    const nearTy = Math.floor((nearY - TILE) / TILE);
     expect(canBuildNearBase(state, services, 'player0', nearTx, nearTy, 2)).toBe(true);
 
     const farTx = Math.floor((2400 - TILE) / TILE);
@@ -23,11 +30,16 @@ describe('build zone (RA2-style)', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
-    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: 800, y: 464 }]);
+    const sanctum = sanctumFor(state);
+    const spireX = sanctum.pos.x + 4 * TILE;
+    const spireY = sanctum.pos.y;
+    sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'attunement_spire', x: spireX, y: spireY }]);
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
-    const edgeTx = Math.floor((800 + BUILD_ZONE_TILES * TILE - TILE) / TILE);
-    const edgeTy = Math.floor((464 - TILE) / TILE);
+    const edgeX = spireX + BUILD_ZONE_TILES * TILE;
+    const edgeY = spireY;
+    const edgeTx = Math.floor((edgeX - TILE) / TILE);
+    const edgeTy = Math.floor((edgeY - TILE) / TILE);
     expect(canBuildNearBase(state, services, 'player0', edgeTx, edgeTy, 2)).toBe(true);
   });
 

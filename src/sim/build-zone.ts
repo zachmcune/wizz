@@ -5,7 +5,7 @@ import type { GameState, Entity, PlayerId } from './types';
 import { buildingsOf } from './queries';
 
 /** Max Chebyshev tile distance from any friendly structure tile to a new footprint tile. */
-export const BUILD_ZONE_TILES = 11;
+export const BUILD_ZONE_TILES = 7;
 
 function footprintOrigin(pos: { x: number; y: number }, footprint: number): { tx: number; ty: number } {
   return {

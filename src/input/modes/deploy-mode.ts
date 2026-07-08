@@ -1,7 +1,7 @@
 import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
 import type { InputContext, ModeTapHandler } from '../input-context';
-import { tileAt } from '../placement';
+import { tileAt, placementSpacing } from '../placement';
 
 export const deployMode: ModeTapHandler = {
   onTap(_ctx, _screen, world): void {
@@ -19,7 +19,7 @@ export function computeDeployGhost(
   const def = udef?.deploysAs ? ctx.registry.buildings.get(udef.deploysAs) : null;
   if (!def) return { x: world.x, y: world.y, valid: false, issue: 'blocked' };
   const { tx, ty, cx, cy } = tileAt(world, def.footprint);
-  const navOk = ctx.canPlace(tx, ty, def.footprint);
+  const navOk = ctx.canPlace(tx, ty, def.footprint, placementSpacing(def));
   const nodeBlocked = ctx.onNode(tx, ty, def.footprint);
   const valid = navOk && !nodeBlocked;
   const issue = !navOk ? 'blocked' : nodeBlocked ? 'node' : undefined;

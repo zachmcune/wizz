@@ -1,9 +1,11 @@
-import { BUILD_SPACING_TILES, TILE } from '../core/constants';
+import { TILE } from '../core/constants';
+import { buildingPlacementSpacing } from '../core/placement-spacing';
+import type { BuildingDef } from '../data/defs';
 import type { Vec2 } from '../core/coords';
 import type { InputContext } from './input-context';
 
-export function placementSpacing(isWall: boolean | undefined): number {
-  return isWall ? 0 : BUILD_SPACING_TILES;
+export function placementSpacing(def: Pick<BuildingDef, 'isWall' | 'menuCategory'> | undefined): number {
+  return def ? buildingPlacementSpacing(def) : 0;
 }
 
 export function tileAt(world: Vec2, footprint: number): { tx: number; ty: number; cx: number; cy: number } {
@@ -36,7 +38,7 @@ export function ghostAtTile(
   defId: string,
 ): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } {
   const def = ctx.registry.buildings.get(defId);
-  const spacing = placementSpacing(def?.isWall);
+  const spacing = placementSpacing(def);
   const cx = (tx + footprint / 2) * TILE;
   const cy = (ty + footprint / 2) * TILE;
   const navOk = ctx.canPlace(tx, ty, footprint, spacing);
