@@ -83,6 +83,18 @@ describe('gesture FSM', () => {
     expect(h.onTwoFingerPan).toHaveBeenCalled();
   });
 
+  it('does not emit a tap when a two-finger pan ends', () => {
+    const { g, h } = make();
+    g.pointerDown(1, 100, 100, 0);
+    g.pointerDown(2, 200, 100, 10);
+    g.pointerMove(1, 120, 100, 20);
+    g.pointerMove(2, 220, 100, 20);
+    g.pointerUp(2, 220, 100, 30);
+    g.pointerUp(1, 120, 100, 40);
+    expect(h.onTap).not.toHaveBeenCalled();
+    expect(g.lastEndKind).toBe('pinch');
+  });
+
   it('cancel() resets stuck pending state', () => {
     const { g, h } = make();
     g.pointerDown(1, 100, 100, 0);

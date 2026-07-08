@@ -31,6 +31,7 @@ const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
   attack: 0xff5d5d,
   attackMove: 0xffa14f,
+  moveInOrder: 0x9ad66b,
   harvest: 0x39d0c0,
   build: 0x8b6cff,
   deploy: 0x8b6cff,

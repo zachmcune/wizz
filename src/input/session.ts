@@ -1,7 +1,16 @@
 // View-only session state (selection, current mode, placement/targeting). NOT part of the sim.
 import type { EntityId } from '../sim/types';
 
-export type InputMode = 'normal' | 'attackMove' | 'build' | 'deploy' | 'spell' | 'rally' | 'garrison' | 'superweapon';
+export type InputMode =
+  | 'normal'
+  | 'attackMove'
+  | 'moveInOrder'
+  | 'build'
+  | 'deploy'
+  | 'spell'
+  | 'rally'
+  | 'garrison'
+  | 'superweapon';
 
 export interface SessionState {
   selection: Set<EntityId>;

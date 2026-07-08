@@ -354,6 +354,7 @@ export class InputController {
       this.session.mode === 'build' ||
       this.session.mode === 'spell' ||
       this.session.mode === 'attackMove' ||
+      this.session.mode === 'moveInOrder' ||
       this.session.mode === 'deploy' ||
       this.session.mode === 'rally' ||
       this.session.mode === 'garrison' ||

@@ -1,6 +1,7 @@
 import type { InputMode } from '../session';
 import type { InputContext, ModeTapHandler } from '../input-context';
 import { attackMoveMode } from './attack-move-mode';
+import { moveInOrderMode } from './move-in-order-mode';
 import { buildMode } from './build-mode';
 import { deployMode } from './deploy-mode';
 import { normalMode } from './normal-mode';
@@ -17,6 +18,7 @@ const TAP_HANDLERS: Record<InputMode, ModeTapHandler> = {
   rally: rallyMode,
   garrison: garrisonMode,
   attackMove: attackMoveMode,
+  moveInOrder: moveInOrderMode,
   superweapon: superweaponMode,
 };
 
@@ -42,6 +44,7 @@ export function handleModeTap(ctx: InputContext, mode: InputMode, screen: import
 
 export { normalMode, boxSelect, doubleTapSelectType } from './normal-mode';
 export { attackMoveMode } from './attack-move-mode';
+export { moveInOrderMode } from './move-in-order-mode';
 export * from './build-mode';
 export * from './deploy-mode';
 export * from './spell-mode';

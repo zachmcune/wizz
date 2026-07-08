@@ -37,6 +37,7 @@ export class GestureRecognizer {
   private pinchDist = 0;
   private pinchCenter: Pt = { x: 0, y: 0 };
   private dragToSelect: boolean;
+  private suppressTapUntilAllPointersUp = false;
 
   constructor(
     private h: GestureHandlers,
@@ -66,9 +67,13 @@ export class GestureRecognizer {
   }
 
   pointerDown(id: number, x: number, y: number, now: number): void {
-    this.lastEndKind = 'none';
+    if (this.pointers.size === 0) {
+      this.lastEndKind = 'none';
+      this.suppressTapUntilAllPointersUp = false;
+    }
     this.pointers.set(id, { x, y });
     if (this.pointers.size >= 2) {
+      this.suppressTapUntilAllPointersUp = true;
       const pts = [...this.pointers.values()];
       this.pinchDist = this.dist(pts[0]!, pts[1]!);
       this.pinchCenter = this.centerOfPointers();
@@ -138,6 +143,7 @@ export class GestureRecognizer {
         } else {
           this.state = 'idle';
           this.lastEndKind = 'pinch';
+          this.suppressTapUntilAllPointersUp = false;
         }
       }
       return;
@@ -157,7 +163,9 @@ export class GestureRecognizer {
     if (this.state === 'pending') {
       const quick = now - this.startTime <= TAP_MAX_MS + LONG_PRESS_MS;
       const still = this.dist(this.startPt, cur) <= MOVE_THRESHOLD;
-      if (quick && still) {
+      if (this.suppressTapUntilAllPointersUp) {
+        this.lastEndKind = 'pinch';
+      } else if (quick && still) {
         if (now - this.lastTapTime <= DOUBLE_TAP_MS && this.dist(this.lastTapPt, cur) <= MOVE_THRESHOLD * 2) {
           this.h.onDoubleTap?.(cur);
           this.lastEndKind = 'tap';
@@ -172,6 +180,7 @@ export class GestureRecognizer {
         this.lastEndKind = 'none';
       }
       this.state = 'idle';
+      if (this.pointers.size === 0) this.suppressTapUntilAllPointersUp = false;
     }
   }
 
@@ -189,6 +198,7 @@ export class GestureRecognizer {
     this.pointers.clear();
     this.state = 'idle';
     this.lastEndKind = 'none';
+    this.suppressTapUntilAllPointersUp = false;
   }
 
   get activePointers(): number {

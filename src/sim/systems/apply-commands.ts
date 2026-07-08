@@ -6,6 +6,7 @@ import { getPlayer } from '../queries';
 import {
   handleMove,
   handleAttackMove,
+  handleMoveInOrder,
   handleAttack,
   handleHarvest,
   handleStop,
@@ -37,6 +38,9 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'attackMove':
         handleAttackMove(state, ctx, cmd);
+        break;
+      case 'moveInOrder':
+        handleMoveInOrder(state, ctx, cmd);
         break;
       case 'attack':
         handleAttack(state, ctx, cmd);

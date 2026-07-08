@@ -62,6 +62,7 @@ export type Order =
   | { type: 'move'; x: number; y: number }
   | { type: 'attack'; targetId: EntityId }
   | { type: 'attackMove'; x: number; y: number }
+  | { type: 'moveInOrder'; x: number; y: number; groupSpeed: number }
   | { type: 'harvest'; nodeId: EntityId }
   | { type: 'garrison'; buildingId: EntityId }
   | { type: 'hold' };
@@ -109,6 +110,7 @@ export type Command =
   | { type: 'move'; playerId: PlayerId; entityIds: EntityId[]; x: number; y: number }
   | { type: 'attack'; playerId: PlayerId; entityIds: EntityId[]; targetId: EntityId }
   | { type: 'attackMove'; playerId: PlayerId; entityIds: EntityId[]; x: number; y: number }
+  | { type: 'moveInOrder'; playerId: PlayerId; entityIds: EntityId[]; x: number; y: number }
   | { type: 'harvest'; playerId: PlayerId; entityIds: EntityId[]; nodeId: EntityId }
   | { type: 'stop'; playerId: PlayerId; entityIds: EntityId[] }
   | { type: 'setStance'; playerId: PlayerId; entityIds: EntityId[]; stance: Stance }
