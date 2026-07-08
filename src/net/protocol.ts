@@ -97,8 +97,14 @@ export const RELAY_TICK_MS = 50;
 /** Grace period after matchStart before relay ticks (lets clients finish loading). */
 export const MATCH_LOAD_GRACE_MS = 2500;
 
-/** Max sim work per render frame during lockstep catch-up (keeps UI responsive). */
-export const LOCKSTEP_DRAIN_BUDGET_MS = 8;
+/** Max sim work per render frame during main-thread lockstep catch-up (keeps UI responsive). */
+export const LOCKSTEP_DRAIN_BUDGET_MS = 12;
+
+/**
+ * Max confirmed ticks handed to the sim worker in one lockstep batch. Bounds a single
+ * round-trip's work so the worker stays responsive while still catching up quickly.
+ */
+export const LOCKSTEP_MAX_BATCH_TICKS = 60;
 
 /** No relay tick for this long → show a connection-stall hint. */
 export const LOCKSTEP_STALL_MS = 3000;

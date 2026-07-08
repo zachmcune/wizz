@@ -1,6 +1,7 @@
 import {
   CHECKSUM_INTERVAL_TICKS,
   LOCKSTEP_DRAIN_BUDGET_MS,
+  LOCKSTEP_MAX_BATCH_TICKS,
   LOCKSTEP_STALL_MS,
   SNAPSHOT_RESYNC_TICKS,
 } from '../../net/protocol';
@@ -11,10 +12,11 @@ import { applyTransferState, packState, type TransferState } from '../../sim/sta
 import { rebuildBuildingNav } from '../../sim/building-nav';
 import type { Simulation } from '../../sim/simulation';
 import type { GameEvent, GameState, Command } from '../../sim/types';
+import type { LockstepEntry } from '../../sim/worker/messages';
 import type { SimServices } from '../../sim/context';
 import type { Registry } from '../../data/registry';
 import { createSimulation } from '../create-simulation';
-import { WorkerSimClient } from '../worker-client';
+import { WorkerSimClient, type WorkerLockstepResult } from '../worker-client';
 import { ReplayRecorder, serializeReplay, type Replay } from '../../sim/replay';
 import { saveGame } from '../../storage/save';
 
@@ -32,6 +34,7 @@ export class SimController {
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
   private lastSnapshotRequestMs = 0;
+  private readonly aiEnabled: boolean;
   /** Set by the owner (Game) to snap render interpolation after a snapshot jump. */
   onResync: (() => void) | null = null;
 
@@ -48,6 +51,7 @@ export class SimController {
     aiEnabled: boolean,
     private relayTransport: WebSocketTransport | null = null,
   ) {
+    this.aiEnabled = aiEnabled;
     if (useWorker) {
       this.worker = new WorkerSimClient();
     } else {
@@ -64,14 +68,27 @@ export class SimController {
   }
 
   private produceSnapshot(): void {
-    if (!this.relayTransport || !this.sim) return;
+    if (!this.relayTransport) return;
+    if (this.worker) {
+      this.worker.requestSnapshot();
+      return;
+    }
+    if (!this.sim) return;
     this.relayTransport.sendSnapshot(this.state.tick, packState(this.state));
   }
 
   /** Jump the local sim forward to an authoritative snapshot, skipping replay. */
   private applySnapshot(fromTick: number, state: unknown): void {
-    if (!this.lockstep || !this.sim) return;
+    if (!this.lockstep) return;
     if (fromTick <= this.state.tick) return;
+    if (this.worker) {
+      // The worker mirrors the snapshot; onReady (set in initWorker) finishes the jump.
+      this.worker.applySnapshot(state as TransferState);
+      // Re-init resets AI to default; restore the match's setting for determinism.
+      this.worker.setAi(this.aiEnabled);
+      return;
+    }
+    if (!this.sim) return;
     applyTransferState(this.state, state as TransferState);
     rebuildBuildingNav(this.state, this.services, this.registry);
     this.lockstep.pruneBefore(fromTick);
@@ -133,29 +150,51 @@ export class SimController {
 
     return new Promise((resolve) => {
       const timeout = window.setTimeout(() => resolve(worker.isReady), 4000);
+      let initialized = false;
       worker.onReady = (transfer) => {
         clearTimeout(timeout);
         this.applyWorkerState(transfer);
-        resolve(true);
+        if (this.lockstep) {
+          // After the first ready this fires only for snapshot resyncs.
+          if (initialized) this.finishWorkerResync();
+        }
+        if (!initialized) {
+          initialized = true;
+          resolve(true);
+        }
       };
-      worker.onTick = ({ state, events }) => {
-        applyTransferState(this.state, state);
-        rebuildBuildingNav(this.state, this.services, this.registry);
-        this.onTick(events);
-        this.onSync();
-        this.markSynced();
-        this.tickCounter++;
-        if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0) void saveGame(this.state);
-      };
+      if (this.lockstep) {
+        worker.onLockstepResult = (res) => this.applyWorkerLockstepResult(res);
+        worker.onSnapshot = (state) => this.relayTransport?.sendSnapshot(state.tick, state);
+      } else {
+        worker.onTick = ({ state, events }) => {
+          applyTransferState(this.state, state);
+          rebuildBuildingNav(this.state, this.services, this.registry);
+          this.onTick(events);
+          this.onSync();
+          this.markSynced();
+          this.tickCounter++;
+          if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0) void saveGame(this.state);
+        };
+      }
       worker.initState(packState(this.state));
+      // All peers must run identical AI settings or the deterministic sim will desync.
+      worker.setAi(this.aiEnabled);
     });
+  }
+
+  private finishWorkerResync(): void {
+    if (!this.lockstep) return;
+    this.lockstep.pruneBefore(this.state.tick);
+    this.lockstep.ackNow(this.state.tick);
+    this.onResync?.();
   }
 
   fallbackToMainThread(): void {
     if (!this.worker) return;
     this.worker.terminate();
     this.worker = null;
-    this.sim = createSimulation(this.state, this.services);
+    this.sim = createSimulation(this.state, this.services, { aiEnabled: this.aiEnabled });
   }
 
   catchUpLockstep(): void {
@@ -169,7 +208,12 @@ export class SimController {
   }
 
   drainLockstep(hudHint: (msg: string) => void): void {
-    if (!this.lockstep || !this.sim) return;
+    if (!this.lockstep) return;
+    if (this.worker) {
+      this.drainLockstepWorker(hudHint);
+      return;
+    }
+    if (!this.sim) return;
     this.checkLockstepStall(hudHint);
     this.maybeRequestResync();
     const deadline = performance.now() + LOCKSTEP_DRAIN_BUDGET_MS;
@@ -181,6 +225,42 @@ export class SimController {
       lastTick = this.state.tick;
     }
     if (advanced) this.finishLockstepBatch(lastTick);
+  }
+
+  /** Worker lockstep: hand confirmed ticks to the worker (one batch in flight at a time). */
+  private drainLockstepWorker(hudHint: (msg: string) => void): void {
+    const worker = this.worker;
+    if (!worker || !this.lockstep) return;
+    this.checkLockstepStall(hudHint);
+    this.maybeRequestResync();
+    if (worker.hasPendingBatch || !worker.isReady) return;
+
+    const entries: LockstepEntry[] = [];
+    let t = this.state.tick;
+    while (entries.length < LOCKSTEP_MAX_BATCH_TICKS && this.lockstep.isTickReady(t)) {
+      entries.push({ tick: t, cmds: this.lockstep.commandsForTick(t) ?? [] });
+      t++;
+    }
+    if (entries.length) worker.sendLockstepBatch(entries, CHECKSUM_INTERVAL_TICKS);
+  }
+
+  private applyWorkerLockstepResult(res: WorkerLockstepResult): void {
+    if (!this.lockstep) return;
+    applyTransferState(this.state, res.state);
+    rebuildBuildingNav(this.state, this.services, this.registry);
+    this.onTick(res.events);
+    for (const c of res.checksums) this.handleChecksum(c.tick, c.hash);
+    this.finishLockstepBatch(res.lastTick);
+  }
+
+  private handleChecksum(tick: number, hash: string): void {
+    if (!this.lockstep) return;
+    const bad = this.lockstep.detectDesync(tick, hash);
+    if (bad.length) {
+      const replay = this.replay.toReplay(this.matchId);
+      this.onDesync?.(tick, bad, replay);
+      console.error('[lockstep] desync at tick', tick, 'peers:', bad, 'replay:', serializeReplay(replay));
+    }
   }
 
   autosaveOnExit(): void {
@@ -221,13 +301,7 @@ export class SimController {
 
   private reportChecksum(tick: number): void {
     if (!this.lockstep) return;
-    const ownHash = hashState(this.state);
-    const bad = this.lockstep.detectDesync(tick, ownHash);
-    if (bad.length) {
-      const replay = this.replay.toReplay(this.matchId);
-      this.onDesync?.(tick, bad, replay);
-      console.error('[lockstep] desync at tick', tick, 'peers:', bad, 'replay:', serializeReplay(replay));
-    }
+    this.handleChecksum(tick, hashState(this.state));
   }
 
   private checkLockstepStall(hudHint: (msg: string) => void): void {
