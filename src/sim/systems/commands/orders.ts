@@ -1,7 +1,18 @@
 import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
-import { isAlive } from '../../queries';
+import { hasBuff, isAlive } from '../../queries';
 import { ownedAliveUnits } from './shared';
+
+function groupMoveSpeed(state: GameState, ctx: StepContext, units: ReturnType<typeof ownedAliveUnits>): number {
+  let groupSpeed = Infinity;
+  for (const e of units) {
+    const udef = ctx.services.registry.unit(e.defId);
+    let speed = udef.speed;
+    if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;
+    if (speed < groupSpeed) groupSpeed = speed;
+  }
+  return Number.isFinite(groupSpeed) ? groupSpeed : 0;
+}
 
 export function handleMove(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'move' }>): void {
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
@@ -23,6 +34,19 @@ export function handleAttackMove(state: GameState, ctx: StepContext, cmd: Extrac
     e.state = 'moving';
   }
   ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'attackMove', x: cmd.x, y: cmd.y });
+}
+
+export function handleMoveInOrder(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'moveInOrder' }>): void {
+  const units = ownedAliveUnits(state, cmd.playerId, cmd.entityIds);
+  const groupSpeed = groupMoveSpeed(state, ctx, units);
+  for (const e of units) {
+    e.channeling = false;
+    e.channelTicks = undefined;
+    e.orders = [{ type: 'moveInOrder', x: cmd.x, y: cmd.y, groupSpeed }];
+    e.targetId = undefined;
+    e.state = 'moving';
+  }
+  ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'moveInOrder', x: cmd.x, y: cmd.y });
 }
 
 export function handleAttack(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'attack' }>): void {
