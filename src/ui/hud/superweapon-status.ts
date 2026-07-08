@@ -36,7 +36,7 @@ export class SuperweaponStatus {
       const status = firing ? 'FIRING' : cd > 0 ? fmt(cd) : 'READY';
       rows.push(
         `<span class="sw-row"><span class="sw-swatch" style="background:${p.color}"></span>` +
-          `<span class="sw-time">${status}</span></span>`,
+          `<span class="sw-name">${p.id}</span><span class="sw-time">${status}</span></span>`,
       );
     }
     if (rows.length === 0) {
