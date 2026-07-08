@@ -1,6 +1,7 @@
 // Deterministic layered AI. One decision pass per AI player, throttled by tick.
 // It ONLY emits Commands (same as a human) - never mutates sim state directly.
 import { TILE } from '../core/constants';
+import { buildingPlacementSpacing } from '../core/placement-spacing';
 import type { SimServices } from '../sim/context';
 import type { GameState, Command, Entity, EntityId, Player, PlayerId } from '../sim/types';
 import { isHarvester, isCombatUnit, type BuildingEntity } from '../sim/types';
@@ -52,9 +53,13 @@ function findPlacement(
   owner: PlayerId,
   cx: number,
   cy: number,
-  footprint: number,
+  defId: string,
 ): { x: number; y: number } | null {
   const nav = services.nav;
+  const def = services.registry.buildings.get(defId);
+  if (!def) return null;
+  const footprint = def.footprint;
+  const spacing = buildingPlacementSpacing(def);
   const ctx = Math.floor(cx / TILE);
   const cty = Math.floor(cy / TILE);
   for (let ring = 2; ring <= 10; ring++) {
@@ -64,7 +69,7 @@ function findPlacement(
         const tx = ctx + dx;
         const ty = cty + dy;
         if (
-          nav.canPlace(tx, ty, footprint) &&
+          nav.canPlace(tx, ty, footprint, spacing) &&
           !footprintOverlapsNode(state, tx, ty, footprint) &&
           canBuildNearBase(state, services, owner, tx, ty, footprint)
         ) {
@@ -111,7 +116,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   if (isPowerShort(state, p.id)) {
     const leyDef = reg.buildings.get('ley_conduit');
     if (leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
-      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, leyDef.footprint);
+      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, 'ley_conduit');
       if (spot) {
         cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
         return;
@@ -125,7 +130,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     if (!bdef) continue;
     if (!bdef.requires.every((r) => p.unlockedTech.includes(r))) break;
     if (p.mana < bdef.cost) return;
-    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
+    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, defId);
     if (spot) {
       cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
       return;
@@ -151,7 +156,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     combat.length >= Math.floor(diff.armyThreshold * 0.5) &&
     p.mana >= turretDef.cost * 2
   ) {
-    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, turretDef.footprint);
+    const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, 'ward_turret');
     if (spot) {
       cmds.push({ type: 'build', playerId: p.id, defId: 'ward_turret', x: spot.x, y: spot.y });
       return;
