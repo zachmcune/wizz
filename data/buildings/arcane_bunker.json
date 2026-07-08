@@ -1,0 +1,29 @@
+{
+  "id": "arcane_bunker",
+  "name": "Arcane Bunker",
+  "shortLabel": "BNKR",
+  "description": "Early defensive shelter. Garrison ranged units inside; they fire from protected runic slits and can be unloaded at any time.",
+  "kind": "building",
+  "cost": 320,
+  "buildTime": 7,
+  "hp": 850,
+  "armor": "building",
+  "sight": 165,
+  "footprint": 2,
+  "menuCategory": "defenses",
+  "requires": ["sanctum"],
+  "garrison": {
+    "capacity": 4,
+    "allowedUnitIds": ["arcane_archer", "storm_caster"],
+    "requireWeapon": true,
+    "rangeBonus": 20,
+    "unloadRadius": 48,
+    "damageOnHostDestroyedFraction": 0.5
+  },
+  "art": {
+    "shape": "building",
+    "size": 58,
+    "accent": "#8b6cff",
+    "sprite": "arcane_bunker"
+  }
+}

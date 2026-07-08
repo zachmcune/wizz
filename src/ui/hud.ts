@@ -315,7 +315,8 @@ export class Hud {
     const inBuildMode = session.mode === 'build';
     const inDeployMode = session.mode === 'deploy';
     const inRallyMode = session.mode === 'rally';
-    const inPlaceMode = inBuildMode || inDeployMode || inRallyMode;
+    const inGarrisonMode = session.mode === 'garrison';
+    const inPlaceMode = inBuildMode || inDeployMode || inRallyMode || inGarrisonMode;
     const isHQ = !!ownBuilding?.isConstructionYard;
     const isProducer = !!ownBuilding?.producesUnits?.length && !ownBuilding.isConstructionYard;
     const showCommandMenu = !inPlaceMode && (isHQ || isProducer);
@@ -355,6 +356,12 @@ export class Hud {
         : 'Tap the map where new units should go after training.';
       this.selMeta.textContent = singleBuilding?.rally ? 'Rally point set — tap map to move' : 'No rally point';
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
+    } else if (inGarrisonMode) {
+      this.selName.textContent = 'Garrison';
+      this.selDesc.textContent = 'Tap an owned Arcane Bunker with free capacity.';
+      this.selMeta.textContent = `${session.garrisonUnitIds.length} selected unit(s) ready to enter`;
+      this.commandMenu.panel.setOpen(false);
+      this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inDeployMode && session.deployEntityId) {
       const campDef = this.registry.buildings.get('waystone_camp')!;
       this.selName.textContent = 'Deploy: Waystone Camp';
@@ -384,6 +391,11 @@ export class Hud {
         if (singleBuilding.morphProgress !== undefined) meta.push(`Packing ${Math.round(singleBuilding.morphProgress * 100)}%`);
         if (singleBuilding.repairing) meta.push('repairing');
         if (singleBuilding.rally) meta.push('rally set');
+        if (ownBuilding.garrison) {
+          const current = singleBuilding.garrisonedIds?.length ?? 0;
+          const reserved = singleBuilding.garrisonReservedIds?.length ?? 0;
+          meta.push(`garrison ${current + reserved}/${ownBuilding.garrison.capacity}`);
+        }
         this.commandMenu.updateTrainQueue(
           this.registry,
           this.controller,

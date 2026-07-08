@@ -29,6 +29,11 @@ const COST_MULTIPLIED_BUILDINGS = new Set([
   'arcane_nexus',
   'astral_spire',
   'scrying_obelisk',
+  'frost_spire',
+  'inferno_beacon',
+  'storm_conductor',
+  'celestial_cannon',
+  'sanctuary_spire',
 ]);
 
 export interface EconomyPacingOption {
@@ -61,6 +66,7 @@ function cloneRegistry(base: Registry): Registry {
   reg.buildings = new Map([...base.buildings.entries()].map(([id, def]) => [id, { ...def }]));
   reg.spells = new Map(base.spells);
   reg.projectiles = new Map(base.projectiles);
+  reg.research = new Map(base.research);
   reg.maps = base.maps;
   reg.factions = base.factions;
   reg.matches = base.matches;

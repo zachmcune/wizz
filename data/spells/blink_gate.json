@@ -7,5 +7,5 @@
   "targeting": "group",
   "aoeRadius": 40,
   "effect": { "kind": "blink" },
-  "requires": ["arcane_nexus"]
+  "requires": ["astral_spire"]
 }

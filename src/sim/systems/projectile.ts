@@ -4,7 +4,7 @@ import type { StepContext } from '../context';
 import type { GameState } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { len, normalize } from '../math';
-import { applyDamage } from '../combat-util';
+import { applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import type { ArmorClass } from '../../data/defs';
 
 export function projectileSystem(state: GameState, ctx: StepContext): void {
@@ -13,7 +13,7 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'projectile') continue;
     const target = e.projTargetId !== undefined ? state.entities.get(e.projTargetId) : undefined;
-    if (!isAlive(target)) {
+    if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined)) {
       toRemove.push(e.id);
       continue;
     }
@@ -23,7 +23,24 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
     const step = (e.projSpeed ?? 300) * dt;
     if (d <= step + target.radius) {
       const vs = e.projArmorVs as Record<ArmorClass, number>;
-      applyDamage(state, ctx, target, e.projDamage ?? 0, vs);
+      const radius = e.projImpactRadius ?? e.projSplashRadius;
+      if (radius !== undefined && e.projSourceOwner) {
+        applySplashDamage(
+          state,
+          ctx,
+          e.projSourceOwner,
+          target.pos.x,
+          target.pos.y,
+          radius,
+          e.projDamage ?? 0,
+          vs,
+          e.projSourceId,
+          e.projOnHitStatus,
+        );
+      } else {
+        applyDamage(state, ctx, target, e.projDamage ?? 0, vs, e.projSourceId);
+        applyOnHitStatus(state, target, e.projOnHitStatus);
+      }
       toRemove.push(e.id);
     } else {
       const n = normalize(dx, dy);

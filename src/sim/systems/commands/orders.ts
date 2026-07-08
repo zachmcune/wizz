@@ -3,6 +3,13 @@ import type { GameState, Command } from '../../types';
 import { hasBuff, isAlive } from '../../queries';
 import { ownedAliveUnits } from './shared';
 
+function clearGarrisonReservation(state: GameState, unitId: number): void {
+  for (const e of state.entities.values()) {
+    if (e.kind !== 'building' || !e.garrisonReservedIds?.length) continue;
+    e.garrisonReservedIds = e.garrisonReservedIds.filter((id) => id !== unitId);
+  }
+}
+
 function groupMoveSpeed(state: GameState, ctx: StepContext, units: ReturnType<typeof ownedAliveUnits>): number {
   let groupSpeed = Infinity;
   for (const e of units) {
@@ -16,6 +23,7 @@ function groupMoveSpeed(state: GameState, ctx: StepContext, units: ReturnType<ty
 
 export function handleMove(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'move' }>): void {
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+    clearGarrisonReservation(state, e.id);
     e.channeling = false;
     e.channelTicks = undefined;
     e.orders = [{ type: 'move', x: cmd.x, y: cmd.y }];
@@ -27,6 +35,7 @@ export function handleMove(state: GameState, ctx: StepContext, cmd: Extract<Comm
 
 export function handleAttackMove(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'attackMove' }>): void {
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+    clearGarrisonReservation(state, e.id);
     e.channeling = false;
     e.channelTicks = undefined;
     e.orders = [{ type: 'attackMove', x: cmd.x, y: cmd.y }];
@@ -40,6 +49,7 @@ export function handleMoveInOrder(state: GameState, ctx: StepContext, cmd: Extra
   const units = ownedAliveUnits(state, cmd.playerId, cmd.entityIds);
   const groupSpeed = groupMoveSpeed(state, ctx, units);
   for (const e of units) {
+    clearGarrisonReservation(state, e.id);
     e.channeling = false;
     e.channelTicks = undefined;
     e.orders = [{ type: 'moveInOrder', x: cmd.x, y: cmd.y, groupSpeed }];
@@ -53,6 +63,7 @@ export function handleAttack(state: GameState, ctx: StepContext, cmd: Extract<Co
   const target = state.entities.get(cmd.targetId);
   if (!isAlive(target)) return;
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+    clearGarrisonReservation(state, e.id);
     e.channeling = false;
     e.channelTicks = undefined;
     e.orders = [{ type: 'attack', targetId: cmd.targetId }];
@@ -66,6 +77,7 @@ export function handleHarvest(state: GameState, ctx: StepContext, cmd: Extract<C
   const node = state.entities.get(cmd.nodeId);
   if (!isAlive(node) || node.kind !== 'resource_node') return;
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
+    clearGarrisonReservation(state, e.id);
     if (e.carryMax === undefined) continue;
     e.orders = [{ type: 'harvest', nodeId: cmd.nodeId }];
     e.state = 'harvesting';
@@ -76,6 +88,7 @@ export function handleHarvest(state: GameState, ctx: StepContext, cmd: Extract<C
 export function handleStop(state: GameState, _ctx: StepContext, cmd: Extract<Command, { type: 'stop' }>): void {
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
     if (e.morphProgress !== undefined) continue;
+    clearGarrisonReservation(state, e.id);
     e.channeling = false;
     e.channelTicks = undefined;
     e.orders = [];

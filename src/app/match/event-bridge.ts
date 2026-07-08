@@ -26,6 +26,12 @@ export class EventBridge {
       case 'damageDealt':
         if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
         break;
+      case 'healApplied':
+        if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
+        break;
+      case 'attackCharging':
+        if (visible) this.effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+        break;
       case 'entityDied':
         if (visible) this.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
         break;
@@ -68,6 +74,8 @@ export class EventBridge {
     switch (ev.type) {
       case 'attackFired':
       case 'damageDealt':
+      case 'healApplied':
+      case 'attackCharging':
       case 'entityDied':
       case 'manaDeposited':
       case 'manaConjured':

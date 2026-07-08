@@ -1,0 +1,28 @@
+{
+  "id": "sanctuary_spire",
+  "name": "Sanctuary Spire",
+  "shortLabel": "SANC",
+  "description": "Advanced support defense. Does not attack; continuously heals friendly units fighting within its warded radius.",
+  "kind": "building",
+  "cost": 900,
+  "buildTime": 14,
+  "hp": 700,
+  "armor": "building",
+  "sight": 170,
+  "footprint": 2,
+  "menuCategory": "defenses",
+  "requires": ["arcane_nexus"],
+  "powerUsed": 45,
+  "aura": {
+    "kind": "heal",
+    "radius": 150,
+    "hpPerTick": 0.4,
+    "affects": "units"
+  },
+  "art": {
+    "shape": "building",
+    "size": 64,
+    "accent": "#8fffd2",
+    "sprite": "sanctuary_spire"
+  }
+}

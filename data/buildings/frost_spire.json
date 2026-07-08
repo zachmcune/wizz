@@ -1,0 +1,35 @@
+{
+  "id": "frost_spire",
+  "name": "Frost Spire",
+  "shortLabel": "FRST",
+  "description": "Advanced crowd-control defense. Low damage, but slows enemy movement and attacks so other defenses can finish them.",
+  "kind": "building",
+  "cost": 650,
+  "buildTime": 10,
+  "hp": 650,
+  "armor": "building",
+  "sight": 185,
+  "footprint": 2,
+  "menuCategory": "defenses",
+  "requires": ["arcane_nexus"],
+  "powerUsed": 30,
+  "weapon": {
+    "damage": 8,
+    "range": 175,
+    "cooldownTicks": 24,
+    "projectile": "frost_bolt",
+    "onHitStatus": {
+      "kind": "slow",
+      "durationTicks": 80,
+      "moveFactor": 0.55,
+      "attackCooldownFactor": 1.35
+    },
+    "vs": { "light": 0.8, "heavy": 0.6, "building": 0.25 }
+  },
+  "art": {
+    "shape": "building",
+    "size": 62,
+    "accent": "#9fdcff",
+    "sprite": "frost_spire"
+  }
+}

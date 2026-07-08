@@ -12,5 +12,5 @@
     "damage": 220,
     "vs": { "light": 1.0, "heavy": 0.9, "building": 1.1 }
   },
-  "requires": ["arcane_nexus"]
+  "requires": ["astral_spire"]
 }

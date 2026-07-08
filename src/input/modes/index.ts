@@ -5,6 +5,7 @@ import { moveInOrderMode } from './move-in-order-mode';
 import { buildMode } from './build-mode';
 import { deployMode } from './deploy-mode';
 import { normalMode } from './normal-mode';
+import { garrisonMode } from './garrison-mode';
 import { rallyMode } from './rally-mode';
 import { spellMode } from './spell-mode';
 import { superweaponMode } from './superweapon-mode';
@@ -15,6 +16,7 @@ const TAP_HANDLERS: Record<InputMode, ModeTapHandler> = {
   deploy: deployMode,
   spell: spellMode,
   rally: rallyMode,
+  garrison: garrisonMode,
   attackMove: attackMoveMode,
   moveInOrder: moveInOrderMode,
   superweapon: superweaponMode,
@@ -33,6 +35,10 @@ export function handleModeTap(ctx: InputContext, mode: InputMode, screen: import
     normalMode.onTap(ctx, screen, world);
     return;
   }
+  if (mode === 'garrison' && ctx.session.garrisonUnitIds.length === 0) {
+    normalMode.onTap(ctx, screen, world);
+    return;
+  }
   TAP_HANDLERS[mode].onTap(ctx, screen, world);
 }
 
@@ -44,4 +50,5 @@ export * from './deploy-mode';
 export * from './spell-mode';
 export { superweaponMode } from './superweapon-mode';
 export * from './rally-mode';
+export * from './garrison-mode';
 export { isWallBuild } from '../placement';

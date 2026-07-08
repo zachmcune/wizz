@@ -44,6 +44,7 @@ export function pickEntity(
   let bestScore = -Infinity;
   for (const e of state.entities.values()) {
     if (e.kind === 'projectile') continue;
+    if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
     const dx = wx - e.pos.x;
     const dy = wy - e.pos.y;

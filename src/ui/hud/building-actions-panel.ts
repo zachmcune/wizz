@@ -17,10 +17,12 @@ export class BuildingActionsPanel {
   readonly sellBtn = el('button', 'btn', 'Sell');
   readonly repairBtn = el('button', 'btn', 'Repair');
   readonly rallyBtn = el('button', 'btn', 'Rally');
+  readonly unloadBtn = el('button', 'btn', 'Garrison');
   readonly launchBtn = el('button', 'btn superweapon-launch-btn');
   private launchIconGray = el('span', 'sw-launch-icon sw-launch-gray');
   private launchIconColor = el('span', 'sw-launch-icon sw-launch-color');
   private launchLabel = el('span', 'sw-launch-label', 'Astral Lance');
+  private researchButtons: HTMLButtonElement[] = [];
 
   constructor(
     private state: () => GameState,
@@ -57,7 +59,30 @@ export class BuildingActionsPanel {
       if (!spellId || this.launchBtn.disabled) return;
       this.controller.startSuperweapon(spellId);
     });
-    this.row.append(this.launchBtn, this.sellBtn, this.repairBtn, this.rallyBtn);
+    this.unloadBtn.addEventListener('click', () => {
+      const id = [...this.controller.session.selection][0];
+      if (id !== undefined && !this.unloadBtn.disabled) this.controller.unloadGarrison(id);
+    });
+    this.row.append(this.launchBtn, this.sellBtn, this.repairBtn, this.rallyBtn, this.unloadBtn);
+  }
+
+  private renderResearchButtons(player: Player, building: Entity | null, complete: boolean): boolean {
+    for (const btn of this.researchButtons) btn.remove();
+    this.researchButtons = [];
+    if (!building || !isBuilding(building) || !complete) return false;
+    const defs = [...this.registry.research.values()].filter((r) => r.researchedAt === building.defId);
+    for (const research of defs) {
+      const queued = building.researchQueue?.some((item) => item.defId === research.id) ?? false;
+      const completed = player.completedResearch.includes(research.id);
+      const unlocked = research.requires.every((r) => player.unlockedTech.includes(r));
+      const btn = el('button', 'btn', completed ? `${research.name} Done` : `Research ${research.name}`);
+      btn.title = research.description;
+      btn.disabled = completed || queued || !unlocked || player.mana < research.cost;
+      btn.addEventListener('click', () => this.controller.research(building.id, research.id));
+      this.row.append(btn);
+      this.researchButtons.push(btn);
+    }
+    return defs.length > 0;
   }
 
   update(
@@ -73,6 +98,8 @@ export class BuildingActionsPanel {
     const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
     const canRepair = !!completeBuilding && building!.hp < building!.maxHp;
     const canRally = !!completeBuilding && !!ownBuilding.producesUnits?.length && !ownBuilding.isConstructionYard;
+    const canUnload = !!completeBuilding && !!ownBuilding.garrison;
+    const researchVisible = this.renderResearchButtons(player, building, !!completeBuilding);
 
     const spellId = ownBuilding?.isSuperweapon ? ownBuilding.unlocksSpells?.[0] : undefined;
     const spellDef = spellId ? this.registry.spells.get(spellId) : undefined;
@@ -87,7 +114,7 @@ export class BuildingActionsPanel {
     const showBuildingRow =
       (!inPlaceMode || inRallyMode) &&
       !!ownBuilding &&
-      (canSell || canRepair || canRally || building?.repairing || canLaunch);
+      (canSell || canRepair || canRally || building?.repairing || canLaunch || canUnload || researchVisible);
     this.row.style.display = showBuildingRow ? 'flex' : 'none';
 
     this.launchBtn.style.display = canLaunch ? '' : 'none';
@@ -136,6 +163,15 @@ export class BuildingActionsPanel {
     } else {
       this.rallyBtn.textContent = 'Rally';
       this.rallyBtn.title = 'Set rally point';
+    }
+
+    this.unloadBtn.style.display = canUnload ? '' : 'none';
+    if (canUnload && building && ownBuilding.garrison) {
+      const current = building.garrisonedIds?.length ?? 0;
+      const reserved = building.garrisonReservedIds?.length ?? 0;
+      this.unloadBtn.textContent = `Garrison ${current + reserved}/${ownBuilding.garrison.capacity}`;
+      this.unloadBtn.title = current > 0 ? 'Unload all garrisoned units' : 'No units garrisoned';
+      this.unloadBtn.disabled = current === 0;
     }
   }
 }

@@ -6,13 +6,14 @@ import {
   buildingSchema,
   spellSchema,
   projectileSchema,
+  researchSchema,
   mapSchema,
   factionSchema,
   matchConfigSchema,
   balanceSchema,
 } from './schemas';
 import type { z, ZodTypeAny } from 'zod';
-import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, MapData, BalanceData, FactionDef } from './defs';
+import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, ResearchDef, MapData, BalanceData, FactionDef } from './defs';
 import type { MatchConfig } from '../sim/types';
 
 const modules = import.meta.glob('/data/**/*.json', { eager: true, import: 'default' }) as Record<
@@ -47,6 +48,9 @@ export function loadRegistry(): Registry {
     } else if (path.includes('/projectiles/')) {
       const d = validate(projectileSchema, raw, path) as ProjectileDef;
       reg.projectiles.set(d.id, d);
+    } else if (path.includes('/research/')) {
+      const d = validate(researchSchema, raw, path) as ResearchDef;
+      reg.research.set(d.id, d);
     } else if (path.includes('/maps/')) {
       const d = validate(mapSchema, raw, path) as MapData;
       reg.maps.set(d.id, d);

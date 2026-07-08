@@ -82,6 +82,7 @@ function revealSight(
 
 function isSightSource(state: GameState, registry: Registry, e: Entity): boolean {
   if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') return false;
+  if (e.kind === 'unit' && e.garrisonedIn !== undefined) return false;
   if (e.kind === 'building') {
     if (e.buildProgress !== undefined || e.morphProgress !== undefined) return false;
     if (!buildingHasPower(state, registry, e)) return false;

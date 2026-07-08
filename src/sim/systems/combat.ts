@@ -3,11 +3,11 @@ import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { ProjectileEntity, UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
-import { entitiesSorted, isAlive, isEnemy } from '../queries';
+import { entitiesSorted, isAlive, isEnemy, strongestSlowAttackCooldownFactor } from '../queries';
 import { buildingHasPower } from '../power';
 import { isVisibleTo } from '../fog';
 import { len, distSq } from '../math';
-import { applyDamage } from '../combat-util';
+import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 
@@ -25,26 +25,58 @@ function sightOf(ctx: StepContext, e: Entity): number {
   return 128;
 }
 
-function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: number): Entity | null {
+function inWeaponBand(attacker: Entity, target: Entity, w: WeaponDef): boolean {
+  const d = len(target.pos.x - attacker.pos.x, target.pos.y - attacker.pos.y);
+  const maxReach = w.range + attacker.radius + target.radius;
+  const minReach = (w.minRange ?? 0) + attacker.radius + target.radius;
+  return d <= maxReach && d >= minReach;
+}
+
+function swarmScore(state: GameState, ctx: StepContext, owner: string, target: Entity, radius: number): number {
+  let score = 0;
+  const r2 = radius * radius;
+  for (const o of entitiesSorted(state)) {
+    if (o.kind === 'resource_node' || o.kind === 'projectile' || !isAlive(o)) continue;
+    if (!isEnemy(state, owner, o.owner)) continue;
+    if (!isVisibleTo(state, owner, o, ctx.services.nav)) continue;
+    if (distSq(target.pos.x, target.pos.y, o.pos.x, o.pos.y) <= r2) score++;
+  }
+  return score;
+}
+
+function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: number, weapon?: WeaponDef): Entity | null {
   const ids = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, range, scratch);
   let best: Entity | null = null;
   let bestD = Infinity;
+  let bestSwarm = -1;
   for (const id of ids) {
     const o = state.entities.get(id);
     if (!o || o.kind === 'resource_node' || o.kind === 'projectile' || !isAlive(o)) continue;
+    if (o.kind === 'unit' && o.garrisonedIn !== undefined) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
-    if (d < bestD || (d === bestD && (best === null || o.id < best.id))) {
+    if (weapon) {
+      const minReach = (weapon.minRange ?? 0) + e.radius + o.radius;
+      if (d < minReach * minReach) continue;
+      if (e.kind === 'building' && !inWeaponBand(e, o, weapon)) continue;
+    }
+    const swarm = weapon?.preferSwarms ? swarmScore(state, ctx, e.owner, o, weapon.splashRadius ?? 48) : 0;
+    if (
+      swarm > bestSwarm ||
+      (swarm === bestSwarm && d < bestD) ||
+      (swarm === bestSwarm && d === bestD && (best === null || o.id < best.id))
+    ) {
       bestD = d;
+      bestSwarm = swarm;
       best = o;
     }
   }
   return best;
 }
 
-function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
-  e.cooldowns.attack = w.cooldownTicks;
+export function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
+  e.cooldowns.attack = Math.max(1, Math.ceil(w.cooldownTicks * strongestSlowAttackCooldownFactor(e, state.tick)));
   e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
   ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
   if (w.projectile) {
@@ -71,10 +103,19 @@ function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity
       projArmorVs: w.vs,
       projSpeed: pdef.speed,
       projSourceOwner: e.owner,
+      projSourceId: e.id,
+      projSplashRadius: w.splashRadius,
+      projImpactRadius: w.impactRadius,
+      projOnHitStatus: w.onHitStatus,
     };
     state.entities.set(id, proj);
+  } else if (w.chain) {
+    applyChainDamage(state, ctx, e.owner, target, w, e.id);
+  } else if (w.splashRadius !== undefined || w.impactRadius !== undefined) {
+    applySplashDamage(state, ctx, e.owner, target.pos.x, target.pos.y, w.splashRadius ?? w.impactRadius ?? 0, w.damage, w.vs, e.id, w.onHitStatus);
   } else {
     applyDamage(state, ctx, target, w.damage, w.vs, e.id);
+    applyOnHitStatus(state, target, w.onHitStatus);
   }
 }
 
@@ -83,18 +124,30 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') continue;
     if (e.kind === 'building' && !buildingHasPower(state, ctx.services.registry, e)) continue;
+    if (e.kind === 'unit' && (e.state === 'garrisoned' || e.garrisonedIn !== undefined)) continue;
     if (e.cooldowns.attack && e.cooldowns.attack > 0) e.cooldowns.attack--;
     const w = weaponOf(ctx, e);
     if (!w) continue;
     if (e.kind === 'unit' && e.carryMax !== undefined) continue; // harvesters don't fight
     if (e.kind === 'unit' && e.channeling) continue;
 
+    if (e.kind === 'building' && e.chargingAttack) {
+      const target = state.entities.get(e.chargingAttack.targetId);
+      if (!isAlive(target) || !isVisibleTo(state, e.owner, target, ctx.services.nav) || !inWeaponBand(e, target, w)) {
+        e.chargingAttack = undefined;
+      } else if (--e.chargingAttack.remainingTicks <= 0) {
+        e.chargingAttack = undefined;
+        fire(state, ctx, e, target, w);
+      }
+      continue;
+    }
+
     const order = e.orders[0];
     let target: Entity | null = null;
 
     if (order && order.type === 'attack') {
       target = state.entities.get(order.targetId) ?? null;
-      if (!isAlive(target) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
+      if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
         e.orders.shift();
         target = null;
         if (e.state === 'attacking') e.state = 'idle';
@@ -103,14 +156,22 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
 
     const canRoam = e.stance !== 'standground' && e.kind === 'unit';
     if (!target && (e.stance === 'aggressive' || (order && order.type === 'attackMove') || e.kind === 'building')) {
-      target = acquireTarget(state, ctx, e, sightOf(ctx, e));
+      target = acquireTarget(state, ctx, e, sightOf(ctx, e), w);
     }
     if (!target) continue;
 
     const d = len(target.pos.x - e.pos.x, target.pos.y - e.pos.y);
     const reach = w.range + e.radius + target.radius;
-    if (d <= reach) {
-      if ((e.cooldowns.attack ?? 0) <= 0) fire(state, ctx, e, target, w);
+    const minReach = (w.minRange ?? 0) + e.radius + target.radius;
+    if (d <= reach && d >= minReach) {
+      if ((e.cooldowns.attack ?? 0) <= 0) {
+        if (e.kind === 'building' && w.chargeTicks && w.chargeTicks > 0) {
+          e.chargingAttack = { targetId: target.id, remainingTicks: w.chargeTicks };
+          ctx.events.push({ type: 'attackCharging', sourceId: e.id, x: e.pos.x, y: e.pos.y });
+        } else {
+          fire(state, ctx, e, target, w);
+        }
+      }
     } else if (order && order.type === 'attack' && e.kind === 'unit') {
       const udef = ctx.services.registry.unit(e.defId);
       const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);

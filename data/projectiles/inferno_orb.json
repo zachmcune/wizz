@@ -1,0 +1,5 @@
+{
+  "id": "inferno_orb",
+  "speed": 320,
+  "art": { "shape": "circle", "size": 10, "accent": "#ff8a3a", "sprite": "inferno_orb" }
+}

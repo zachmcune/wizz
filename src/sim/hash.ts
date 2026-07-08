@@ -14,7 +14,13 @@ export function hashState(state: GameState): string {
     `e${state.ended ? 1 : 0}`,
   ];
   for (const p of [...state.players].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-    parts.push(`P${p.id}:${r(p.mana)}:${p.defeated ? 1 : 0}:${p.power}/${p.powerUsed}`);
+    parts.push(
+      `P${p.id}:${r(p.mana)}:${p.defeated ? 1 : 0}:${p.power}/${p.powerUsed}:T${[...p.unlockedTech].sort().join(',')}:R${[
+        ...p.completedResearch,
+      ]
+        .sort()
+        .join(',')}`,
+    );
   }
   const ids = [...state.entities.keys()].sort((a, b) => a - b);
   for (const id of ids) {
@@ -24,13 +30,34 @@ export function hashState(state: GameState): string {
       e.kind === 'building' && e.repairing ? 'R' : '',
       e.kind === 'building' && e.buildProgress !== undefined ? `B${r(e.buildProgress)}` : '',
       (e.kind === 'unit' || e.kind === 'building') && e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
+      e.kind === 'building' && e.chargingAttack ? `Q${e.chargingAttack.targetId}:${e.chargingAttack.remainingTicks}` : '',
     ].join('');
     const stateStr = e.kind === 'resource_node' ? 'node' : e.state;
     const carryStr = e.kind === 'unit' ? r(e.carry ?? 0) : 0;
     const amountStr = e.kind === 'resource_node' ? r(e.amount) : 0;
     const channelStr = e.kind === 'unit' ? (e.channelTicks ?? 0) : 0;
+    const buffsStr =
+      e.kind === 'resource_node'
+        ? ''
+        : e.buffs
+            .filter((b) => b.expiresTick > state.tick)
+            .map((b) =>
+              b.kind === 'slow'
+                ? `${b.kind}:${b.expiresTick}:${b.moveFactor}:${b.attackCooldownFactor}`
+                : `${b.kind}:${b.expiresTick}`,
+            )
+            .sort()
+            .join(',');
+    const garrisonStr =
+      e.kind === 'building'
+        ? `G${[...(e.garrisonedIds ?? [])].sort((a, b) => a - b).join(',')}/X${[...(e.garrisonReservedIds ?? [])]
+            .sort((a, b) => a - b)
+            .join(',')}/RQ${(e.researchQueue ?? []).map((q) => `${q.defId}:${r(q.progress)}/${q.required}`).join(',')}`
+        : e.kind === 'unit'
+          ? `GI${e.garrisonedIn ?? 0}`
+          : '';
     parts.push(
-      `E${id}:${e.defId}:${e.owner}:${r(e.pos.x)},${r(e.pos.y)}:${r(e.hp)}:${stateStr}:${carryStr}:${amountStr}:${channelStr}:${flags}`,
+      `E${id}:${e.defId}:${e.owner}:${r(e.pos.x)},${r(e.pos.y)}:${r(e.hp)}:${stateStr}:${carryStr}:${amountStr}:${channelStr}:${flags}:${buffsStr}:${garrisonStr}`,
     );
   }
   for (const b of state.beams) {

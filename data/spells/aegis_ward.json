@@ -12,5 +12,5 @@
     "radius": 0,
     "durationTicks": 200
   },
-  "requires": ["arcane_nexus"]
+  "requires": ["astral_spire"]
 }

@@ -1,0 +1,30 @@
+{
+  "id": "storm_conductor",
+  "name": "Storm Conductor",
+  "shortLabel": "STRM",
+  "description": "Advanced anti-heavy defense. Fires slow chain lightning that punishes durable attackers.",
+  "kind": "building",
+  "cost": 1100,
+  "buildTime": 15,
+  "hp": 850,
+  "armor": "building",
+  "sight": 190,
+  "footprint": 2,
+  "menuCategory": "defenses",
+  "requires": ["arcane_nexus"],
+  "powerUsed": 50,
+  "weapon": {
+    "damage": 55,
+    "range": 180,
+    "cooldownTicks": 45,
+    "projectile": null,
+    "chain": { "jumps": 3, "range": 72, "falloff": 0.75 },
+    "vs": { "light": 0.8, "heavy": 1.35, "building": 0.5 }
+  },
+  "art": {
+    "shape": "building",
+    "size": 66,
+    "accent": "#ffd166",
+    "sprite": "storm_conductor"
+  }
+}

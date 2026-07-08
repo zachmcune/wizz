@@ -21,7 +21,9 @@ import {
   handleSetRepair,
 } from './commands/build';
 import { handleProduce, handleCancelProduce } from './commands/production';
+import { handleResearch, handleCancelResearch } from './commands/research';
 import { handleChannel } from './commands/channel';
+import { handleGarrison, handleUnloadGarrison } from './commands/garrison';
 import { handleSpell } from './commands/spell';
 import { handleSteerSuperweapon } from './commands/superweapon';
 import { handleSurrender } from './commands/surrender';
@@ -67,6 +69,12 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
       case 'cancelProduce':
         handleCancelProduce(state, ctx, cmd);
         break;
+      case 'research':
+        handleResearch(state, ctx, cmd);
+        break;
+      case 'cancelResearch':
+        handleCancelResearch(state, ctx, cmd);
+        break;
       case 'setRally':
         handleSetRally(state, ctx, cmd);
         break;
@@ -75,6 +83,12 @@ export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[
         break;
       case 'setRepair':
         handleSetRepair(state, ctx, cmd);
+        break;
+      case 'garrison':
+        handleGarrison(state, ctx, cmd);
+        break;
+      case 'unloadGarrison':
+        handleUnloadGarrison(state, ctx, cmd);
         break;
       case 'channel':
         handleChannel(state, ctx, cmd);

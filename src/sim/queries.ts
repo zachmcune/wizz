@@ -1,7 +1,7 @@
 // Read-only helpers over GameState. All targeting/vision/win logic goes through relations,
 // never a hardcoded "me vs enemy" - this is what makes N players / teams / FFA work.
 import type { BuildingEntity } from './entity-types';
-import type { GameState, Entity, PlayerId, Relation } from './types';
+import type { GameState, Entity, GameplayBuff, PlayerId, Relation } from './types';
 
 export function getPlayer(state: GameState, id: PlayerId) {
   return state.players.find((p) => p.id === id);
@@ -50,7 +50,24 @@ export function isAlive(e: Entity | undefined | null): e is Entity {
   return e.state !== 'dead';
 }
 
-export function hasBuff(e: Entity, kind: 'aegis' | 'haste', tick: number): boolean {
+export function hasBuff(e: Entity, kind: GameplayBuff['kind'], tick: number): boolean {
   if (e.kind === 'resource_node') return false;
   return e.buffs.some((b) => b.kind === kind && b.expiresTick > tick);
+}
+
+export function activeBuffs(e: Entity, kind: GameplayBuff['kind'], tick: number): GameplayBuff[] {
+  if (e.kind === 'resource_node') return [];
+  return e.buffs.filter((b) => b.kind === kind && b.expiresTick > tick);
+}
+
+export function strongestSlowMoveFactor(e: Entity, tick: number): number {
+  const slows = activeBuffs(e, 'slow', tick).filter((b): b is Extract<GameplayBuff, { kind: 'slow' }> => b.kind === 'slow');
+  if (!slows.length) return 1;
+  return Math.min(...slows.map((b) => b.moveFactor));
+}
+
+export function strongestSlowAttackCooldownFactor(e: Entity, tick: number): number {
+  const slows = activeBuffs(e, 'slow', tick).filter((b): b is Extract<GameplayBuff, { kind: 'slow' }> => b.kind === 'slow');
+  if (!slows.length) return 1;
+  return Math.max(...slows.map((b) => b.attackCooldownFactor));
 }

@@ -26,7 +26,8 @@
   "menuCategory": "large_troops",
   "requires": [
     "ley_conduit",
-    "golem_forge"
+    "golem_forge",
+    "arcane_nexus"
   ],
   "art": {
     "shape": "hexagon",

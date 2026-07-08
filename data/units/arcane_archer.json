@@ -26,6 +26,7 @@
   "requires": [
     "summoning_circle"
   ],
+  "canGarrison": true,
   "art": {
     "shape": "diamond",
     "size": 16,

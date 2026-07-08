@@ -108,6 +108,7 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, t
     power: 0,
     powerUsed: 0,
     unlockedTech: [],
+    completedResearch: [],
     spellCooldowns: {},
     defeated: false,
     explored: new Array(tileCount).fill(0),

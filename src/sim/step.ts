@@ -7,7 +7,9 @@ import { applyCommands } from './systems/apply-commands';
 import { productionSystem } from './systems/production';
 import { movementSystem } from './systems/movement';
 import { combatSystem } from './systems/combat';
+import { garrisonSystem } from './systems/garrison';
 import { projectileSystem } from './systems/projectile';
+import { auraSystem } from './systems/aura';
 import { harvestSystem } from './systems/harvest';
 import { channelSystem } from './systems/channel';
 import { deathSystem } from './systems/death';
@@ -41,8 +43,10 @@ export function stepSimulation(
   movementSystem(state, ctx); // 4/5 (pathing computed on demand inside)
   visibilitySystem(state, ctx); // 5b fog of war
   combatSystem(state, ctx); // 6
+  garrisonSystem(state, ctx); // 6a garrisoned units fire from bunkers
   projectileSystem(state, ctx); // 6b projectiles
   superweaponSystem(state, ctx); // 6c superweapon beams
+  auraSystem(state, ctx); // 6d passive support auras
   harvestSystem(state, ctx); // 7
   channelSystem(state, ctx); // 7b mana weaver conjuring
   deathSystem(state, ctx); // 8

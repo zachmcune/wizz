@@ -22,6 +22,7 @@ export interface Player {
   power: number; // produced power
   powerUsed: number; // consumed power
   unlockedTech: string[]; // building defIds this player has built (enables tech gating)
+  completedResearch: string[]; // permanent upgrades completed by this player
   spellCooldowns: Record<string, number>; // spellId -> ticks remaining
   defeated: boolean;
   /** Tiles seen at least once (tracked for fog; terrain always renders). */
@@ -54,6 +55,7 @@ export type UnitState =
   | 'channeling'
   | 'producing'
   | 'building'
+  | 'garrisoned'
   | 'dead';
 
 export type Order =
@@ -62,6 +64,7 @@ export type Order =
   | { type: 'attackMove'; x: number; y: number }
   | { type: 'moveInOrder'; x: number; y: number; groupSpeed: number }
   | { type: 'harvest'; nodeId: EntityId }
+  | { type: 'garrison'; buildingId: EntityId }
   | { type: 'hold' };
 
 export interface ProductionItem {
@@ -74,6 +77,15 @@ export interface Buff {
   kind: 'aegis' | 'haste';
   expiresTick: number;
 }
+
+export interface SlowBuff {
+  kind: 'slow';
+  expiresTick: number;
+  moveFactor: number;
+  attackCooldownFactor: number;
+}
+
+export type GameplayBuff = Buff | SlowBuff;
 
 export interface SuperweaponBeam {
   id: EntityId;
@@ -107,9 +119,13 @@ export type Command =
   | { type: 'pack'; playerId: PlayerId; buildingId: EntityId }
   | { type: 'produce'; playerId: PlayerId; buildingId: EntityId; defId: string }
   | { type: 'cancelProduce'; playerId: PlayerId; buildingId: EntityId; index: number }
+  | { type: 'research'; playerId: PlayerId; buildingId: EntityId; defId: string }
+  | { type: 'cancelResearch'; playerId: PlayerId; buildingId: EntityId; index: number }
   | { type: 'setRally'; playerId: PlayerId; buildingId: EntityId; x: number; y: number }
   | { type: 'sellBuilding'; playerId: PlayerId; buildingId: EntityId }
   | { type: 'setRepair'; playerId: PlayerId; buildingId: EntityId; enabled: boolean }
+  | { type: 'garrison'; playerId: PlayerId; unitIds: EntityId[]; buildingId: EntityId }
+  | { type: 'unloadGarrison'; playerId: PlayerId; buildingId: EntityId; unitIds?: EntityId[] }
   | { type: 'channel'; playerId: PlayerId; entityIds: EntityId[]; enabled: boolean }
   | { type: 'castSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
   | { type: 'steerSuperweapon'; playerId: PlayerId; x: number; y: number }
@@ -124,7 +140,9 @@ export type GameEvent =
   | { type: 'buildingSold'; id: EntityId; defId: string; owner: PlayerId; refund: number }
   | { type: 'buildingPlaced'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number }
+  | { type: 'healApplied'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
+  | { type: 'attackCharging'; sourceId: EntityId; x: number; y: number }
   | { type: 'manaChanged'; playerId: PlayerId; mana: number }
   | { type: 'manaDeposited'; playerId: PlayerId; amount: number; x: number; y: number }
   | { type: 'manaConjured'; playerId: PlayerId; amount: number; x: number; y: number }
