@@ -4,6 +4,7 @@ import type { Registry } from '../data/registry';
 import type { ArtDef } from '../data/defs';
 import { ShapeSpriteProvider } from '../render/shape-sprite';
 import { setProjectionMode } from '../core/projection';
+import { DefenseCombatPreview, isDefenseBuilding } from './defense-combat-preview';
 import { el } from './dom';
 
 const TEAM_COLORS = [
@@ -27,6 +28,7 @@ export class ArtGallery {
   private provider: ShapeSpriteProvider | null = null;
   private teamColor = TEAM_COLORS[0]!.color;
   private destroyed = false;
+  private combatPreview: DefenseCombatPreview | null = null;
 
   constructor(
     private registry: Registry,
@@ -36,7 +38,7 @@ export class ArtGallery {
     const back = el('button', 'btn', '← Back');
     back.addEventListener('click', () => this.onBack());
     const title = el('h1', 'art-gallery-title', 'Entity Designs');
-    const sub = el('p', 'art-gallery-sub', 'Ortho · Oblique · HUD icon — team tint preview');
+    const sub = el('p', 'art-gallery-sub', 'Ortho · Oblique · HUD icon — click defenses for live 2.5D combat preview');
 
     const controls = el('div', 'art-gallery-controls');
     const colorLabel = el('span', 'art-gallery-control-label', 'Team color');
@@ -80,10 +82,38 @@ export class ArtGallery {
     const units: GalleryEntry[] = [...this.registry.units.values()]
       .map((u) => ({ id: u.id, name: u.name, kind: 'unit' as const, art: u.art }))
       .sort((a, b) => a.name.localeCompare(b.name));
-    const buildings: GalleryEntry[] = [...this.registry.buildings.values()]
+    const defenses: GalleryEntry[] = [...this.registry.buildings.values()]
+      .filter((b) => b.menuCategory === 'defenses')
       .map((b) => ({ id: b.id, name: b.name, kind: 'building' as const, art: b.art }))
       .sort((a, b) => a.name.localeCompare(b.name));
-    return [...units, ...buildings];
+    const otherBuildings: GalleryEntry[] = [...this.registry.buildings.values()]
+      .filter((b) => b.menuCategory !== 'defenses')
+      .map((b) => ({ id: b.id, name: b.name, kind: 'building' as const, art: b.art }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return [...units, ...defenses, ...otherBuildings];
+  }
+
+  private sectionHeading(kind: 'unit' | 'building', entryId: string, lastSection: string | null): string | null {
+    if (kind === 'unit') return lastSection === 'Troops' ? null : 'Troops';
+    if (isDefenseBuilding(this.registry, entryId)) {
+      return lastSection === 'Defenses' ? null : 'Defenses';
+    }
+    return lastSection === 'Buildings' ? null : 'Buildings';
+  }
+
+  private async openCombatPreview(defenseId: string, defenseName: string): Promise<void> {
+    if (this.combatPreview || this.destroyed) return;
+    const preview = new DefenseCombatPreview(
+      this.registry,
+      defenseId,
+      defenseName,
+      this.teamColor,
+      () => {
+        this.combatPreview = null;
+      },
+    );
+    this.combatPreview = preview;
+    await preview.open();
   }
 
   private canvasFor(mode: 'ortho' | 'oblique' | 'icon', art: ArtDef): HTMLCanvasElement {
@@ -102,20 +132,38 @@ export class ArtGallery {
     this.provider.clearCache();
     this.grid.replaceChildren();
 
-    let lastKind: 'unit' | 'building' | null = null;
+    let lastSection: string | null = null;
     for (const entry of this.entries()) {
-      if (entry.kind !== lastKind) {
-        lastKind = entry.kind;
-        const heading = el('h2', 'art-gallery-section', lastKind === 'unit' ? 'Troops' : 'Buildings');
-        this.grid.appendChild(heading);
+      const heading = this.sectionHeading(entry.kind, entry.id, lastSection);
+      if (heading) {
+        lastSection = heading;
+        const headingEl = el('h2', 'art-gallery-section', heading);
+        this.grid.appendChild(headingEl);
       }
 
-      const card = el('div', 'art-gallery-card');
+      const isDefense = entry.kind === 'building' && isDefenseBuilding(this.registry, entry.id);
+      const card = el('div', `art-gallery-card${isDefense ? ' art-gallery-card-defense' : ''}`);
+      if (isDefense) {
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
+        card.title = 'Preview this defense fighting troops in oblique 2.5D';
+        const openPreview = () => void this.openCombatPreview(entry.id, entry.name);
+        card.addEventListener('click', openPreview);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            void openPreview();
+          }
+        });
+      }
       const meta = el('div', 'art-gallery-meta');
       meta.append(
         el('span', 'art-gallery-name', entry.name),
         el('span', 'art-gallery-id', entry.id),
       );
+      if (isDefense) {
+        meta.appendChild(el('span', 'art-gallery-combat-hint', '▶ Combat preview'));
+      }
       const accent = el('span', 'art-gallery-accent');
       accent.style.backgroundColor = entry.art.accent;
       accent.title = `accent ${entry.art.accent}`;
@@ -143,6 +191,8 @@ export class ArtGallery {
 
   destroy(): void {
     this.destroyed = true;
+    this.combatPreview?.close();
+    this.combatPreview = null;
     this.provider?.clearCache();
     this.app?.destroy(true, { children: true });
     this.app = null;
