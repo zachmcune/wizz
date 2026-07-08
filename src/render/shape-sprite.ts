@@ -153,8 +153,10 @@ const GLYPHS: Record<string, GlyphFn> = {
     }
   },
   frost_spire: (g, r, accent) => {
-    g.poly([0, -r * 0.8, r * 0.18, -r * 0.15, 0, r * 0.45, -r * 0.18, -r * 0.15]).fill(accent);
-    g.moveTo(-r * 0.45, 0).lineTo(r * 0.45, 0).stroke({ width: 1.5, color: accent });
+    g.poly([0, -r * 0.75, r * 0.1, -r * 0.25, -r * 0.1, -r * 0.25]).fill(accent);
+    g.poly([-r * 0.35, -r * 0.5, -r * 0.48, -r * 0.15, -r * 0.22, -r * 0.15]).fill(accent);
+    g.poly([r * 0.35, -r * 0.45, r * 0.48, -r * 0.12, r * 0.22, -r * 0.12]).fill(accent);
+    g.moveTo(-r * 0.45, 0).lineTo(r * 0.45, 0).stroke({ width: 1.5, color: accent, alpha: 0.75 });
   },
   inferno_beacon: (g, r, accent) => {
     g.circle(0, 0, r * 0.28).fill(accent);
@@ -333,10 +335,22 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
   },
   frost_spire: (g, size, fill, accent) => {
     const r = size / 2;
-    g.roundRect(-r * 0.42, r * 0.38, r * 0.84, r * 0.28, r * 0.06).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.poly([0, -r * 0.95, r * 0.26, -r * 0.32, r * 0.16, r * 0.22, -r * 0.16, r * 0.22, -r * 0.26, -r * 0.32])
+    const fillN = parseHex(fill);
+    const hexPts: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+      hexPts.push(Math.cos(a) * r * 0.52, Math.sin(a) * r * 0.52 + r * 0.18);
+    }
+    g.poly(hexPts).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.92, r * 0.18, -r * 0.38, r * 0.06, r * 0.02, -r * 0.06, r * 0.02, -r * 0.18, -r * 0.38])
       .fill(fill)
       .stroke({ width: 2, color: OUTLINE });
+    g.poly([-r * 0.44, -r * 0.68, -r * 0.6, -r * 0.28, -r * 0.28, r * 0.05])
+      .fill(shade(fillN, 0.82))
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.poly([r * 0.44, -r * 0.6, r * 0.6, -r * 0.22, r * 0.28, r * 0.08])
+      .fill(shade(fillN, 0.9))
+      .stroke({ width: 1.5, color: OUTLINE });
     GLYPHS.frost_spire!(g, r, accent);
   },
   inferno_beacon: (g, size, fill, accent) => {
@@ -386,7 +400,7 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   scrying_obelisk: { wMul: 0.7, hMul: 0.8 },
   arcane_nexus: { wMul: 1.0, hMul: 0.5 },
   arcane_bunker: { wMul: 1.15, hMul: 0.28 },
-  frost_spire: { wMul: 0.72, hMul: 0.85 },
+  frost_spire: { wMul: 0.88, hMul: 0.68 },
   inferno_beacon: { wMul: 0.88, hMul: 0.62 },
   storm_conductor: { wMul: 0.85, hMul: 0.78 },
   celestial_cannon: { wMul: 1.25, hMul: 0.5 },
@@ -662,10 +676,14 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   frost_spire: (g, size, fill, accent) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.42, r * 0.4, r * 0.18, r * 0.28, fillN);
-    drawIsoPyramid(g, 0, r * 0.06, r * 0.3, r * 0.14, r * 1.18, fillN);
-    drawIsoPyramid(g, 0, -r * 0.86, r * 0.16, r * 0.08, r * 0.32, parseHex(accent));
-    g.moveTo(-r * 0.32, -r * 0.38).lineTo(r * 0.32, -r * 0.38).stroke({ width: 1.5, color: accent, alpha: 0.85 });
+    const accentN = parseHex(accent);
+    drawIsoPlate(g, 0, r * 0.34, r * 0.58, r * 0.24, shade(fillN, 0.42));
+    drawIsoPlate(g, 0, r * 0.2, r * 0.44, r * 0.18, fillN);
+    drawIsoPyramid(g, -r * 0.3, r * 0.04, r * 0.14, r * 0.1, r * 0.68, fillN);
+    drawIsoPyramid(g, r * 0.34, -r * 0.02, r * 0.12, r * 0.08, r * 0.55, shade(fillN, 0.88));
+    drawIsoPyramid(g, 0, -r * 0.14, r * 0.16, r * 0.1, r * 0.88, accentN);
+    drawIsoPyramid(g, r * 0.08, r * 0.24, r * 0.08, r * 0.05, r * 0.32, shade(accentN, 0.75));
+    g.moveTo(-r * 0.4, -r * 0.04).lineTo(r * 0.4, -r * 0.04).stroke({ width: 1.5, color: accent, alpha: 0.85 });
   },
   inferno_beacon: (g, size, fill, accent) => {
     const r = size / 2;
