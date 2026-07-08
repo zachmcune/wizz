@@ -6,6 +6,7 @@ import type { Command } from '../src/sim/types';
 class FakeTransport implements Transport {
   sent: { forTick: number; cmds: Command[] }[] = [];
   checksums: { tick: number; hash: string }[] = [];
+  acks: number[] = [];
   private tickCb: ((tick: number, cmds: Command[]) => void) | null = null;
   private peerCb: ((playerId: string, tick: number, hash: string) => void) | null = null;
 
@@ -14,6 +15,9 @@ class FakeTransport implements Transport {
   }
   reportChecksum(tick: number, hash: string): void {
     this.checksums.push({ tick, hash });
+  }
+  ackTick(tick: number): void {
+    this.acks.push(tick);
   }
   onTickCommands(cb: (tick: number, cmds: Command[]) => void): void {
     this.tickCb = cb;

@@ -1,5 +1,11 @@
-import { CHECKSUM_INTERVAL_TICKS, LOCKSTEP_DRAIN_BUDGET_MS, LOCKSTEP_STALL_MS } from '../../net/protocol';
+import {
+  CHECKSUM_INTERVAL_TICKS,
+  LOCKSTEP_DRAIN_BUDGET_MS,
+  LOCKSTEP_STALL_MS,
+  SNAPSHOT_RESYNC_TICKS,
+} from '../../net/protocol';
 import type { LockstepClient } from '../../net/lockstep';
+import type { WebSocketTransport } from '../../net/ws-transport';
 import { hashState } from '../../sim/hash';
 import { applyTransferState, packState, type TransferState } from '../../sim/state-transfer';
 import { rebuildBuildingNav } from '../../sim/building-nav';
@@ -25,6 +31,9 @@ export class SimController {
   private tickCounter = 0;
   private lastSimSyncMs = 0;
   private lockstepStallShown = false;
+  private lastSnapshotRequestMs = 0;
+  /** Set by the owner (Game) to snap render interpolation after a snapshot jump. */
+  onResync: (() => void) | null = null;
 
   constructor(
     private state: GameState,
@@ -37,12 +46,49 @@ export class SimController {
     private onSync: SimSyncHandler,
     useWorker: boolean,
     aiEnabled: boolean,
+    private relayTransport: WebSocketTransport | null = null,
   ) {
     if (useWorker) {
       this.worker = new WorkerSimClient();
     } else {
       this.sim = createSimulation(state, services, { aiEnabled });
     }
+    this.wireSnapshotHandlers();
+  }
+
+  /** Host answers snapshot requests; every peer can apply an incoming snapshot. */
+  private wireSnapshotHandlers(): void {
+    if (!this.lockstep || !this.relayTransport) return;
+    this.relayTransport.onSnapshotRequest = () => this.produceSnapshot();
+    this.relayTransport.onSnapshot = (fromTick, state) => this.applySnapshot(fromTick, state);
+  }
+
+  private produceSnapshot(): void {
+    if (!this.relayTransport || !this.sim) return;
+    this.relayTransport.sendSnapshot(this.state.tick, packState(this.state));
+  }
+
+  /** Jump the local sim forward to an authoritative snapshot, skipping replay. */
+  private applySnapshot(fromTick: number, state: unknown): void {
+    if (!this.lockstep || !this.sim) return;
+    if (fromTick <= this.state.tick) return;
+    applyTransferState(this.state, state as TransferState);
+    rebuildBuildingNav(this.state, this.services, this.registry);
+    this.lockstep.pruneBefore(fromTick);
+    this.lockstep.ackNow(fromTick);
+    this.onSync();
+    this.markSynced();
+    this.onResync?.();
+  }
+
+  /** When we lag the relay head badly (e.g. after backgrounding), resync via snapshot. */
+  private maybeRequestResync(): void {
+    if (!this.lockstep || !this.relayTransport) return;
+    if (this.lockstep.backlog(this.state.tick) <= SNAPSHOT_RESYNC_TICKS) return;
+    const now = performance.now();
+    if (now - this.lastSnapshotRequestMs < 2000) return;
+    this.lastSnapshotRequestMs = now;
+    this.relayTransport.requestSnapshot();
   }
 
   get isWorkerMode(): boolean {
@@ -125,6 +171,7 @@ export class SimController {
   drainLockstep(hudHint: (msg: string) => void): void {
     if (!this.lockstep || !this.sim) return;
     this.checkLockstepStall(hudHint);
+    this.maybeRequestResync();
     const deadline = performance.now() + LOCKSTEP_DRAIN_BUDGET_MS;
     let lastTick = this.state.tick;
     let advanced = false;
@@ -166,6 +213,8 @@ export class SimController {
 
   private finishLockstepBatch(lastTick: number): void {
     this.lockstep?.pruneBefore(Math.max(0, lastTick - 120));
+    // Report progress so the relay paces its clock to us (bounds cross-client drift).
+    this.lockstep?.ackProcessed(lastTick);
     this.onSync();
     this.markSynced();
   }

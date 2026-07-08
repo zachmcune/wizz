@@ -139,7 +139,12 @@ export class Game {
       () => this.renderer.syncTick(this.state),
       this.useWorker,
       aiEnabled,
+      this.relayTransport,
     );
+    this.simCtrl.onResync = () => {
+      this.renderer.syncTick(this.state);
+      this.renderer.snapDisplay();
+    };
 
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
