@@ -28,11 +28,23 @@ const sfxSchema = z
 
 const vsSchema = z.object({ light: z.number(), heavy: z.number(), building: z.number() });
 
+const beamWeaponSchema = z.object({
+  kind: z.enum(['flame', 'frost']),
+  startWidth: z.number().positive(),
+  endWidth: z.number().positive(),
+  damageIntervalTicks: z.number().int().positive(),
+  rotationSpeed: z.number().positive(),
+  lingerTicks: z.number().int().nonnegative().optional(),
+  lingerDamageFactor: z.number().nonnegative().optional(),
+  maxFrostExposure: z.number().int().positive().optional(),
+});
+
 const weaponSchema = z.object({
   damage: z.number().nonnegative(),
   range: z.number().nonnegative(),
   cooldownTicks: z.number().int().positive(),
   projectile: z.string().nullable(),
+  beam: beamWeaponSchema.optional(),
   splashRadius: z.number().nonnegative().optional(),
   impactRadius: z.number().nonnegative().optional(),
   minRange: z.number().nonnegative().optional(),

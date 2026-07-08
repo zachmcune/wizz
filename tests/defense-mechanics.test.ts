@@ -25,10 +25,17 @@ describe('advanced defense mechanics', () => {
     const hpA = a.hp;
     const hpB = b.hp;
 
-    for (let i = 0; i < 80; i++) sim.step();
+    let sawBeam = false;
+    for (let i = 0; i < 80; i++) {
+      sim.step();
+      const beacon = [...state.entities.values()].find((e) => e.kind === 'building' && e.defId === 'inferno_beacon');
+      if (beacon && beacon.kind === 'building' && beacon.beamAttack) sawBeam = true;
+    }
 
     expect(a.hp).toBeLessThan(hpA);
     expect(b.hp).toBeLessThan(hpB);
+    expect([...state.entities.values()].some((e) => e.kind === 'projectile' && e.defId === 'inferno_orb')).toBe(false);
+    expect(sawBeam).toBe(true);
   });
 
   it('applies slow status from Frost Spire hits', () => {
@@ -36,9 +43,30 @@ describe('advanced defense mechanics', () => {
     spawnEntity(state, services, null, 'frost_spire', 'player0', 640, 640);
     const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
 
-    for (let i = 0; i < 80; i++) sim.step();
+    let sawBeam = false;
+    for (let i = 0; i < 80; i++) {
+      sim.step();
+      const spire = [...state.entities.values()].find((e) => e.kind === 'building' && e.defId === 'frost_spire');
+      if (spire && spire.kind === 'building' && spire.beamAttack) sawBeam = true;
+    }
 
     expect(hasBuff(target, 'slow', state.tick)).toBe(true);
+    expect([...state.entities.values()].some((e) => e.kind === 'projectile' && e.defId === 'frost_bolt')).toBe(false);
+    expect(sawBeam).toBe(true);
+  });
+
+  it('stops beam immediately when target leaves range', () => {
+    const { state, services, sim } = setup();
+    const spire = spawnEntity(state, services, null, 'frost_spire', 'player0', 640, 640);
+    const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
+
+    for (let i = 0; i < 20; i++) sim.step();
+    expect(spire.kind === 'building' && spire.beamAttack).toBeTruthy();
+
+    target.pos.x = 1200;
+    target.pos.y = 1200;
+    for (let i = 0; i < 5; i++) sim.step();
+    expect(spire.kind === 'building' && !spire.beamAttack).toBe(true);
   });
 
   it('chains lightning from Storm Conductor to nearby enemies', () => {

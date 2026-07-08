@@ -19,13 +19,13 @@ function weaponOf(ctx: StepContext, e: Entity): WeaponDef | null {
   return null;
 }
 
-function sightOf(ctx: StepContext, e: Entity): number {
+export function sightOf(ctx: StepContext, e: Entity): number {
   if (e.kind === 'unit') return ctx.services.registry.units.get(e.defId)?.sight ?? 128;
   if (e.kind === 'building') return ctx.services.registry.buildings.get(e.defId)?.sight ?? 160;
   return 128;
 }
 
-function inWeaponBand(attacker: Entity, target: Entity, w: WeaponDef): boolean {
+export function inWeaponBand(attacker: Entity, target: Entity, w: WeaponDef): boolean {
   const d = len(target.pos.x - attacker.pos.x, target.pos.y - attacker.pos.y);
   const maxReach = w.range + attacker.radius + target.radius;
   const minReach = (w.minRange ?? 0) + attacker.radius + target.radius;
@@ -44,7 +44,7 @@ function swarmScore(state: GameState, ctx: StepContext, owner: string, target: E
   return score;
 }
 
-function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: number, weapon?: WeaponDef): Entity | null {
+export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: number, weapon?: WeaponDef): Entity | null {
   const ids = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, range, scratch);
   let best: Entity | null = null;
   let bestD = Infinity;
@@ -128,6 +128,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     if (e.cooldowns.attack && e.cooldowns.attack > 0) e.cooldowns.attack--;
     const w = weaponOf(ctx, e);
     if (!w) continue;
+    if (e.kind === 'building' && w.beam) continue; // continuous beams handled by beamWeaponSystem
     if (e.kind === 'unit' && e.carryMax !== undefined) continue; // harvesters don't fight
     if (e.kind === 'unit' && e.channeling) continue;
 

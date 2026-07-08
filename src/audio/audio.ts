@@ -16,6 +16,8 @@ function voiceFor(ev: GameEvent): Voice | null {
       return { freq: ev.kind === 'attack' ? 320 : 440, dur: 0.08, type: 'triangle', gain: 0.25 };
     case 'attackFired':
       return { freq: 620, dur: 0.05, type: 'square', gain: 0.12 };
+    case 'beamStarted':
+      return { freq: 280, dur: 0.12, type: 'sawtooth', gain: 0.1 };
     case 'damageDealt':
       return null; // too frequent; handled via death/underAttack
     case 'entityDied':

@@ -33,6 +33,25 @@ export interface UnitEntity extends EntityCore {
   channeling?: boolean;
   channelTicks?: number;
   garrisonedIn?: EntityId;
+  frostExposure?: number;
+  burnLinger?: BurnLinger;
+}
+
+/** Runtime state for a tower's continuous beam weapon. */
+export interface TowerBeamState {
+  targetId: EntityId;
+  facing: number;
+  ticksSinceDamage: number;
+  wobblePhase: number;
+  lastHitIds: EntityId[];
+}
+
+/** Short burn applied after leaving an inferno beam. */
+export interface BurnLinger {
+  remaining: number;
+  damagePerTick: number;
+  vs: Record<string, number>;
+  sourceId: EntityId;
 }
 
 export interface BuildingEntity extends EntityCore {
@@ -52,6 +71,9 @@ export interface BuildingEntity extends EntityCore {
   garrisonedIds?: EntityId[];
   garrisonReservedIds?: EntityId[];
   chargingAttack?: { targetId: EntityId; remainingTicks: number };
+  beamAttack?: TowerBeamState;
+  frostExposure?: number;
+  burnLinger?: BurnLinger;
 }
 
 export interface ProjectileEntity extends EntityCore {
