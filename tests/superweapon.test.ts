@@ -78,7 +78,27 @@ describe('superweapon (Astral Lance)', () => {
 
     expect(b.buildProgress).toBeUndefined();
     expect(p0.unlockedTech).toContain('astral_spire');
-    expect(p0.spellCooldowns['astral_lance']).toBe(2400);
+    expect(p0.spellCooldowns['astral_lance']).toBe(4800);
+  });
+
+  it('does not destroy an HQ when the beam tracks it for the full duration', () => {
+    const { state, sim } = battleField();
+    const p0 = player0(state);
+    unlockTech(state, 'player0', 'astral_spire');
+    p0.spellCooldowns['astral_lance'] = 0;
+    const hq = ownedBy(state, 'player1').find((e) => e.defId === 'sanctum')!;
+    const hp0 = hq.hp;
+
+    sim.enqueueNow([
+      { type: 'castSpell', playerId: 'player0', spellId: 'astral_lance', x: hq.pos.x, y: hq.pos.y },
+    ]);
+    sim.step();
+    for (let i = 0; i < 100; i++) sim.step();
+    sim.enqueueNow([{ type: 'steerSuperweapon', playerId: 'player0', x: hq.pos.x, y: hq.pos.y }]);
+    for (let i = 0; i < 320; i++) sim.step();
+
+    expect(hq.hp).toBeGreaterThan(0);
+    expect(hq.hp).toBeLessThan(hp0);
   });
 
   it('enforces one superweapon per player when toggle is on', () => {

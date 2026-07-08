@@ -528,6 +528,74 @@
   gap: 4px;
   justify-content: flex-end;
 }
+.superweapon-launch-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 56px;
+  min-height: 52px;
+  padding: 4px 8px;
+  overflow: hidden;
+  border-color: rgba(159, 220, 255, 0.35);
+}
+.superweapon-launch-btn .sw-launch-icon {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.superweapon-launch-btn .sw-launch-svg {
+  width: 24px;
+  height: 24px;
+}
+.superweapon-launch-btn .sw-launch-gray {
+  color: #6a7088;
+  opacity: 0.95;
+}
+.superweapon-launch-btn .sw-launch-color {
+  color: #9fdcff;
+  filter: drop-shadow(0 0 4px rgba(159, 220, 255, 0.65));
+}
+.superweapon-launch-btn.charging .sw-launch-gray {
+  color: #4a5068;
+}
+.superweapon-launch-btn.ready {
+  border-color: #9fdcff;
+  background: rgba(159, 220, 255, 0.12);
+}
+.superweapon-launch-btn.ready .sw-launch-gray {
+  opacity: 0;
+}
+.superweapon-launch-btn.firing {
+  border-color: #ff5d5d;
+  background: rgba(255, 93, 93, 0.12);
+}
+.superweapon-launch-btn.firing .sw-launch-color {
+  color: #ff8a8a;
+}
+.superweapon-launch-btn .sw-launch-label {
+  position: relative;
+  z-index: 1;
+  margin-top: 30px;
+  font-size: 9px;
+  line-height: 1.1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.superweapon-launch-btn.ready .sw-launch-label {
+  color: #9fdcff;
+}
+.superweapon-launch-btn:disabled:not(.charging) {
+  opacity: 0.85;
+}
 .build-confirm,
 .spell-confirm {
   display: flex;

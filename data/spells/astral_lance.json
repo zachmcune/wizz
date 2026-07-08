@@ -2,15 +2,15 @@
   "id": "astral_lance",
   "name": "Astral Lance",
   "kind": "spell",
-  "cooldownTicks": 2400,
+  "cooldownTicks": 4800,
   "requiresConfirm": false,
   "targeting": "ground",
   "aoeRadius": 48,
   "effect": {
     "kind": "beam",
     "radius": 48,
-    "damagePerTick": 20,
-    "vs": { "light": 1.0, "heavy": 1.0, "building": 1.2 },
+    "damagePerTick": 5,
+    "vs": { "light": 1.0, "heavy": 1.0, "building": 0.85 },
     "chargeTicks": 100,
     "durationTicks": 300,
     "speed": 60
