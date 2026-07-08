@@ -3,6 +3,7 @@
 import { get, set, del } from 'idb-keyval';
 import type { GameState, Entity, Player } from '../sim/types';
 import type { Registry } from '../data/registry';
+import type { ProjectionMode } from '../core/projection';
 import { NavGrid } from '../sim/nav-grid';
 import { createServices, type SimServices, type StepContext } from '../sim/context';
 import { recomputePower } from '../sim/factory';
@@ -10,12 +11,27 @@ import { visibilitySystem } from '../sim/systems/visibility';
 import { createFogTiles } from '../sim/fog';
 import { placeBuildingNav } from '../sim/building-nav';
 
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 const SAVE_KEY = 'arcane:save';
+
+export interface SaveMeta {
+  projectionMode: ProjectionMode;
+  paused: boolean;
+  localPlayerId: string;
+  /** Solo skirmish saves only — online matches use arcane:online-session. */
+  isOnline: false;
+}
 
 export interface SavedGame {
   version: number;
   state: Omit<GameState, 'entities'> & { entities: Entity[] };
+  meta?: SaveMeta;
+}
+
+export interface LoadedGame {
+  state: GameState;
+  services: SimServices;
+  meta: SaveMeta;
 }
 
 function ensureFogFields(state: GameState, registry: Registry): void {
@@ -29,14 +45,25 @@ function ensureFogFields(state: GameState, registry: Registry): void {
   }
 }
 
-export function serializeState(state: GameState): SavedGame {
+export function defaultSaveMeta(localPlayerId: string, projectionMode: ProjectionMode = 'ortho'): SaveMeta {
+  return { projectionMode, paused: false, localPlayerId, isOnline: false };
+}
+
+function resolveMeta(saved: SavedGame, state: GameState): SaveMeta {
+  if (saved.meta && saved.meta.isOnline === false) return saved.meta;
+  const human = state.players.find((p) => p.controller === 'human');
+  return defaultSaveMeta(human?.id ?? state.players[0]!.id, 'ortho');
+}
+
+export function serializeState(state: GameState, meta: SaveMeta): SavedGame {
   return {
     version: SAVE_VERSION,
     state: { ...state, entities: [...state.entities.values()] },
+    meta,
   };
 }
 
-export function deserializeState(saved: SavedGame, registry: Registry): { state: GameState; services: SimServices } {
+export function deserializeState(saved: SavedGame, registry: Registry): LoadedGame {
   if (saved.version !== SAVE_VERSION && saved.version !== 1 && saved.version !== 2) {
     throw new Error(`Unsupported save version ${saved.version}`);
   }
@@ -59,21 +86,30 @@ export function deserializeState(saved: SavedGame, registry: Registry): { state:
   recomputePower(state, services);
   const visCtx: StepContext = { services, events: [] };
   visibilitySystem(state, visCtx);
-  return { state, services };
+  return { state, services, meta: resolveMeta(saved, state) };
 }
 
-export async function saveGame(state: GameState): Promise<void> {
-  await set(SAVE_KEY, serializeState(state));
+export async function saveGame(state: GameState, meta: SaveMeta): Promise<void> {
+  await set(SAVE_KEY, serializeState(state, meta));
 }
 
-export async function loadGame(registry: Registry): Promise<{ state: GameState; services: SimServices } | null> {
+export async function loadGame(registry: Registry): Promise<LoadedGame | null> {
   const saved = (await get(SAVE_KEY)) as SavedGame | undefined;
   if (!saved) return null;
   return deserializeState(saved, registry);
 }
 
+/** True when a solo in-progress save exists (not ended, not an online session). */
+export async function hasContinuableSave(): Promise<boolean> {
+  const saved = (await get(SAVE_KEY)) as SavedGame | undefined;
+  if (!saved) return false;
+  if (saved.meta?.isOnline) return false;
+  if (saved.state.ended) return false;
+  return true;
+}
+
 export async function hasSave(): Promise<boolean> {
-  return (await get(SAVE_KEY)) !== undefined;
+  return hasContinuableSave();
 }
 
 export async function clearSave(): Promise<void> {

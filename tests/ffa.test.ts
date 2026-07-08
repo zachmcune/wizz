@@ -30,8 +30,8 @@ describe('N-player / FFA / teams & win conditions', () => {
     };
 
     let ended = false;
-    for (let i = 0; i < 60 * 20 * 20; i++) {
-      // up to ~20 minutes of sim time
+    for (let i = 0; i < 60 * 20 * 40; i++) {
+      // up to ~40 minutes of sim time (advanced defenses extend FFA length)
       sim.step();
       if (state.ended) {
         ended = true;

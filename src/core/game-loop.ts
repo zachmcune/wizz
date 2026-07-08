@@ -10,6 +10,7 @@ export class GameLoop {
   private last = 0;
   private rafId = 0;
   private running = false;
+  private paused = false;
   private maxCatchUp = 5; // avoid spiral-of-death after tab suspends
 
   constructor(
@@ -25,15 +26,17 @@ export class GameLoop {
       if (!this.running) return;
       let delta = now - this.last;
       this.last = now;
-      if (delta > TICK_MS * 60) delta = TICK_MS; // huge gaps (backgrounded): skip ahead
-      this.accumulator += delta;
-      let steps = 0;
-      while (this.accumulator >= TICK_MS && steps < this.maxCatchUp) {
-        if (!this.step()) break;
-        this.accumulator -= TICK_MS;
-        steps++;
+      if (!this.paused) {
+        if (delta > TICK_MS * 60) delta = TICK_MS; // huge gaps (backgrounded): skip ahead
+        this.accumulator += delta;
+        let steps = 0;
+        while (this.accumulator >= TICK_MS && steps < this.maxCatchUp) {
+          if (!this.step()) break;
+          this.accumulator -= TICK_MS;
+          steps++;
+        }
+        if (steps === this.maxCatchUp) this.accumulator = 0;
       }
-      if (steps === this.maxCatchUp) this.accumulator = 0;
       this.render(this.accumulator / TICK_MS);
       this.rafId = requestAnimationFrame(frame);
     };
@@ -43,5 +46,14 @@ export class GameLoop {
   stop(): void {
     this.running = false;
     if (this.rafId) cancelAnimationFrame(this.rafId);
+  }
+
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    if (paused) this.accumulator = 0;
+  }
+
+  isPaused(): boolean {
+    return this.paused;
   }
 }

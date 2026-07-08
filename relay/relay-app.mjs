@@ -14,6 +14,7 @@ const WS_KEEPALIVE_MS = 30_000;
 // of the slowest acknowledged peer, so a slow phone can never fall minutes behind.
 const LEAD_TICKS = 20;
 const STALL_DROP_MS = 4000;
+const REJOIN_GRACE_MS = 30 * 60 * 1000;
 
 const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
@@ -79,6 +80,10 @@ class Room {
     /** @type {ReturnType<typeof setInterval> | null} */
     this.interval = null;
     this.started = false;
+    /** connId of the room host (stable across reconnects). */
+    this.hostConnId = null;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    this.cleanupTimer = null;
     /** connIds waiting for the host to answer with a state snapshot. */
     this.snapshotRequesters = new Set();
   }
@@ -96,6 +101,7 @@ class Room {
     let slotId = null;
     if (isHost) {
       this.hostWs = ws;
+      this.hostConnId = connId;
       if (initialLobby) this.lobbyState = cloneLobby(initialLobby);
       const hostSlot = this.lobbyState.slots.find((s) => s.kind === 'human');
       if (hostSlot) {
@@ -127,6 +133,54 @@ class Room {
 
     this.broadcastExcept(ws, { t: 'peerJoined', playerId: connId });
     this.broadcastWaiting();
+
+    return connId;
+  }
+
+  /** @param {import('ws').WebSocket} ws @param {string} connId */
+  rejoinClient(ws, connId) {
+    if (!this.started) {
+      ws.send(JSON.stringify({ t: 'error', message: 'Match not started' }));
+      ws.close();
+      return null;
+    }
+    const slot = this.lobbyState.slots.find((s) => s.claimedBy === connId);
+    if (!slot) {
+      ws.send(JSON.stringify({ t: 'error', message: 'No slot to rejoin' }));
+      ws.close();
+      return null;
+    }
+
+    if (this.cleanupTimer) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+
+    const isHost = connId === this.hostConnId;
+    if (isHost) this.hostWs = ws;
+
+    this.clients.set(ws, { connId, slotId: slot.id, lastAckTick: -1, lastAckAtMs: Date.now() });
+
+    ws.send(
+      JSON.stringify({
+        t: 'joined',
+        connId,
+        playerId: slot.id,
+        seed: this.seed,
+        startTick: this.tick,
+        isHost,
+        lobbyState: this.lobbyState,
+        waiting: false,
+      }),
+    );
+
+    this.broadcastExcept(ws, { t: 'peerJoined', playerId: connId });
+
+    if (!this.interval) {
+      const now = Date.now();
+      for (const info of this.clients.values()) info.lastAckAtMs = now;
+      this.interval = setInterval(() => this.tryAdvance(), TICK_MS);
+    }
 
     return connId;
   }
@@ -379,21 +433,34 @@ class Room {
     this.clients.delete(ws);
     if (info) {
       this.snapshotRequesters.delete(info.connId);
-      for (const slot of this.lobbyState.slots) {
-        if (slot.claimedBy === info.connId) {
-          slot.claimedBy = null;
-          slot.ready = false;
-          if (slot.kind === 'human' && ws !== this.hostWs) slot.kind = 'open';
+      if (!this.started) {
+        for (const slot of this.lobbyState.slots) {
+          if (slot.claimedBy === info.connId) {
+            slot.claimedBy = null;
+            slot.ready = false;
+            if (slot.kind === 'human' && ws !== this.hostWs) slot.kind = 'open';
+          }
         }
+        this.broadcast({ t: 'peerLeft', playerId: info.connId });
+        this.broadcast({ t: 'lobbyState', state: this.lobbyState });
+        this.broadcastWaiting();
+      } else {
+        this.broadcast({ t: 'peerDisconnected', playerId: info.connId });
       }
-      this.broadcast({ t: 'peerLeft', playerId: info.connId });
-      this.broadcast({ t: 'lobbyState', state: this.lobbyState });
-      this.broadcastWaiting();
     }
     if (ws === this.hostWs) this.hostWs = null;
     if (this.clients.size === 0) {
-      if (this.interval) clearInterval(this.interval);
-      this.rooms.delete(this.id);
+      if (this.interval) {
+        clearInterval(this.interval);
+        this.interval = null;
+      }
+      if (!this.started) {
+        this.rooms.delete(this.id);
+      } else if (!this.cleanupTimer) {
+        this.cleanupTimer = setTimeout(() => {
+          if (this.clients.size === 0) this.rooms.delete(this.id);
+        }, REJOIN_GRACE_MS);
+      }
     }
   }
 
@@ -469,6 +536,23 @@ export function attachRelay(server) {
         if (!rooms.has(roomId)) rooms.set(roomId, new Room(roomId, rooms));
         room = rooms.get(roomId);
         room.addClient(ws, msg.lobbyState);
+        return;
+      }
+
+      if (msg.t === 'rejoin') {
+        const roomId = String(msg.room ?? '').toUpperCase();
+        const connId = String(msg.connId ?? '');
+        if (!roomId || !connId) {
+          ws.send(JSON.stringify({ t: 'error', message: 'Room and connection id required' }));
+          return;
+        }
+        room = rooms.get(roomId) ?? null;
+        if (!room) {
+          ws.send(JSON.stringify({ t: 'error', message: 'Room not found' }));
+          ws.close();
+          return;
+        }
+        room.rejoinClient(ws, connId);
         return;
       }
 

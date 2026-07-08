@@ -10,29 +10,52 @@ export type WaitingHandler = (playerCount: number, maxPlayers: number) => void;
 export type PeerJoinedHandler = (playerId: string) => void;
 export type PeerLeftHandler = (playerId: string) => void;
 export type ErrorHandler = (message: string) => void;
+export type ReconnectHandler = () => void;
 export type LobbyMessageHandler = (msg: ServerMessage) => void;
 /** Relay asks this client (the host) to produce a snapshot for a lagging peer. */
 export type SnapshotRequestHandler = (forConnId: string) => void;
 /** Relay delivers a host snapshot to this client so it can jump forward. */
 export type SnapshotHandler = (fromTick: number, state: unknown) => void;
 
+export interface ReconnectConfig {
+  relayUrl: string;
+  room: string;
+  connId: string;
+}
+
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 16_000;
+
 export class WebSocketTransport implements Transport {
   private tickCb: ((tick: number, cmds: Command[]) => void) | null = null;
   private peerCb: ((playerId: string, tick: number, hash: string) => void) | null = null;
   private tickBuffer: Array<{ tick: number; cmds: Command[] }> = [];
   private peerChecksumBuffer: Array<{ playerId: string; tick: number; hash: string }> = [];
+  private reconnectCfg: ReconnectConfig | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempt = 0;
+  private intentionalClose = false;
   onMatchStart: MatchStartHandler | null = null;
   onWaiting: WaitingHandler | null = null;
   onPeerJoined: PeerJoinedHandler | null = null;
   onPeerLeft: PeerLeftHandler | null = null;
   onError: ErrorHandler | null = null;
+  onReconnect: ReconnectHandler | null = null;
   onLobbyMessage: LobbyMessageHandler | null = null;
   onSnapshotRequest: SnapshotRequestHandler | null = null;
   onSnapshot: SnapshotHandler | null = null;
 
   constructor(private ws: WebSocket) {
+    this.bindSocket(ws);
+  }
+
+  private bindSocket(ws: WebSocket): void {
     ws.addEventListener('message', (ev) => this.handleMessage(ev));
-    ws.addEventListener('close', () => this.onError?.('Disconnected from relay'));
+    ws.addEventListener('close', () => this.handleClose());
+  }
+
+  enableReconnect(cfg: ReconnectConfig): void {
+    this.reconnectCfg = cfg;
   }
 
   send(forTick: number, cmds: Command[]): void {
@@ -79,8 +102,56 @@ export class WebSocketTransport implements Transport {
     this.sendRaw({ t: 'join', room: room.toUpperCase(), lobbyState });
   }
 
+  rejoin(room: string, connId: string): void {
+    this.sendRaw({ t: 'rejoin', room: room.toUpperCase(), connId });
+  }
+
   close(): void {
+    this.intentionalClose = true;
+    this.clearReconnectTimer();
     this.ws.close();
+  }
+
+  private handleClose(): void {
+    if (this.intentionalClose || !this.reconnectCfg) {
+      this.onError?.('Disconnected from relay');
+      return;
+    }
+    this.onError?.('Connection lost — reconnecting…');
+    this.scheduleReconnect();
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.reconnectCfg || this.reconnectTimer) return;
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** this.reconnectAttempt, RECONNECT_MAX_MS);
+    this.reconnectAttempt++;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.tryReconnect();
+    }, delay);
+  }
+
+  private async tryReconnect(): Promise<void> {
+    const cfg = this.reconnectCfg;
+    if (!cfg) return;
+    try {
+      const ws = await openSocket(cfg.relayUrl);
+      this.ws = ws;
+      this.bindSocket(ws);
+      await waitForJoin(ws, 15_000);
+      this.rejoin(cfg.room, cfg.connId);
+      this.reconnectAttempt = 0;
+      this.onReconnect?.();
+    } catch {
+      this.scheduleReconnect();
+    }
   }
 
   private handleMessage(ev: MessageEvent): void {
@@ -118,6 +189,7 @@ export class WebSocketTransport implements Transport {
         this.onLobbyMessage?.(msg);
         break;
       case 'peerLeft':
+      case 'peerDisconnected':
         this.onPeerLeft?.(msg.playerId);
         this.onLobbyMessage?.(msg);
         break;
@@ -164,6 +236,22 @@ export async function connectAndJoin(
   const lockstep = new LockstepClient(transport);
   const joinedPromise = waitForJoin(ws, timeoutMs);
   transport.join(room, lobbyState);
+  const joined = await joinedPromise;
+  return { ws, transport, lockstep, joined };
+}
+
+/** Reconnect to an in-progress match using a prior connection id. */
+export async function reconnectToMatch(
+  relayUrl: string,
+  room: string,
+  connId: string,
+  timeoutMs = 15_000,
+): Promise<{ ws: WebSocket; transport: WebSocketTransport; lockstep: LockstepClient; joined: LockstepJoinResult }> {
+  const ws = await openSocket(relayUrl);
+  const transport = new WebSocketTransport(ws);
+  const lockstep = new LockstepClient(transport);
+  const joinedPromise = waitForJoin(ws, timeoutMs);
+  transport.rejoin(room, connId);
   const joined = await joinedPromise;
   return { ws, transport, lockstep, joined };
 }

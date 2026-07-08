@@ -184,7 +184,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
       if (!bdef || !bdef.requires.every((r) => p.unlockedTech.includes(r))) continue;
       const reserve = defId === 'celestial_cannon' ? 1.6 : 1.25;
       if (p.mana < bdef.cost * reserve) continue;
-      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
+      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, defId);
       if (spot) {
         cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
         return;
