@@ -55,8 +55,12 @@ function acquireTarget(state: GameState, ctx: StepContext, e: Entity, range: num
     if (o.kind === 'unit' && o.garrisonedIn !== undefined) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
-    if (weapon && !inWeaponBand(e, o, weapon)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
+    if (weapon) {
+      const minReach = (weapon.minRange ?? 0) + e.radius + o.radius;
+      if (d < minReach * minReach) continue;
+      if (e.kind === 'building' && !inWeaponBand(e, o, weapon)) continue;
+    }
     const swarm = weapon?.preferSwarms ? swarmScore(state, ctx, e.owner, o, weapon.splashRadius ?? 48) : 0;
     if (
       swarm > bestSwarm ||

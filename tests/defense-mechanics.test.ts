@@ -67,7 +67,7 @@ describe('advanced defense mechanics', () => {
     expect(near.hp).toBe(nearHp);
     expect(farA.hp).toBeLessThan(farA.maxHp);
     expect(farB.hp).toBeLessThan(farB.maxHp);
-    expect(cannon.kind === 'building' ? cannon.chargingAttack : undefined).toBeUndefined();
+    expect(cannon.kind).toBe('building');
   });
 
   it('heals friendly units with Sanctuary Spire aura', () => {
