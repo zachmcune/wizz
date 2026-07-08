@@ -104,6 +104,27 @@ describe('lobby config', () => {
     expect(config.deadSpectatorReveal).toBe(true);
   });
 
+  it('passes economy pacing into match config', async () => {
+    const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
+    lobby.economyPacing = 'tight';
+    const config = buildMatchConfig(lobby);
+    expect(config.economyPacing).toBe('tight');
+
+    const { lobbyStateToWire, lobbyStateFromWire } = await import('../src/net/lobby-wire');
+    const back = lobbyStateFromWire(lobbyStateToWire(lobby));
+    expect(back.economyPacing).toBe('tight');
+  });
+
+  it('defaults economy pacing to standard', () => {
+    const lobby = defaultLobbyState();
+    lobby.slots[0]!.startIndex = 0;
+    lobby.slots[1]!.startIndex = 3;
+    const config = buildMatchConfig(lobby);
+    expect(config.economyPacing).toBe('standard');
+  });
+
   it('defaults lobby view mode to Classic 2D', () => {
     expect(defaultLobbyState().projectionMode).toBe('ortho');
     expect(defaultOnlineLobbyState().projectionMode).toBe('ortho');

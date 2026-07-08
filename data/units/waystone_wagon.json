@@ -3,7 +3,7 @@
   "name": "Waystone Wagon",
   "kind": "unit",
   "role": "mobile_hq",
-  "cost": 1400,
+  "cost": 2000,
   "buildTime": 22,
   "hp": 500,
   "armor": "heavy",

@@ -4,7 +4,7 @@
   "shortLabel": "NEXUS",
   "description": "Tech building. Trains storm casters and unlocks your battle spells.",
   "kind": "building",
-  "cost": 800,
+  "cost": 1200,
   "buildTime": 14,
   "hp": 800,
   "armor": "building",

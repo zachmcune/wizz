@@ -4,7 +4,7 @@
   "shortLabel": "SUM",
   "description": "Trains light infantry: swarmlings, archers, and familiars.",
   "kind": "building",
-  "cost": 400,
+  "cost": 550,
   "buildTime": 8,
   "hp": 700,
   "armor": "building",

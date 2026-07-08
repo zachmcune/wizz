@@ -3,7 +3,7 @@
   "name": "Wisp",
   "kind": "unit",
   "role": "harvester",
-  "cost": 120,
+  "cost": 200,
   "buildTime": 5,
   "hp": 120,
   "armor": "light",
@@ -16,7 +16,7 @@
   "requires": [
     "attunement_spire"
   ],
-  "carry": 100,
+  "carry": 75,
   "isHarvester": true,
   "art": {
     "shape": "circle",

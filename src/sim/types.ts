@@ -170,4 +170,6 @@ export interface MatchConfig {
   deadSpectatorReveal?: boolean;
   /** When true (default), each player may build only one superweapon building. */
   oneSuperweaponPerPlayer?: boolean;
+  /** Economy pacing preset for this match. */
+  economyPacing?: 'standard' | 'tight';
 }

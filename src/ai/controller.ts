@@ -12,7 +12,7 @@ import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { distSq, len } from '../sim/math';
 import type { AiParams } from '../data/defs';
 
-const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus', 'astral_spire'];
+const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'resonance_vault', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus', 'astral_spire'];
 const DEFEND_RADIUS = 280;
 
 export function aiStep(state: GameState, services: SimServices): Command[] {

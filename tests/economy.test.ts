@@ -80,6 +80,7 @@ describe('economy & production (data-driven)', () => {
     sim.step();
     for (let i = 0; i < reg.building('attunement_spire').buildTime * 20 + 5; i++) sim.step();
 
+    p.mana = 9999;
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 1040, y: 464 }]);
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 5; i++) sim.step();

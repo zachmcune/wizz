@@ -3,7 +3,7 @@
   "name": "Imp Swarmling",
   "kind": "unit",
   "role": "light_melee",
-  "cost": 100,
+  "cost": 140,
   "buildTime": 4,
   "hp": 90,
   "armor": "light",

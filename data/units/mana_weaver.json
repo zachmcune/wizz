@@ -3,7 +3,7 @@
   "name": "Mana Weaver",
   "kind": "unit",
   "role": "mana conjurer",
-  "cost": 200,
+  "cost": 350,
   "buildTime": 8,
   "hp": 90,
   "armor": "light",
@@ -11,10 +11,10 @@
   "sight": 120,
   "radius": 9,
   "weapon": null,
-  "producedBy": "attunement_spire",
+  "producedBy": "resonance_vault",
   "menuCategory": "workers",
   "requires": [
-    "attunement_spire"
+    "resonance_vault"
   ],
   "canConjureMana": true,
   "art": {

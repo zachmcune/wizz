@@ -4,7 +4,7 @@
   "shortLabel": "FORGE",
   "description": "Trains heavy units and the Waystone Wagon mobile HQ. Requires Ley Conduit.",
   "kind": "building",
-  "cost": 600,
+  "cost": 850,
   "buildTime": 12,
   "hp": 900,
   "armor": "building",

@@ -21,7 +21,7 @@ describe('building actions', () => {
     sim.enqueueNow([{ type: 'sellBuilding', playerId: human.id, buildingId: circle.id }]);
     sim.step();
     expect(state.entities.has(circle.id)).toBe(false);
-    expect(human.mana).toBe(manaBefore + Math.floor(400 * reg.balance.sellRefundRatio));
+    expect(human.mana).toBe(manaBefore + Math.floor(reg.building('summoning_circle').cost * reg.balance.sellRefundRatio));
   });
 
   it('repairs a damaged building while spending mana', () => {

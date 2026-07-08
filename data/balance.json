@@ -1,15 +1,16 @@
 {
-  "startingMana": 1500,
-  "siphonPerSecond": 25,
-  "manaNodeCapacity": 25000,
+  "startingMana": 900,
+  "siphonPerSecond": 16,
+  "manaNodeCapacity": 12000,
+  "vaultSiphonMultiplier": 1.3,
   "sellRefundRatio": 0.5,
   "repairManaPerHp": 0.05,
   "repairHpPerTick": 2,
-  "conjureManaAmount": 10,
-  "conjureManaIntervalSeconds": 2,
+  "conjureManaAmount": 6,
+  "conjureManaIntervalSeconds": 3,
   "ai": {
     "easy": { "interval": 20, "wispTarget": 3, "armyThreshold": 8 },
-    "normal": { "interval": 15, "wispTarget": 4, "armyThreshold": 12 },
-    "hard": { "interval": 10, "wispTarget": 5, "armyThreshold": 16 }
+    "normal": { "interval": 15, "wispTarget": 3, "armyThreshold": 12 },
+    "hard": { "interval": 10, "wispTarget": 4, "armyThreshold": 16 }
   }
 }
