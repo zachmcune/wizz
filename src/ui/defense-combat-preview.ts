@@ -17,6 +17,7 @@ const DEFENSE_Y = 1424;
 const DEFENDER: PlayerId = 'player0';
 const ATTACKER: PlayerId = 'player1';
 const RESET_TICKS = 360;
+const PREVIEW_ZOOM = 2.4;
 
 type ScenarioKind = 'combat' | 'heal' | 'garrison';
 
@@ -177,6 +178,7 @@ export class DefenseCombatPreview {
   private attackerIds: EntityId[] = [];
   private ticksSinceReset = 0;
   private destroyed = false;
+  private readonly onResize = (): void => this.frameCamera();
 
   constructor(
     private registry: Registry,
@@ -206,15 +208,28 @@ export class DefenseCombatPreview {
     this.renderer.setProjectionMode('oblique');
     this.renderer.setNav(this.sim!.services.nav);
     this.renderer.setOwnerColors(this.sim!.state, DEFENDER);
-    this.renderer.camera.centerOn(DEFENSE_X, DEFENSE_Y);
-    this.renderer.camera.setZoom(2.8);
+    this.frameCamera();
     this.renderer.syncTick(this.sim!.state);
+    this.renderer.app.renderer.on('resize', this.onResize);
 
     this.loop = new GameLoop(
       () => this.stepSim(),
       (alpha) => this.renderFrame(alpha),
     );
     this.loop.start();
+  }
+
+  private frameCamera(): void {
+    if (!this.renderer || !this.sim) return;
+    const w = this.canvasHost.clientWidth || 640;
+    const h = this.canvasHost.clientHeight || 360;
+    const cam = this.renderer.camera;
+    cam.setViewport(w, h);
+    const defense = this.sim.state.entities.get(this.defenseEntityId);
+    const focusX = defense?.pos.x ?? DEFENSE_X;
+    const focusY = defense?.pos.y ?? DEFENSE_Y;
+    cam.centerOn(focusX, focusY);
+    cam.setZoom(PREVIEW_ZOOM);
   }
 
   private bootstrapScene(): void {
@@ -227,6 +242,7 @@ export class DefenseCombatPreview {
     this.renderer?.syncTick(built.state);
     this.renderer?.effects.reset();
     this.renderer?.snapDisplay();
+    this.frameCamera();
   }
 
   private shouldReset(state: GameState): boolean {
@@ -264,6 +280,7 @@ export class DefenseCombatPreview {
     this.destroyed = true;
     this.loop?.stop();
     this.loop = null;
+    this.renderer?.app.renderer.off('resize', this.onResize);
     this.renderer?.app.destroy(true, { children: true });
     this.renderer = null;
     this.sim = null;

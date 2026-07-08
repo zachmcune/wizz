@@ -8,9 +8,9 @@ import {
   MAX_ZOOM,
 } from '../core/constants';
 import { clamp } from '../sim/math';
-import type { CameraView, Vec2 } from '../core/coords';
-import { screenPanToCameraDelta, screenToWorld } from '../core/coords';
-import { getProjectionMode } from '../core/projection';
+import type { CameraView } from '../core/coords';
+import { projectGround, screenPanToCameraDelta, screenToWorld } from '../core/coords';
+import { getProjectionMode, OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
 
 export class Camera implements CameraView {
   x = 0;
@@ -37,8 +37,18 @@ export class Camera implements CameraView {
   }
 
   centerOn(x: number, y: number): void {
-    this.x = x - this.viewW / this.zoom / 2;
-    this.y = y - this.viewH / this.zoom / 2;
+    if (getProjectionMode() === 'oblique') {
+      const p = projectGround({ x, y });
+      const cX = p.x - this.viewW / (2 * this.zoom);
+      const cY = p.y - this.viewH / (2 * this.zoom);
+      const a = cX / OBLIQUE_SCALE_X;
+      const b = cY / OBLIQUE_SCALE_Y;
+      this.x = (a + b) / 2;
+      this.y = (b - a) / 2;
+    } else {
+      this.x = x - this.viewW / this.zoom / 2;
+      this.y = y - this.viewH / this.zoom / 2;
+    }
     this.clampToBounds();
   }
 

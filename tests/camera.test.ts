@@ -73,6 +73,15 @@ describe('camera & coordinate math', () => {
     expect(back.y).toBeCloseTo(world.y, 4);
   });
 
+  it('centers a world point on screen in oblique mode', () => {
+    setProjectionMode('oblique');
+    const cam = new Camera(800, 600, 4096, 2816);
+    cam.centerOn(2064, 1424);
+    const screen = worldToScreen({ x: 2064, y: 1424 }, cam.view());
+    expect(screen.x).toBeCloseTo(400, 0);
+    expect(screen.y).toBeCloseTo(300, 0);
+  });
+
   it('oblique pan moves world content with the finger', () => {
     setProjectionMode('oblique');
     const cam = new Camera(800, 600, 4000, 4000);
