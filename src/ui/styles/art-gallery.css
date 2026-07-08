@@ -80,6 +80,26 @@
   background: rgba(20, 16, 32, 0.85);
   border: 1px solid rgba(139, 108, 255, 0.25);
 }
+.art-gallery-card-defense {
+  cursor: pointer;
+  border-color: rgba(127, 227, 255, 0.35);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.art-gallery-card-defense:hover,
+.art-gallery-card-defense:focus-visible {
+  border-color: rgba(127, 227, 255, 0.75);
+  background: rgba(28, 24, 48, 0.95);
+  transform: translateY(-1px);
+  outline: none;
+}
+.art-gallery-combat-hint {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #7fe3ff;
+  opacity: 0.85;
+}
 .art-gallery-meta {
   display: flex;
   align-items: center;
@@ -143,4 +163,55 @@
 }
 .art-gallery-frame-icon {
   height: 36px;
+}
+
+.art-gallery-combat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 4, 10, 0.82);
+  backdrop-filter: blur(4px);
+}
+.art-gallery-combat-panel {
+  width: min(100%, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-radius: 12px;
+  background: rgba(16, 14, 28, 0.96);
+  border: 1px solid rgba(127, 227, 255, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.art-gallery-combat-title {
+  margin: 0;
+  font-size: clamp(18px, 4vw, 24px);
+  color: var(--text);
+}
+.art-gallery-combat-caption {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+.art-gallery-combat-canvas {
+  width: 100%;
+  height: min(52vh, 380px);
+  min-height: 220px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #12101c;
+}
+.art-gallery-combat-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.art-gallery-combat-close {
+  align-self: flex-end;
 }
