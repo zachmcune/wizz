@@ -2,8 +2,15 @@
 import { buildMatchConfig, defaultLobbyState, defaultOnlineLobbyState } from '../lobby/build-config';
 import { initMatch } from '../sim/factory';
 import { serializeReplay } from '../sim/replay';
-import { generateRoomCode, joinMultiplayerRoom } from '../net/multiplayer';
-import { clearSave, loadGame, hasSave } from '../storage/save';
+import { generateRoomCode, joinMultiplayerRoom, rejoinMultiplayerRoom, relayWsUrl } from '../net/multiplayer';
+import { clearSave, loadGame, hasContinuableSave } from '../storage/save';
+import {
+  clearOnlineSession,
+  getOnlineSession,
+  hasOnlineSession,
+  saveOnlineSession,
+  type StoredOnlineSession,
+} from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
 import { MainMenu } from '../ui/screens';
@@ -14,6 +21,7 @@ import type { Registry } from '../data/registry';
 import type { MultiplayerSession } from '../net/multiplayer';
 import type { Settings } from '../storage/settings';
 import type { LobbyState } from '../lobby/types';
+import type { WebSocketTransport } from '../net/ws-transport';
 
 export interface AppRouterDeps {
   host: HTMLElement;
@@ -46,11 +54,36 @@ export class AppRouter {
     this.session = null;
   }
 
-  private startFromLobby(state: LobbyState, opts?: { session: MultiplayerSession; localPlayerId: string }): void {
+  private wireReconnect(transport: WebSocketTransport, session: StoredOnlineSession): void {
+    transport.enableReconnect({
+      room: session.room,
+      connId: session.connId,
+      relayUrl: session.relayUrl,
+    });
+  }
+
+  private persistOnlineSession(session: MultiplayerSession, seed: number, lobbyState: LobbyState, slotId: string): void {
+    const stored: Omit<StoredOnlineSession, 'savedAt'> = {
+      room: session.room,
+      connId: session.connId,
+      slotId,
+      seed,
+      projectionMode: lobbyState.projectionMode ?? 'ortho',
+      relayUrl: relayWsUrl(),
+    };
+    void saveOnlineSession(stored);
+    this.wireReconnect(session.transport, { ...stored, savedAt: Date.now() });
+  }
+
+  private startFromLobby(
+    state: LobbyState,
+    opts?: { session: MultiplayerSession; localPlayerId: string; startPaused?: boolean },
+  ): void {
     const config = buildMatchConfig(state);
     const { state: simState, services } = initMatch(this.deps.registry, config);
     this.game = new Game(this.deps.host, this.deps.registry, simState, services, this.deps.audio, this.deps.settings, () => {
       this.disconnectSession();
+      void clearOnlineSession();
       this.game = null;
       void this.showMenu();
     }, {
@@ -59,6 +92,7 @@ export class AppRouter {
       localPlayerId: opts?.localPlayerId,
       deadSpectatorReveal: config.deadSpectatorReveal ?? false,
       matchProjectionMode: state.projectionMode ?? 'ortho',
+      startPaused: opts?.startPaused,
       lockstep: opts?.session?.lockstep,
       onDesync: (tick, peers, replay) => {
         console.error('[lockstep] desync at tick', tick, 'peers:', peers);
@@ -81,6 +115,7 @@ export class AppRouter {
       const mine = state.slots.find((s) => s.claimedBy === session.connId);
       lobby.destroy();
       void clearSave();
+      this.persistOnlineSession(session, seed, state, mine?.id ?? session.localPlayerId);
       this.startFromLobby({ ...state, seed }, { session, localPlayerId: mine?.id ?? session.localPlayerId });
     };
 
@@ -219,9 +254,26 @@ export class AppRouter {
     await gallery.init();
   }
 
+  private async rejoinOnlineMatch(stored: StoredOnlineSession): Promise<void> {
+    this.clearHost();
+    try {
+      this.session = await rejoinMultiplayerRoom(stored.room, stored.connId, stored.relayUrl);
+      this.persistOnlineSession(this.session, stored.seed, this.session.lobbyState, stored.slotId);
+      this.startFromLobby(
+        { ...this.session.lobbyState, seed: stored.seed },
+        { session: this.session, localPlayerId: stored.slotId },
+      );
+    } catch (err) {
+      this.disconnectSession();
+      await clearOnlineSession();
+      await this.showMenu();
+      console.error('[rejoin] failed:', err);
+    }
+  }
+
   async showMenu(): Promise<void> {
     this.clearHost();
-    const saved = await hasSave();
+    const [saved, online] = await Promise.all([hasContinuableSave(), hasOnlineSession()]);
     const menu = new MainMenu({
       onCustomGame: () => {
         menu.destroy();
@@ -251,9 +303,22 @@ export class AppRouter {
                 this.game = null;
                 void this.showMenu();
               },
-              { matchProjectionMode: 'ortho' },
+              {
+                matchProjectionMode: loaded.meta.projectionMode,
+                saveMeta: loaded.meta,
+                startPaused: loaded.meta.paused,
+                localPlayerId: loaded.meta.localPlayerId,
+              },
             );
             void this.game.start();
+          }
+        : null,
+      onRejoinOnline: online
+        ? async () => {
+            const stored = await getOnlineSession();
+            if (!stored) return;
+            menu.destroy();
+            await this.rejoinOnlineMatch(stored);
           }
         : null,
       onDevGallery: () => {

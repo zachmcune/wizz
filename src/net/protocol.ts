@@ -26,6 +26,7 @@ export interface LobbyStateWire {
 
 export type ClientMessage =
   | { t: 'join'; room: string; lobbyState?: LobbyStateWire }
+  | { t: 'rejoin'; room: string; connId: string }
   | { t: 'lobbyUpdate'; state: LobbyStateWire }
   | { t: 'claimSlot'; slotId: string; team: string; color: string; startIndex: number | null; factionId: string }
   | { t: 'slotReady'; slotId: string; ready: boolean }
@@ -54,6 +55,7 @@ export type ServerMessage =
   | { t: 'waiting'; playerCount: number; maxPlayers: number }
   | { t: 'peerJoined'; playerId: string }
   | { t: 'peerLeft'; playerId: string }
+  | { t: 'peerDisconnected'; playerId: string }
   | { t: 'matchStart'; startTick: number; seed: number; state: LobbyStateWire }
   | { t: 'tick'; tick: number; cmds: Command[] }
   | { t: 'peerChecksum'; playerId: string; tick: number; hash: string }

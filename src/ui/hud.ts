@@ -22,6 +22,10 @@ export interface HudOptions {
   settings: Settings;
   audio: AudioManager;
   onSettingsChange: (settings: Settings) => void;
+  soloPause?: {
+    isPaused: () => boolean;
+    onToggle: () => void;
+  } | null;
 }
 
 export class Hud {
@@ -41,6 +45,8 @@ export class Hud {
   private debugEl = el('div', 'debug-overlay');
   private hintEl = el('div', 'hint-banner');
   private debugOn = false;
+  private pauseOverlay = el('div', 'pause-overlay');
+  private pauseBtn: HTMLButtonElement | null = null;
 
   private infoPanel: Collapsible;
   private minimapPanel: Collapsible;
@@ -106,9 +112,20 @@ export class Hud {
     });
     const settingsBtn = el('button', 'btn menu-btn', 'Settings');
     settingsBtn.addEventListener('click', () => this.toggleSettings());
+    if (hudOptions.soloPause) {
+      this.pauseBtn = el('button', 'btn menu-btn', 'Pause');
+      this.pauseBtn.addEventListener('click', () => hudOptions.soloPause!.onToggle());
+    }
     this.spellBar = new SpellBar(registry, controller);
     this.superweaponStatus = new SuperweaponStatus(registry);
-    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, settingsBtn);
+    top.append(
+      mana,
+      this.powerStat,
+      this.spellBar.row,
+      dbgBtn,
+      ...(this.pauseBtn ? [this.pauseBtn] : []),
+      settingsBtn,
+    );
 
     const selBlock = el('div', 'sel-block');
     this.commandMenu = new CommandMenuPanel(registry, controller, iconFor, false, () => this.setHudTab('command'));
@@ -174,6 +191,17 @@ export class Hud {
       onLeaveMatch: () => this.onExit?.(),
     });
 
+    const pauseCard = el('div', 'pause-card');
+    pauseCard.append(
+      el('h1', 'menu-title', 'Paused'),
+      el('p', 'menu-sub', 'The match is frozen. Resume when you are ready.'),
+    );
+    const resumeBtn = el('button', 'btn big', 'Resume');
+    resumeBtn.addEventListener('click', () => hudOptions.soloPause?.onToggle());
+    pauseCard.append(resumeBtn);
+    this.pauseOverlay.append(pauseCard);
+    this.pauseOverlay.style.display = 'none';
+
     this.root.append(
       top,
       this.superweaponStatus.root,
@@ -185,10 +213,16 @@ export class Hud {
       this.hintEl,
       this.result,
       this.settingsScreen.root,
+      this.pauseOverlay,
     );
     this.result.style.display = 'none';
     this.debugEl.style.display = 'none';
     this.hintEl.style.display = 'none';
+  }
+
+  setPaused(paused: boolean): void {
+    this.pauseOverlay.style.display = paused ? 'flex' : 'none';
+    if (this.pauseBtn) this.pauseBtn.textContent = paused ? 'Resume' : 'Pause';
   }
 
   showHint(text: string): void {

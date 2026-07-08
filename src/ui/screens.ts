@@ -6,6 +6,7 @@ export interface MenuOptions {
   onCreateOnline: () => void;
   onJoinOnline: () => void;
   onContinue: (() => void) | null;
+  onRejoinOnline: (() => void) | null;
   onDevGallery?: () => void;
 }
 
@@ -21,6 +22,12 @@ export class MainMenu {
       const cont = el('button', 'btn big', 'Continue');
       cont.addEventListener('click', () => opts.onContinue?.());
       list.appendChild(cont);
+    }
+
+    if (opts.onRejoinOnline) {
+      const rejoin = el('button', 'btn big online-btn', 'Rejoin Match');
+      rejoin.addEventListener('click', () => opts.onRejoinOnline?.());
+      list.appendChild(rejoin);
     }
 
     const custom = el('button', 'btn big', 'Custom Game');

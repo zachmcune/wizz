@@ -19,7 +19,7 @@ import type { Registry } from '../../data/registry';
 import { createSimulation } from '../create-simulation';
 import { WorkerSimClient, type WorkerLockstepResult } from '../worker-client';
 import { ReplayRecorder, serializeReplay, type Replay } from '../../sim/replay';
-import { saveGame } from '../../storage/save';
+import { saveGame, type SaveMeta } from '../../storage/save';
 
 const AUTOSAVE_EVERY_TICKS = 200;
 
@@ -37,6 +37,32 @@ export class SimController {
   private syncingShown = false;
   private lastSnapshotRequestMs = 0;
   private readonly aiEnabled: boolean;
+  private saveMeta: SaveMeta | null = null;
+  private paused = false;
+  get isPaused(): boolean {
+    return this.paused;
+  }
+
+  setSaveMeta(meta: SaveMeta): void {
+    this.saveMeta = meta;
+  }
+
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    if (paused && this.saveMeta && !this.lockstep) void saveGame(this.state, this.saveMeta);
+  }
+
+  /** After tab foregrounding in multiplayer, aggressively catch up. */
+  resumeFromBackground(): void {
+    if (!this.lockstep) return;
+    this.lockstepStallShown = false;
+    this.syncingShown = false;
+    this.lastSnapshotRequestMs = 0;
+    this.relayTransport?.requestSnapshot();
+    if (this.worker) return;
+    this.catchUpLockstep();
+  }
+
   /** Set by the owner (Game) to snap render interpolation after a snapshot jump. */
   onResync: (() => void) | null = null;
 
@@ -133,16 +159,16 @@ export class SimController {
     else this.sim?.enqueueNow(cmds);
   }
 
-  /** Fixed-timestep tick (non-lockstep). Returns false when sim has ended. */
+  /** Fixed-timestep tick (non-lockstep). Returns false when sim has ended or is paused. */
   stepFixed(): boolean {
-    if (this.state.ended || this.lockstep) return false;
+    if (this.paused || this.state.ended || this.lockstep) return false;
     if (this.worker) return this.worker.requestStep();
     const res = this.sim!.step();
     this.onTick(res.events);
     this.onSync();
     this.markSynced();
     this.tickCounter++;
-    if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0) void saveGame(this.state);
+    if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta) void saveGame(this.state, this.saveMeta);
     return true;
   }
 
@@ -176,7 +202,7 @@ export class SimController {
           this.onSync();
           this.markSynced();
           this.tickCounter++;
-          if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0) void saveGame(this.state);
+          if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta) void saveGame(this.state, this.saveMeta);
         };
       }
       worker.initState(packState(this.state));
@@ -266,7 +292,7 @@ export class SimController {
   }
 
   autosaveOnExit(): void {
-    if (!this.lockstep) void saveGame(this.state);
+    if (!this.lockstep && this.saveMeta) void saveGame(this.state, this.saveMeta);
   }
 
   terminate(): void {

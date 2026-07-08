@@ -6,6 +6,7 @@ import { LobbyClient } from './lobby-client';
 import { LockstepClient } from './lockstep';
 import {
   connectAndJoin,
+  reconnectToMatch,
   waitForMatchStart,
   type WebSocketTransport,
 } from './ws-transport';
@@ -46,6 +47,45 @@ export async function joinMultiplayerRoom(room: string, initialLobby?: LobbyStat
   const code = room.toUpperCase();
   const wire = initialLobby ? lobbyStateToWire(initialLobby) : undefined;
   const { transport, lockstep, joined } = await connectAndJoin(relayWsUrl(), code, wire);
+  const lobby = new LobbyClient(transport);
+
+  let resolveMatchStart!: (value: { seed: number; lobbyState: LobbyState }) => void;
+  const matchStarted = new Promise<{ seed: number; lobbyState: LobbyState }>((resolve) => {
+    resolveMatchStart = resolve;
+  });
+
+  lobby.onMatchStart = (seed, state) => resolveMatchStart({ seed, lobbyState: state });
+  transport.onMatchStart = (startTick, seed, state) => {
+    void startTick;
+    resolveMatchStart({ seed, lobbyState: lobbyStateFromWire(state) });
+  };
+
+  return {
+    room: code,
+    connId: joined.connId,
+    localPlayerId: joined.playerId,
+    seed: joined.seed,
+    isHost: joined.isHost,
+    lobbyState: lobbyStateFromWire(joined.lobbyState),
+    transport,
+    lockstep,
+    lobby,
+    disconnect() {
+      transport.close();
+    },
+    waitForMatchStart() {
+      return matchStarted;
+    },
+  };
+}
+
+export async function rejoinMultiplayerRoom(
+  room: string,
+  connId: string,
+  relayUrl = relayWsUrl(),
+): Promise<MultiplayerSession> {
+  const code = room.toUpperCase();
+  const { transport, lockstep, joined } = await reconnectToMatch(relayUrl, code, connId);
   const lobby = new LobbyClient(transport);
 
   let resolveMatchStart!: (value: { seed: number; lobbyState: LobbyState }) => void;
