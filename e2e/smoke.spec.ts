@@ -27,6 +27,27 @@ test.describe('smoke', () => {
     await page.mouse.click(selectX, selectY);
     await page.mouse.click(moveX, moveY);
 
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.55);
+    await page.mouse.up({ button: 'middle' });
+
+    await page.mouse.wheel(24, -36);
+    await page.keyboard.down('d');
+    await page.waitForTimeout(120);
+    await page.keyboard.up('d');
+
+    const dragStartX = box.x + box.width * 0.35;
+    const dragStartY = box.y + box.height * 0.35;
+    const dragEndX = box.x + box.width * 0.48;
+    const dragEndY = box.y + box.height * 0.48;
+    await page.mouse.move(dragStartX, dragStartY);
+    await page.mouse.down();
+    await page.mouse.move(dragEndX, dragEndY, { steps: 4 });
+    await expect(page.locator('.box-select')).toBeVisible();
+    await page.mouse.up();
+    await expect(page.locator('.box-select')).toBeHidden();
+
     await page.waitForTimeout(800);
     expect(pageErrors, pageErrors.join('\n')).toEqual([]);
   });

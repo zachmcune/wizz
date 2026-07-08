@@ -11,14 +11,25 @@
   "sight": 190,
   "footprint": 1,
   "menuCategory": "defenses",
-  "requires": ["sanctum"],
+  "requires": [
+    "sanctum"
+  ],
   "powerUsed": 20,
   "weapon": {
     "damage": 24,
     "range": 165,
     "cooldownTicks": 16,
     "projectile": "arcane_bolt",
-    "vs": { "light": 1.1, "heavy": 0.9, "building": 0.4 }
+    "vs": {
+      "light": 1.1,
+      "heavy": 0.9,
+      "building": 0.4
+    }
   },
-  "art": { "shape": "building", "size": 30, "accent": "#d65b6b" }
+  "art": {
+    "shape": "building",
+    "size": 30,
+    "accent": "#d65b6b",
+    "sprite": "ward_turret"
+  }
 }

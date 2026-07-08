@@ -11,7 +11,14 @@
   "sight": 80,
   "footprint": 1,
   "menuCategory": "defenses",
-  "requires": ["sanctum"],
+  "requires": [
+    "sanctum"
+  ],
   "isGate": true,
-  "art": { "shape": "building", "size": 28, "accent": "#6b8cff" }
+  "art": {
+    "shape": "building",
+    "size": 28,
+    "accent": "#6b8cff",
+    "sprite": "arcane_gate"
+  }
 }

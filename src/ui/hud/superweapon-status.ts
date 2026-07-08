@@ -35,8 +35,8 @@ export class SuperweaponStatus {
       const cd = p.spellCooldowns[this.spellId] ?? 0;
       const status = firing ? 'FIRING' : cd > 0 ? fmt(cd) : 'READY';
       rows.push(
-        `<div class="sw-row"><span class="sw-swatch" style="background:${p.color}"></span>` +
-          `<span class="sw-name">${p.id}</span><span class="sw-time">${status}</span></div>`,
+        `<span class="sw-row"><span class="sw-swatch" style="background:${p.color}"></span>` +
+          `<span class="sw-name">${p.id}</span><span class="sw-time">${status}</span></span>`,
       );
     }
     if (rows.length === 0) {
@@ -44,6 +44,7 @@ export class SuperweaponStatus {
       return;
     }
     this.root.style.display = 'block';
-    this.root.innerHTML = `<div class="sw-title">Astral Lance</div>${rows.join('')}`;
+    this.root.innerHTML =
+      `<div class="sw-inner"><span class="sw-title">Astral Lance</span>${rows.join('')}</div>`;
   }
 }

@@ -11,7 +11,14 @@
   "sight": 60,
   "footprint": 1,
   "menuCategory": "defenses",
-  "requires": ["sanctum"],
+  "requires": [
+    "sanctum"
+  ],
   "isWall": true,
-  "art": { "shape": "building", "size": 26, "accent": "#8a8a9a" }
+  "art": {
+    "shape": "building",
+    "size": 26,
+    "accent": "#8a8a9a",
+    "sprite": "stone_wall"
+  }
 }

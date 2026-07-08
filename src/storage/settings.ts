@@ -7,12 +7,20 @@ export interface Settings {
   volume: number;
   muted: boolean;
   dragMode: 'pan' | 'select';
+  /** Show full building names on the map (off by default). */
+  showBuildingNames: boolean;
   /** @deprecated View mode is chosen in the match lobby; kept for URL dev override only. */
   projectionMode: ProjectionModeSetting;
 }
 
 const KEY = 'arcane:settings';
-const DEFAULTS: Settings = { volume: 0.6, muted: false, dragMode: 'select', projectionMode: 'ortho' };
+const DEFAULTS: Settings = {
+  volume: 0.6,
+  muted: false,
+  dragMode: 'select',
+  showBuildingNames: false,
+  projectionMode: 'ortho',
+};
 
 export async function loadSettings(): Promise<Settings> {
   try {

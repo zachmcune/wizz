@@ -29,6 +29,13 @@ export function channelSystem(state: GameState, ctx: StepContext): void {
     }
     e.channelTicks = 0;
     player.mana += balance.conjureManaAmount;
+    ctx.events.push({
+      type: 'manaConjured',
+      playerId: player.id,
+      amount: balance.conjureManaAmount,
+      x: e.pos.x,
+      y: e.pos.y,
+    });
     ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
   }
 }

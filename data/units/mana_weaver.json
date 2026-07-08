@@ -13,8 +13,19 @@
   "weapon": null,
   "producedBy": "attunement_spire",
   "menuCategory": "workers",
-  "requires": ["attunement_spire"],
+  "requires": [
+    "attunement_spire"
+  ],
   "canConjureMana": true,
-  "art": { "shape": "pentagon", "size": 18, "accent": "#b57fff" },
-  "sfx": { "select": "wisp_select", "move": "wisp_move", "ready": "unit_ready" }
+  "art": {
+    "shape": "pentagon",
+    "size": 18,
+    "accent": "#b57fff",
+    "sprite": "mana_weaver"
+  },
+  "sfx": {
+    "select": "wisp_select",
+    "move": "wisp_move",
+    "ready": "unit_ready"
+  }
 }

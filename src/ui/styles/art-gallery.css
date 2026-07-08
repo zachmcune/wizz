@@ -1,0 +1,146 @@
+/* Dev entity design gallery */
+.art-gallery {
+  justify-content: flex-start;
+  padding: 12px 16px 32px;
+  gap: 16px;
+}
+.art-gallery-pixi-host {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.art-gallery-header {
+  width: min(100%, 960px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.art-gallery-title {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 32px);
+  color: var(--text);
+}
+.art-gallery-sub {
+  margin: 0;
+  opacity: 0.55;
+  font-size: 13px;
+}
+.art-gallery-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.art-gallery-control-label {
+  font-size: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.art-gallery-color-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+.art-gallery-color-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.art-gallery-grid {
+  width: min(100%, 960px);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.art-gallery-section {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+.art-gallery-section:first-child {
+  margin-top: 0;
+}
+.art-gallery-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(20, 16, 32, 0.85);
+  border: 1px solid rgba(139, 108, 255, 0.25);
+}
+.art-gallery-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.art-gallery-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.art-gallery-id {
+  font-size: 11px;
+  opacity: 0.5;
+  font-family: ui-monospace, monospace;
+}
+.art-gallery-accent {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+.art-gallery-previews {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.art-gallery-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.art-gallery-preview-label {
+  font-size: 10px;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.art-gallery-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+}
+.art-gallery-frame canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.art-gallery-frame-ortho,
+.art-gallery-frame-oblique {
+  height: 72px;
+}
+.art-gallery-frame-icon {
+  height: 36px;
+}

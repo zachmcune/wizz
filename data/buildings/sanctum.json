@@ -13,5 +13,10 @@
   "requires": [],
   "isConstructionYard": true,
   "powerProduced": 20,
-  "art": { "shape": "building", "size": 88, "accent": "#6b5bd6" }
+  "art": {
+    "shape": "building",
+    "size": 88,
+    "accent": "#6b5bd6",
+    "sprite": "sanctum"
+  }
 }

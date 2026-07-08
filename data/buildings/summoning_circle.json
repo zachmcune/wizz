@@ -11,8 +11,19 @@
   "sight": 130,
   "footprint": 2,
   "menuCategory": "buildings",
-  "requires": ["sanctum"],
-  "producesUnits": ["imp_swarmling", "arcane_archer", "rift_familiar"],
+  "requires": [
+    "sanctum"
+  ],
+  "producesUnits": [
+    "imp_swarmling",
+    "arcane_archer",
+    "rift_familiar"
+  ],
   "powerUsed": 20,
-  "art": { "shape": "building", "size": 60, "accent": "#c96ad0" }
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#c96ad0",
+    "sprite": "summoning_circle"
+  }
 }

@@ -3,7 +3,7 @@ import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
 import { isAlive } from '../sim/queries';
 import type { Registry } from '../data/registry';
-import type { BuildingDef } from '../data/defs';
+import type { ArtDef, BuildingDef } from '../data/defs';
 import { isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
 import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
@@ -14,6 +14,15 @@ import { UnitOrdersPanel } from './hud/unit-orders-panel';
 import { BuildingActionsPanel } from './hud/building-actions-panel';
 import { SpellBar } from './hud/spell-bar';
 import { SuperweaponStatus } from './hud/superweapon-status';
+import { MatchSettingsScreen } from './hud/settings-screen';
+import type { Settings } from '../storage/settings';
+import type { AudioManager } from '../audio/audio';
+
+export interface HudOptions {
+  settings: Settings;
+  audio: AudioManager;
+  onSettingsChange: (settings: Settings) => void;
+}
 
 export class Hud {
   root = el('div', 'hud');
@@ -28,6 +37,7 @@ export class Hud {
   private buildConfirmBtn = el('button', 'btn confirm', 'Place');
   private buildCancelBtn = el('button', 'btn', 'Cancel');
   private result = el('div', 'result-overlay');
+  private settingsScreen: MatchSettingsScreen;
   private debugEl = el('div', 'debug-overlay');
   private hintEl = el('div', 'hint-banner');
   private debugOn = false;
@@ -44,16 +54,34 @@ export class Hud {
   private lastSelectionKey = '';
   private panelTabRow = el('div', 'panel-tab-row');
   private infoTabBtn = el('button', 'btn panel-tab', 'Info');
-  private commandTabBtn = el('button', 'btn panel-tab', 'Build & Train');
+  private commandTabBtn = el('button', 'btn panel-tab', 'Build');
+  private cmdSidebar = el('div', 'cmd-sidebar');
+  private cmdContent = el('div', 'cmd-content');
 
   onExit: (() => void) | null = null;
+
+  private syncSidebarVisibility(): void {
+    const tabsVisible = this.panelTabRow.style.display !== 'none';
+    const actionsVisible = this.buildingActions.row.style.display !== 'none';
+    this.cmdSidebar.style.display = tabsVisible || actionsVisible ? 'flex' : 'none';
+    this.cmdSidebar.parentElement?.classList.toggle('cmd-tabs-mode', tabsVisible);
+  }
 
   private setHudTab(tab: 'info' | 'command'): void {
     this.hudTab = tab;
     this.infoTabBtn.classList.toggle('active', tab === 'info');
     this.commandTabBtn.classList.toggle('active', tab === 'command');
-    this.infoPanel.setOpen(tab === 'info');
-    this.commandMenu.panel.setOpen(tab === 'command');
+    const tabsMode = this.panelTabRow.style.display !== 'none';
+    if (tabsMode) {
+      this.infoPanel.root.style.display = tab === 'info' ? '' : 'none';
+      this.commandMenu.panel.root.style.display = tab === 'command' ? '' : 'none';
+      this.infoPanel.setOpen(true);
+      this.commandMenu.panel.setOpen(true);
+    } else {
+      this.infoPanel.root.style.display = '';
+      this.infoPanel.setOpen(tab === 'info');
+      this.commandMenu.panel.setOpen(tab === 'command');
+    }
   }
 
   constructor(
@@ -62,6 +90,8 @@ export class Hud {
     private controller: InputController,
     private playerId: PlayerId,
     minimap: Minimap,
+    iconFor: (art: ArtDef, color: string) => HTMLCanvasElement,
+    hudOptions: HudOptions,
   ) {
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     const top = el('div', 'topbar');
@@ -74,14 +104,14 @@ export class Hud {
       this.debugOn = !this.debugOn;
       this.debugEl.style.display = this.debugOn ? 'block' : 'none';
     });
-    const menuBtn = el('button', 'btn menu-btn', 'Menu');
-    menuBtn.addEventListener('click', () => this.toggleMenu());
+    const settingsBtn = el('button', 'btn menu-btn', 'Settings');
+    settingsBtn.addEventListener('click', () => this.toggleSettings());
     this.spellBar = new SpellBar(registry, controller);
     this.superweaponStatus = new SuperweaponStatus(registry);
-    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, menuBtn);
+    top.append(mana, this.powerStat, this.spellBar.row, dbgBtn, settingsBtn);
 
     const selBlock = el('div', 'sel-block');
-    this.commandMenu = new CommandMenuPanel(registry, controller, false, () => this.setHudTab('command'));
+    this.commandMenu = new CommandMenuPanel(registry, controller, iconFor, false, () => this.setHudTab('command'));
     this.buildingActions = new BuildingActionsPanel(state, registry, controller);
     selBlock.append(
       this.selName,
@@ -94,22 +124,28 @@ export class Hud {
 
     this.infoTabBtn.addEventListener('click', () => this.setHudTab('info'));
     this.commandTabBtn.addEventListener('click', () => this.setHudTab('command'));
+    this.commandTabBtn.title = 'Build & Train';
     this.panelTabRow.append(this.infoTabBtn, this.commandTabBtn);
     this.panelTabRow.style.display = 'none';
 
     this.unitOrdersPanel = new UnitOrdersPanel(state, registry, controller, playerId, false);
 
-    const cmdCard = el('div', 'cmd-card hud-scroll');
-    cmdCard.append(
+    this.cmdSidebar.append(this.panelTabRow, this.buildingActions.row);
+    this.cmdContent.append(
       this.infoPanel.root,
-      this.panelTabRow,
-      this.buildingActions.row,
       this.commandMenu.panel.root,
       this.unitOrdersPanel.panel.root,
     );
+    this.cmdSidebar.style.display = 'none';
+
+    const cmdCard = el('div', 'cmd-card hud-scroll');
+    const cmdCardLayout = el('div', 'cmd-card-layout');
+    cmdCardLayout.append(this.cmdSidebar, this.cmdContent);
+    cmdCard.append(cmdCardLayout);
     const keepScroll = (e: Event) => e.stopPropagation();
     for (const node of [
       cmdCard,
+      this.cmdSidebar,
       this.spellBar.row,
       this.panelTabRow,
       ...this.commandMenu.touchRoots,
@@ -131,6 +167,13 @@ export class Hud {
     this.buildConfirm.append(this.buildConfirmLabel, this.buildConfirmBtn, this.buildCancelBtn);
     this.buildConfirm.style.display = 'none';
 
+    this.settingsScreen = new MatchSettingsScreen({
+      settings: hudOptions.settings,
+      audio: hudOptions.audio,
+      onSettingsChange: hudOptions.onSettingsChange,
+      onLeaveMatch: () => this.onExit?.(),
+    });
+
     this.root.append(
       top,
       this.superweaponStatus.root,
@@ -141,6 +184,7 @@ export class Hud {
       this.debugEl,
       this.hintEl,
       this.result,
+      this.settingsScreen.root,
     );
     this.result.style.display = 'none';
     this.debugEl.style.display = 'none';
@@ -161,8 +205,9 @@ export class Hud {
     this.debugEl.textContent = `${fps.toFixed(0)} fps · tick ${tick} · entities ${entities} · sel ${sel}`;
   }
 
-  private toggleMenu(): void {
-    if (this.onExit) this.onExit();
+  private toggleSettings(): void {
+    if (this.settingsScreen.isOpen()) this.settingsScreen.close();
+    else this.settingsScreen.open();
   }
 
   showResult(win: boolean): void {
@@ -393,6 +438,7 @@ export class Hud {
       selectionLabel,
       sel.length > 1,
     );
+    this.syncSidebarVisibility();
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';

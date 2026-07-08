@@ -40,6 +40,9 @@ export class EventBridge {
       case 'manaDeposited':
         if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
         break;
+      case 'manaConjured':
+        if (visible) this.effects.spawn('spark', ev.x, ev.y, 0xb58cff, 6);
+        break;
       case 'spellCast':
         if (visible) this.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
         break;
@@ -67,6 +70,7 @@ export class EventBridge {
       case 'damageDealt':
       case 'entityDied':
       case 'manaDeposited':
+      case 'manaConjured':
       case 'spellCast':
         return isWorldPointVisible(this.getState(), this.humanId, ev.x, ev.y, nav);
       case 'buildingComplete': {

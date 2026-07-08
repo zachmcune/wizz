@@ -125,6 +125,7 @@ export type GameEvent =
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
   | { type: 'manaChanged'; playerId: PlayerId; mana: number }
   | { type: 'manaDeposited'; playerId: PlayerId; amount: number; x: number; y: number }
+  | { type: 'manaConjured'; playerId: PlayerId; amount: number; x: number; y: number }
   | { type: 'underAttack'; playerId: PlayerId; x: number; y: number }
   | { type: 'spellCast'; playerId: PlayerId; spellId: string; x: number; y: number }
   | { type: 'superweaponLaunched'; playerId: PlayerId; x: number; y: number }

@@ -18,7 +18,7 @@ import { EffectsLayer } from './effects';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
-import { isUnitOccludedByBuilding, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
+import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -56,6 +56,24 @@ interface RenderNode {
 /** Exponential smoothing for unit/projectile display positions (per second). */
 const DISPLAY_SMOOTH_HZ = 18;
 
+/**
+ * Screen-space occlusion tuning (oblique 2.5D only). Radii/lift are fractions of the
+ * entity's visual `art.size`, matching the oblique voxel-box geometry in shape-sprite.ts.
+ */
+const OCCLUSION_BUILDING_RADIUS_FACTOR = 0.5;
+const OCCLUSION_BUILDING_LIFT_FACTOR = 0.28;
+const OCCLUSION_UNIT_RADIUS_FACTOR = 0.38;
+
+/** Minimal marker drawn over a building where a hidden own-unit stands. */
+const OCCLUSION_MARKER_RADIUS = 5;
+const OCCLUSION_MARKER_WIDTH = 2;
+const OCCLUSION_MARKER_ALPHA = 0.95;
+const OCCLUSION_MARKER_FILL_ALPHA = 0.35;
+
+interface OwnUnitBounds extends OcclusionBounds {
+  color: string;
+}
+
 export class Renderer {
   app: Application;
   camera!: Camera;
@@ -65,6 +83,7 @@ export class Renderer {
   private fogLayer = new Graphics();
   private shadowLayer = new Graphics();
   private entityLayer = new Container();
+  private selectionRingLayer = new Container();
   private labelLayer = new Container();
   private overlayLayer = new Container();
   effects = new EffectsLayer();
@@ -73,10 +92,12 @@ export class Renderer {
   private placementGhosts: Sprite[] = [];
   private overlayFillPool!: GraphicsPool;
   private overlayStrokePool!: GraphicsPool;
+  private selectionRingPool!: GraphicsPool;
   private colorByOwner = new Map<PlayerId, string>();
   private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
   private projectionMode: ProjectionMode = getProjectionMode();
+  private showBuildingNames = false;
 
   constructor(
     private registry: Registry,
@@ -96,9 +117,9 @@ export class Renderer {
   }
 
   private updateLayerSort(): void {
-    const oblique = this.isOblique();
-    this.entityLayer.sortableChildren = oblique;
-    this.labelLayer.sortableChildren = oblique;
+    this.entityLayer.sortableChildren = true;
+    this.selectionRingLayer.sortableChildren = true;
+    this.labelLayer.sortableChildren = this.isOblique();
   }
 
   private updateEffectsPositionFn(): void {
@@ -118,11 +139,13 @@ export class Renderer {
 
     this.overlayFillPool = new GraphicsPool(this.overlayLayer);
     this.overlayStrokePool = new GraphicsPool(this.overlayLayer);
+    this.selectionRingPool = new GraphicsPool(this.selectionRingLayer);
     this.world.addChild(
       this.terrainLayer,
       this.fogLayer,
       this.shadowLayer,
       this.entityLayer,
+      this.selectionRingLayer,
       this.labelLayer,
       this.effects.container,
       this.overlayLayer,
@@ -155,6 +178,28 @@ export class Renderer {
     return this.projectionMode;
   }
 
+  setShowBuildingNames(show: boolean): void {
+    this.showBuildingNames = show;
+  }
+
+  refreshBuildingLabels(state: GameState): void {
+    for (const [id, n] of this.nodes) {
+      const e = state.entities.get(id);
+      if (e) this.ensureBuildingLabel(n, e);
+    }
+    for (const [id, n] of this.ghostNodes) {
+      if (n.label) {
+        n.label.destroy();
+        n.label = undefined;
+      }
+      this.ghostNodes.delete(id);
+    }
+  }
+
+  private buildingLabelText(defId: string): string {
+    return this.registry.building(defId).name;
+  }
+
   private applySpriteAnchors(): void {
     const oblique = this.isOblique();
     for (const n of this.nodes.values()) {
@@ -178,6 +223,7 @@ export class Renderer {
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
+    this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
     this.shadowLayer.clear();
     this.effects.reset();
@@ -219,11 +265,6 @@ export class Renderer {
     return projectionSortKey({ x: worldX, y: worldY }, this.camera.view(), h);
   }
 
-  private buildingOccluderRadius(defId: string, entityRadius: number): number {
-    const footprint = this.registry.building(defId).footprint;
-    return Math.max(entityRadius * 1.45, (footprint * TILE) / 2);
-  }
-
   private artOf(e: Entity): { art: ArtDef; color: string } {
     if (e.kind === 'unit') return { art: this.registry.unit(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
     if (e.kind === 'building') {
@@ -255,16 +296,23 @@ export class Renderer {
       return;
     }
     if (e.kind === 'building') {
-      const b = this.registry.building(e.defId);
+      if (!this.showBuildingNames) {
+        if (n.label) {
+          n.label.destroy();
+          n.label = undefined;
+        }
+        return;
+      }
+      const labelText = this.buildingLabelText(e.defId);
       if (!n.label) {
         n.label = new Text({
-          text: b.shortLabel,
-          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#ffffff' },
+          text: labelText,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#ffffff' },
         });
         n.label.anchor.set(0.5, 0);
         this.labelLayer.addChild(n.label);
-      } else if (n.label.text !== b.shortLabel) {
-        n.label.text = b.shortLabel;
+      } else if (n.label.text !== labelText) {
+        n.label.text = labelText;
       }
       return;
     }
@@ -343,12 +391,14 @@ export class Renderer {
 
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
+    this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
     this.shadowLayer.clear();
     if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
 
-    const buildingOccluders: OcclusionBounds[] = [];
-    const friendlyUnits: Array<{ pos: { x: number; y: number }; radius: number; depth: number; color: number }> = [];
+    const oblique = this.isOblique();
+    const buildingBounds: OcclusionBounds[] = [];
+    const ownUnits: OwnUnitBounds[] = [];
 
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
@@ -383,8 +433,31 @@ export class Renderer {
       }
 
       const pos = this.drawPos(x, y);
+      const depth = this.sortKeyAt(x, y);
       n.sprite.position.set(pos.x, pos.y);
-      if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(x, y);
+      n.sprite.zIndex = depth;
+
+      if (oblique) {
+        if (e.kind === 'building') {
+          const size = this.artOf(e).art.size;
+          buildingBounds.push({
+            x: pos.x,
+            y: pos.y - size * OCCLUSION_BUILDING_LIFT_FACTOR,
+            radius: size * OCCLUSION_BUILDING_RADIUS_FACTOR,
+            depth,
+          });
+        } else if (e.kind === 'unit' && e.owner === this.viewerId) {
+          const size = this.artOf(e).art.size;
+          ownUnits.push({
+            x: pos.x,
+            y: pos.y,
+            radius: size * OCCLUSION_UNIT_RADIUS_FACTOR,
+            depth,
+            color: this.colorByOwner.get(e.owner) ?? '#ffffff',
+          });
+        }
+      }
+
       if (!this.isOblique() && (e.kind === 'unit' || e.kind === 'projectile')) {
         n.sprite.rotation = n.facing + Math.PI / 2;
       } else if (this.isOblique()) {
@@ -428,7 +501,7 @@ export class Renderer {
         n.sprite.alpha = 1;
       }
 
-      if (selected.has(id)) this.strokeRing(pos.x, pos.y, e.radius + 6, 2, 0xffffff, 0.9);
+      if (selected.has(id)) this.strokeSelectionRing(x, y, e.radius + 6, 2, 0xffffff, 0.9, depth);
 
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
         const hp = this.positionOverlayAt(x, y, -e.radius - 8);
@@ -446,30 +519,12 @@ export class Renderer {
         const dot = this.positionOverlayAt(x, y, -e.radius - 4);
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
-
-      const depth = this.sortKeyAt(x, y);
-      if (e.kind === 'building') {
-        buildingOccluders.push({
-          x: pos.x,
-          y: pos.y,
-          radius: this.buildingOccluderRadius(e.defId, e.radius),
-          depth,
-        });
-      } else if (e.kind === 'unit' && e.owner === this.viewerId) {
-        friendlyUnits.push({
-          pos,
-          radius: e.radius + 2,
-          depth,
-          color: parseOwnerColor(this.colorByOwner.get(e.owner) ?? '#ffffff'),
-        });
-      }
     }
 
-    for (const unit of friendlyUnits) {
-      if (!isUnitOccludedByBuilding({ x: unit.pos.x, y: unit.pos.y, radius: unit.radius, depth: unit.depth }, buildingOccluders)) {
-        continue;
+    if (oblique) {
+      for (const u of filterOccludedUnits(ownUnits, buildingBounds)) {
+        this.drawOccludedUnitMarker(u.x, u.y, u.color);
       }
-      this.strokeRing(unit.pos.x, unit.pos.y, unit.radius + 5, 2.5, unit.color, 0.92);
     }
 
     if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);
@@ -530,6 +585,20 @@ export class Renderer {
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
   }
 
+  /**
+   * Minimal on-top hint for an own unit hidden behind a building (oblique only).
+   * Drawn via the overlay pools, which sit above the entity layer, so it reads over the
+   * occluding building without any zIndex juggling.
+   */
+  private drawOccludedUnitMarker(x: number, y: number, colorHex: string): void {
+    const color = parseOwnerColor(colorHex);
+    this.fillDot(x, y, OCCLUSION_MARKER_RADIUS - 1, color, OCCLUSION_MARKER_FILL_ALPHA);
+    this.overlayStrokePool
+      .acquire()
+      .circle(x, y, OCCLUSION_MARKER_RADIUS)
+      .stroke({ width: OCCLUSION_MARKER_WIDTH, color, alpha: OCCLUSION_MARKER_ALPHA });
+  }
+
   private drawNodeReserve(x: number, y: number, e: ResourceNodeEntity): void {
     const max = e.amountMax;
     const frac = Math.max(0, Math.min(1, e.amount / max));
@@ -565,17 +634,35 @@ export class Renderer {
         sprite.anchor.set(0.5, 0.5);
         sprite.tint = 0xaaaaaa;
         this.entityLayer.addChild(sprite);
-        const label = new Text({
-          text: b.shortLabel,
-          style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '700', fill: '#aaaaaa' },
-        });
-        label.anchor.set(0.5, 0);
-        this.labelLayer.addChild(label);
+        let label: Text | undefined;
+        if (this.showBuildingNames) {
+          label = new Text({
+            text: this.buildingLabelText(known.defId),
+            style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#aaaaaa' },
+          });
+          label.anchor.set(0.5, 0);
+          this.labelLayer.addChild(label);
+        }
         n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, dispX: known.x, dispY: known.y, facing: 0 };
         this.ghostNodes.set(known.id, n);
       } else {
         n.sprite.texture = this.provider.texture(b.art, color);
-        if (n.label && n.label.text !== b.shortLabel) n.label.text = b.shortLabel;
+        if (this.showBuildingNames) {
+          const labelText = this.buildingLabelText(known.defId);
+          if (!n.label) {
+            n.label = new Text({
+              text: labelText,
+              style: { fontFamily: 'system-ui, sans-serif', fontSize: 9, fontWeight: '700', fill: '#aaaaaa' },
+            });
+            n.label.anchor.set(0.5, 0);
+            this.labelLayer.addChild(n.label);
+          } else if (n.label.text !== labelText) {
+            n.label.text = labelText;
+          }
+        } else if (n.label) {
+          n.label.destroy();
+          n.label = undefined;
+        }
       }
 
       const pos = this.drawPos(known.x, known.y);
@@ -583,15 +670,17 @@ export class Renderer {
       if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
-      if (this.isOblique()) {
-        const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
-        n.label!.position.set(lp.x, lp.y);
-        n.label!.zIndex = n.sprite.zIndex + 0.01;
-      } else {
-        n.label!.position.set(known.x, known.y + known.radius + 4);
+      if (n.label) {
+        if (this.isOblique()) {
+          const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
+          n.label.position.set(lp.x, lp.y);
+          n.label.zIndex = n.sprite.zIndex + 0.01;
+        } else {
+          n.label.position.set(known.x, known.y + known.radius + 4);
+        }
+        n.label.alpha = 0.55;
+        n.label.visible = true;
       }
-      n.label!.alpha = 0.55;
-      n.label!.visible = true;
 
       if (known.hp < known.maxHp) {
         if (this.isOblique()) {
@@ -660,6 +749,23 @@ export class Renderer {
     if (frac > 0) this.fillRect(x - w / 2, y, w * frac, 4, col);
   }
 
+  private strokeSelectionRing(
+    worldX: number,
+    worldY: number,
+    radius: number,
+    width: number,
+    color: number,
+    alpha: number,
+    depth: number,
+  ): void {
+    const pos = this.drawPos(worldX, worldY);
+    const g = this.selectionRingPool.acquire();
+    // Slightly above the entity so the ring isn't clipped by its own sprite, but still
+    // behind anything drawn in front (higher depth).
+    g.zIndex = depth + 0.001;
+    g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
+  }
+
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {
     const g = this.overlayStrokePool.acquire();
     const full = start === 0 && end >= Math.PI * 2 - 0.001;
@@ -714,5 +820,13 @@ export class Renderer {
 
   makeTexture(art: ArtDef, color: string): Texture {
     return this.provider.texture(art, color);
+  }
+
+  iconCanvas(art: ArtDef, color: string): HTMLCanvasElement {
+    // Build/train menu previews mirror the match's projection: the flat shape in Classic 2D,
+    // the voxel box in oblique 2.5D. Using the in-world texture keeps the preview identical to
+    // how the unit/building will actually look once placed.
+    const tex = this.provider.texture(art, color);
+    return this.app.renderer.extract.canvas(tex) as unknown as HTMLCanvasElement;
   }
 }

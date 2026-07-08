@@ -16,7 +16,7 @@ export class BuildingActionsPanel {
   readonly row = el('div', 'card-row building-row');
   readonly sellBtn = el('button', 'btn', 'Sell');
   readonly repairBtn = el('button', 'btn', 'Repair');
-  readonly rallyBtn = el('button', 'btn', 'Set Rally');
+  readonly rallyBtn = el('button', 'btn', 'Rally');
   readonly launchBtn = el('button', 'btn superweapon-launch-btn');
   private launchIconGray = el('span', 'sw-launch-icon sw-launch-gray');
   private launchIconColor = el('span', 'sw-launch-icon sw-launch-color');
@@ -128,11 +128,14 @@ export class BuildingActionsPanel {
     this.rallyBtn.style.display = canRally ? '' : 'none';
     this.rallyBtn.classList.toggle('active', inRallyMode);
     if (inRallyMode) {
-      this.rallyBtn.textContent = 'Cancel Rally';
+      this.rallyBtn.textContent = 'Cancel';
+      this.rallyBtn.title = 'Cancel rally placement';
     } else if (canRally && building?.rally) {
-      this.rallyBtn.textContent = 'Move Rally';
+      this.rallyBtn.textContent = 'Rally';
+      this.rallyBtn.title = 'Move rally point';
     } else {
-      this.rallyBtn.textContent = 'Set Rally';
+      this.rallyBtn.textContent = 'Rally';
+      this.rallyBtn.title = 'Set rally point';
     }
   }
 }

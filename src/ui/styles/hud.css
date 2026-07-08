@@ -12,7 +12,8 @@
 .hud .build-confirm,
 .hud .spell-confirm,
 .hud .result-card,
-.hud .menu-screen {
+.hud .menu-screen,
+.hud .settings-card {
   pointer-events: auto;
 }
 /* Pass clicks through empty cmd-card area; only panels capture input */
@@ -195,6 +196,9 @@
   border-left: 4px solid var(--accent);
   min-width: 0;
   flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .build-btn.unaffordable {
   opacity: 0.5;
@@ -213,6 +217,22 @@
 .produce-btn {
   min-width: 0;
   flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .category-chips {
   margin-bottom: 4px;
@@ -292,20 +312,67 @@
 }
 .panel-tab-row {
   display: none;
-  gap: 4px;
-  padding: 2px 4px 4px;
+  flex-direction: column;
+  gap: 3px;
 }
 .panel-tab {
-  flex: 1 1 0;
-  min-height: 36px;
-  font-size: 11px;
+  flex: 0 0 auto;
+  min-height: 26px;
+  min-width: 44px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 6px 8px;
+  padding: 3px 5px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
 }
 .panel-tab.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
   background: rgba(127, 227, 255, 0.1);
+}
+.cmd-card-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+  min-width: 0;
+}
+.cmd-sidebar {
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.cmd-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cmd-tabs-mode .cmd-content .panel-head {
+  display: none;
+}
+.cmd-content > .panel {
+  flex-shrink: 0;
+}
+.building-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.building-row .btn {
+  min-height: 26px;
+  min-width: 44px;
+  font-size: 9px;
+  padding: 3px 5px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
 }
 .command-row {
   max-height: min(38vh, 220px);
@@ -313,6 +380,14 @@
   overscroll-behavior: contain;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+}
+/* Buttons default to touch-action: manipulation (body), which blocks vertical
+   pan scrolling inside overflow containers on mobile. */
+.hud-scroll .build-btn,
+.hud-scroll .produce-btn,
+.command-row .build-btn,
+.command-row .produce-btn {
+  touch-action: pan-y;
 }
 .btn:active {
   transform: translateY(1px);
@@ -363,9 +438,9 @@
   position: absolute;
   top: calc(var(--topbar-h) + var(--hud-gap));
   right: var(--hud-gap);
-  width: min(42vw, 248px);
+  width: min(46vw, 272px);
   height: auto;
-  max-height: calc(100% - var(--topbar-h) - var(--hud-gap) * 2);
+  max-height: calc(var(--app-h) - var(--topbar-h) - var(--hud-gap) * 2);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -377,6 +452,10 @@
   touch-action: pan-y;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+.cmd-card > .cmd-card-layout {
+  min-height: 0;
+  min-width: 0;
 }
 .cmd-card > .panel {
   flex-shrink: 0;
@@ -456,32 +535,16 @@
 }
 .queue-icon {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
-  background: var(--accent, #7fe3ff);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.queue-icon.shape-circle {
-  border-radius: 50%;
-}
-.queue-icon.shape-square {
-  border-radius: 2px;
-}
-.queue-icon.shape-triangle {
-  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  border: none;
-  background: var(--accent, #ff8a5c);
-}
-.queue-icon.shape-diamond {
-  transform: rotate(45deg);
-  border-radius: 1px;
-  width: 11px;
-  height: 11px;
-  margin: 0 2px;
-}
-.queue-icon.shape-hexagon {
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  border: none;
+.queue-icon canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .queue-meta {
   flex: 1;
@@ -609,7 +672,7 @@
   border-radius: 10px;
   padding: 6px 10px;
   z-index: 13;
-  max-width: calc(100% - min(42vw, 248px) - var(--hud-gap) * 4);
+  max-width: calc(100% - min(46vw, 272px) - var(--hud-gap) * 4);
 }
 .build-confirm .btn {
   min-width: 64px;
@@ -658,42 +721,108 @@
   margin: 0;
 }
 
+.settings-screen {
+  background: rgba(6, 5, 12, 0.72);
+  z-index: 25;
+}
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(88vw, 340px);
+  padding: 18px 20px;
+  background: rgba(10, 8, 18, 0.92);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.settings-label {
+  flex: 1;
+}
+.settings-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.settings-actions .btn {
+  width: 100%;
+}
+.settings-leave {
+  background: rgba(255, 93, 93, 0.12);
+  border-color: rgba(255, 93, 93, 0.45);
+  color: #ff9a9a;
+}
+
 .superweapon-status {
-  position: fixed;
-  top: 52px;
+  position: absolute;
+  top: calc(var(--topbar-h) + var(--hud-gap));
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  padding: 6px 12px;
-  background: rgba(10, 8, 18, 0.88);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(10, 8, 18, 0.72);
+  border: 1px solid rgba(58, 51, 88, 0.55);
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.2;
   pointer-events: none;
+  white-space: nowrap;
+}
+.superweapon-status .sw-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .superweapon-status .sw-title {
   font-weight: 600;
-  text-align: center;
-  margin-bottom: 4px;
   color: #9fdcff;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  opacity: 0.9;
 }
 .superweapon-status .sw-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  line-height: 1.4;
+  gap: 3px;
 }
 .superweapon-status .sw-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 .superweapon-status .sw-name {
-  min-width: 56px;
+  font-size: 9px;
+  opacity: 0.85;
 }
 .superweapon-status .sw-time {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  font-size: 9px;
 }
 

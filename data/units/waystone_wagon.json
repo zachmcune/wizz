@@ -13,9 +13,21 @@
   "weapon": null,
   "producedBy": "golem_forge",
   "menuCategory": "large_troops",
-  "requires": ["ley_conduit", "golem_forge"],
+  "requires": [
+    "ley_conduit",
+    "golem_forge"
+  ],
   "deploysAs": "waystone_camp",
   "deployTime": 12,
-  "art": { "shape": "hexagon", "size": 28, "accent": "#6b5bd6" },
-  "sfx": { "select": "behemoth_select", "move": "behemoth_move", "ready": "unit_ready" }
+  "art": {
+    "shape": "hexagon",
+    "size": 28,
+    "accent": "#6b5bd6",
+    "sprite": "waystone_wagon"
+  },
+  "sfx": {
+    "select": "behemoth_select",
+    "move": "behemoth_move",
+    "ready": "unit_ready"
+  }
 }

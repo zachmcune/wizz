@@ -4,7 +4,7 @@ import type { MatchConfig } from '../sim/types';
 
 const DEFAULT_BALANCE: BalanceData = {
   startingMana: 1500,
-  siphonPerSecond: 40,
+  siphonPerSecond: 25,
   manaNodeCapacity: 5000,
   sellRefundRatio: 0.5,
   repairManaPerHp: 0.05,

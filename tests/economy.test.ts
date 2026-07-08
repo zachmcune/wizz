@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
-import { initMatch } from '../src/sim/factory';
+import { initMatch, spawnEntity, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
-import { expectBuilding } from './entity-helpers';
+import { expectBuilding, expectUnit } from './entity-helpers';
 
 const reg = getRegistry();
 
@@ -96,5 +96,38 @@ describe('economy & production (data-driven)', () => {
     const progress = circle.productionQueue?.[0]?.progress ?? 0;
     expect(progress).toBeGreaterThan(0);
     expect(progress).toBeLessThan(40);
+  });
+
+  it('spawns trained units in separate collision slots', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+    const human = state.players.find((p) => p.id === 'player0')!;
+    const sanctum = expectBuilding(ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!);
+    const circle = expectBuilding(spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum.pos.x + 160, sanctum.pos.y));
+    unlockTech(state, human.id, 'summoning_circle');
+    human.mana = 9999;
+
+    sim.enqueueNow([
+      { type: 'produce', playerId: human.id, buildingId: circle.id, defId: 'imp_swarmling' },
+      { type: 'produce', playerId: human.id, buildingId: circle.id, defId: 'imp_swarmling' },
+      { type: 'produce', playerId: human.id, buildingId: circle.id, defId: 'imp_swarmling' },
+      { type: 'produce', playerId: human.id, buildingId: circle.id, defId: 'imp_swarmling' },
+    ]);
+
+    for (let i = 0; i < reg.unit('imp_swarmling').buildTime * 20 * 4 + 10; i++) sim.step();
+
+    const imps = ownedBy(state, human.id)
+      .filter((e) => e.defId === 'imp_swarmling')
+      .map((e) => expectUnit(e));
+    expect(imps.length).toBe(4);
+    for (let i = 0; i < imps.length; i++) {
+      for (let j = i + 1; j < imps.length; j++) {
+        const a = imps[i]!;
+        const b = imps[j]!;
+        const d = Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y);
+        expect(d).toBeGreaterThanOrEqual(a.radius + b.radius);
+      }
+    }
   });
 });
