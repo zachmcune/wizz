@@ -89,6 +89,19 @@
 .lobby-toggle input:disabled + .lobby-toggle-label {
   opacity: 0.55;
 }
+.lobby-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.lobby-option-detail {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.72;
+}
 .lobby-view-warning {
   width: 100%;
   margin: 0;

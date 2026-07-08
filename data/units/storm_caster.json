@@ -3,7 +3,7 @@
   "name": "Storm Caster",
   "kind": "unit",
   "role": "aoe_ranged",
-  "cost": 500,
+  "cost": 700,
   "buildTime": 12,
   "hp": 160,
   "armor": "light",

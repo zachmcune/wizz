@@ -3,6 +3,7 @@ import { el } from './dom';
 import type { Registry } from '../data/registry';
 import type { LobbyClient } from '../net/lobby-client';
 import { validateLobby } from '../lobby/build-config';
+import { ECONOMY_PACING_OPTIONS, economyPacingDetail, type EconomyPacing } from '../data/economy-pacing';
 import { getLobbyTemplates } from '../lobby/templates';
 import { TEAM_LABELS, teamLabelDisplay } from '../lobby/teams';
 import type { AiDifficulty, LobbyMode, LobbySlot, LobbyState, SlotId, SlotKind } from '../lobby/types';
@@ -40,6 +41,8 @@ export class MatchLobby {
   private templateSelect!: HTMLSelectElement;
   private deadSpectatorToggle!: HTMLInputElement;
   private oneSuperweaponToggle!: HTMLInputElement;
+  private economyPacingSelect!: HTMLSelectElement;
+  private economyPacingDetail!: HTMLParagraphElement;
   private projectionSelect!: HTMLSelectElement;
   private projectionWarning!: HTMLParagraphElement;
   private roomEl: HTMLElement | null = null;
@@ -163,6 +166,25 @@ export class MatchLobby {
       el('span', 'lobby-toggle-label', 'One superweapon per player'),
     );
     optionsRow.appendChild(superweaponLabel);
+
+    const pacingField = el('div', 'lobby-field');
+    pacingField.append(el('label', 'lobby-field-label', 'Economy pacing'));
+    this.economyPacingSelect = el('select', 'lobby-select') as HTMLSelectElement;
+    for (const option of ECONOMY_PACING_OPTIONS) {
+      const opt = el('option', undefined, option.label) as HTMLOptionElement;
+      opt.value = option.id;
+      this.economyPacingSelect.appendChild(opt);
+    }
+    this.economyPacingSelect.addEventListener('change', () => {
+      this.state.economyPacing = this.economyPacingSelect.value as EconomyPacing;
+      this.updateEconomyPacingDetail();
+      this.pushUpdate();
+      this.refresh();
+    });
+    pacingField.appendChild(this.economyPacingSelect);
+    this.economyPacingDetail = el('p', 'lobby-option-detail');
+    pacingField.appendChild(this.economyPacingDetail);
+    optionsRow.appendChild(pacingField);
 
     if (this.opts.room) {
       this.roomEl = el('div', 'lobby-room');
@@ -431,6 +453,11 @@ export class MatchLobby {
     this.refresh();
   }
 
+  private updateEconomyPacingDetail(): void {
+    const pacing = (this.state.economyPacing ?? 'standard') as EconomyPacing;
+    this.economyPacingDetail.textContent = economyPacingDetail(pacing);
+  }
+
   private refresh(): void {
     this.mapSelect.value = this.state.mapId;
     this.factionSelect.value = this.state.factionId;
@@ -441,6 +468,9 @@ export class MatchLobby {
     this.deadSpectatorToggle.disabled = this.opts.mode === 'guest';
     this.oneSuperweaponToggle.checked = this.state.oneSuperweaponPerPlayer ?? true;
     this.oneSuperweaponToggle.disabled = this.opts.mode === 'guest';
+    this.economyPacingSelect.value = this.state.economyPacing ?? 'standard';
+    this.economyPacingSelect.disabled = this.opts.mode === 'guest';
+    this.updateEconomyPacingDetail();
     for (let i = 0; i < 4; i++) {
       this.renderSlotPanel(this.slotEls[i]!, this.state.slots[i]!, i);
     }

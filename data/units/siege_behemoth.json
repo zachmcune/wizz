@@ -3,7 +3,7 @@
   "name": "Siege Behemoth",
   "kind": "unit",
   "role": "siege",
-  "cost": 700,
+  "cost": 980,
   "buildTime": 18,
   "hp": 500,
   "armor": "heavy",

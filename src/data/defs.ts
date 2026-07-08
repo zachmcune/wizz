@@ -140,6 +140,7 @@ export interface BalanceData {
   startingMana: number;
   siphonPerSecond: number;
   manaNodeCapacity: number;
+  vaultSiphonMultiplier: number;
   sellRefundRatio: number;
   repairManaPerHp: number;
   repairHpPerTick: number;

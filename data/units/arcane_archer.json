@@ -3,7 +3,7 @@
   "name": "Arcane Archer",
   "kind": "unit",
   "role": "light_ranged",
-  "cost": 150,
+  "cost": 210,
   "buildTime": 6,
   "hp": 70,
   "armor": "light",

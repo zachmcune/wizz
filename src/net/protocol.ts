@@ -19,6 +19,7 @@ export interface LobbyStateWire {
   slots: LobbySlotWire[];
   deadSpectatorReveal?: boolean;
   oneSuperweaponPerPlayer?: boolean;
+  economyPacing?: 'standard' | 'tight';
   /** Classic 2D (ortho) or oblique 2.5D — locked when the match starts. */
   projectionMode?: 'ortho' | 'oblique';
 }

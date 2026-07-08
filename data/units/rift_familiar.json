@@ -3,7 +3,7 @@
   "name": "Rift Familiar",
   "kind": "unit",
   "role": "fast_scout",
-  "cost": 90,
+  "cost": 125,
   "buildTime": 4,
   "hp": 60,
   "armor": "light",

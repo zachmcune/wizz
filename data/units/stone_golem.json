@@ -3,7 +3,7 @@
   "name": "Stone Golem",
   "kind": "unit",
   "role": "heavy_melee",
-  "cost": 400,
+  "cost": 560,
   "buildTime": 14,
   "hp": 600,
   "armor": "heavy",

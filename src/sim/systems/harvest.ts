@@ -87,7 +87,11 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     const d = moveToward(e, node.pos.x, node.pos.y, udef.speed, ctx, state);
     if (d <= node.radius + e.radius + 4) {
       const room = e.carryMax - carry;
-      const siphonPerSec = ctx.services.registry.balance.siphonPerSecond;
+      const player = state.players.find((p) => p.id === e.owner)!;
+      const vaultBonus = player.unlockedTech.includes('resonance_vault')
+        ? ctx.services.registry.balance.vaultSiphonMultiplier
+        : 1;
+      const siphonPerSec = ctx.services.registry.balance.siphonPerSecond * vaultBonus;
       const take = Math.min(siphonPerSec / TICK_HZ, room, node.amount);
       e.carry = carry + take;
       node.amount -= take;

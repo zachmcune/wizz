@@ -2,6 +2,7 @@
 import { TILE, secondsToTicks } from '../core/constants';
 import type { UnitDef, BuildingDef } from '../data/defs';
 import type { Registry } from '../data/registry';
+import { registryForPacing } from '../data/economy-pacing';
 import { NavGrid } from './nav-grid';
 import { createServices, type SimServices, type StepContext } from './context';
 import { placeBuildingNav, clearBuildingNav } from './building-nav';
@@ -123,9 +124,10 @@ export interface InitializedMatch {
 export function initMatch(registry: Registry, config: MatchConfig): InitializedMatch {
   const map = registry.map(config.mapId);
   const nav = new NavGrid(map);
-  const services = createServices(registry, nav);
+  const pacedRegistry = registryForPacing(registry, config.economyPacing ?? 'standard');
+  const services = createServices(pacedRegistry, nav);
 
-  const players = config.players.map((c) => makePlayer(c, registry.balance.startingMana, map.tileW * map.tileH));
+  const players = config.players.map((c) => makePlayer(c, pacedRegistry.balance.startingMana, map.tileW * map.tileH));
   const relations: Record<PlayerId, Record<PlayerId, Relation>> = {};
   for (const a of players) {
     const row: Record<PlayerId, Relation> = {};
@@ -149,7 +151,7 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
     oneSuperweaponPerPlayer: config.oneSuperweaponPerPlayer ?? true,
   };
 
-  const nodeCap = registry.balance.manaNodeCapacity;
+  const nodeCap = pacedRegistry.balance.manaNodeCapacity;
   for (const node of map.manaNodes) {
     const id = state.nextEntityId++;
     const amount = Math.min(node.amount, nodeCap);

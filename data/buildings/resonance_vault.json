@@ -1,0 +1,28 @@
+{
+  "id": "resonance_vault",
+  "name": "Resonance Vault",
+  "shortLabel": "VAULT",
+  "description": "Upgrades your mana economy. Boosts harvester siphon rate and trains Mana Weavers.",
+  "kind": "building",
+  "cost": 1100,
+  "buildTime": 14,
+  "hp": 1000,
+  "armor": "building",
+  "sight": 130,
+  "footprint": 2,
+  "menuCategory": "advanced",
+  "requires": [
+    "attunement_spire",
+    "ley_conduit"
+  ],
+  "powerUsed": 20,
+  "producesUnits": [
+    "mana_weaver"
+  ],
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#9b6fd4",
+    "sprite": "attunement_spire"
+  }
+}
