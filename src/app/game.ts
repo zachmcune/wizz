@@ -15,6 +15,7 @@ import { ZoomSlider } from '../ui/zoom-slider';
 import type { AudioManager } from '../audio/audio';
 import type { ProjectionMode } from '../core/projection';
 import { setProjectionMode } from '../core/projection';
+import { defaultSaveMeta, saveGame, type SaveMeta } from '../storage/save';
 import type { Settings } from '../storage/settings';
 import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
@@ -70,10 +71,16 @@ export class Game {
   private readonly useWorker: boolean;
   private readonly deadSpectatorReveal: boolean;
   private readonly matchProjectionMode: ProjectionMode;
+  private saveMeta: SaveMeta;
+  private startPaused: boolean;
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
     initViewport();
     this.renderer.handleResume();
+    if (this.lockstep) {
+      this.simCtrl?.resumeFromBackground();
+      this.renderer.snapDisplay();
+    }
   };
 
   constructor(
@@ -93,6 +100,8 @@ export class Game {
       matchProjectionMode?: ProjectionMode;
       onDesync?: (tick: number, peers: string[], replay: Replay) => void;
       relayTransport?: WebSocketTransport;
+      saveMeta?: SaveMeta;
+      startPaused?: boolean;
     },
   ) {
     this.lockstep = opts?.lockstep ?? null;
@@ -101,6 +110,15 @@ export class Game {
     this.relayTransport = opts?.relayTransport ?? null;
     this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
     this.matchProjectionMode = opts?.matchProjectionMode ?? 'ortho';
+    this.startPaused = opts?.startPaused ?? false;
+    this.saveMeta =
+      opts?.saveMeta ??
+      defaultSaveMeta(
+        opts?.localPlayerId ??
+          state.players.find((p) => p.controller === 'human')?.id ??
+          state.players[0]!.id,
+        this.matchProjectionMode,
+      );
     const wantWorker = opts?.useWorker ?? workerSupported();
     // The sim runs in a Web Worker in both solo and multiplayer so heavy tick work never
     // competes with rendering — critical for smooth catch-up on weaker phones.
@@ -148,6 +166,8 @@ export class Game {
       this.renderer.syncTick(this.state);
       this.renderer.snapDisplay();
     };
+    this.simCtrl.setSaveMeta(this.saveMeta);
+    if (this.startPaused) this.setPaused(true);
 
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
@@ -198,6 +218,12 @@ export class Game {
           this.renderer.setShowBuildingNames(s.showBuildingNames);
           this.renderer.refreshBuildingLabels(this.state);
         },
+        soloPause: this.lockstep
+          ? null
+          : {
+              isPaused: () => this.simCtrl.isPaused,
+              onToggle: () => this.setPaused(!this.simCtrl.isPaused),
+            },
       },
     );
     this.hud.onExit = () => this.exit();
@@ -205,6 +231,12 @@ export class Game {
     if (this.relayTransport) {
       this.relayTransport.onError = (message) => {
         if (!this.disposed) this.hud.showHint(`Disconnected — ${message}`);
+      };
+      this.relayTransport.onReconnect = () => {
+        if (this.disposed) return;
+        this.hud.showHint('Reconnected — syncing match');
+        this.simCtrl.resumeFromBackground();
+        this.renderer.snapDisplay();
       };
     }
     this.controller.onHarvestNoRefinery = () => {
@@ -294,6 +326,15 @@ export class Game {
     );
   }
 
+  private setPaused(paused: boolean): void {
+    this.saveMeta = { ...this.saveMeta, paused };
+    this.simCtrl.setSaveMeta(this.saveMeta);
+    this.simCtrl.setPaused(paused);
+    this.loop.setPaused(paused);
+    this.hud.setPaused(paused);
+    if (!paused) void saveGame(this.state, this.saveMeta);
+  }
+
   private frame(_loopAlpha: number): void {
     const now = performance.now();
     const dt = this.lastFrameTime ? now - this.lastFrameTime : 16;
@@ -301,6 +342,11 @@ export class Game {
       this.fps = this.fps * 0.9 + (1000 / dt) * 0.1;
     }
     this.lastFrameTime = now;
+
+    if (this.simCtrl.isPaused) {
+      this.hud.update();
+      return;
+    }
 
     if (this.lockstep) this.simCtrl.drainLockstep((msg) => this.hud.showHint(msg));
 
