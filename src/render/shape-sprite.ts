@@ -321,6 +321,55 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
     g.poly(pts).fill(fill).stroke({ width: 2, color: OUTLINE });
     GLYPHS.arcane_nexus!(g, r, accent);
   },
+  arcane_bunker: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    g.roundRect(-r * 0.95, -r * 0.22, r * 1.9, r * 0.44, r * 0.06).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(-r * 0.95, -r * 0.35, r * 0.24, r * 0.14, 2).fill(shade(fillN, 0.72)).stroke({ width: 1.5, color: OUTLINE });
+    g.roundRect(r * 0.71, -r * 0.35, r * 0.24, r * 0.14, 2).fill(shade(fillN, 0.72)).stroke({ width: 1.5, color: OUTLINE });
+    for (let i = -1; i <= 1; i++) {
+      g.rect(i * r * 0.32 - r * 0.06, -r * 0.06, r * 0.12, r * 0.14).fill(accent);
+    }
+  },
+  frost_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    g.roundRect(-r * 0.42, r * 0.38, r * 0.84, r * 0.28, r * 0.06).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.95, r * 0.26, -r * 0.32, r * 0.16, r * 0.22, -r * 0.16, r * 0.22, -r * 0.26, -r * 0.32])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    GLYPHS.frost_spire!(g, r, accent);
+  },
+  inferno_beacon: (g, size, fill, accent) => {
+    const r = size / 2;
+    g.roundRect(-r * 0.58, r * 0.18, r * 1.16, r * 0.42, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.rect(-r * 0.14, -r * 0.52, r * 0.28, r * 0.72).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.circle(0, -r * 0.72, r * 0.26).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.circle(0, -r * 0.72, r * 0.14).fill(accent);
+    g.arc(0, -r * 0.72, r * 0.42, -Math.PI * 0.85, Math.PI * 0.12).stroke({ width: 2, color: accent });
+    g.arc(0, -r * 0.72, r * 0.55, Math.PI * 0.18, Math.PI * 0.92).stroke({ width: 1.5, color: accent, alpha: 0.75 });
+  },
+  storm_conductor: (g, size, fill, accent) => {
+    const r = size / 2;
+    g.roundRect(-r * 0.68, r * 0.22, r * 1.36, r * 0.38, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.rect(-r * 0.3, -r * 0.62, r * 0.16, r * 0.88).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.rect(r * 0.14, -r * 0.72, r * 0.16, r * 0.98).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.moveTo(-r * 0.48, -r * 0.32).lineTo(r * 0.36, -r * 0.32).stroke({ width: 2, color: OUTLINE });
+    GLYPHS.storm_conductor!(g, r, accent);
+  },
+  celestial_cannon: (g, size, fill, accent) => {
+    const r = size / 2;
+    g.roundRect(-r * 0.95, -r * 0.12, r * 1.9, r * 0.72, r * 0.1).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(-r * 0.32, -r * 0.42, r * 0.64, r * 0.52, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(r * 0.08, -r * 0.25, r * 0.82, r * 0.2, 3).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.circle(r * 0.88, -r * 0.15, r * 0.1).fill(accent).stroke({ width: 1, color: OUTLINE });
+    g.circle(0, -r * 0.18, r * 0.22).stroke({ width: 2, color: accent });
+  },
+  sanctuary_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    g.roundRect(-r * 0.38, r * 0.38, r * 0.76, r * 0.32, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.92, r * 0.2, r * 0.18, -r * 0.2, r * 0.18]).fill(fill).stroke({ width: 2, color: OUTLINE });
+    GLYPHS.sanctuary_spire!(g, r, accent);
+  },
 };
 
 /** Per-entity oblique box proportions for extra silhouette variety. */
@@ -599,6 +648,62 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     drawIsoPrism(g, 0, r * 0.18, r * 0.5, r * 0.22, r * 0.35, fillN);
     g.circle(0, -r * 0.62, r * 0.22).fill(accent).stroke({ width: 1.5, color: OUTLINE });
     drawAccentGlyph(g, 'arcane_nexus', 0, -r * 0.2, r * 0.7, accent, dir);
+  },
+  arcane_bunker: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.3, r * 0.88, r * 0.24, r * 0.2, fillN);
+    drawIsoPrism(g, -r * 0.58, r * 0.14, r * 0.2, r * 0.1, r * 0.3, fillN);
+    drawIsoPrism(g, r * 0.58, r * 0.14, r * 0.2, r * 0.1, r * 0.3, fillN);
+    for (let i = -1; i <= 1; i++) {
+      g.rect(i * r * 0.28 - r * 0.05, -r * 0.04, r * 0.1, r * 0.12).fill(accent);
+    }
+  },
+  frost_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.42, r * 0.4, r * 0.18, r * 0.28, fillN);
+    drawIsoPyramid(g, 0, r * 0.06, r * 0.3, r * 0.14, r * 1.18, fillN);
+    drawIsoPyramid(g, 0, -r * 0.86, r * 0.16, r * 0.08, r * 0.32, parseHex(accent));
+    g.moveTo(-r * 0.32, -r * 0.38).lineTo(r * 0.32, -r * 0.38).stroke({ width: 1.5, color: accent, alpha: 0.85 });
+  },
+  inferno_beacon: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.38, r * 0.52, r * 0.26, r * 0.28, fillN);
+    drawIsoPrism(g, 0, -r * 0.06, r * 0.2, r * 0.1, r * 0.52, fillN);
+    g.circle(0, -r * 0.78, r * 0.2).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    g.arc(0, -r * 0.78, r * 0.35, -Math.PI * 0.8, Math.PI * 0.15).stroke({ width: 2, color: accent });
+    g.arc(0, -r * 0.78, r * 0.46, Math.PI * 0.22, Math.PI * 0.95).stroke({ width: 1.5, color: accent, alpha: 0.7 });
+  },
+  storm_conductor: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.4, r * 0.7, r * 0.28, r * 0.28, fillN);
+    drawIsoPrism(g, -r * 0.3, r * 0.02, r * 0.12, r * 0.08, r * 0.75, fillN);
+    drawIsoPrism(g, r * 0.3, -r * 0.04, r * 0.12, r * 0.08, r * 0.88, fillN);
+    drawIsoPrism(g, 0, -r * 0.52, r * 0.52, r * 0.08, r * 0.1, fillN);
+    g.moveTo(-r * 0.12, -r * 0.72).lineTo(r * 0.16, -r * 0.12).lineTo(-r * 0.04, -r * 0.12).lineTo(r * 0.22, r * 0.42).stroke({ width: 2.5, color: accent });
+    g.circle(-r * 0.4, r * 0.12, r * 0.07).fill(accent);
+    g.circle(r * 0.42, -r * 0.32, r * 0.07).fill(accent);
+  },
+  celestial_cannon: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.35, r * 1.0, r * 0.36, r * 0.3, fillN);
+    drawIsoPrism(g, 0, -r * 0.02, r * 0.4, r * 0.2, r * 0.38, fillN);
+    drawIsoPrism(g, r * 0.52, -r * 0.38, r * 0.62, r * 0.08, r * 0.12, fillN);
+    g.circle(r * 1.0, -r * 0.44, r * 0.11).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    g.circle(0, -r * 0.32, r * 0.16).stroke({ width: 2, color: accent });
+  },
+  sanctuary_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPrism(g, 0, r * 0.44, r * 0.46, r * 0.2, r * 0.28, fillN);
+    drawIsoPyramid(g, 0, r * 0.08, r * 0.28, r * 0.14, r * 1.02, fillN);
+    g.circle(0, -r * 0.58, r * 0.3).stroke({ width: 1.5, color: accent, alpha: 0.8 });
+    g.moveTo(0, -r * 0.92).lineTo(0, -r * 0.38).stroke({ width: 2.5, color: accent });
+    g.moveTo(-r * 0.26, -r * 0.58).lineTo(r * 0.26, -r * 0.58).stroke({ width: 2.5, color: accent });
   },
 };
 
