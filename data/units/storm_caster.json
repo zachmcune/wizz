@@ -23,11 +23,12 @@
       "building": 0.7
     }
   },
-  "producedBy": "arcane_nexus",
+  "producedBy": "summoning_circle",
   "menuCategory": "wizards",
   "requires": [
     "arcane_nexus"
   ],
+  "canGarrison": true,
   "art": {
     "shape": "diamond",
     "size": 20,

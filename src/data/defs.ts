@@ -36,8 +36,31 @@ export interface WeaponDef {
   cooldownTicks: number;
   projectile: string | null; // projectile defId, or null for instant/melee
   splashRadius?: number;
+  impactRadius?: number;
+  minRange?: number;
+  chargeTicks?: number;
+  preferSwarms?: boolean;
+  onHitStatus?: { kind: 'slow'; durationTicks: number; moveFactor: number; attackCooldownFactor: number };
+  chain?: { jumps: number; range: number; falloff: number };
   vs: Record<ArmorClass, number>; // damage multiplier by target armor class
   targetsAir?: boolean;
+}
+
+export interface GarrisonDef {
+  capacity: number;
+  allowedUnitIds?: string[];
+  allowedRoles?: string[];
+  requireWeapon?: boolean;
+  rangeBonus?: number;
+  unloadRadius: number;
+  damageOnHostDestroyedFraction: number;
+}
+
+export interface AuraDef {
+  kind: 'heal';
+  radius: number;
+  hpPerTick: number;
+  affects: 'units' | 'buildings' | 'allies';
 }
 
 export interface UnitDef {
@@ -58,6 +81,7 @@ export interface UnitDef {
   requires: string[]; // building defIds required to unlock
   carry?: number; // Wisp harvest capacity
   isHarvester?: boolean;
+  canGarrison?: boolean;
   deploysAs?: string; // building defId when deployed (mobile HQ)
   deployTime?: number; // seconds to deploy
   canConjureMana?: boolean;
@@ -94,8 +118,45 @@ export interface BuildingDef {
   isWall?: boolean;
   isGate?: boolean; // allies pass; enemies blocked
   weapon?: WeaponDef | null; // Ward Turret
+  garrison?: GarrisonDef;
+  aura?: AuraDef;
   art: ArtDef;
   sfx?: SfxDef;
+}
+
+export type ResearchEffect =
+  | {
+      kind: 'unitStatModifier';
+      unitIds?: string[];
+      roles?: string[];
+      stat: 'hp' | 'speed' | 'damage' | 'range' | 'cooldownTicks';
+      operation: 'add' | 'multiply';
+      value: number;
+    }
+  | {
+      kind: 'buildingStatModifier';
+      buildingIds?: string[];
+      stat: 'hp' | 'sight' | 'powerUsed' | 'powerProduced';
+      operation: 'add' | 'multiply';
+      value: number;
+    }
+  | {
+      kind: 'economyModifier';
+      stat: 'siphonPerSecond' | 'repairHpPerTick' | 'repairManaPerHp';
+      operation: 'add' | 'multiply';
+      value: number;
+    };
+
+export interface ResearchDef {
+  id: string;
+  name: string;
+  description: string;
+  kind: 'research';
+  cost: number;
+  researchTime: number; // seconds
+  requires: string[];
+  researchedAt: string; // building defId
+  effects: ResearchEffect[];
 }
 
 export type SpellEffect =

@@ -173,6 +173,7 @@ export class InputController {
       this.session.rallyBuildingId = null;
       this.session.rallyCursor = null;
     }
+    if (mode !== 'garrison') this.session.garrisonUnitIds = [];
   }
 
   startBuild(defId: string): void {
@@ -286,6 +287,27 @@ export class InputController {
     this.emit({ type: 'cancelProduce', playerId: this.playerId, buildingId, index });
   }
 
+  research(buildingId: EntityId, defId: string): void {
+    this.emit({ type: 'research', playerId: this.playerId, buildingId, defId });
+  }
+
+  cancelResearch(buildingId: EntityId, index: number): void {
+    this.emit({ type: 'cancelResearch', playerId: this.playerId, buildingId, index });
+  }
+
+  startGarrison(): void {
+    const ids = this.selectionEntities()
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && this.registry.units.get(e.defId)?.canGarrison)
+      .map((e) => e.id);
+    if (!ids.length) return;
+    this.session.garrisonUnitIds = ids;
+    this.setMode('garrison');
+  }
+
+  unloadGarrison(buildingId: EntityId): void {
+    this.emit({ type: 'unloadGarrison', playerId: this.playerId, buildingId });
+  }
+
   setStance(stance: Stance): void {
     const ids = this.ownCombatSelected();
     if (ids.length) this.emit({ type: 'setStance', playerId: this.playerId, entityIds: ids, stance });
@@ -334,6 +356,7 @@ export class InputController {
       this.session.mode === 'attackMove' ||
       this.session.mode === 'deploy' ||
       this.session.mode === 'rally' ||
+      this.session.mode === 'garrison' ||
       this.session.mode === 'superweapon'
     ) {
       this.setMode('normal');

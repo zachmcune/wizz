@@ -76,6 +76,16 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
         spawnFreeUnit(state, ctx, e, item.defId);
       }
     }
+
+    // Research queue. No research content ships yet, but the queue is ready for Nexus upgrades.
+    if (e.researchQueue && e.researchQueue.length) {
+      const item = e.researchQueue[0]!;
+      item.progress += rate;
+      if (item.progress >= item.required) {
+        e.researchQueue.shift();
+        if (!player.completedResearch.includes(item.defId)) player.completedResearch.push(item.defId);
+      }
+    }
   }
   if (powerDirty) recomputePower(state, ctx.services);
 }
@@ -93,7 +103,7 @@ function spawnFreeUnit(state: GameState, ctx: StepContext, building: BuildingEnt
   }
 }
 
-function findSpawnPosition(
+export function findSpawnPosition(
   state: GameState,
   ctx: StepContext,
   building: BuildingEntity,
@@ -148,6 +158,7 @@ function canSpawnAt(
   if (ctx.services.nav.isBlockedDiscFor(x, y, unitRadius, building.owner, state.relations)) return false;
   for (const other of state.entities.values()) {
     if (other.kind === 'projectile' || !isAlive(other)) continue;
+    if (other.kind === 'unit' && other.garrisonedIn !== undefined) continue;
     const minDist = unitRadius + other.radius;
     const dx = x - other.pos.x;
     const dy = y - other.pos.y;

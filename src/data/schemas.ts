@@ -34,8 +34,44 @@ const weaponSchema = z.object({
   cooldownTicks: z.number().int().positive(),
   projectile: z.string().nullable(),
   splashRadius: z.number().nonnegative().optional(),
+  impactRadius: z.number().nonnegative().optional(),
+  minRange: z.number().nonnegative().optional(),
+  chargeTicks: z.number().int().nonnegative().optional(),
+  preferSwarms: z.boolean().optional(),
+  onHitStatus: z
+    .object({
+      kind: z.literal('slow'),
+      durationTicks: z.number().int().positive(),
+      moveFactor: z.number().positive(),
+      attackCooldownFactor: z.number().positive(),
+    })
+    .optional(),
+  chain: z
+    .object({
+      jumps: z.number().int().nonnegative(),
+      range: z.number().nonnegative(),
+      falloff: z.number().nonnegative(),
+    })
+    .optional(),
   vs: vsSchema,
   targetsAir: z.boolean().optional(),
+});
+
+const garrisonSchema = z.object({
+  capacity: z.number().int().positive(),
+  allowedUnitIds: z.array(z.string()).optional(),
+  allowedRoles: z.array(z.string()).optional(),
+  requireWeapon: z.boolean().optional(),
+  rangeBonus: z.number().nonnegative().optional(),
+  unloadRadius: z.number().nonnegative(),
+  damageOnHostDestroyedFraction: z.number().min(0).max(1),
+});
+
+const auraSchema = z.object({
+  kind: z.literal('heal'),
+  radius: z.number().positive(),
+  hpPerTick: z.number().positive(),
+  affects: z.enum(['units', 'buildings', 'allies']),
 });
 
 export const unitSchema = z.object({
@@ -56,6 +92,7 @@ export const unitSchema = z.object({
   requires: z.array(z.string()),
   carry: z.number().positive().optional(),
   isHarvester: z.boolean().optional(),
+  canGarrison: z.boolean().optional(),
   deploysAs: z.string().optional(),
   deployTime: z.number().positive().optional(),
   canConjureMana: z.boolean().optional(),
@@ -92,8 +129,47 @@ export const buildingSchema = z.object({
   isWall: z.boolean().optional(),
   isGate: z.boolean().optional(),
   weapon: weaponSchema.nullable().optional(),
+  garrison: garrisonSchema.optional(),
+  aura: auraSchema.optional(),
   art: artSchema,
   sfx: sfxSchema,
+});
+
+const statOperation = z.enum(['add', 'multiply']);
+const researchEffectSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('unitStatModifier'),
+    unitIds: z.array(z.string()).optional(),
+    roles: z.array(z.string()).optional(),
+    stat: z.enum(['hp', 'speed', 'damage', 'range', 'cooldownTicks']),
+    operation: statOperation,
+    value: z.number(),
+  }),
+  z.object({
+    kind: z.literal('buildingStatModifier'),
+    buildingIds: z.array(z.string()).optional(),
+    stat: z.enum(['hp', 'sight', 'powerUsed', 'powerProduced']),
+    operation: statOperation,
+    value: z.number(),
+  }),
+  z.object({
+    kind: z.literal('economyModifier'),
+    stat: z.enum(['siphonPerSecond', 'repairHpPerTick', 'repairManaPerHp']),
+    operation: statOperation,
+    value: z.number(),
+  }),
+]);
+
+export const researchSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  kind: z.literal('research'),
+  cost: z.number().nonnegative(),
+  researchTime: z.number().positive(),
+  requires: z.array(z.string()),
+  researchedAt: z.string(),
+  effects: z.array(researchEffectSchema),
 });
 
 const spellEffectSchema = z.discriminatedUnion('kind', [

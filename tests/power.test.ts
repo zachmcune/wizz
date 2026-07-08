@@ -62,4 +62,17 @@ describe('RA2 low power', () => {
     expect(enemy.hp).toBe(hpBefore);
     expect(turret.cooldowns.attack ?? 0).toBe(0);
   });
+
+  it('shuts down powered support defenses but leaves Arcane Bunker unpowered', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const human = state.players.find((p) => p.id === 'player0')!;
+    const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
+    const bunker = spawnEntity(state, services, null, 'arcane_bunker', human.id, sanctum!.pos.x + 96, sanctum!.pos.y);
+    const sanctuary = spawnEntity(state, services, null, 'sanctuary_spire', human.id, sanctum!.pos.x + 192, sanctum!.pos.y);
+    recomputePower(state, services);
+
+    expect(isPowerShort(state, human.id)).toBe(true);
+    expect(buildingHasPower(state, reg, bunker)).toBe(true);
+    expect(buildingHasPower(state, reg, sanctuary)).toBe(false);
+  });
 });

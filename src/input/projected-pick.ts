@@ -53,6 +53,7 @@ export function pickEntityScreen(
   let bestScore = -Infinity;
   for (const e of state.entities.values()) {
     if (e.kind === 'projectile') continue;
+    if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
     const s = worldToScreen(e.pos, cam);
     const dx = screen.x - s.x;
@@ -108,6 +109,7 @@ export function unitsInScreenBox(
   const units: EntityId[] = [];
   for (const e of state.entities.values()) {
     if (e.owner !== ownerId || e.kind !== 'unit') continue;
+    if (e.garrisonedIn !== undefined) continue;
     const s = worldToScreen(e.pos, cam);
     if (s.x >= minSX && s.x <= maxSX && s.y >= minSY && s.y <= maxSY) units.push(e.id);
   }

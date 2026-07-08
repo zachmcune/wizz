@@ -2,6 +2,7 @@ import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
 import { isHarvester } from '../../sim/entity-types';
 import { isEnemy } from '../../sim/queries';
+import { canUnitGarrison, garrisonFreeCapacity } from '../../sim/garrison';
 import {
   pickEntityForInput,
   pickResourceNodeForInput,
@@ -34,6 +35,15 @@ export const normalMode: ModeTapHandler = {
         return;
       }
       if (picked && picked.owner === ctx.playerId && picked.kind === 'building') {
+        const garrisonIds = combatUnits.filter((id) => {
+          const unit = st.entities.get(id);
+          return unit && unit.kind === 'unit' && canUnitGarrison(ctx.registry, unit, picked);
+        });
+        if (garrisonIds.length && garrisonFreeCapacity(ctx.registry, picked) > 0) {
+          ctx.emit({ type: 'garrison', playerId: ctx.playerId, unitIds: garrisonIds, buildingId: picked.id });
+          ctx.onOrderFeedback('garrison', picked.pos);
+          return;
+        }
         ctx.setSelection([picked.id]);
         return;
       }
@@ -50,6 +60,17 @@ export const normalMode: ModeTapHandler = {
     }
 
     if (picked) {
+      if (picked.owner === ctx.playerId && picked.kind === 'building') {
+        const garrisonIds = movable.filter((id) => {
+          const unit = st.entities.get(id);
+          return unit && unit.kind === 'unit' && canUnitGarrison(ctx.registry, unit, picked);
+        });
+        if (garrisonIds.length && garrisonFreeCapacity(ctx.registry, picked) > 0) {
+          ctx.emit({ type: 'garrison', playerId: ctx.playerId, unitIds: garrisonIds, buildingId: picked.id });
+          ctx.onOrderFeedback('garrison', picked.pos);
+          return;
+        }
+      }
       if (picked.owner === ctx.playerId && ctx.session.selection.has(picked.id)) {
         ctx.setSelection([...ctx.session.selection].filter((id) => id !== picked.id));
         return;
@@ -113,6 +134,7 @@ function unitsInWorldBox(ctx: InputContext, ownerId: string, a: Vec2, b: Vec2): 
   const units: EntityId[] = [];
   for (const e of st.entities.values()) {
     if (e.owner !== ownerId || e.kind !== 'unit') continue;
+    if (e.garrisonedIn !== undefined) continue;
     if (e.pos.x >= minX && e.pos.x <= maxX && e.pos.y >= minY && e.pos.y <= maxY) units.push(e.id);
   }
   return units;

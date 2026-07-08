@@ -1,0 +1,5 @@
+{
+  "id": "frost_bolt",
+  "speed": 380,
+  "art": { "shape": "diamond", "size": 7, "accent": "#9fdcff", "sprite": "frost_bolt" }
+}

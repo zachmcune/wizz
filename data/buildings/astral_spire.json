@@ -12,7 +12,7 @@
   "footprint": 3,
   "menuCategory": "advanced",
   "requires": ["arcane_nexus"],
-  "unlocksSpells": ["astral_lance"],
+  "unlocksSpells": ["astral_lance", "meteor_storm", "aegis_ward", "blink_gate"],
   "isSuperweapon": true,
   "powerUsed": 100,
   "art": { "shape": "building", "size": 80, "accent": "#9fdcff" }

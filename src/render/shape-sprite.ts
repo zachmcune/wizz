@@ -146,6 +146,47 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.circle(0, 0, r * 0.5).stroke({ width: 1.5, color: accent, alpha: 0.7 });
     g.circle(0, 0, r * 0.68).stroke({ width: 1, color: accent, alpha: 0.45 });
   },
+  arcane_bunker: (g, r, accent) => {
+    g.roundRect(-r * 0.55, -r * 0.25, r * 1.1, r * 0.5, r * 0.08).stroke({ width: 2, color: accent });
+    for (let i = -1; i <= 1; i++) {
+      g.rect(i * r * 0.32 - r * 0.06, -r * 0.08, r * 0.12, r * 0.16).fill(accent);
+    }
+  },
+  frost_spire: (g, r, accent) => {
+    g.poly([0, -r * 0.8, r * 0.18, -r * 0.15, 0, r * 0.45, -r * 0.18, -r * 0.15]).fill(accent);
+    g.moveTo(-r * 0.45, 0).lineTo(r * 0.45, 0).stroke({ width: 1.5, color: accent });
+  },
+  inferno_beacon: (g, r, accent) => {
+    g.circle(0, 0, r * 0.28).fill(accent);
+    g.arc(0, 0, r * 0.55, -Math.PI * 0.8, Math.PI * 0.15).stroke({ width: 2, color: accent });
+    g.arc(0, 0, r * 0.72, Math.PI * 0.2, Math.PI * 0.95).stroke({ width: 1.5, color: accent });
+  },
+  storm_conductor: (g, r, accent) => {
+    g.moveTo(-r * 0.15, -r * 0.65).lineTo(r * 0.2, -r * 0.1).lineTo(-r * 0.05, -r * 0.1).lineTo(r * 0.25, r * 0.55).stroke({ width: 2.5, color: accent });
+    g.circle(-r * 0.45, r * 0.35, r * 0.08).fill(accent);
+    g.circle(r * 0.48, -r * 0.35, r * 0.08).fill(accent);
+  },
+  celestial_cannon: (g, r, accent) => {
+    g.circle(0, 0, r * 0.32).stroke({ width: 2, color: accent });
+    g.moveTo(-r * 0.55, r * 0.25).lineTo(r * 0.7, -r * 0.35).stroke({ width: 3, color: accent });
+    g.circle(r * 0.72, -r * 0.36, r * 0.1).fill(accent);
+  },
+  sanctuary_spire: (g, r, accent) => {
+    g.moveTo(0, -r * 0.72).lineTo(0, r * 0.55).stroke({ width: 2.5, color: accent });
+    g.moveTo(-r * 0.45, -r * 0.1).lineTo(r * 0.45, -r * 0.1).stroke({ width: 2.5, color: accent });
+    g.circle(0, -r * 0.1, r * 0.58).stroke({ width: 1.5, color: accent, alpha: 0.8 });
+  },
+  frost_bolt: (g, r, accent) => {
+    g.poly([0, -r * 0.8, r * 0.22, 0, 0, r * 0.8, -r * 0.22, 0]).fill(accent);
+  },
+  inferno_orb: (g, r, accent) => {
+    g.circle(0, 0, r * 0.45).fill(accent);
+    g.arc(0, 0, r * 0.72, -0.6, 2.2).stroke({ width: 1.5, color: accent });
+  },
+  celestial_shot: (g, r, accent) => {
+    g.poly([0, -r * 0.85, r * 0.72, 0, 0, r * 0.85, -r * 0.72, 0]).stroke({ width: 2, color: accent });
+    g.circle(0, 0, r * 0.22).fill(accent);
+  },
 };
 
 // --- Ortho full silhouettes ---
@@ -295,6 +336,12 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   arcane_gate: { wMul: 1.1, hMul: 0.4 },
   scrying_obelisk: { wMul: 0.7, hMul: 0.8 },
   arcane_nexus: { wMul: 1.0, hMul: 0.5 },
+  arcane_bunker: { wMul: 1.15, hMul: 0.28 },
+  frost_spire: { wMul: 0.72, hMul: 0.85 },
+  inferno_beacon: { wMul: 0.88, hMul: 0.62 },
+  storm_conductor: { wMul: 0.85, hMul: 0.78 },
+  celestial_cannon: { wMul: 1.25, hMul: 0.5 },
+  sanctuary_spire: { wMul: 0.82, hMul: 0.82 },
   stone_golem: { wMul: 0.95, hMul: 0.55 },
   siege_behemoth: { wMul: 1.1, hMul: 0.5 },
   waystone_wagon: { wMul: 1.15, hMul: 0.42 },

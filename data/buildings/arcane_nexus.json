@@ -2,7 +2,7 @@
   "id": "arcane_nexus",
   "name": "Arcane Nexus",
   "shortLabel": "NEXUS",
-  "description": "Tech building. Trains storm casters and unlocks your battle spells.",
+  "description": "Major tech progression building. Unlocks advanced units, defenses, superweapons, and future research upgrades.",
   "kind": "building",
   "cost": 1200,
   "buildTime": 14,
@@ -13,14 +13,6 @@
   "menuCategory": "advanced",
   "requires": [
     "golem_forge"
-  ],
-  "producesUnits": [
-    "storm_caster"
-  ],
-  "unlocksSpells": [
-    "meteor_storm",
-    "aegis_ward",
-    "blink_gate"
   ],
   "powerUsed": 50,
   "art": {

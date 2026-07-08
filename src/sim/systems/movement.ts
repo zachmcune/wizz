@@ -3,8 +3,9 @@
 import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, UnitEntity, EntityId } from '../types';
-import { entitiesSorted, isAlive, hasBuff } from '../queries';
-import { steerToGoal, applyVelocityMove, slidePosition, makePathContext } from '../pathing';
+import { entitiesSorted, isAlive, hasBuff, strongestSlowMoveFactor } from '../queries';
+import { steerToGoal, applyVelocityMove, slidePosition, makePathContext, moveTowardGoal } from '../pathing';
+import { canUnitGarrison } from '../garrison';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
@@ -34,6 +35,11 @@ function goalOf(e: UnitEntity): { x: number; y: number } | null {
   return null;
 }
 
+function removeReservation(building: { garrisonReservedIds?: EntityId[] }, unitId: EntityId): void {
+  if (!building.garrisonReservedIds) return;
+  building.garrisonReservedIds = building.garrisonReservedIds.filter((id) => id !== unitId);
+}
+
 export function movementSystem(state: GameState, ctx: StepContext): void {
   const nav = ctx.services.nav;
   const flow = ctx.services.flow;
@@ -41,6 +47,10 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'unit' || !isAlive(e)) continue;
+    if (e.state === 'garrisoned' || e.garrisonedIn !== undefined) {
+      e.vel = { x: 0, y: 0 };
+      continue;
+    }
     if (e.morphProgress !== undefined || e.channeling) {
       e.vel = { x: 0, y: 0 };
       continue;
@@ -48,6 +58,35 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     const udef = ctx.services.registry.unit(e.defId);
     let speed = udef.speed;
     if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;
+    speed *= strongestSlowMoveFactor(e, state.tick);
+
+    const order = e.orders[0];
+    if (order?.type === 'garrison') {
+      const building = state.entities.get(order.buildingId);
+      if (!building || building.kind !== 'building' || !isAlive(building) || !canUnitGarrison(ctx.services.registry, e, building)) {
+        if (building?.kind === 'building') removeReservation(building, e.id);
+        e.orders.shift();
+        e.state = 'idle';
+        e.vel = { x: 0, y: 0 };
+        continue;
+      }
+      const d = Math.hypot(building.pos.x - e.pos.x, building.pos.y - e.pos.y);
+      if (d <= e.radius + building.radius + 8) {
+        removeReservation(building, e.id);
+        building.garrisonedIds ??= [];
+        if (!building.garrisonedIds.includes(e.id)) building.garrisonedIds.push(e.id);
+        e.garrisonedIn = building.id;
+        e.pos = { x: building.pos.x, y: building.pos.y };
+        e.vel = { x: 0, y: 0 };
+        e.orders = [];
+        e.state = 'garrisoned';
+        e.targetId = undefined;
+        continue;
+      }
+      const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
+      moveTowardGoal(pathCtx, e, building.pos, speed, dt);
+      continue;
+    }
 
     const goal = goalOf(e);
     if (!goal) {
@@ -100,7 +139,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
   }
 
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || e.channeling) continue;
+    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || e.channeling || e.state === 'garrisoned') continue;
     const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
     const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 2.5, scratch);
     let sepX = 0;

@@ -134,6 +134,10 @@ export function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extr
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
+  if ((b.garrisonedIds && b.garrisonedIds.length > 0) || (b.garrisonReservedIds && b.garrisonReservedIds.length > 0)) {
+    ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
+    return;
+  }
   const refund = Math.floor(bdef.cost * ctx.services.registry.balance.sellRefundRatio);
   removeBuildingFromWorld(state, ctx, b);
   player.mana += refund;

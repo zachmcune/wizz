@@ -10,10 +10,22 @@ import { isPowerShort, buildingHasPower } from '../sim/power';
 import { canBuildNearBase } from '../sim/build-zone';
 import { footprintOverlapsNode } from '../sim/resource-nodes';
 import { distSq, len } from '../sim/math';
+import { canUnitGarrison, garrisonFreeCapacity } from '../sim/garrison';
 import type { AiParams } from '../data/defs';
 
-const BUILD_ORDER = ['attunement_spire', 'ley_conduit', 'resonance_vault', 'scrying_obelisk', 'summoning_circle', 'golem_forge', 'arcane_nexus', 'astral_spire'];
+const BUILD_ORDER = [
+  'attunement_spire',
+  'ley_conduit',
+  'resonance_vault',
+  'scrying_obelisk',
+  'summoning_circle',
+  'arcane_bunker',
+  'golem_forge',
+  'arcane_nexus',
+  'astral_spire',
+];
 const DEFEND_RADIUS = 280;
+const GARRISON_RADIUS = 220;
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
   const cmds: Command[] = [];
@@ -142,6 +154,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   }
 
   produceArmy(state, services, p, diff, cmds);
+  garrisonNearbyArchers(state, services, p, cmds);
 
   const turretDef = reg.buildings.get('ward_turret');
   if (
@@ -155,6 +168,22 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
     if (spot) {
       cmds.push({ type: 'build', playerId: p.id, defId: 'ward_turret', x: spot.x, y: spot.y });
       return;
+    }
+  }
+
+  if (p.unlockedTech.includes('arcane_nexus')) {
+    const advancedDefenses = ['frost_spire', 'inferno_beacon', 'storm_conductor', 'sanctuary_spire', 'celestial_cannon'];
+    for (const defId of advancedDefenses) {
+      if (hasBuilding(state, p.id, defId)) continue;
+      const bdef = reg.buildings.get(defId);
+      if (!bdef || !bdef.requires.every((r) => p.unlockedTech.includes(r))) continue;
+      const reserve = defId === 'celestial_cannon' ? 1.6 : 1.25;
+      if (p.mana < bdef.cost * reserve) continue;
+      const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, bdef.footprint);
+      if (spot) {
+        cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
+        return;
+      }
     }
   }
 
@@ -204,6 +233,7 @@ function produceArmy(state: GameState, services: SimServices, p: Player, diff: A
   };
 
   if (circle) {
+    if (p.unlockedTech.includes('arcane_nexus') && tryProduce(circle, 'storm_caster')) return;
     const phase = Math.floor(state.tick / 40) % 3;
     const order =
       phase === 0
@@ -218,6 +248,27 @@ function produceArmy(state: GameState, services: SimServices, p: Player, diff: A
 
   if (forge && combat.length >= Math.floor(diff.armyThreshold * 0.35)) {
     if (!tryProduce(forge, 'siege_behemoth')) tryProduce(forge, 'stone_golem');
+  }
+}
+
+function garrisonNearbyArchers(state: GameState, services: SimServices, p: Player, cmds: Command[]): void {
+  const bunkers = buildingsOf(state, p.id).filter(
+    (b) => b.buildProgress === undefined && services.registry.buildings.get(b.defId)?.garrison && garrisonFreeCapacity(services.registry, b) > 0,
+  );
+  if (!bunkers.length) return;
+  for (const bunker of bunkers) {
+    const ids: EntityId[] = [];
+    for (const unit of ownedBy(state, p.id)) {
+      if (ids.length >= garrisonFreeCapacity(services.registry, bunker)) break;
+      if (unit.kind !== 'unit' || unit.defId !== 'arcane_archer' || unit.orders.length > 0 || unit.state !== 'idle') continue;
+      if (!canUnitGarrison(services.registry, unit, bunker)) continue;
+      if (distSq(unit.pos.x, unit.pos.y, bunker.pos.x, bunker.pos.y) > GARRISON_RADIUS * GARRISON_RADIUS) continue;
+      ids.push(unit.id);
+    }
+    if (ids.length) {
+      cmds.push({ type: 'garrison', playerId: p.id, unitIds: ids, buildingId: bunker.id });
+      return;
+    }
   }
 }
 

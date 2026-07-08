@@ -11,6 +11,7 @@ export class UnitOrdersPanel {
   readonly deployBtn = el('button', 'btn', 'Deploy');
   readonly packBtn = el('button', 'btn', 'Pack Up');
   readonly conjureBtn = el('button', 'btn', 'Conjure');
+  readonly garrisonBtn = el('button', 'btn', 'Garrison');
 
   constructor(
     private state: () => GameState,
@@ -52,7 +53,9 @@ export class UnitOrdersPanel {
       const single = st.entities.get(ids[0]!);
       this.controller.channel(ids, !(single && isUnit(single) && single.channeling));
     });
-    this.row.append(deselect, stop, am, this.deployBtn, this.packBtn, this.conjureBtn);
+    this.garrisonBtn.style.display = 'none';
+    this.garrisonBtn.addEventListener('click', () => this.controller.startGarrison());
+    this.row.append(deselect, stop, am, this.deployBtn, this.packBtn, this.conjureBtn, this.garrisonBtn);
   }
 
   update(
@@ -92,5 +95,14 @@ export class UnitOrdersPanel {
         : `Conjure (${bal.conjureManaAmount}/${bal.conjureManaIntervalSeconds}s)`;
       this.conjureBtn.classList.toggle('active', channeling);
     }
+
+    const garrisonableSelected = sel.some(
+      (e) =>
+        e.owner === this.playerId &&
+        e.kind === 'unit' &&
+        e.garrisonedIn === undefined &&
+        !!this.registry.units.get(e.defId)?.canGarrison,
+    );
+    this.garrisonBtn.style.display = !inPlaceMode && garrisonableSelected ? '' : 'none';
   }
 }

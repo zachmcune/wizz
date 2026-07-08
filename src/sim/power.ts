@@ -28,7 +28,7 @@ function buildingDef(registry: Registry, building: Entity) {
 /** True for buildings that hard-stop when the grid is short (turrets, radar). */
 export function isHardPowerConsumer(registry: Registry, defId: string): boolean {
   const b = registry.buildings.get(defId);
-  return !!(b?.weapon || b?.isRadar);
+  return !!(b?.weapon || b?.isRadar || b?.aura);
 }
 
 /**
@@ -49,7 +49,7 @@ export function productionRate(state: GameState, registry: Registry, building: E
   if (building.kind !== 'building' || building.state === 'dead') return 0;
   if (!isPowerShort(state, building.owner)) return 1;
   const bdef = buildingDef(registry, building);
-  if (bdef?.weapon || bdef?.isRadar) return 0;
+  if (bdef?.weapon || bdef?.isRadar || bdef?.aura) return 0;
   const p = getPlayer(state, building.owner)!;
   if (p.powerUsed <= 0) return 1;
   return Math.max(MIN_PRODUCTION_RATE, p.power / p.powerUsed);

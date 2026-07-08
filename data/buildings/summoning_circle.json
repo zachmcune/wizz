@@ -2,7 +2,7 @@
   "id": "summoning_circle",
   "name": "Summoning Circle",
   "shortLabel": "SUM",
-  "description": "Trains light infantry: swarmlings, archers, and familiars.",
+  "description": "Trains infantry and, after the Arcane Nexus, advanced storm casters.",
   "kind": "building",
   "cost": 550,
   "buildTime": 8,
@@ -17,7 +17,8 @@
   "producesUnits": [
     "imp_swarmling",
     "arcane_archer",
-    "rift_familiar"
+    "rift_familiar",
+    "storm_caster"
   ],
   "powerUsed": 20,
   "art": {

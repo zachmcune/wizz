@@ -9,6 +9,8 @@ export const CONTROL_ACTIONS = {
   placeBuilding: 'placeBuilding',
   deployUnit: 'deployUnit',
   setRallyPoint: 'setRallyPoint',
+  garrisonUnit: 'garrisonUnit',
+  unloadGarrison: 'unloadGarrison',
   attackMoveTarget: 'attackMoveTarget',
 } as const;
 
@@ -81,6 +83,18 @@ export const CONTROL_BINDINGS = {
     mouse: true,
     keyboard: false,
     description: 'Tap/click the map while setting a production rally point.',
+  },
+  [CONTROL_ACTIONS.garrisonUnit]: {
+    touch: true,
+    mouse: true,
+    keyboard: false,
+    description: 'Select garrison-capable ranged units, then tap/click a friendly bunker or use the Garrison button.',
+  },
+  [CONTROL_ACTIONS.unloadGarrison]: {
+    touch: true,
+    mouse: true,
+    keyboard: false,
+    description: 'Select an occupied bunker and use its garrison button to unload all occupants.',
   },
   [CONTROL_ACTIONS.attackMoveTarget]: {
     touch: true,

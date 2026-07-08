@@ -9,6 +9,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer } from '../sim/views';
+import { hasBuff } from '../sim/queries';
 import { pickEntity, pickResourceNode } from '../sim/picking';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
@@ -403,6 +404,11 @@ export class Renderer {
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
+      if (e.kind === 'unit' && e.garrisonedIn !== undefined) {
+        n.sprite.visible = false;
+        if (n.label) n.label.visible = false;
+        continue;
+      }
 
       const liveVisible = revealAll || !nav || isVisibleTo(state, this.viewerId, e, nav);
       const showAsGhost =
@@ -519,6 +525,10 @@ export class Renderer {
         const dot = this.positionOverlayAt(x, y, -e.radius - 4);
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
+      if (e.kind === 'unit' && hasBuff(e, 'slow', state.tick)) {
+        const icon = this.positionOverlayAt(x, y, -e.radius - 16);
+        this.drawSlowIcon(icon.x, icon.y);
+      }
     }
 
     if (oblique) {
@@ -583,6 +593,12 @@ export class Renderer {
       .moveTo(x + s, y - s)
       .lineTo(x - s, y + s)
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
+  }
+
+  private drawSlowIcon(x: number, y: number): void {
+    this.fillDot(x, y, 4, 0x9fdcff, 0.9);
+    this.overlayStrokePool.acquire().moveTo(x - 5, y).lineTo(x + 5, y).stroke({ width: 1.5, color: 0xd9f3ff, alpha: 0.95 });
+    this.overlayStrokePool.acquire().moveTo(x, y - 5).lineTo(x, y + 5).stroke({ width: 1.5, color: 0xd9f3ff, alpha: 0.95 });
   }
 
   /**

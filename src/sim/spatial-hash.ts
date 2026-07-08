@@ -35,6 +35,7 @@ export class SpatialHash {
     for (const id of ids) {
       const e = entities.get(id)!;
       if (e.kind === 'projectile') continue;
+      if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
       this.insert(e);
     }
   }

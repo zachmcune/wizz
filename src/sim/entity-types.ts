@@ -1,6 +1,7 @@
 // Discriminated entity types — each kind owns only its relevant fields.
 import type { Vec2 } from '../core/coords';
-import type { Buff, EntityId, Order, PlayerId, ProductionItem, Stance, UnitState } from './types';
+import type { EntityId, GameplayBuff, Order, PlayerId, ProductionItem, Stance, UnitState } from './types';
+import type { WeaponDef } from '../data/defs';
 
 export interface EntityCore {
   id: EntityId;
@@ -21,7 +22,7 @@ export interface UnitEntity extends EntityCore {
   stance: Stance;
   targetId?: EntityId;
   cooldowns: Record<string, number>;
-  buffs: Buff[];
+  buffs: GameplayBuff[];
   carry?: number;
   carryMax?: number;
   homeSpireId?: EntityId;
@@ -31,6 +32,7 @@ export interface UnitEntity extends EntityCore {
   morphTargetDefId?: string;
   channeling?: boolean;
   channelTicks?: number;
+  garrisonedIn?: EntityId;
 }
 
 export interface BuildingEntity extends EntityCore {
@@ -39,13 +41,17 @@ export interface BuildingEntity extends EntityCore {
   state: UnitState;
   stance: Stance;
   cooldowns: Record<string, number>;
-  buffs: Buff[];
+  buffs: GameplayBuff[];
   buildProgress?: number;
   productionQueue?: ProductionItem[];
+  researchQueue?: ProductionItem[];
   rally?: Vec2;
   repairing?: boolean;
   morphProgress?: number;
   morphAction?: 'pack';
+  garrisonedIds?: EntityId[];
+  garrisonReservedIds?: EntityId[];
+  chargingAttack?: { targetId: EntityId; remainingTicks: number };
 }
 
 export interface ProjectileEntity extends EntityCore {
@@ -54,12 +60,16 @@ export interface ProjectileEntity extends EntityCore {
   state: UnitState;
   stance: Stance;
   cooldowns: Record<string, number>;
-  buffs: Buff[];
+  buffs: GameplayBuff[];
   projTargetId?: EntityId;
   projDamage?: number;
   projArmorVs?: Record<string, number>;
   projSpeed?: number;
   projSourceOwner?: PlayerId;
+  projSourceId?: EntityId;
+  projSplashRadius?: number;
+  projImpactRadius?: number;
+  projOnHitStatus?: WeaponDef['onHitStatus'];
 }
 
 export interface ResourceNodeEntity extends EntityCore {
