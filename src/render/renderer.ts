@@ -104,6 +104,8 @@ export class Renderer {
   private nav: NavGrid | null = null;
   private projectionMode: ProjectionMode = getProjectionMode();
   private showBuildingNames = false;
+  private debugLabelPool: Text[] = [];
+  private debugStatsLabel: Text | null = null;
 
   constructor(
     private registry: Registry,
@@ -614,6 +616,27 @@ export class Renderer {
         this.overlayStrokePool.acquire().moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1, color: l.color, alpha: 0.8 });
       }
     }
+    if (overlay?.debugLabels?.length) {
+      this.syncDebugLabels(overlay.debugLabels);
+    } else {
+      this.clearDebugLabels();
+    }
+    if (overlay?.statsText) {
+      if (!this.debugStatsLabel) {
+        this.debugStatsLabel = new Text({
+          text: overlay.statsText,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 11, fontWeight: '600', fill: '#d8e6ff' },
+        });
+        this.debugStatsLabel.anchor.set(0, 0);
+        this.debugStatsLabel.position.set(8, 8);
+        this.app.stage.addChild(this.debugStatsLabel);
+      } else {
+        this.debugStatsLabel.text = overlay.statsText;
+        this.debugStatsLabel.visible = true;
+      }
+    } else if (this.debugStatsLabel) {
+      this.debugStatsLabel.visible = false;
+    }
     this.effects.update();
   }
 
@@ -628,6 +651,35 @@ export class Renderer {
       .moveTo(x + s, y - s)
       .lineTo(x - s, y + s)
       .stroke({ width: 2, color: 0xff5d5d, alpha: 0.9 });
+  }
+
+  private syncDebugLabels(labels: NonNullable<RenderOverlay['debugLabels']>): void {
+    while (this.debugLabelPool.length < labels.length) {
+      const t = new Text({
+        text: '',
+        style: { fontFamily: 'system-ui, sans-serif', fontSize: 10, fontWeight: '600', fill: '#ffffff' },
+      });
+      t.anchor.set(0.5, 1);
+      this.labelLayer.addChild(t);
+      this.debugLabelPool.push(t);
+    }
+    for (let i = 0; i < this.debugLabelPool.length; i++) {
+      const label = this.debugLabelPool[i]!;
+      const src = labels[i];
+      if (!src) {
+        label.visible = false;
+        continue;
+      }
+      const p = this.drawPos(src.x, src.y);
+      label.visible = true;
+      label.text = src.text;
+      label.style.fill = src.color !== undefined ? `#${src.color.toString(16).padStart(6, '0')}` : '#ffffff';
+      label.position.set(p.x, p.y);
+    }
+  }
+
+  private clearDebugLabels(): void {
+    for (const label of this.debugLabelPool) label.visible = false;
   }
 
   private drawSlowIcon(x: number, y: number): void {

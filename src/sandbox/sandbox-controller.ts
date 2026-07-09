@@ -12,6 +12,7 @@ import type { SimController } from '../app/match/sim-controller';
 import type { InputController } from '../input/controller';
 import type { Camera } from '../render/camera';
 import { serializeScenario, saveUserScenario, type SavedScenario } from './scenario-store';
+import { loadBuiltinScenario } from './builtin-scenarios';
 import { applySandboxEconomyCheats } from '../sim/systems/sandbox-economy';
 
 export interface SandboxControllerDeps {
@@ -76,7 +77,10 @@ export class SandboxController {
 
   setSetting<K extends keyof SandboxSettings>(section: K, patch: Partial<SandboxSettings[K]>): void {
     Object.assign(this.deps.state.sandbox!.settings[section], patch);
-    if (section === 'ai') this.syncAi();
+    if (section === 'ai') {
+      this.syncAi();
+      if ('revealIntel' in (patch as object)) this.refreshVisibility();
+    }
     if (section === 'map') this.refreshVisibility();
     if (section === 'economy') this.refreshEconomyCheats();
   }
@@ -85,7 +89,10 @@ export class SandboxController {
     const group = this.deps.state.sandbox!.settings[section] as unknown as Record<string, unknown>;
     if (typeof group[key] === 'boolean') {
       group[key] = !group[key];
-      if (section === 'ai') this.syncAi();
+      if (section === 'ai') {
+        this.syncAi();
+        if (key === 'revealIntel') this.refreshVisibility();
+      }
       if (section === 'map') this.refreshVisibility();
       if (section === 'economy') this.refreshEconomyCheats();
     }
@@ -97,7 +104,8 @@ export class SandboxController {
 
   syncAi(): void {
     const ai = this.settings.ai;
-    const forceActive = ai.forceMode === 'attack' || ai.forceMode === 'defend';
+    const forceActive =
+      ai.forceMode === 'attack' || ai.forceMode === 'defend' || ai.forceMode === 'expand';
     const enabled =
       forceActive || (!ai.disabled && !ai.paused && !this.settings.gameplay.freezeAi);
     this.deps.simCtrl.setAiEnabled(enabled);
@@ -215,7 +223,15 @@ export class SandboxController {
     }
     recomputePower(this.deps.state, this.deps.services);
     this.refreshVisibility();
+    this.syncAi();
     this.captureBaseline(scenario.name);
+  }
+
+  loadBuiltin(id: string): boolean {
+    const scenario = loadBuiltinScenario(id, this.deps.registry, this.deps.matchConfig);
+    if (!scenario) return false;
+    this.loadScenario(scenario);
+    return true;
   }
 
   async saveScenario(name: string, tags: string[] = []): Promise<void> {

@@ -56,9 +56,11 @@ export class SandboxPanel {
     this.palette = new CommandPalette(controller, registry, controller.humanPlayerId, () => {});
     this.palette.mount(host);
 
+    this.root.dataset.testid = 'sandbox-panel';
     this.fab.type = 'button';
     this.fab.title = this.touchMode ? 'Developer tools' : 'Toggle Sandbox Panel (`)';
     this.fab.setAttribute('aria-label', 'Developer sandbox tools');
+    this.fab.dataset.testid = 'sandbox-fab';
     this.fab.addEventListener('click', () => this.toggleCollapse());
 
     const title = el('span', 'sandbox-title', 'Sandbox');
@@ -67,12 +69,14 @@ export class SandboxPanel {
     paletteBtn.textContent = '⌘';
     paletteBtn.title = this.touchMode ? 'Command search' : 'Command palette (Ctrl+Shift+P)';
     paletteBtn.setAttribute('aria-label', 'Command palette');
+    paletteBtn.dataset.testid = 'sandbox-palette-open';
     paletteBtn.addEventListener('click', () => this.palette.show());
 
     const restartBtn = el('button', 'btn sandbox-btn sandbox-btn-icon');
     restartBtn.type = 'button';
     restartBtn.textContent = '↻';
     restartBtn.title = 'Restart scenario';
+    restartBtn.dataset.testid = 'sandbox-restart';
     restartBtn.addEventListener('click', () => this.controller.restartScenario());
 
     const closeBtn = el('button', 'btn sandbox-btn sandbox-btn-icon');
@@ -80,6 +84,7 @@ export class SandboxPanel {
     closeBtn.textContent = '✕';
     closeBtn.title = 'Close';
     closeBtn.setAttribute('aria-label', 'Close sandbox panel');
+    closeBtn.dataset.testid = 'sandbox-close';
     closeBtn.addEventListener('click', () => this.setCollapsed(true));
 
     const handle = el('div', 'sandbox-sheet-handle');
@@ -88,6 +93,7 @@ export class SandboxPanel {
     this.header.append(handle, headerRow);
 
     this.searchInput.placeholder = 'Filter tools…';
+    this.searchInput.dataset.testid = 'sandbox-filter';
     this.searchInput.addEventListener('input', () => this.renderTab());
 
     for (const t of TABS) {
@@ -95,6 +101,7 @@ export class SandboxPanel {
       btn.type = 'button';
       btn.textContent = t.label;
       btn.dataset.tab = t.id;
+      btn.dataset.testid = `sandbox-tab-${t.id}`;
       btn.addEventListener('click', () => {
         this.activeTab = t.id;
         this.renderTab();
@@ -103,9 +110,11 @@ export class SandboxPanel {
       this.tabBar.appendChild(btn);
     }
 
+    this.backdrop.dataset.testid = 'sandbox-backdrop';
     this.backdrop.addEventListener('click', () => this.setCollapsed(true));
     this.setupSheetDrag();
 
+    this.body.dataset.testid = 'sandbox-body';
     this.dock.append(this.header, this.searchInput, this.tabBar, this.body);
     this.root.append(this.backdrop, this.fab, this.dock);
     this.setCollapsed(true);
@@ -247,11 +256,18 @@ export class SandboxPanel {
     }
   }
 
-  private chip(label: string, section: keyof import('../../sim/sandbox-types').SandboxSettings, key: string, active: boolean): HTMLElement {
+  private chip(
+    label: string,
+    section: keyof import('../../sim/sandbox-types').SandboxSettings,
+    key: string,
+    active: boolean,
+    testId?: string,
+  ): HTMLElement {
     const btn = el('button', 'sandbox-chip');
     btn.type = 'button';
     btn.textContent = label;
     btn.classList.toggle('active', active);
+    if (testId) btn.dataset.testid = testId;
     btn.addEventListener('click', () => {
       this.controller.toggleSetting(section, key);
       this.renderTab();
@@ -259,9 +275,10 @@ export class SandboxPanel {
     return btn;
   }
 
-  private btn(label: string, action: () => void): HTMLElement {
+  private btn(label: string, action: () => void, testId?: string): HTMLElement {
     const b = el('button', 'btn sandbox-action', label);
     b.type = 'button';
+    if (testId) b.dataset.testid = testId;
     b.addEventListener('click', action);
     return b;
   }
@@ -313,9 +330,9 @@ export class SandboxPanel {
       const s = this.section('Mana');
       const row = el('div', 'sandbox-btn-row');
       row.append(
-        this.btn('Set 5k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 5000, 'set')),
-        this.btn('+50k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 50000, 'add')),
-        this.btn('−1k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 1000, 'remove')),
+        this.btn('Set 5k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 5000, 'set'), 'sandbox-mana-set-5k'),
+        this.btn('+50k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 50000, 'add'), 'sandbox-mana-add-50k'),
+        this.btn('−1k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 1000, 'remove'), 'sandbox-mana-remove-1k'),
       );
       s.appendChild(row);
       this.body.appendChild(s);
@@ -324,13 +341,13 @@ export class SandboxPanel {
     const s2 = this.section('Toggles');
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
-      this.chip('∞ Mana', 'economy', 'infiniteMana', e.infiniteMana),
-      this.chip('∞ Power', 'economy', 'infinitePower', e.infinitePower),
-      this.chip('Free', 'economy', 'noCosts', e.noCosts),
-      this.chip('Instant build', 'economy', 'instantBuild', e.instantBuild),
-      this.chip('Instant produce', 'economy', 'instantProduce', e.instantProduce),
-      this.chip('Instant research', 'economy', 'instantResearch', e.instantResearch),
-      this.chip('Skip tech', 'economy', 'ignoreTechRequirements', e.ignoreTechRequirements),
+      this.chip('∞ Mana', 'economy', 'infiniteMana', e.infiniteMana, 'sandbox-chip-infiniteMana'),
+      this.chip('∞ Power', 'economy', 'infinitePower', e.infinitePower, 'sandbox-chip-infinitePower'),
+      this.chip('Free', 'economy', 'noCosts', e.noCosts, 'sandbox-chip-noCosts'),
+      this.chip('Instant build', 'economy', 'instantBuild', e.instantBuild, 'sandbox-chip-instantBuild'),
+      this.chip('Instant produce', 'economy', 'instantProduce', e.instantProduce, 'sandbox-chip-instantProduce'),
+      this.chip('Instant research', 'economy', 'instantResearch', e.instantResearch, 'sandbox-chip-instantResearch'),
+      this.chip('Skip tech', 'economy', 'ignoreTechRequirements', e.ignoreTechRequirements, 'sandbox-chip-ignoreTechRequirements'),
     );
     s2.appendChild(chips);
     this.body.appendChild(s2);
@@ -341,22 +358,24 @@ export class SandboxPanel {
       const s = this.section('Spawn at camera');
       let count = 5;
       const unitSelect = this.makeSelect(this.unitIds());
+      unitSelect.dataset.testid = 'sandbox-unit-select';
       const playerSelect = this.makePlayerSelect();
+      playerSelect.dataset.testid = 'sandbox-unit-player';
       const countStepper = this.stepper(count, (n) => {
         count = n;
       });
       s.append(unitSelect, playerSelect, countStepper);
       s.appendChild(this.btn('Spawn', () => {
         this.controller.spawnUnit(playerSelect.value || this.controller.humanPlayerId, unitSelect.value, count);
-      }));
+      }, 'sandbox-spawn-unit'));
       this.body.appendChild(s);
     }
     const s2 = this.section('Selection');
     const row = el('div', 'sandbox-btn-row');
     row.append(
-      this.btn('Heal', () => this.controller.healSelected()),
-      this.btn('Kill', () => this.controller.killSelected()),
-      this.btn('Delete', () => this.controller.destroySelected()),
+      this.btn('Heal', () => this.controller.healSelected(), 'sandbox-heal'),
+      this.btn('Kill', () => this.controller.killSelected(), 'sandbox-kill'),
+      this.btn('Delete', () => this.controller.destroySelected(), 'sandbox-delete'),
     );
     s2.appendChild(row);
     this.body.appendChild(s2);
@@ -366,13 +385,15 @@ export class SandboxPanel {
     void filter;
     const s = this.section('Spawn at camera');
     const buildingSelect = this.makeSelect(this.buildingIds());
+    buildingSelect.dataset.testid = 'sandbox-building-select';
     const playerSelect = this.makePlayerSelect();
+    playerSelect.dataset.testid = 'sandbox-building-player';
     s.append(buildingSelect, playerSelect);
     s.appendChild(this.btn('Spawn building', () => {
       this.controller.spawnBuilding(playerSelect.value || this.controller.humanPlayerId, buildingSelect.value, true);
-    }));
+    }, 'sandbox-spawn-building'));
     const b = this.controller.settings.build;
-    s.append(this.chip('Free placement', 'build', 'ignorePlacementRestrictions', b.ignorePlacementRestrictions));
+    s.append(this.chip('Free placement', 'build', 'ignorePlacementRestrictions', b.ignorePlacementRestrictions, 'sandbox-chip-ignorePlacementRestrictions'));
     this.body.appendChild(s);
   }
 
@@ -382,11 +403,12 @@ export class SandboxPanel {
     const g = this.controller.settings.gameplay;
     const s = this.section('Player control');
     const controlRow = el('div', 'sandbox-chip-grid');
-    controlRow.append(this.chip('Control any player', 'gameplay', 'multiPlayerControl', g.multiPlayerControl));
+    controlRow.append(this.chip('Control any player', 'gameplay', 'multiPlayerControl', g.multiPlayerControl, 'sandbox-chip-multiPlayerControl'));
     s.appendChild(controlRow);
 
     const active = this.section('Active player');
     const activeSelect = this.makePlayerSelect();
+    activeSelect.dataset.testid = 'sandbox-active-player';
     activeSelect.addEventListener('change', () => {
       if (this.controller.switchControlledPlayer(activeSelect.value)) this.renderTab();
     });
@@ -399,11 +421,11 @@ export class SandboxPanel {
       const humanBtn = this.btn('Human', () => {
         this.controller.setPlayerController(p.id, 'human');
         this.renderTab();
-      });
+      }, `sandbox-player-${p.id}-human`);
       const aiBtn = this.btn('AI', () => {
         this.controller.setPlayerController(p.id, 'ai');
         this.renderTab();
-      });
+      }, `sandbox-player-${p.id}-ai`);
       if (p.controller === 'human') humanBtn.classList.add('active');
       else aiBtn.classList.add('active');
       row.append(label, humanBtn, aiBtn);
@@ -413,9 +435,9 @@ export class SandboxPanel {
     const aiSection = this.section('AI control');
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
-      this.chip('Pause AI', 'ai', 'paused', a.paused),
-      this.chip('Disable AI', 'ai', 'disabled', a.disabled),
-      this.chip('Show intel', 'ai', 'revealIntel', a.revealIntel),
+      this.chip('Pause AI', 'ai', 'paused', a.paused, 'sandbox-chip-ai-paused'),
+      this.chip('Disable AI', 'ai', 'disabled', a.disabled, 'sandbox-chip-ai-disabled'),
+      this.chip('Show intel', 'ai', 'revealIntel', a.revealIntel, 'sandbox-chip-ai-revealIntel'),
     );
     aiSection.appendChild(chips);
     const force = this.section('Force mode');
@@ -424,6 +446,7 @@ export class SandboxPanel {
       const btn = el('button', 'sandbox-chip');
       btn.type = 'button';
       btn.textContent = mode;
+      btn.dataset.testid = `sandbox-force-${mode}`;
       btn.classList.toggle('active', a.forceMode === mode);
       btn.addEventListener('click', () => {
         this.controller.setSetting('ai', { forceMode: mode });
@@ -446,8 +469,8 @@ export class SandboxPanel {
     const s = this.section('Fog of war');
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
-      this.chip('Fog on', 'map', 'fogEnabled', m.fogEnabled),
-      this.chip('Reveal all', 'map', 'revealMap', m.revealMap),
+      this.chip('Fog on', 'map', 'fogEnabled', m.fogEnabled, 'sandbox-chip-fogEnabled'),
+      this.chip('Reveal all', 'map', 'revealMap', m.revealMap, 'sandbox-chip-revealMap'),
     );
     s.appendChild(chips);
     this.body.appendChild(s);
@@ -463,24 +486,24 @@ export class SandboxPanel {
         if (this.callbacks.isPaused()) this.callbacks.onResume();
         else this.callbacks.onPause();
         this.renderTab();
-      }),
-      this.btn('+1 frame', () => this.callbacks.onStepFrame()),
+      }, 'sandbox-pause-toggle'),
+      this.btn('+1 frame', () => this.callbacks.onStepFrame(), 'sandbox-step-frame'),
     );
     s.appendChild(simRow);
 
     const speed = this.section('Speed');
     const speedRow = el('div', 'sandbox-btn-row');
     for (const sc of [0.25, 0.5, 1, 2, 4]) {
-      speedRow.appendChild(this.btn(`${sc}×`, () => this.callbacks.onSetTimeScale(sc)));
+      speedRow.appendChild(this.btn(`${sc}×`, () => this.callbacks.onSetTimeScale(sc), `sandbox-speed-${sc}`));
     }
     speed.appendChild(speedRow);
 
     const s2 = this.section('Freeze');
     const freezeRow = el('div', 'sandbox-chip-grid');
     freezeRow.append(
-      this.chip('Units', 'gameplay', 'freezeUnits', g.freezeUnits),
-      this.chip('Projectiles', 'gameplay', 'freezeProjectiles', g.freezeProjectiles),
-      this.chip('No win', 'gameplay', 'disableWinCheck', g.disableWinCheck),
+      this.chip('Units', 'gameplay', 'freezeUnits', g.freezeUnits, 'sandbox-chip-freezeUnits'),
+      this.chip('Projectiles', 'gameplay', 'freezeProjectiles', g.freezeProjectiles, 'sandbox-chip-freezeProjectiles'),
+      this.chip('No win', 'gameplay', 'disableWinCheck', g.disableWinCheck, 'sandbox-chip-disableWinCheck'),
     );
     s2.appendChild(freezeRow);
     this.body.append(s, speed, s2);
@@ -491,13 +514,13 @@ export class SandboxPanel {
     const sp = this.controller.settings.spells;
     const s = this.section('Cast at camera');
     const spellSelect = this.makeSelect(this.spellIds());
+    spellSelect.dataset.testid = 'sandbox-spell-select';
     s.append(spellSelect);
-    s.appendChild(this.btn('Cast spell', () => this.controller.castSpell(spellSelect.value)));
+    s.appendChild(this.btn('Cast spell', () => this.controller.castSpell(spellSelect.value), 'sandbox-cast-spell'));
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
-      this.chip('No CD', 'spells', 'noCooldowns', sp.noCooldowns),
-      this.chip('Free cast', 'spells', 'noManaCost', sp.noManaCost),
-      this.chip('Show radius', 'overlays', 'spellRadius', this.controller.settings.overlays.spellRadius),
+      this.chip('No CD', 'spells', 'noCooldowns', sp.noCooldowns, 'sandbox-chip-noCooldowns'),
+      this.chip('Show radius', 'overlays', 'spellRadius', this.controller.settings.overlays.spellRadius, 'sandbox-chip-spellRadius'),
     );
     s.appendChild(chips);
     this.body.appendChild(s);
@@ -508,9 +531,9 @@ export class SandboxPanel {
     const s = this.section('Battlefield');
     const row = el('div', 'sandbox-btn-row');
     row.append(
-      this.btn('Clear all units', () => this.controller.clearUnits()),
-      this.btn('Clear mine', () => this.controller.clearUnits(this.controller.humanPlayerId)),
-      this.btn('Restart', () => this.controller.restartScenario()),
+      this.btn('Clear all units', () => this.controller.clearUnits(), 'sandbox-clear-all'),
+      this.btn('Clear mine', () => this.controller.clearUnits(this.controller.humanPlayerId), 'sandbox-clear-mine'),
+      this.btn('Restart', () => this.controller.restartScenario(), 'sandbox-combat-restart'),
     );
     s.appendChild(row);
     this.body.appendChild(s);
@@ -521,10 +544,11 @@ export class SandboxPanel {
     const nameInput = el('input', 'sandbox-search sandbox-name-input') as HTMLInputElement;
     nameInput.placeholder = 'Scenario name';
     nameInput.autocomplete = 'off';
+    nameInput.dataset.testid = 'sandbox-scenario-name';
     const row = el('div', 'sandbox-btn-row');
     row.append(
-      this.btn('Save', () => void this.controller.saveScenario(nameInput.value || 'Untitled')),
-      this.btn('Restart', () => this.controller.restartScenario()),
+      this.btn('Save', () => void this.controller.saveScenario(nameInput.value || 'Untitled'), 'sandbox-scenario-save'),
+      this.btn('Restart', () => this.controller.restartScenario(), 'sandbox-scenario-restart'),
     );
     s.append(nameInput, row);
     this.body.appendChild(s);
@@ -535,6 +559,7 @@ export class SandboxPanel {
       const rowBtn = el('button', 'sandbox-list-row');
       rowBtn.type = 'button';
       rowBtn.textContent = sc.name + (sc.builtin ? ' ★' : '');
+      rowBtn.dataset.testid = `sandbox-scenario-${sc.id}`;
       rowBtn.addEventListener('click', () => void this.loadScenario(sc));
       list.appendChild(rowBtn);
     }
@@ -543,7 +568,7 @@ export class SandboxPanel {
 
   private async loadScenario(summary: ScenarioSummary): Promise<void> {
     if (summary.builtin) {
-      this.controller.restartScenario();
+      this.controller.loadBuiltin(summary.id);
       return;
     }
     const sc = await loadUserScenario(summary.id);
@@ -561,14 +586,21 @@ export class SandboxPanel {
       'memory',
       'unitIds',
       'healthBars',
+      'currentTarget',
+      'aiState',
+      'currentPath',
+      'collisionShapes',
+      'cooldownTimers',
       'visionRadius',
       'attackRadius',
+      'spellRadius',
+      'pathfinding',
+      'collision',
       'navigationGrid',
       'buildingFootprints',
-      'spellRadius',
     ];
     for (const key of keys) {
-      chips.appendChild(this.chip(key, 'overlays', key, o[key]));
+      chips.appendChild(this.chip(key, 'overlays', key, o[key], `sandbox-overlay-${key}`));
     }
     s.appendChild(chips);
     this.body.appendChild(s);

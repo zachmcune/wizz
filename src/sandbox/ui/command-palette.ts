@@ -36,20 +36,24 @@ export class CommandPalette {
     if (this.touchMode) this.root.classList.add('touch');
 
     this.ctx = { controller, registry, humanId };
+    this.root.dataset.testid = 'sandbox-palette';
     this.input.placeholder = this.touchMode ? 'Search commands…' : 'Search commands… (e.g. spawn imp_swarmling 5)';
     this.input.autocomplete = 'off';
     this.input.autocapitalize = 'off';
     this.input.spellcheck = false;
+    this.input.dataset.testid = 'sandbox-palette-input';
     this.input.addEventListener('keydown', (e) => this.onKeyDown(e));
     this.backdrop.addEventListener('click', () => this.hide());
 
     this.runBtn.type = 'button';
+    this.runBtn.dataset.testid = 'sandbox-palette-run';
     this.runBtn.addEventListener('click', () => this.run(this.input.value));
 
     const closeBtn = el('button', 'btn sandbox-btn-icon sandbox-palette-close');
     closeBtn.type = 'button';
     closeBtn.textContent = '✕';
     closeBtn.setAttribute('aria-label', 'Close command palette');
+    closeBtn.dataset.testid = 'sandbox-palette-close';
     closeBtn.addEventListener('click', () => this.hide());
 
     const head = el('div', 'sandbox-palette-head');
