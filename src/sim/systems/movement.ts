@@ -12,6 +12,7 @@ import {
   getGarrisonHost,
   garrisonedInId,
   isChanneling,
+  hasMorph,
   setGarrisonedIn,
 } from '../capabilities';
 import { sandboxFreezeUnits } from '../sandbox-flags';
@@ -63,7 +64,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       e.vel = { x: 0, y: 0 };
       continue;
     }
-    if (e.morphProgress !== undefined || isChanneling(e)) {
+    if (hasMorph(e) || isChanneling(e)) {
       e.vel = { x: 0, y: 0 };
       continue;
     }

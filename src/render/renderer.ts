@@ -9,7 +9,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer, hasBuff, pickEntity, pickResourceNode } from '../sim/views';
-import { garrisonedInId, getHarvester } from '../sim/capabilities';
+import { garrisonedInId, getHarvester, getFrostExposure, hasMorph, getMorph } from '../sim/capabilities';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
@@ -513,7 +513,7 @@ export class Renderer {
       } else {
         n.sprite.alpha = 1;
         if (e.kind === 'unit' || e.kind === 'building') {
-          n.sprite.tint = frostExposureTint(e.frostExposure);
+          n.sprite.tint = frostExposureTint(getFrostExposure(e));
         } else {
           n.sprite.tint = 0xffffff;
         }
@@ -529,9 +529,9 @@ export class Renderer {
         const bar = this.positionOverlayAt(x, y, e.radius + 3);
         this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * e.buildProgress, 3, 0x7fe3ff);
       }
-      if ((e.kind === 'building' || e.kind === 'unit') && e.morphProgress !== undefined) {
+      if ((e.kind === 'building' || e.kind === 'unit') && hasMorph(e)) {
         const bar = this.positionOverlayAt(x, y, e.radius + 6);
-        this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * e.morphProgress, 3, 0x8b6cff);
+        this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * (getMorph(e)?.progress ?? 0), 3, 0x8b6cff);
       }
       const harvester = getHarvester(e);
       if (e.kind === 'unit' && harvester && harvester.carry > 0) {

@@ -3,14 +3,14 @@ import type { StepContext } from '../../context';
 import type { Command, GameState } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { requirementsMet } from './shared';
-import { ensureProduction, getResearchQueue } from '../../capabilities';
+import { ensureProduction, getResearchQueue, hasMorph } from '../../capabilities';
 import { sandboxIgnoreTech, sandboxNoCosts } from '../../sandbox-flags';
 
 export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'research' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const building = state.entities.get(cmd.buildingId);
   if (!building || building.owner !== cmd.playerId || building.kind !== 'building' || !isAlive(building)) return;
-  if (building.buildProgress !== undefined || building.morphProgress !== undefined) {
+  if (building.buildProgress !== undefined || hasMorph(building)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }

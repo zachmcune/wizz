@@ -1,6 +1,6 @@
 import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
-import { getChanneler, getGarrisonHost, hasHarvester } from '../../capabilities';
+import { getChanneler, getGarrisonHost, hasHarvester, hasMorph } from '../../capabilities';
 import { hasBuff, isAlive } from '../../queries';
 import { ownedAliveUnits } from './shared';
 
@@ -94,7 +94,7 @@ export function handleHarvest(state: GameState, ctx: StepContext, cmd: Extract<C
 
 export function handleStop(state: GameState, _ctx: StepContext, cmd: Extract<Command, { type: 'stop' }>): void {
   for (const e of ownedAliveUnits(state, cmd.playerId, cmd.entityIds)) {
-    if (e.morphProgress !== undefined) continue;
+    if (hasMorph(e)) continue;
     clearGarrisonReservation(state, e.id);
     clearChanneling(e);
     e.orders = [];

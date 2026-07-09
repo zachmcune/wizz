@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "start": "node relay/production.mjs",
+    "start": "node --experimental-strip-types relay/production.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -15,7 +15,7 @@
     "test:slow": "vitest run tests/balance.test.ts",
     "test:full": "vitest run",
     "test:e2e": "playwright test",
-    "relay": "node relay/server.mjs"
+    "relay": "node --experimental-strip-types relay/server.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",

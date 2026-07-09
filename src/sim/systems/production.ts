@@ -6,7 +6,7 @@ import type { GameState } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { productionRate } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
-import { getProductionQueue, getResearchQueue, getRally, garrisonedInId } from '../capabilities';
+import { getProductionQueue, getResearchQueue, getRally, garrisonedInId, hasMorph } from '../capabilities';
 import {
   sandboxInstantBuild,
   sandboxInstantProduce,
@@ -36,7 +36,7 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
       if (e.buffs.length) e.buffs = e.buffs.filter((b) => b.expiresTick > state.tick);
     }
     if (e.kind !== 'building' || e.state === 'dead') continue;
-    if (e.morphProgress !== undefined) continue;
+    if (hasMorph(e)) continue;
     const player = state.players.find((p) => p.id === e.owner);
     if (!player) continue;
     const bdef = ctx.services.registry.building(e.defId);

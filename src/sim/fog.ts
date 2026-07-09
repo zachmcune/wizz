@@ -6,7 +6,7 @@ import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
 import type { BuildingEntity } from './entity-types';
-import { garrisonedInId } from './capabilities';
+import { garrisonedInId, hasMorph } from './capabilities';
 import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower, isPowerShort } from './power';
@@ -21,7 +21,7 @@ export function radarActive(state: GameState, registry: Registry, playerId: Play
   if (isPowerShort(state, playerId)) return false;
   for (const e of entitiesSorted(state)) {
     if (e.owner !== playerId || e.kind !== 'building' || !isAlive(e)) continue;
-    if (e.buildProgress !== undefined || e.morphProgress !== undefined) continue;
+    if (e.buildProgress !== undefined || hasMorph(e)) continue;
     if (!registry.buildings.get(e.defId)?.isRadar) continue;
     return true;
   }
@@ -86,7 +86,7 @@ function isSightSource(state: GameState, registry: Registry, e: Entity): boolean
   if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') return false;
   if (e.kind === 'unit' && garrisonedInId(e) !== undefined) return false;
   if (e.kind === 'building') {
-    if (e.buildProgress !== undefined || e.morphProgress !== undefined) return false;
+    if (e.buildProgress !== undefined || hasMorph(e)) return false;
     if (!buildingHasPower(state, registry, e)) return false;
   }
   return sightOfEntity(registry, e) > 0;

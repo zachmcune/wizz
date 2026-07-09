@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { parseClientMessage } from '../src/net/protocol-schema.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const protocolConstants = JSON.parse(readFileSync(join(__dirname, '../protocol-constants.json'), 'utf8'));
@@ -522,12 +523,15 @@ export function attachRelay(server) {
     });
 
     ws.on('message', (data) => {
-      let msg;
+      let raw;
       try {
-        msg = JSON.parse(String(data));
+        raw = JSON.parse(String(data));
       } catch {
         return;
       }
+
+      const msg = parseClientMessage(raw);
+      if (!msg) return;
 
       if (msg.t === 'join') {
         const roomId = String(msg.room ?? '').toUpperCase();

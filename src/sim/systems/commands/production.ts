@@ -3,13 +3,13 @@ import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
 import { getPlayer } from '../../queries';
 import { requirementsMet } from './shared';
-import { ensureProduction, getProductionQueue } from '../../capabilities';
+import { ensureProduction, getProductionQueue, hasMorph } from '../../capabilities';
 import { sandboxIgnoreTech, sandboxNoCosts, sandboxInstantProduce } from '../../sandbox-flags';
 
 export function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'produce' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const b = state.entities.get(cmd.buildingId);
-  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || b.buildProgress !== undefined || b.morphProgress !== undefined) return;
+  if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || b.buildProgress !== undefined || hasMorph(b)) return;
   const bdef = ctx.services.registry.buildings.get(b.defId) as BuildingDef | undefined;
   const udef = ctx.services.registry.units.get(cmd.defId);
   if (!bdef || !udef || !bdef.producesUnits?.includes(cmd.defId)) return;

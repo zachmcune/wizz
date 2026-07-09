@@ -57,6 +57,27 @@ export interface BeamWeaponCapability {
   lastHitIds: EntityId[];
 }
 
+/** Mobile HQ deploy/pack progress. */
+export interface MorphCapability {
+  progress: number;
+  action: 'deploy' | 'pack';
+  targetPos?: Vec2;
+  targetDefId?: string;
+}
+
+/** Frost spire slow buildup on a unit or building. */
+export interface FrostExposureCapability {
+  exposure: number;
+}
+
+/** Inferno beam burn that lingers after leaving the cone. */
+export interface BurnLingerCapability {
+  remaining: number;
+  damagePerTick: number;
+  vs: Record<string, number>;
+  sourceId: EntityId;
+}
+
 /** Capability slots that may appear on any entity kind. */
 export interface EntityCapabilities {
   projectile?: ProjectileCapability;
@@ -66,6 +87,9 @@ export interface EntityCapabilities {
   production?: ProductionCapability;
   garrisonHost?: GarrisonHostCapability;
   beamWeapon?: BeamWeaponCapability;
+  morph?: MorphCapability;
+  frost?: FrostExposureCapability;
+  burnLinger?: BurnLingerCapability;
 }
 
 export type CapabilityKind = keyof EntityCapabilities;

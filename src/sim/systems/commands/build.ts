@@ -7,7 +7,7 @@ import { spawnEntity, unlockTech } from '../../factory';
 import { canBuildNearBase } from '../../build-zone';
 import { footprintOverlapsNode } from '../../resource-nodes';
 import { requirementsMet, removeBuildingFromWorld } from './shared';
-import { ensureProduction, getProductionQueue, garrisonedIds, garrisonReservedIds } from '../../capabilities';
+import { ensureProduction, getProductionQueue, garrisonedIds, garrisonReservedIds, hasMorph, ensureMorph } from '../../capabilities';
 import { sandboxIgnorePlacement, sandboxIgnoreTech, sandboxNoCosts, sandboxInstantBuild } from '../../sandbox-flags';
 
 export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
@@ -67,7 +67,7 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
 export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'deploy' }>): void {
   const unit = state.entities.get(cmd.entityId);
   if (!unit || unit.owner !== cmd.playerId || unit.kind !== 'unit' || !isAlive(unit)) return;
-  if (unit.morphProgress !== undefined || unit.orders.length > 0 || unit.state !== 'idle') {
+  if (hasMorph(unit) || unit.orders.length > 0 || unit.state !== 'idle') {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
@@ -89,10 +89,11 @@ export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Co
 
   const cx = (tx + bdef.footprint / 2) * TILE;
   const cy = (ty + bdef.footprint / 2) * TILE;
-  unit.morphProgress = 0;
-  unit.morphAction = 'deploy';
-  unit.morphTargetPos = { x: cx, y: cy };
-  unit.morphTargetDefId = udef.deploysAs;
+  const morph = ensureMorph(unit);
+  morph.progress = 0;
+  morph.action = 'deploy';
+  morph.targetPos = { x: cx, y: cy };
+  morph.targetDefId = udef.deploysAs;
   unit.state = 'building';
   unit.orders = [];
   unit.vel = { x: 0, y: 0 };
@@ -102,7 +103,7 @@ export function handleDeploy(state: GameState, ctx: StepContext, cmd: Extract<Co
 export function handlePack(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'pack' }>): void {
   const b = state.entities.get(cmd.buildingId);
   if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+  if (b.buildProgress !== undefined || hasMorph(b)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
@@ -114,15 +115,16 @@ export function handlePack(state: GameState, ctx: StepContext, cmd: Extract<Comm
     return;
   }
 
-  b.morphProgress = 0;
-  b.morphAction = 'pack';
+  const morph = ensureMorph(b);
+  morph.progress = 0;
+  morph.action = 'pack';
   ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'pack', x: b.pos.x, y: b.pos.y });
 }
 
 export function handleSetRally(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRally' }>): void {
   const b = state.entities.get(cmd.buildingId);
   if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) return;
+  if (b.buildProgress !== undefined || hasMorph(b)) return;
   const bdef = ctx.services.registry.buildings.get(b.defId);
   if (!bdef?.producesUnits?.length) return;
   ensureProduction(b).rally = { x: cmd.x, y: cmd.y };
@@ -138,7 +140,7 @@ export function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extr
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'cannot_sell' });
     return;
   }
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+  if (b.buildProgress !== undefined || hasMorph(b)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
@@ -161,7 +163,7 @@ export function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extr
 export function handleSetRepair(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'setRepair' }>): void {
   const b = state.entities.get(cmd.buildingId);
   if (!b || b.owner !== cmd.playerId || b.kind !== 'building' || !isAlive(b)) return;
-  if (b.buildProgress !== undefined || b.morphProgress !== undefined) {
+  if (b.buildProgress !== undefined || hasMorph(b)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }

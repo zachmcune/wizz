@@ -1,7 +1,7 @@
 import type { Registry } from '../../data/registry';
 import type { GameState, Entity, PlayerId, UnitEntity } from '../../sim/types';
 import { isUnit, isBuilding } from '../../sim/types';
-import { isChanneling, garrisonedInId, getProductionQueue } from '../../sim/capabilities';
+import { isChanneling, garrisonedInId, getProductionQueue, hasMorph } from '../../sim/capabilities';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 import { Collapsible } from './collapsible';
@@ -75,7 +75,7 @@ export class UnitOrdersPanel {
       isUnit(single) &&
       single.owner === this.playerId &&
       single.defId === 'waystone_wagon' &&
-      single.morphProgress === undefined &&
+      !hasMorph(single) &&
       single.state === 'idle' &&
       single.orders.length === 0;
     const campReady =
@@ -83,7 +83,7 @@ export class UnitOrdersPanel {
       isBuilding(single) &&
       single.owner === this.playerId &&
       single.defId === 'waystone_camp' &&
-      single.morphProgress === undefined &&
+      !hasMorph(single) &&
       !(getProductionQueue(single)?.length);
     this.deployBtn.style.display = wagonReady && !inPlaceMode ? '' : 'none';
     this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';

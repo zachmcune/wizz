@@ -24,20 +24,6 @@ export interface UnitEntity extends EntityCore {
   targetId?: EntityId;
   cooldowns: Record<string, number>;
   buffs: GameplayBuff[];
-  morphProgress?: number;
-  morphAction?: 'deploy' | 'pack';
-  morphTargetPos?: Vec2;
-  morphTargetDefId?: string;
-  frostExposure?: number;
-  burnLinger?: BurnLinger;
-}
-
-/** Short burn applied after leaving an inferno beam. */
-export interface BurnLinger {
-  remaining: number;
-  damagePerTick: number;
-  vs: Record<string, number>;
-  sourceId: EntityId;
 }
 
 export interface BuildingEntity extends EntityCore {
@@ -50,11 +36,7 @@ export interface BuildingEntity extends EntityCore {
   buffs: GameplayBuff[];
   buildProgress?: number;
   repairing?: boolean;
-  morphProgress?: number;
-  morphAction?: 'pack';
   chargingAttack?: { targetId: EntityId; remainingTicks: number };
-  frostExposure?: number;
-  burnLinger?: BurnLinger;
 }
 
 /** Slim projectile entity — combat fields live in caps.projectile only. */
@@ -94,3 +76,6 @@ export function isHarvester(e: Entity): e is UnitEntity & { caps: EntityCapabili
 export function isCombatUnit(e: Entity): e is UnitEntity {
   return e.kind === 'unit' && e.caps?.harvester === undefined;
 }
+
+/** @deprecated Use BurnLingerCapability from capabilities/types. */
+export type { BurnLingerCapability as BurnLinger } from './capabilities/types';

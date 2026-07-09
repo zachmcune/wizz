@@ -17,6 +17,9 @@ import {
   getProduction,
   getGarrisonHost,
   getBeamWeapon,
+  getMorph,
+  getFrostExposure,
+  getBurnLinger,
   isChanneling,
 } from './capabilities';
 
@@ -91,17 +94,20 @@ function hashCooldowns(e: Entity): string {
 
 function hashEntityFlags(e: Entity): string {
   const beam = getBeamWeapon(e);
+  const morph = getMorph(e);
+  const frost = getFrostExposure(e);
+  const burn = getBurnLinger(e);
   return [
     isChanneling(e) ? 'C' : '',
     e.kind === 'building' && e.repairing ? 'R' : '',
     e.kind === 'building' && e.buildProgress !== undefined ? `BP${r(e.buildProgress)}` : '',
-    (e.kind === 'unit' || e.kind === 'building') && e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
+    morph ? `M${r(morph.progress)}` : '',
     e.kind === 'building' && e.chargingAttack
       ? `Q${e.chargingAttack.targetId}:${e.chargingAttack.remainingTicks}`
       : '',
     beam ? `BM${beam.targetId}:${r(beam.facing)}:${beam.ticksSinceDamage}` : '',
-    (e.kind === 'unit' || e.kind === 'building') && e.frostExposure ? `F${e.frostExposure}` : '',
-    (e.kind === 'unit' || e.kind === 'building') && e.burnLinger ? `L${e.burnLinger.remaining}` : '',
+    frost ? `F${frost}` : '',
+    burn ? `L${burn.remaining}` : '',
     e.kind !== 'resource_node' && e.kind !== 'projectile' ? `ST${e.stance}` : '',
     e.kind === 'unit' && e.targetId !== undefined ? `TG${e.targetId}` : '',
   ].join('');

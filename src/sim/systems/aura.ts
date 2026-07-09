@@ -1,7 +1,7 @@
 import type { StepContext } from '../context';
 import type { Entity } from '../entity-types';
 import type { GameState } from '../types';
-import { garrisonedInId } from '../capabilities';
+import { garrisonedInId, hasMorph } from '../capabilities';
 import { buildingHasPower } from '../power';
 import { distSq } from '../math';
 import { entitiesSorted, isAlive, isAlly } from '../queries';
@@ -19,7 +19,7 @@ function canHealTarget(source: Entity, target: Entity, affects: 'units' | 'build
 export function auraSystem(state: GameState, ctx: StepContext): void {
   for (const source of entitiesSorted(state)) {
     if (source.kind !== 'building' || !isAlive(source)) continue;
-    if (source.buildProgress !== undefined || source.morphProgress !== undefined) continue;
+    if (source.buildProgress !== undefined || hasMorph(source)) continue;
     if (!buildingHasPower(state, ctx.services.registry, source)) continue;
     const aura = ctx.services.registry.buildings.get(source.defId)?.aura;
     if (!aura || aura.kind !== 'heal') continue;

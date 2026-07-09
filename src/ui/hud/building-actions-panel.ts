@@ -2,7 +2,7 @@ import type { Registry } from '../../data/registry';
 import type { BuildingDef } from '../../data/defs';
 import type { GameState, Entity, Player } from '../../sim/types';
 import { isBuilding } from '../../sim/types';
-import { getRally, getResearchQueue, getProductionQueue, garrisonedIds, garrisonReservedIds } from '../../sim/capabilities';
+import { getRally, getResearchQueue, getProductionQueue, garrisonedIds, garrisonReservedIds, hasMorph } from '../../sim/capabilities';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 
@@ -95,7 +95,7 @@ export class BuildingActionsPanel {
   ): void {
     const st = this.state();
     const building = single && isBuilding(single) ? single : null;
-    const completeBuilding = ownBuilding && building && building.buildProgress === undefined && building.morphProgress === undefined;
+    const completeBuilding = ownBuilding && building && building.buildProgress === undefined && !hasMorph(building);
     const canSell = !!completeBuilding && !ownBuilding.isConstructionYard;
     const canRepair = !!completeBuilding && building!.hp < building!.maxHp;
     const canRally = !!completeBuilding && !!ownBuilding.producesUnits?.length && !ownBuilding.isConstructionYard;

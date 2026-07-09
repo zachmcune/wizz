@@ -2,7 +2,7 @@
 import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
 import { isAlive, isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
-import { getRally, garrisonedIds, garrisonReservedIds, isChanneling } from '../sim/capabilities';
+import { getRally, garrisonedIds, garrisonReservedIds, isChanneling, hasMorph, getMorph } from '../sim/capabilities';
 import type { Registry } from '../data/registry';
 import type { ArtDef, BuildingDef } from '../data/defs';
 import type { InputController } from '../input/controller';
@@ -427,7 +427,7 @@ export class Hud {
         else if (isPowerShort(st, this.playerId) && (ownBuilding.producesUnits || singleBuilding.buildProgress !== undefined)) {
           meta.unshift('⚡ SLOW — low power');
         }
-        if (singleBuilding.morphProgress !== undefined) meta.push(`Packing ${Math.round(singleBuilding.morphProgress * 100)}%`);
+        if (hasMorph(singleBuilding)) meta.push(`Packing ${Math.round((getMorph(singleBuilding)?.progress ?? 0) * 100)}%`);
         if (singleBuilding.repairing) meta.push('repairing');
         if (getRally(singleBuilding)) meta.push('rally set');
         if (ownBuilding.garrison) {
@@ -444,8 +444,9 @@ export class Hud {
       } else if (def && 'role' in def && isUnit(single)) {
         this.selDesc.textContent = def.role;
         let meta = `${Math.ceil(single.hp)}/${single.maxHp} HP`;
-        if (single.morphProgress !== undefined) {
-          meta += ` · ${single.morphAction === 'deploy' ? 'Deploying' : 'Packing'} ${Math.round(single.morphProgress * 100)}%`;
+        if (hasMorph(single)) {
+          const morph = getMorph(single);
+          meta += ` · ${morph?.action === 'deploy' ? 'Deploying' : 'Packing'} ${Math.round((morph?.progress ?? 0) * 100)}%`;
         }
         if (isChanneling(single)) meta += ' · conjuring mana';
         this.selMeta.textContent = meta;

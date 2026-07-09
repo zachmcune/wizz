@@ -7,7 +7,17 @@ import type { GameState, Entity, EntityId } from '../types';
 import { applyDamage, applyOnHitStatus } from '../combat-util';
 import { isVisibleTo } from '../fog';
 import { buildingHasPower } from '../power';
-import { getBeamWeapon, setBeamWeapon, clearBeamWeapon, garrisonedInId } from '../capabilities';
+import {
+  getBeamWeapon,
+  setBeamWeapon,
+  clearBeamWeapon,
+  garrisonedInId,
+  getFrostExposure,
+  setFrostExposure,
+  getBurnLinger,
+  setBurnLinger,
+  clearBurnLinger,
+} from '../capabilities';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { isInBeamCone, rotateToward } from '../beam-util';
 import { acquireTarget, inWeaponBand, sightOf } from './combat';
@@ -34,10 +44,10 @@ function applyFrostExposure(state: GameState, target: UnitEntity | BuildingEntit
 }
 
 function decayFrostExposure(state: GameState, target: UnitEntity | BuildingEntity): void {
-  const exposure = target.frostExposure ?? 0;
+  const exposure = getFrostExposure(target) ?? 0;
   if (exposure <= 0) return;
   const next = exposure - 1;
-  target.frostExposure = next > 0 ? next : undefined;
+  setFrostExposure(target, next);
   if (next > 0) applyFrostExposure(state, target, next, 20);
 }
 
@@ -93,11 +103,11 @@ function applyBeamDamage(
   for (const target of hits) {
     if (!isBeamTarget(target)) continue;
     if (w.damage > 0) applyDamage(state, ctx, target, w.damage, w.vs, tower.id);
-    target.burnLinger = undefined;
+    clearBurnLinger(target);
 
     if (beam.kind === 'frost') {
-      const exposure = Math.min(maxExposure, (target.frostExposure ?? 0) + 1);
-      target.frostExposure = exposure;
+      const exposure = Math.min(maxExposure, (getFrostExposure(target) ?? 0) + 1);
+      setFrostExposure(target, exposure);
       applyFrostExposure(state, target, exposure, maxExposure);
     }
   }
@@ -108,13 +118,13 @@ function applyBeamDamage(
       if (hitIds.has(id)) continue;
       const target = state.entities.get(id);
       if (!target || !isBeamTarget(target) || !isAlive(target)) continue;
-      if (target.burnLinger) continue;
-      target.burnLinger = {
+      if (getBurnLinger(target)) continue;
+      setBurnLinger(target, {
         remaining: lingerTicks,
         damagePerTick: w.damage * lingerFactor,
         vs: w.vs as Record<string, number>,
         sourceId: tower.id,
-      };
+      });
     }
   } else {
     for (const target of entitiesSorted(state)) {
@@ -132,13 +142,13 @@ function applyBeamDamage(
 function processBurnLinger(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (!isBeamTarget(e) || !isAlive(e)) continue;
-    const burn = e.burnLinger;
+    const burn = getBurnLinger(e);
     if (!burn) continue;
     if (burn.damagePerTick > 0) {
       applyDamage(state, ctx, e, burn.damagePerTick, burn.vs as Record<ArmorClass, number>, burn.sourceId);
     }
     burn.remaining--;
-    if (burn.remaining <= 0) e.burnLinger = undefined;
+    if (burn.remaining <= 0) clearBurnLinger(e);
   }
 }
 
@@ -212,7 +222,7 @@ function decayFrostExposureGlobal(state: GameState): void {
   }
   for (const e of entitiesSorted(state)) {
     if (!isBeamTarget(e) || !isAlive(e)) continue;
-    if (!e.frostExposure || inFrost.has(e.id)) continue;
+    if (!getFrostExposure(e) || inFrost.has(e.id)) continue;
     decayFrostExposure(state, e);
   }
 }

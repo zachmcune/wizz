@@ -3,7 +3,20 @@ import { getRegistry } from './helpers';
 import { initMatch } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { hashState } from '../src/sim/hash';
-import { makeProjectileCapability, getProjectileCapability, hashProjectileCapability, getHarvester, getProduction, ensureProduction } from '../src/sim/capabilities';
+import {
+  makeProjectileCapability,
+  getProjectileCapability,
+  hashProjectileCapability,
+  getHarvester,
+  getProduction,
+  ensureProduction,
+  ensureMorph,
+  getMorph,
+  setFrostExposure,
+  getFrostExposure,
+  setBurnLinger,
+  getBurnLinger,
+} from '../src/sim/capabilities';
 import { makeProjectile, makeUnit, makeBuilding } from '../src/sim/factory';
 import { runHeadless } from '../src/testing/headless';
 import { strategyForPlayer } from '../src/ai/strategies/registry';
@@ -47,6 +60,21 @@ describe('projectile capabilities', () => {
     const b = makeBuilding(3, 'player0', circle, 100, 100);
     ensureProduction(b).productionQueue = [];
     expect(getProduction(b)?.productionQueue).toEqual([]);
+  });
+
+  it('morph/frost/burn capabilities round-trip on entities', () => {
+    const wagon = makeUnit(10, 'player0', reg.unit('waystone_wagon'), 50, 50);
+    const morph = ensureMorph(wagon);
+    morph.progress = 0.5;
+    morph.action = 'deploy';
+    morph.targetPos = { x: 100, y: 200 };
+    expect(getMorph(wagon)?.progress).toBe(0.5);
+
+    const golem = makeUnit(11, 'player1', reg.unit('stone_golem'), 0, 0);
+    setFrostExposure(golem, 12);
+    expect(getFrostExposure(golem)).toBe(12);
+    setBurnLinger(golem, { remaining: 4, damagePerTick: 2, vs: { heavy: 1 }, sourceId: 99 });
+    expect(getBurnLinger(golem)?.remaining).toBe(4);
   });
 });
 

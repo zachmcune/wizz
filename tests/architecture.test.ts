@@ -87,4 +87,9 @@ describe('protocol schema', () => {
   it('rejects malformed client messages', () => {
     expect(parseClientMessage({ t: 'commands' })).toBeNull();
   });
+
+  it('rejects oversized command batches', () => {
+    const cmds = Array.from({ length: 300 }, () => ({ type: 'stop', playerId: 'player0', entityIds: [] }));
+    expect(parseClientMessage({ t: 'commands', forTick: 0, cmds })).toBeNull();
+  });
 });

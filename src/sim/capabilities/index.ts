@@ -5,11 +5,14 @@ import type { Entity, EntityId, PlayerId, ProductionItem } from '../types';
 import type { BuildingEntity, ProjectileEntity, UnitEntity } from '../entity-types';
 import type {
   BeamWeaponCapability,
+  BurnLingerCapability,
   ChannelerCapability,
   EntityCapabilities,
+  FrostExposureCapability,
   GarrisonableCapability,
   GarrisonHostCapability,
   HarvesterCapability,
+  MorphCapability,
   ProductionCapability,
   ProjectileCapability,
 } from './types';
@@ -23,6 +26,9 @@ export type {
   ProductionCapability,
   GarrisonHostCapability,
   BeamWeaponCapability,
+  MorphCapability,
+  FrostExposureCapability,
+  BurnLingerCapability,
   CapabilityKind,
 } from './types';
 
@@ -222,4 +228,69 @@ export function clearBeamWeapon(e: BuildingEntity): void {
 export function hashBeamWeaponCapability(cap: BeamWeaponCapability): string {
   const hits = [...cap.lastHitIds].sort((a, b) => a - b).join(',');
   return `BM${cap.targetId}:${cap.facing}:${cap.ticksSinceDamage}:${hits}`;
+}
+
+// --- Morph ---
+
+export function getMorph(e: Entity): MorphCapability | null {
+  if (e.kind !== 'unit' && e.kind !== 'building') return null;
+  return e.caps?.morph ?? null;
+}
+
+export function hasMorph(e: Entity): boolean {
+  return getMorph(e) !== null;
+}
+
+export function ensureMorph(e: UnitEntity | BuildingEntity): MorphCapability {
+  const caps = ensureCaps(e);
+  if (!caps.morph) caps.morph = { progress: 0, action: 'pack' };
+  return caps.morph;
+}
+
+export function clearMorph(e: UnitEntity | BuildingEntity): void {
+  if (e.caps) delete e.caps.morph;
+}
+
+export function hashMorphCapability(cap: MorphCapability): string {
+  const pos = cap.targetPos ? `${cap.targetPos.x},${cap.targetPos.y}` : '';
+  const def = cap.targetDefId ?? '';
+  return `MF${cap.progress}:${cap.action}:${pos}:${def}`;
+}
+
+// --- Frost exposure ---
+
+export function getFrostExposure(e: Entity): number | undefined {
+  if (e.kind !== 'unit' && e.kind !== 'building') return undefined;
+  return e.caps?.frost?.exposure;
+}
+
+export function setFrostExposure(e: UnitEntity | BuildingEntity, exposure: number): void {
+  if (exposure <= 0) {
+    if (e.caps) delete e.caps.frost;
+    return;
+  }
+  ensureCaps(e).frost = { exposure };
+}
+
+export function hashFrostCapability(cap: FrostExposureCapability): string {
+  return `F${cap.exposure}`;
+}
+
+// --- Burn linger ---
+
+export function getBurnLinger(e: Entity): BurnLingerCapability | null {
+  if (e.kind !== 'unit' && e.kind !== 'building') return null;
+  return e.caps?.burnLinger ?? null;
+}
+
+export function setBurnLinger(e: UnitEntity | BuildingEntity, burn: BurnLingerCapability): void {
+  ensureCaps(e).burnLinger = burn;
+}
+
+export function clearBurnLinger(e: UnitEntity | BuildingEntity): void {
+  if (e.caps) delete e.caps.burnLinger;
+}
+
+export function hashBurnLingerCapability(cap: BurnLingerCapability): string {
+  return `L${cap.remaining}:${cap.damagePerTick}:${cap.sourceId}`;
 }

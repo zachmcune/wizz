@@ -1,7 +1,7 @@
 import type { StepContext } from '../context';
 import type { Entity, UnitEntity } from '../entity-types';
 import type { EntityId, GameState } from '../types';
-import { garrisonedIds, garrisonedInId } from '../capabilities';
+import { garrisonedIds, garrisonedInId, hasMorph } from '../capabilities';
 import { distSq } from '../math';
 import { buildingHasPower } from '../power';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
@@ -32,7 +32,7 @@ function acquireGarrisonTarget(state: GameState, ctx: StepContext, unit: UnitEnt
 export function garrisonSystem(state: GameState, ctx: StepContext): void {
   for (const building of entitiesSorted(state)) {
     if (building.kind !== 'building' || !isAlive(building)) continue;
-    if (building.buildProgress !== undefined || building.morphProgress !== undefined) continue;
+    if (building.buildProgress !== undefined || hasMorph(building)) continue;
     const ids = garrisonedIds(building);
     if (!ids.length) continue;
     if (!buildingHasPower(state, ctx.services.registry, building)) continue;
