@@ -14,6 +14,10 @@ export function sandboxNoCosts(state: GameState): boolean {
   return !!s?.economy.noCosts || !!s?.economy.infiniteMana;
 }
 
+export function sandboxInfinitePower(state: GameState): boolean {
+  return sandboxSettings(state)?.economy.infinitePower === true;
+}
+
 export function sandboxInfiniteMana(state: GameState): boolean {
   return sandboxSettings(state)?.economy.infiniteMana === true;
 }

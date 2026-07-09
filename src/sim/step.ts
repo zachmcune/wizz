@@ -18,6 +18,7 @@ import { visibilitySystem } from './systems/visibility';
 import { winCheckSystem } from './systems/wincheck';
 import { superweaponSystem } from './systems/superweapon';
 import { beamWeaponSystem } from './systems/beam-weapon';
+import { applySandboxEconomyCheats } from './systems/sandbox-economy';
 
 export type AiHook = (state: GameState, services: SimServices) => Command[];
 
@@ -53,6 +54,7 @@ export function stepSimulation(
   channelSystem(state, ctx); // 7b mana weaver conjuring
   deathSystem(state, ctx); // 8
   winCheckSystem(state, ctx); // 9
+  applySandboxEconomyCheats(state, ctx); // 9b sandbox mana/power cheats
 
   state.tick++;
   return { events: ctx.events, nextCommands };

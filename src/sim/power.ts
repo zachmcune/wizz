@@ -3,10 +3,12 @@
 import type { Registry } from '../data/registry';
 import type { GameState, Entity, PlayerId } from './types';
 import { getPlayer } from './queries';
+import { sandboxInfinitePower } from './sandbox-flags';
 
 const MIN_PRODUCTION_RATE = 0.1;
 
 export function isPowerShort(state: GameState, playerId: PlayerId): boolean {
+  if (sandboxInfinitePower(state)) return false;
   const p = getPlayer(state, playerId);
   return p ? p.powerUsed > p.power : false;
 }

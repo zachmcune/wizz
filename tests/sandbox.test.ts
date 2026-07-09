@@ -8,6 +8,9 @@ import { applyDevCommand } from '../src/sim/systems/commands/dev';
 import type { DevCommand } from '../src/sim/types';
 import { loadRegistry } from '../src/data/loader';
 import { sandboxDisableWinCheck, sandboxInstantBuild } from '../src/sim/sandbox-flags';
+import { applySandboxEconomyCheats, SANDBOX_INFINITE_MANA } from '../src/sim/systems/sandbox-economy';
+import { isPowerShort } from '../src/sim/power';
+import { stepSimulation } from '../src/sim/step';
 
 describe('sandbox mode', () => {
   const registry = loadRegistry();
@@ -123,6 +126,27 @@ describe('sandbox mode', () => {
     const hook = createSandboxAiHook(() => settings.ai, () => settings, () => 'player0');
     const cmds = hook(state, services);
     expect(cmds.length).toBeGreaterThan(0);
+  });
+
+  it('infinite mana tops up player mana each tick', () => {
+    const config = buildSandboxMatchConfig();
+    const { state, services } = initMatch(registry, config);
+    state.sandbox!.settings.economy.infiniteMana = true;
+    state.players[0]!.mana = 100;
+    stepSimulation(state, services, [], undefined);
+    expect(state.players[0]!.mana).toBe(SANDBOX_INFINITE_MANA);
+  });
+
+  it('infinite power prevents low-power state', () => {
+    const config = buildSandboxMatchConfig();
+    const { state, services } = initMatch(registry, config);
+    state.sandbox!.settings.economy.infinitePower = true;
+    const player = state.players[0]!;
+    player.power = 0;
+    player.powerUsed = 500;
+    applySandboxEconomyCheats(state, { services, events: [] });
+    expect(isPowerShort(state, player.id)).toBe(false);
+    expect(player.power).toBeGreaterThanOrEqual(player.powerUsed);
   });
 });
 

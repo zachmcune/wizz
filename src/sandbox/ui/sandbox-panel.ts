@@ -325,6 +325,7 @@ export class SandboxPanel {
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
       this.chip('∞ Mana', 'economy', 'infiniteMana', e.infiniteMana),
+      this.chip('∞ Power', 'economy', 'infinitePower', e.infinitePower),
       this.chip('Free', 'economy', 'noCosts', e.noCosts),
       this.chip('Instant build', 'economy', 'instantBuild', e.instantBuild),
       this.chip('Instant produce', 'economy', 'instantProduce', e.instantProduce),

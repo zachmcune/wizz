@@ -3,6 +3,7 @@ import type { StepContext } from '../../context';
 import type { Command, GameState } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { requirementsMet } from './shared';
+import { sandboxNoCosts } from '../../sandbox-flags';
 
 export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'research' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
@@ -26,11 +27,11 @@ export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'duplicate' });
     return;
   }
-  if (player.mana < research.cost) {
+  if (!sandboxNoCosts(state) && player.mana < research.cost) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
     return;
   }
-  player.mana -= research.cost;
+  if (!sandboxNoCosts(state)) player.mana -= research.cost;
   building.researchQueue ??= [];
   building.researchQueue.push({ defId: research.id, progress: 0, required: secondsToTicks(research.researchTime) });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
