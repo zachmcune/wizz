@@ -8,7 +8,7 @@ interface Effect {
   life: number;
   x: number;
   y: number;
-  kind: 'flash' | 'puff' | 'ring' | 'spark';
+  kind: 'flash' | 'puff' | 'ring' | 'spark' | 'shockwave' | 'strike';
   color: number;
   radius: number;
 }
@@ -48,7 +48,12 @@ export class EffectsLayer {
 
   spawn(kind: Effect['kind'], x: number, y: number, color: number, radius: number): void {
     if (this.active.length > 400) return;
-    const life = kind === 'ring' ? 30 : kind === 'puff' ? 18 : 10;
+    const life =
+      kind === 'ring' ? 30
+        : kind === 'shockwave' ? 24
+          : kind === 'strike' ? 16
+            : kind === 'puff' ? 18
+              : 10;
     this.active.push({ g: this.take(), age: 0, life, x, y, kind, color, radius });
   }
 
@@ -67,6 +72,12 @@ export class EffectsLayer {
         g.circle(pos.x, pos.y, e.radius * (0.5 + t * 1.2)).stroke({ width: 2, color: e.color, alpha });
       } else if (e.kind === 'ring') {
         g.circle(pos.x, pos.y, e.radius * (0.3 + t)).stroke({ width: 3, color: e.color, alpha });
+      } else if (e.kind === 'shockwave') {
+        g.circle(pos.x, pos.y, e.radius * (0.2 + t * 0.95)).stroke({ width: 4 - t * 2, color: e.color, alpha: alpha * 0.85 });
+      } else if (e.kind === 'strike') {
+        g.rect(pos.x - e.radius * 0.08, pos.y - e.radius * (0.5 + t * 0.3), e.radius * 0.16, e.radius * (1 - t * 0.4))
+          .fill({ color: e.color, alpha: alpha * 0.7 });
+        g.circle(pos.x, pos.y, e.radius * (0.25 + t * 0.15)).fill({ color: 0xffffff, alpha: alpha * 0.5 });
       } else {
         g.circle(pos.x, pos.y - t * 20, e.radius * (1 - t)).fill({ color: e.color, alpha });
       }

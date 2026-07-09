@@ -7,6 +7,7 @@ interface Voice {
   dur: number;
   type: OscillatorType;
   gain: number;
+  freqEnd?: number;
 }
 
 // Map event categories to a distinct timbre so the game "reads" by ear.
@@ -42,6 +43,10 @@ function voiceFor(ev: GameEvent): Voice | null {
       return { freq: 90, dur: 0.6, type: 'sawtooth', gain: 0.5 };
     case 'matchEnded':
       return { freq: 660, dur: 0.5, type: 'triangle', gain: 0.5 };
+    case 'attackCharging':
+      return { freq: 110, dur: 0.35, type: 'sine', gain: 0.18 };
+    case 'artilleryImpact':
+      return null; // handled by playCelestialImpact
     default:
       return null;
   }
@@ -77,25 +82,47 @@ export class AudioManager {
     if (this.master) this.master.gain.value = m ? 0 : this.volume;
   }
 
-  play(ev: GameEvent): void {
+  private synthVoice(v: Voice, throttleKey: string, minGap = 0.04): void {
     if (!this.ctx || !this.master || this.muted) return;
-    const v = voiceFor(ev);
-    if (!v) return;
-    // throttle identical event types to avoid a wall of sound in big fights
     const now = this.ctx.currentTime;
-    const key = ev.type;
-    if (this.lastPlay[key] !== undefined && now - this.lastPlay[key]! < 0.04) return;
-    this.lastPlay[key] = now;
+    if (this.lastPlay[throttleKey] !== undefined && now - this.lastPlay[throttleKey]! < minGap) return;
+    this.lastPlay[throttleKey] = now;
 
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = v.type;
-    osc.frequency.value = v.freq;
+    osc.frequency.setValueAtTime(v.freq, now);
+    if (v.freqEnd !== undefined) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, v.freqEnd), now + v.dur);
+    }
     g.gain.setValueAtTime(v.gain, now);
     g.gain.exponentialRampToValueAtTime(0.0001, now + v.dur);
     osc.connect(g);
     g.connect(this.master);
     osc.start(now);
     osc.stop(now + v.dur);
+  }
+
+  play(ev: GameEvent): void {
+    const v = voiceFor(ev);
+    if (!v) return;
+    this.synthVoice(v, ev.type);
+  }
+
+  /** Celestial Cannon charge start — rising harmonic drone. */
+  playCelestialChargeStart(): void {
+    this.synthVoice({ freq: 72, freqEnd: 140, dur: 0.55, type: 'sine', gain: 0.28 }, 'celestialCharge', 0.8);
+    this.synthVoice({ freq: 144, freqEnd: 220, dur: 0.45, type: 'triangle', gain: 0.12 }, 'celestialChargeHi', 0.8);
+  }
+
+  /** Celestial Cannon sky connection as charge peaks. */
+  playCelestialFire(): void {
+    this.synthVoice({ freq: 280, freqEnd: 520, dur: 0.18, type: 'sine', gain: 0.16 }, 'celestialFire', 0.2);
+  }
+
+  /** Celestial Cannon impact — low boom + crystalline ring. */
+  playCelestialImpact(): void {
+    this.synthVoice({ freq: 55, freqEnd: 28, dur: 0.65, type: 'sine', gain: 0.45 }, 'celestialImpactBoom', 0.15);
+    this.synthVoice({ freq: 880, freqEnd: 440, dur: 0.35, type: 'triangle', gain: 0.22 }, 'celestialImpactRing', 0.15);
   }
 }

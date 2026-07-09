@@ -16,6 +16,7 @@ import { Camera } from './camera';
 import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
 import { frostExposureTint, renderTowerBeams } from './tower-beams';
+import { renderCelestialCannons } from './celestial-cannon-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
@@ -593,6 +594,17 @@ export class Renderer {
       }
     }
     renderTowerBeams(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
+    );
+    renderCelestialCannons(
       state,
       this.registry,
       this.viewerId,
