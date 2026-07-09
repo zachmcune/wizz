@@ -12,6 +12,7 @@ import type { SimController } from '../app/match/sim-controller';
 import type { InputController } from '../input/controller';
 import type { Camera } from '../render/camera';
 import { serializeScenario, saveUserScenario, type SavedScenario } from './scenario-store';
+import { applySandboxEconomyCheats } from '../sim/systems/sandbox-economy';
 
 export interface SandboxControllerDeps {
   state: GameState;
@@ -77,6 +78,7 @@ export class SandboxController {
     Object.assign(this.deps.state.sandbox!.settings[section], patch);
     if (section === 'ai') this.syncAi();
     if (section === 'map') this.refreshVisibility();
+    if (section === 'economy') this.refreshEconomyCheats();
   }
 
   toggleSetting(section: keyof SandboxSettings, key: string): void {
@@ -85,7 +87,12 @@ export class SandboxController {
       group[key] = !group[key];
       if (section === 'ai') this.syncAi();
       if (section === 'map') this.refreshVisibility();
+      if (section === 'economy') this.refreshEconomyCheats();
     }
+  }
+
+  refreshEconomyCheats(): void {
+    applySandboxEconomyCheats(this.deps.state, { services: this.deps.services, events: [] });
   }
 
   syncAi(): void {

@@ -10,6 +10,7 @@ import {
   sandboxInstantBuild,
   sandboxInstantProduce,
   sandboxInstantResearch,
+  sandboxNoCosts,
   sandboxNoSpellCooldowns,
 } from '../sandbox-flags';
 
@@ -68,10 +69,12 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
       const hpNeeded = e.maxHp - e.hp;
       const hpGain = Math.min(hpNeeded, balance.repairHpPerTick * rate);
       const cost = hpGain * balance.repairManaPerHp;
-      if (cost > 0 && player.mana >= cost) {
+      if (!sandboxNoCosts(state) && cost > 0 && player.mana >= cost) {
         player.mana -= cost;
         e.hp = Math.min(e.maxHp, e.hp + hpGain);
-      } else if (player.mana < balance.repairHpPerTick * balance.repairManaPerHp) {
+      } else if (sandboxNoCosts(state) && hpGain > 0) {
+        e.hp = Math.min(e.maxHp, e.hp + hpGain);
+      } else if (!sandboxNoCosts(state) && player.mana < balance.repairHpPerTick * balance.repairManaPerHp) {
         e.repairing = false;
       }
       if (e.hp >= e.maxHp) e.repairing = false;

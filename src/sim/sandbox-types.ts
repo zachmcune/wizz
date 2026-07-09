@@ -2,6 +2,7 @@
 
 export interface SandboxEconomySettings {
   infiniteMana: boolean;
+  infinitePower: boolean;
   noCosts: boolean;
   instantBuild: boolean;
   instantProduce: boolean;
@@ -78,6 +79,7 @@ export function defaultSandboxSettings(overrides?: Partial<SandboxSettings>): Sa
   const base: SandboxSettings = {
     economy: {
       infiniteMana: false,
+      infinitePower: false,
       noCosts: false,
       instantBuild: false,
       instantProduce: false,

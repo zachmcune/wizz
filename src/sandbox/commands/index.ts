@@ -68,6 +68,11 @@ export function registerSandboxCommands(): void {
     return null;
   });
 
+  reg('toggle', 'economy', ['infinite power'], 'Toggle infinite power', [{ name: 'state', type: 'string', optional: true }], 'infinite power on', (ctx) => {
+    ctx.controller.toggleSetting('economy', 'infinitePower');
+    return null;
+  });
+
   reg('reveal', 'map', ['reveal map'], 'Reveal entire map', [], 'reveal map', (ctx) => {
     ctx.controller.setSetting('map', { revealMap: true, fogEnabled: false });
     return null;
