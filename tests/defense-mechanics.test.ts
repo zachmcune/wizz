@@ -79,10 +79,18 @@ describe('advanced defense mechanics', () => {
     const b = spawnEntity(state, services, null, 'stone_golem', 'player1', 800, 640);
     const hpB = b.hp;
 
-    for (let i = 0; i < 80; i++) sim.step();
+    let sawCharge = false;
+    let sawChain = false;
+    for (let i = 0; i < 80; i++) {
+      const result = sim.step();
+      if (result.events.some((e) => e.type === 'attackCharging')) sawCharge = true;
+      if (result.events.some((e) => e.type === 'chainLightningFired' && e.hits.length >= 2)) sawChain = true;
+    }
 
     expect(a.hp).toBeLessThan(a.maxHp);
     expect(b.hp).toBeLessThan(hpB);
+    expect(sawCharge).toBe(true);
+    expect(sawChain).toBe(true);
   });
 
   it('charges artillery, respects minimum range, and damages an impact area', () => {

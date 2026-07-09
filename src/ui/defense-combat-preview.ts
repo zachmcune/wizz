@@ -11,6 +11,7 @@ import { visibilitySystem } from '../sim/systems/visibility';
 import type { StepContext } from '../sim/context';
 import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
+import { spawnStormSequence } from '../render/storm-conductor-vfx';
 import { Renderer } from '../render/renderer';
 import { el } from './dom';
 
@@ -147,19 +148,38 @@ function setupScene(registry: Registry, defenseId: string, teamColor: string): {
   return { state, services, sim, defenseEntityId: defense.id, attackerIds, scenario };
 }
 
-function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects']): void {
+let previewPendingStormChain = false;
+
+function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects'], getState: () => GameState): void {
+  const state = getState();
   switch (ev.type) {
-    case 'attackFired':
+    case 'attackFired': {
+      const src = state.entities.get(ev.sourceId);
+      if (src?.defId === 'storm_conductor') {
+        previewPendingStormChain = true;
+        break;
+      }
       effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
       break;
+    }
     case 'damageDealt':
-      effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+      if (!previewPendingStormChain) {
+        effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+      }
       break;
     case 'healApplied':
       effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
       break;
-    case 'attackCharging':
+    case 'attackCharging': {
+      const src = state.entities.get(ev.sourceId);
+      if (src?.defId === 'storm_conductor') break;
       effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+      break;
+    }
+    case 'chainLightningFired':
+      previewPendingStormChain = false;
+      effects.spawn('flash', ev.hits[0]!.x, ev.hits[0]!.y, 0xffffff, 22);
+      spawnStormSequence(ev.x, ev.y, ev.hits);
       break;
     case 'artilleryImpact':
       effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
@@ -317,7 +337,7 @@ export class DefenseCombatPreview {
   private stepSim(): boolean {
     if (this.destroyed || !this.sim || !this.renderer) return false;
     const result = this.sim.step();
-    for (const ev of result.events) handlePreviewEvent(ev, this.renderer.effects);
+    for (const ev of result.events) handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state);
     this.renderer.syncTick(this.sim.state);
     this.ticksSinceReset++;
     if (this.shouldReset(this.sim.state)) {

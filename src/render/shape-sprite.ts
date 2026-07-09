@@ -164,9 +164,10 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.arc(0, 0, r * 0.72, Math.PI * 0.2, Math.PI * 0.95).stroke({ width: 1.5, color: accent });
   },
   storm_conductor: (g, r, accent) => {
-    g.moveTo(-r * 0.15, -r * 0.65).lineTo(r * 0.2, -r * 0.1).lineTo(-r * 0.05, -r * 0.1).lineTo(r * 0.25, r * 0.55).stroke({ width: 2.5, color: accent });
-    g.circle(-r * 0.45, r * 0.35, r * 0.08).fill(accent);
-    g.circle(r * 0.48, -r * 0.35, r * 0.08).fill(accent);
+    g.circle(0, -r * 0.15, r * 0.12).fill(accent);
+    g.moveTo(-r * 0.08, -r * 0.28).lineTo(r * 0.08, -r * 0.28).stroke({ width: 1.5, color: accent, alpha: 0.8 });
+    g.moveTo(-r * 0.22, -r * 0.55).lineTo(-r * 0.18, -r * 0.72).stroke({ width: 2, color: accent });
+    g.moveTo(r * 0.28, -r * 0.48).lineTo(r * 0.32, -r * 0.82).stroke({ width: 2, color: accent });
   },
   celestial_cannon: (g, r, accent) => {
     g.poly([0, -r * 0.15, r * 0.42, r * 0.55, -r * 0.42, r * 0.55]).stroke({ width: 1.5, color: accent, alpha: 0.7 });
@@ -371,10 +372,12 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
   },
   storm_conductor: (g, size, fill, accent) => {
     const r = size / 2;
-    g.roundRect(-r * 0.68, r * 0.22, r * 1.36, r * 0.38, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.rect(-r * 0.3, -r * 0.62, r * 0.16, r * 0.88).fill(fill).stroke({ width: 1.5, color: OUTLINE });
-    g.rect(r * 0.14, -r * 0.72, r * 0.16, r * 0.98).fill(fill).stroke({ width: 1.5, color: OUTLINE });
-    g.moveTo(-r * 0.48, -r * 0.32).lineTo(r * 0.36, -r * 0.32).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(-r * 0.72, r * 0.18, r * 1.44, r * 0.42, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(-r * 0.42, -r * 0.08, r * 0.84, r * 0.28, r * 0.06).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.rect(-r * 0.34, -r * 0.58, r * 0.14, r * 0.52).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.rect(r * 0.12, -r * 0.68, r * 0.14, r * 0.62).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.ellipse(0, -r * 0.22, r * 0.38, r * 0.12).stroke({ width: 1.5, color: OUTLINE, alpha: 0.7 });
+    g.ellipse(0, -r * 0.38, r * 0.28, r * 0.09).stroke({ width: 1.5, color: accent, alpha: 0.75 });
     GLYPHS.storm_conductor!(g, r, accent);
   },
   celestial_cannon: (g, size, fill, accent) => {
@@ -713,13 +716,18 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   storm_conductor: (g, size, fill, accent) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.4, r * 0.7, r * 0.28, r * 0.28, fillN);
-    drawIsoPrism(g, -r * 0.3, r * 0.02, r * 0.12, r * 0.08, r * 0.75, fillN);
-    drawIsoPrism(g, r * 0.3, -r * 0.04, r * 0.12, r * 0.08, r * 0.88, fillN);
-    drawIsoPrism(g, 0, -r * 0.52, r * 0.52, r * 0.08, r * 0.1, fillN);
-    g.moveTo(-r * 0.12, -r * 0.72).lineTo(r * 0.16, -r * 0.12).lineTo(-r * 0.04, -r * 0.12).lineTo(r * 0.22, r * 0.42).stroke({ width: 2.5, color: accent });
-    g.circle(-r * 0.4, r * 0.12, r * 0.07).fill(accent);
-    g.circle(r * 0.42, -r * 0.32, r * 0.07).fill(accent);
+    const accentN = parseHex(accent);
+    drawIsoPlate(g, 0, r * 0.44, r * 0.95, r * 0.36, shade(fillN, 0.42));
+    drawIsoPrism(g, 0, r * 0.26, r * 0.62, r * 0.3, r * 0.32, fillN);
+    drawIsoPrism(g, 0, r * 0.04, r * 0.38, r * 0.18, r * 0.38, shade(fillN, 0.92));
+    drawIsoPrism(g, -r * 0.28, -r * 0.02, r * 0.1, r * 0.07, r * 0.62, fillN);
+    drawIsoPrism(g, r * 0.32, -r * 0.08, r * 0.1, r * 0.07, r * 0.78, fillN);
+    g.circle(0, -r * 0.92, r * 0.12).fill(accentN).stroke({ width: 1.5, color: OUTLINE });
+    g.poly([0, -r * 1.08, r * 0.08, -r * 0.92, 0, -r * 0.76, -r * 0.08, -r * 0.92])
+      .fill(shade(accentN, 0.85))
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.8 });
+    g.ellipse(0, -r * 0.52, r * 0.34, r * 0.1).stroke({ width: 1.2, color: accent, alpha: 0.65 });
+    g.ellipse(0, -r * 0.68, r * 0.26, r * 0.08).stroke({ width: 1.2, color: accent, alpha: 0.5 });
   },
   celestial_cannon: (g, size, fill, accent) => {
     const r = size / 2;

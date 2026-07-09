@@ -108,10 +108,12 @@ export function applyChainDamage(
   const chain = weapon.chain;
   if (!chain) return;
   const hit = new Set<EntityId>();
+  const chainHits: { targetId: EntityId; x: number; y: number }[] = [];
   let current: Entity | null = firstTarget;
   let damage = weapon.damage;
   for (let jump = 0; current && jump <= chain.jumps; jump++) {
     hit.add(current.id);
+    chainHits.push({ targetId: current.id, x: current.pos.x, y: current.pos.y });
     applyDamage(state, ctx, current, damage, weapon.vs, sourceId);
     applyOnHitStatus(state, current, weapon.onHitStatus);
     damage *= chain.falloff;
@@ -127,5 +129,15 @@ export function applyChainDamage(
         return da === db ? a.id - b.id : da - db;
       });
     current = candidates[0] ?? null;
+  }
+  if (sourceId !== undefined && chainHits.length > 0) {
+    const source = state.entities.get(sourceId);
+    ctx.events.push({
+      type: 'chainLightningFired',
+      sourceId,
+      x: source?.pos.x ?? firstTarget.pos.x,
+      y: source?.pos.y ?? firstTarget.pos.y,
+      hits: chainHits,
+    });
   }
 }
