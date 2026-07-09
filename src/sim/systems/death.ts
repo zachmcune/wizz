@@ -30,7 +30,11 @@ export function deathSystem(state: GameState, ctx: StepContext): void {
   const dead: number[] = [];
   for (const [id, e] of state.entities) {
     const deadEntity =
-      e.kind === 'resource_node' ? (e.amount ?? 0) <= 0 : e.state === 'dead' || e.hp <= 0;
+      e.kind === 'resource_node'
+        ? (e.amount ?? 0) <= 0
+        : e.kind === 'projectile'
+          ? e.hp <= 0
+          : e.state === 'dead' || e.hp <= 0;
     if (deadEntity) dead.push(id);
   }
   if (!dead.length) return;

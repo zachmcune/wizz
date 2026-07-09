@@ -2,6 +2,7 @@
 // All gameplay-relevant fields must be registered here. Fog tiles are per-viewer presentation
 // and are intentionally excluded from the hash (lockstep peers may diverge on fog masks).
 import type { Entity, GameState, Player, SuperweaponBeam } from './types';
+import { hashProjectileCapability, getProjectileCapability } from './capabilities';
 
 export const SYNC_SURFACE_VERSION = 1;
 
@@ -64,7 +65,7 @@ function hashOrders(e: Entity): string {
 }
 
 function hashCooldowns(e: Entity): string {
-  if (e.kind === 'resource_node') return '';
+  if (e.kind === 'resource_node' || e.kind === 'projectile') return '';
   const parts = Object.entries(e.cooldowns)
     .filter(([, v]) => v > 0)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -86,18 +87,20 @@ function hashEntityFlags(e: Entity): string {
       : '',
     (e.kind === 'unit' || e.kind === 'building') && e.frostExposure ? `F${e.frostExposure}` : '',
     (e.kind === 'unit' || e.kind === 'building') && e.burnLinger ? `L${e.burnLinger.remaining}` : '',
-    e.kind !== 'resource_node' ? `ST${e.stance}` : '',
+    e.kind !== 'resource_node' && e.kind !== 'projectile' ? `ST${e.stance}` : '',
     e.kind === 'unit' && e.targetId !== undefined ? `TG${e.targetId}` : '',
   ].join('');
 }
 
 function hashEntity(state: GameState, e: Entity): string {
-  const stateStr = e.kind === 'resource_node' ? 'node' : e.state;
+  const stateStr = e.kind === 'resource_node' ? 'node' : e.kind === 'projectile' ? 'projectile' : e.state;
   const carryStr = e.kind === 'unit' ? r(e.carry ?? 0) : 0;
   const amountStr = e.kind === 'resource_node' ? r(e.amount) : 0;
   const channelStr = e.kind === 'unit' ? (e.channelTicks ?? 0) : 0;
+  const projCap = getProjectileCapability(e);
+  const projStr = projCap ? hashProjectileCapability(projCap) : '';
   const buffsStr =
-    e.kind === 'resource_node'
+    e.kind === 'resource_node' || e.kind === 'projectile'
       ? ''
       : e.buffs
           .filter((b) => b.expiresTick > state.tick)
@@ -138,6 +141,7 @@ function hashEntity(state: GameState, e: Entity): string {
     buffsStr,
     prodStr,
     garrisonStr,
+    projStr,
   ].join(':');
 }
 

@@ -1,7 +1,7 @@
 // Target acquisition, firing (instant or projectile), chasing, cooldowns. Buildings can fire too.
 import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
-import type { ProjectileEntity, UnitEntity, BuildingEntity } from '../entity-types';
+import type { UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
 import { entitiesSorted, isAlive, isEnemy, getPlayer } from '../queries';
 import { buildingHasPower } from '../power';
@@ -11,6 +11,8 @@ import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } fr
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 import { resolveWeaponStat } from '../modifiers';
+import { makeProjectileCapability } from '../capabilities';
+import { makeProjectile } from '../factory';
 
 const scratch: EntityId[] = [];
 
@@ -84,34 +86,26 @@ export function fire(state: GameState, ctx: StepContext, e: UnitEntity | Buildin
   ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
   if (w.projectile) {
     const pdef = ctx.services.registry.projectile(w.projectile);
-    const id = state.nextEntityId++;
-    const proj: ProjectileEntity = {
-      id,
-      owner: e.owner,
-      defId: w.projectile,
-      kind: 'projectile',
-      pos: { x: e.pos.x, y: e.pos.y },
-      vel: { x: 0, y: 0 },
-      facing: e.facing,
-      hp: 1,
-      maxHp: 1,
-      radius: 3,
-      orders: [],
-      state: 'moving',
-      stance: 'hold',
-      cooldowns: {},
-      buffs: [],
-      projTargetId: target.id,
-      projDamage: w.damage,
-      projArmorVs: w.vs,
-      projSpeed: pdef.speed,
-      projSourceOwner: e.owner,
-      projSourceId: e.id,
-      projSplashRadius: w.splashRadius,
-      projImpactRadius: w.impactRadius,
-      projOnHitStatus: w.onHitStatus,
-    };
-    state.entities.set(id, proj);
+    const proj = makeProjectile(
+      state.nextEntityId++,
+      e.owner,
+      w.projectile,
+      e.pos.x,
+      e.pos.y,
+      e.facing,
+      makeProjectileCapability({
+        targetId: target.id,
+        damage: w.damage,
+        armorVs: w.vs,
+        speed: pdef.speed,
+        sourceOwner: e.owner,
+        sourceId: e.id,
+        splashRadius: w.splashRadius,
+        impactRadius: w.impactRadius,
+        onHitStatus: w.onHitStatus,
+      }),
+    );
+    state.entities.set(proj.id, proj);
   } else if (w.chain) {
     applyChainDamage(state, ctx, e.owner, target, w, e.id);
   } else if (w.splashRadius !== undefined || w.impactRadius !== undefined) {

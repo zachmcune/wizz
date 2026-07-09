@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { initMatch } from '../src/sim/factory';
+import { initMatch, makeProjectile } from '../src/sim/factory';
+import { makeProjectileCapability } from '../src/sim/capabilities';
 import { createSimulation } from '../src/app/create-simulation';
 import { buildSandboxMatchConfig } from '../src/sandbox/sandbox-config';
 import { createSandboxAiHook } from '../src/sandbox/ai-director';
@@ -201,27 +202,25 @@ describe('sandbox freeze, fog, and spells', () => {
     expect(sandboxFreezeProjectiles(state)).toBe(true);
     const target = [...state.entities.values()].find((e) => e.kind === 'building' && e.owner === 'player1')!;
     const id = state.nextEntityId++;
-    state.entities.set(id, {
+    state.entities.set(
       id,
-      defId: 'arcane_bolt',
-      kind: 'projectile',
-      owner: 'player0',
-      pos: { x: 100, y: 100 },
-      vel: { x: 0, y: 0 },
-      facing: 0,
-      hp: 1,
-      maxHp: 1,
-      radius: 4,
-      orders: [],
-      state: 'idle',
-      stance: 'aggressive',
-      cooldowns: {},
-      buffs: [],
-      projTargetId: target.id,
-      projDamage: 10,
-      projArmorVs: { light: 1, heavy: 1, building: 1 },
-      projSpeed: 200,
-    });
+      makeProjectile(
+        id,
+        'player0',
+        'arcane_bolt',
+        100,
+        100,
+        0,
+        makeProjectileCapability({
+          targetId: target.id,
+          damage: 10,
+          armorVs: { light: 1, heavy: 1, building: 1 },
+          speed: 200,
+          sourceOwner: 'player0',
+          sourceId: 0,
+        }),
+      ),
+    );
     const proj = state.entities.get(id)!;
     const x0 = proj.pos.x;
     const y0 = proj.pos.y;

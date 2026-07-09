@@ -1,7 +1,7 @@
 // Discriminated entity types — each kind owns only its relevant fields.
 import type { Vec2 } from '../core/coords';
 import type { EntityId, GameplayBuff, Order, PlayerId, ProductionItem, Stance, UnitState } from './types';
-import type { WeaponDef } from '../data/defs';
+import type { EntityCapabilities } from './capabilities/types';
 
 export interface EntityCore {
   id: EntityId;
@@ -17,6 +17,7 @@ export interface EntityCore {
 
 export interface UnitEntity extends EntityCore {
   kind: 'unit';
+  caps?: EntityCapabilities;
   orders: Order[];
   state: UnitState;
   stance: Stance;
@@ -56,6 +57,7 @@ export interface BurnLinger {
 
 export interface BuildingEntity extends EntityCore {
   kind: 'building';
+  caps?: EntityCapabilities;
   orders: Order[];
   state: UnitState;
   stance: Stance;
@@ -76,22 +78,10 @@ export interface BuildingEntity extends EntityCore {
   burnLinger?: BurnLinger;
 }
 
+/** Slim projectile entity — combat fields live in caps.projectile only. */
 export interface ProjectileEntity extends EntityCore {
   kind: 'projectile';
-  orders: Order[];
-  state: UnitState;
-  stance: Stance;
-  cooldowns: Record<string, number>;
-  buffs: GameplayBuff[];
-  projTargetId?: EntityId;
-  projDamage?: number;
-  projArmorVs?: Record<string, number>;
-  projSpeed?: number;
-  projSourceOwner?: PlayerId;
-  projSourceId?: EntityId;
-  projSplashRadius?: number;
-  projImpactRadius?: number;
-  projOnHitStatus?: WeaponDef['onHitStatus'];
+  caps: EntityCapabilities & { projectile: import('./capabilities/types').ProjectileCapability };
 }
 
 export interface ResourceNodeEntity extends EntityCore {

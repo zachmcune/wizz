@@ -1,7 +1,7 @@
 import { TICK_HZ, TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, SuperweaponBeam } from '../types';
-import { entitiesSorted } from '../queries';
+import { entitiesSorted, isAlive } from '../queries';
 import { applyDamage } from '../combat-util';
 import { clamp } from '../math';
 
@@ -29,7 +29,7 @@ export function superweaponSystem(state: GameState, ctx: StepContext): void {
     b.pos.y = clamp(b.pos.y + b.dir.y * b.speed * dt, 0, maxY);
     const r2 = b.radius * b.radius;
     for (const e of entitiesSorted(state)) {
-      if (e.kind === 'resource_node' || e.state === 'dead') continue;
+      if (e.kind === 'resource_node' || e.kind === 'projectile' || !isAlive(e)) continue;
       const dx = e.pos.x - b.pos.x;
       const dy = e.pos.y - b.pos.y;
       if (dx * dx + dy * dy <= r2) applyDamage(state, ctx, e, b.damagePerTick, b.vs);

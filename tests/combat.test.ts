@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
 import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { ownedBy } from '../src/sim/queries';
+import { ownedBy, isAlive } from '../src/sim/queries';
 
 const reg = getRegistry();
 
@@ -14,7 +14,7 @@ function battleField() {
 }
 
 function countUnits(state: ReturnType<typeof battleField>['state'], owner: string, defId: string): number {
-  return ownedBy(state, owner).filter((e) => e.kind !== 'resource_node' && e.defId === defId && e.state !== 'dead').length;
+  return ownedBy(state, owner).filter((e) => e.defId === defId && isAlive(e) && e.kind !== 'resource_node' && e.kind !== 'projectile').length;
 }
 
 describe('combat & counters', () => {

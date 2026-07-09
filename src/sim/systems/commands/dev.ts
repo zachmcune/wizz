@@ -64,6 +64,9 @@ function handleDestroyEntity(state: GameState, ctx: StepContext, cmd: Extract<De
     if (e.kind === 'building') {
       removeBuildingFromWorld(state, ctx, e);
       ctx.events.push({ type: 'entityDied', id: e.id, defId: e.defId, owner: e.owner, x: e.pos.x, y: e.pos.y });
+    } else if (e.kind === 'projectile') {
+      state.entities.delete(id);
+      ctx.events.push({ type: 'entityDied', id: e.id, defId: e.defId, owner: e.owner, x: e.pos.x, y: e.pos.y });
     } else {
       e.state = 'dead';
       e.hp = 0;

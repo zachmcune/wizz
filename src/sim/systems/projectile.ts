@@ -7,6 +7,7 @@ import { len, normalize } from '../math';
 import { applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import type { ArmorClass } from '../../data/defs';
 import { sandboxFreezeProjectiles } from '../sandbox-flags';
+import { getProjectileCapability } from '../capabilities';
 
 export function projectileSystem(state: GameState, ctx: StepContext): void {
   if (sandboxFreezeProjectiles(state)) return;
@@ -14,7 +15,12 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
   const toRemove: number[] = [];
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'projectile') continue;
-    const target = e.projTargetId !== undefined ? state.entities.get(e.projTargetId) : undefined;
+    const cap = getProjectileCapability(e);
+    if (!cap) {
+      toRemove.push(e.id);
+      continue;
+    }
+    const target = state.entities.get(cap.targetId);
     if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined)) {
       toRemove.push(e.id);
       continue;
@@ -22,26 +28,26 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
     const dx = target.pos.x - e.pos.x;
     const dy = target.pos.y - e.pos.y;
     const d = len(dx, dy);
-    const step = (e.projSpeed ?? 300) * dt;
+    const step = cap.speed * dt;
     if (d <= step + target.radius) {
-      const vs = e.projArmorVs as Record<ArmorClass, number>;
-      const radius = e.projImpactRadius ?? e.projSplashRadius;
-      if (radius !== undefined && e.projSourceOwner) {
+      const vs = cap.armorVs as Record<ArmorClass, number>;
+      const radius = cap.impactRadius ?? cap.splashRadius;
+      if (radius !== undefined) {
         applySplashDamage(
           state,
           ctx,
-          e.projSourceOwner,
+          cap.sourceOwner,
           target.pos.x,
           target.pos.y,
           radius,
-          e.projDamage ?? 0,
+          cap.damage,
           vs,
-          e.projSourceId,
-          e.projOnHitStatus,
+          cap.sourceId,
+          cap.onHitStatus,
         );
       } else {
-        applyDamage(state, ctx, target, e.projDamage ?? 0, vs, e.projSourceId);
-        applyOnHitStatus(state, target, e.projOnHitStatus);
+        applyDamage(state, ctx, target, cap.damage, vs, cap.sourceId);
+        applyOnHitStatus(state, target, cap.onHitStatus);
       }
       toRemove.push(e.id);
     } else {

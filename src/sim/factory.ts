@@ -10,9 +10,11 @@ import { visibilitySystem } from './systems/visibility';
 import type {
   BuildingEntity,
   Entity,
+  ProjectileEntity,
   ResourceNodeEntity,
   UnitEntity,
 } from './entity-types';
+import { makeProjectileCapability } from './capabilities';
 import type { GameState, PlayerId, Player, MatchConfig, Relation } from './types';
 import { defaultSandboxSettings } from './sandbox-types';
 
@@ -61,6 +63,30 @@ export function makeBuilding(id: number, owner: PlayerId, def: BuildingDef, x: n
   };
   if (def.producesUnits && def.producesUnits.length) e.productionQueue = [];
   return e;
+}
+
+export function makeProjectile(
+  id: number,
+  owner: PlayerId,
+  defId: string,
+  x: number,
+  y: number,
+  facing: number,
+  payload: ReturnType<typeof makeProjectileCapability>,
+): ProjectileEntity {
+  return {
+    id,
+    owner,
+    defId,
+    kind: 'projectile',
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    facing,
+    hp: 1,
+    maxHp: 1,
+    radius: 3,
+    caps: { projectile: payload },
+  };
 }
 
 /** @deprecated Prefer makeUnit / makeBuilding for typed spawning. */

@@ -19,7 +19,7 @@ export function applyDamage(
   vs: Record<ArmorClass, number>,
   killerId?: EntityId,
 ): void {
-  if (target.kind === 'resource_node' || target.state === 'dead') return;
+  if (target.kind === 'resource_node' || target.kind === 'projectile' || target.state === 'dead') return;
   if (target.kind === 'unit' && target.garrisonedIn !== undefined) return;
   if (hasBuff(target, 'aegis', state.tick)) return; // Aegis = temporary invulnerability
   const cls = armorClassOf(ctx, target);
@@ -50,7 +50,7 @@ export function applyDamage(
 }
 
 export function applyOnHitStatus(state: GameState, target: Entity, status: WeaponDef['onHitStatus']): void {
-  if (!status || target.kind === 'resource_node' || !isAlive(target)) return;
+  if (!status || target.kind === 'resource_node' || target.kind === 'projectile' || !isAlive(target)) return;
   if (status.kind === 'slow') {
     const existing = target.buffs.find((b) => b.kind === 'slow') as Extract<GameplayBuff, { kind: 'slow' }> | undefined;
     const expiresTick = state.tick + status.durationTicks;

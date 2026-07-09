@@ -1,0 +1,60 @@
+{
+  "id": "arcane_standard",
+  "name": "Arcane Standard",
+  "factionId": "arcane",
+  "defendRadius": 280,
+  "garrisonRadius": 220,
+  "buildOrder": [
+    "attunement_spire",
+    "ley_conduit",
+    "resonance_vault",
+    "scrying_obelisk",
+    "summoning_circle",
+    "arcane_bunker",
+    "golem_forge",
+    "arcane_nexus",
+    "astral_spire"
+  ],
+  "advancedDefenses": [
+    "frost_spire",
+    "inferno_beacon",
+    "storm_conductor",
+    "sanctuary_spire",
+    "celestial_cannon"
+  ],
+  "turret": {
+    "defId": "ward_turret",
+    "requiresBuilding": "golem_forge",
+    "armyThresholdFactor": 0.5,
+    "manaReserveFactor": 2
+  },
+  "superweapon": {
+    "spellId": "astral_lance",
+    "requiresBuilding": "astral_spire"
+  },
+  "production": {
+    "harvesterBuilding": "attunement_spire",
+    "harvesterUnit": "wisp",
+    "armyBuilding": "summoning_circle",
+    "siegeBuilding": "golem_forge",
+    "nexusUnit": "storm_caster",
+    "armyRotation": ["imp_swarmling", "arcane_archer", "rift_familiar"],
+    "siegeUnits": ["siege_behemoth", "stone_golem"],
+    "siegeArmyThresholdFactor": 0.35,
+    "forgeArmyThresholdFactor": 0.35
+  },
+  "combat": {
+    "garrisonUnit": "arcane_archer",
+    "garrisonBuilding": "arcane_bunker",
+    "siegeUnit": "siege_behemoth",
+    "defendFraction": 0.35,
+    "minPushFactor": 0.5,
+    "attackBias": {
+      "sanctum": -1200,
+      "waystone_camp": -1200,
+      "attunement_spire": -800,
+      "summoning_circle": -400,
+      "golem_forge": -400
+    }
+  }
+}

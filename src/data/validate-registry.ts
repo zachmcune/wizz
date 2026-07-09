@@ -1,5 +1,6 @@
 // Cross-reference validation for loaded game data. Catches broken refs at boot, not runtime.
 import type { Registry } from './registry';
+import { loadAiStrategies } from '../ai/strategies/load';
 
 export interface ContentValidationIssue {
   path: string;
@@ -102,6 +103,42 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
           message: `player startIndex ${player.startIndex} exceeds map start locations (${map.startLocations.length})`,
         });
       }
+    }
+  }
+
+  for (const strategy of loadAiStrategies().values()) {
+    const prefix = `ai/${strategy.id}.json`;
+    for (const defId of strategy.buildOrder) {
+      if (!buildingIds.has(defId)) issues.push({ path: prefix, message: `buildOrder "${defId}" is not a known building` });
+    }
+    for (const defId of strategy.advancedDefenses) {
+      if (!buildingIds.has(defId)) issues.push({ path: prefix, message: `advancedDefenses "${defId}" is not a known building` });
+    }
+    if (!buildingIds.has(strategy.turret.defId)) {
+      issues.push({ path: prefix, message: `turret.defId "${strategy.turret.defId}" is not a known building` });
+    }
+    if (!buildingIds.has(strategy.turret.requiresBuilding)) {
+      issues.push({ path: prefix, message: `turret.requiresBuilding is not a known building` });
+    }
+    if (!buildingIds.has(strategy.superweapon.requiresBuilding)) {
+      issues.push({ path: prefix, message: `superweapon.requiresBuilding is not a known building` });
+    }
+    if (!spellIds.has(strategy.superweapon.spellId)) {
+      issues.push({ path: prefix, message: `superweapon.spellId is not a known spell` });
+    }
+    const prod = strategy.production;
+    for (const key of ['harvesterBuilding', 'armyBuilding', 'siegeBuilding'] as const) {
+      if (!buildingIds.has(prod[key])) issues.push({ path: prefix, message: `production.${key} is not a known building` });
+    }
+    if (!unitIds.has(prod.harvesterUnit)) issues.push({ path: prefix, message: `production.harvesterUnit is not a known unit` });
+    for (const uid of [...prod.armyRotation, ...prod.siegeUnits, prod.nexusUnit]) {
+      if (!unitIds.has(uid)) issues.push({ path: prefix, message: `production references unknown unit "${uid}"` });
+    }
+    if (!unitIds.has(strategy.combat.garrisonUnit)) {
+      issues.push({ path: prefix, message: `combat.garrisonUnit is not a known unit` });
+    }
+    if (!unitIds.has(strategy.combat.siegeUnit)) {
+      issues.push({ path: prefix, message: `combat.siegeUnit is not a known unit` });
     }
   }
 

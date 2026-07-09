@@ -8,7 +8,7 @@ function damageSpell({ state, ctx, cmd, spell }: SpellBehaviorContext): void {
   const eff = spell.effect;
   if (eff.kind !== 'damage') return;
   for (const e of entitiesSorted(state)) {
-    if (e.kind === 'resource_node' || e.state === 'dead') continue;
+    if (e.kind === 'resource_node' || e.kind === 'projectile' || e.state === 'dead') continue;
     const dx = e.pos.x - cmd.x;
     const dy = e.pos.y - cmd.y;
     if (dx * dx + dy * dy <= eff.radius * eff.radius) applyDamage(state, ctx, e, eff.damage, eff.vs);
@@ -22,7 +22,7 @@ function buffSpell({ state, ctx, cmd, spell }: SpellBehaviorContext): void {
   const ids = cmd.entityIds ?? [];
   for (const id of ids) {
     const e = state.entities.get(id);
-    if (e && e.owner === cmd.playerId && isAlive(e) && e.kind !== 'resource_node') {
+      if (e && e.owner === cmd.playerId && isAlive(e) && e.kind === 'unit') {
       e.buffs.push({ kind: eff.buff, expiresTick: state.tick + eff.durationTicks });
     }
   }

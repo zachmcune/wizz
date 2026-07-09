@@ -31,8 +31,8 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
 
   let powerDirty = false;
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'resource_node' && e.buffs.length) {
-      e.buffs = e.buffs.filter((b) => b.expiresTick > state.tick);
+    if (e.kind === 'unit' || e.kind === 'building') {
+      if (e.buffs.length) e.buffs = e.buffs.filter((b) => b.expiresTick > state.tick);
     }
     if (e.kind !== 'building' || e.state === 'dead') continue;
     if (e.morphProgress !== undefined) continue;
