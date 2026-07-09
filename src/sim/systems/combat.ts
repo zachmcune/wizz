@@ -1,15 +1,18 @@
 // Target acquisition, firing (instant or projectile), chasing, cooldowns. Buildings can fire too.
 import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
-import type { ProjectileEntity, UnitEntity, BuildingEntity } from '../entity-types';
+import type { UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
-import { entitiesSorted, isAlive, isEnemy, strongestSlowAttackCooldownFactor } from '../queries';
+import { entitiesSorted, isAlive, isEnemy, getPlayer } from '../queries';
 import { buildingHasPower } from '../power';
 import { isVisibleTo } from '../fog';
 import { len, distSq } from '../math';
 import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
+import { resolveWeaponStat } from '../modifiers';
+import { makeProjectileCapability, hasHarvester, isChanneling, garrisonedInId } from '../capabilities';
+import { makeProjectile } from '../factory';
 
 const scratch: EntityId[] = [];
 
@@ -52,7 +55,7 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
   for (const id of ids) {
     const o = state.entities.get(id);
     if (!o || o.kind === 'resource_node' || o.kind === 'projectile' || !isAlive(o)) continue;
-    if (o.kind === 'unit' && o.garrisonedIn !== undefined) continue;
+    if (o.kind === 'unit' && garrisonedInId(o) !== undefined) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
@@ -76,39 +79,33 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
 }
 
 export function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
-  e.cooldowns.attack = Math.max(1, Math.ceil(w.cooldownTicks * strongestSlowAttackCooldownFactor(e, state.tick)));
+  const player = getPlayer(state, e.owner)!;
+  const cooldownTicks = resolveWeaponStat(ctx.services.registry, player, e, w, 'cooldownTicks', state.tick);
+  e.cooldowns.attack = Math.max(1, Math.ceil(cooldownTicks));
   e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
   ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
   if (w.projectile) {
     const pdef = ctx.services.registry.projectile(w.projectile);
-    const id = state.nextEntityId++;
-    const proj: ProjectileEntity = {
-      id,
-      owner: e.owner,
-      defId: w.projectile,
-      kind: 'projectile',
-      pos: { x: e.pos.x, y: e.pos.y },
-      vel: { x: 0, y: 0 },
-      facing: e.facing,
-      hp: 1,
-      maxHp: 1,
-      radius: 3,
-      orders: [],
-      state: 'moving',
-      stance: 'hold',
-      cooldowns: {},
-      buffs: [],
-      projTargetId: target.id,
-      projDamage: w.damage,
-      projArmorVs: w.vs,
-      projSpeed: pdef.speed,
-      projSourceOwner: e.owner,
-      projSourceId: e.id,
-      projSplashRadius: w.splashRadius,
-      projImpactRadius: w.impactRadius,
-      projOnHitStatus: w.onHitStatus,
-    };
-    state.entities.set(id, proj);
+    const proj = makeProjectile(
+      state.nextEntityId++,
+      e.owner,
+      w.projectile,
+      e.pos.x,
+      e.pos.y,
+      e.facing,
+      makeProjectileCapability({
+        targetId: target.id,
+        damage: w.damage,
+        armorVs: w.vs,
+        speed: pdef.speed,
+        sourceOwner: e.owner,
+        sourceId: e.id,
+        splashRadius: w.splashRadius,
+        impactRadius: w.impactRadius,
+        onHitStatus: w.onHitStatus,
+      }),
+    );
+    state.entities.set(proj.id, proj);
   } else if (w.chain) {
     applyChainDamage(state, ctx, e.owner, target, w, e.id);
   } else if (w.splashRadius !== undefined || w.impactRadius !== undefined) {
@@ -124,13 +121,13 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') continue;
     if (e.kind === 'building' && !buildingHasPower(state, ctx.services.registry, e)) continue;
-    if (e.kind === 'unit' && (e.state === 'garrisoned' || e.garrisonedIn !== undefined)) continue;
+    if (e.kind === 'unit' && (e.state === 'garrisoned' || garrisonedInId(e) !== undefined)) continue;
     if (e.cooldowns.attack && e.cooldowns.attack > 0) e.cooldowns.attack--;
     const w = weaponOf(ctx, e);
     if (!w) continue;
     if (e.kind === 'building' && w.beam) continue; // continuous beams handled by beamWeaponSystem
-    if (e.kind === 'unit' && e.carryMax !== undefined) continue; // harvesters don't fight
-    if (e.kind === 'unit' && e.channeling) continue;
+    if (e.kind === 'unit' && hasHarvester(e)) continue; // harvesters don't fight
+    if (e.kind === 'unit' && isChanneling(e)) continue;
 
     if (e.kind === 'building' && e.chargingAttack) {
       const target = state.entities.get(e.chargingAttack.targetId);
@@ -148,7 +145,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
 
     if (order && order.type === 'attack') {
       target = state.entities.get(order.targetId) ?? null;
-      if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
+      if (!isAlive(target) || (target.kind === 'unit' && garrisonedInId(target) !== undefined) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
         e.orders.shift();
         target = null;
         if (e.state === 'attacking') e.state = 'idle';

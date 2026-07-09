@@ -6,15 +6,17 @@ import { clearBuildingNav } from '../building-nav';
 import { recomputePower } from '../factory';
 import { applyDamage } from '../combat-util';
 import { findSpawnPosition } from './production';
+import { garrisonedIds, garrisonedInId, clearGarrisonedIn, ensureGarrisonHost } from '../capabilities';
 
 function ejectGarrisonOnDeath(state: GameState, ctx: StepContext, building: BuildingEntity): void {
   const garrison = ctx.services.registry.buildings.get(building.defId)?.garrison;
-  if (!garrison || !building.garrisonedIds?.length) return;
-  for (const id of [...building.garrisonedIds].sort((a, b) => a - b)) {
+  const ids = garrisonedIds(building);
+  if (!garrison || !ids.length) return;
+  for (const id of [...ids].sort((a, b) => a - b)) {
     const unit = state.entities.get(id);
-    if (!unit || unit.kind !== 'unit' || unit.garrisonedIn !== building.id) continue;
+    if (!unit || unit.kind !== 'unit' || garrisonedInId(unit) !== building.id) continue;
     const spawn = findSpawnPosition(state, ctx, building, unit.radius);
-    unit.garrisonedIn = undefined;
+    clearGarrisonedIn(unit);
     unit.pos = { x: spawn.x, y: spawn.y };
     unit.vel = { x: 0, y: 0 };
     unit.orders = [];
@@ -22,15 +24,20 @@ function ejectGarrisonOnDeath(state: GameState, ctx: StepContext, building: Buil
     unit.targetId = undefined;
     applyDamage(state, ctx, unit, unit.maxHp * garrison.damageOnHostDestroyedFraction, { light: 1, heavy: 1, building: 1 });
   }
-  building.garrisonedIds = [];
-  building.garrisonReservedIds = [];
+  const host = ensureGarrisonHost(building);
+  host.garrisonedIds = [];
+  host.garrisonReservedIds = [];
 }
 
 export function deathSystem(state: GameState, ctx: StepContext): void {
   const dead: number[] = [];
   for (const [id, e] of state.entities) {
     const deadEntity =
-      e.kind === 'resource_node' ? (e.amount ?? 0) <= 0 : e.state === 'dead' || e.hp <= 0;
+      e.kind === 'resource_node'
+        ? (e.amount ?? 0) <= 0
+        : e.kind === 'projectile'
+          ? e.hp <= 0
+          : e.state === 'dead' || e.hp <= 0;
     if (deadEntity) dead.push(id);
   }
   if (!dead.length) return;

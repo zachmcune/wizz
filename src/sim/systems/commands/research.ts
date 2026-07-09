@@ -3,13 +3,14 @@ import type { StepContext } from '../../context';
 import type { Command, GameState } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { requirementsMet } from './shared';
+import { ensureProduction, getResearchQueue, hasMorph } from '../../capabilities';
 import { sandboxIgnoreTech, sandboxNoCosts } from '../../sandbox-flags';
 
 export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'research' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const building = state.entities.get(cmd.buildingId);
   if (!building || building.owner !== cmd.playerId || building.kind !== 'building' || !isAlive(building)) return;
-  if (building.buildProgress !== undefined || building.morphProgress !== undefined) {
+  if (building.buildProgress !== undefined || hasMorph(building)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
@@ -23,7 +24,8 @@ export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'duplicate' });
     return;
   }
-  if (building.researchQueue?.some((item) => item.defId === research.id)) {
+  const researchQueue = getResearchQueue(building);
+  if (researchQueue?.some((item) => item.defId === research.id)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'duplicate' });
     return;
   }
@@ -32,8 +34,9 @@ export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<
     return;
   }
   if (!sandboxNoCosts(state)) player.mana -= research.cost;
-  building.researchQueue ??= [];
-  building.researchQueue.push({ defId: research.id, progress: 0, required: secondsToTicks(research.researchTime) });
+  const production = ensureProduction(building);
+  production.researchQueue ??= [];
+  production.researchQueue.push({ defId: research.id, progress: 0, required: secondsToTicks(research.researchTime) });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
 }
 
@@ -45,7 +48,7 @@ export function handleCancelResearch(
   const player = getPlayer(state, cmd.playerId)!;
   const building = state.entities.get(cmd.buildingId);
   if (!building || building.owner !== cmd.playerId || building.kind !== 'building' || !isAlive(building)) return;
-  const queue = building.researchQueue;
+  const queue = getResearchQueue(building);
   if (!queue || cmd.index < 0 || cmd.index >= queue.length) return;
   const [item] = queue.splice(cmd.index, 1);
   if (!item) return;

@@ -1,8 +1,10 @@
 // Message protocol between the main thread and the simulation Web Worker.
 import type { Command, GameEvent } from '../types';
 import type { TransferState } from '../state-transfer';
+import type { TransferDelta } from '../sync-delta';
 
 export type { TransferState } from '../state-transfer';
+export type { TransferDelta } from '../sync-delta';
 
 /** A confirmed lockstep tick: commands merged by the relay to apply at `tick`. */
 export interface LockstepEntry {
@@ -25,7 +27,7 @@ export type ToWorker =
 
 export type FromWorker =
   | { type: 'ready'; state: TransferState }
-  | { type: 'tick'; state: TransferState; events: GameEvent[] }
+  | { type: 'tick'; state?: TransferState; delta?: TransferDelta; events: GameEvent[] }
   /** Result of a `lockstepBatch`: final state, accumulated events, and checksums. */
   | {
       type: 'lockstepResult';

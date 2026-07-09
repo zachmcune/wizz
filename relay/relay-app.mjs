@@ -3,18 +3,21 @@
  * Shared by local dev (`server.mjs`) and production (`production.mjs`).
  */
 import { randomBytes, randomInt } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { parseClientMessage } from '../src/net/protocol-schema.ts';
 
-const TICK_MS = 50;
-const MATCH_LOAD_GRACE_MS = 2500;
-const WS_KEEPALIVE_MS = 30_000;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const protocolConstants = JSON.parse(readFileSync(join(__dirname, '../protocol-constants.json'), 'utf8'));
 
-// Keep these in sync with src/net/protocol.ts (LEAD_TICKS / STALL_DROP_MS).
-// The relay is a peer-paced clock: it only advances while it is within LEAD_TICKS
-// of the slowest acknowledged peer, so a slow phone can never fall minutes behind.
-const LEAD_TICKS = 20;
-const STALL_DROP_MS = 4000;
+const TICK_MS = protocolConstants.RELAY_TICK_MS;
+const MATCH_LOAD_GRACE_MS = protocolConstants.MATCH_LOAD_GRACE_MS;
+const LEAD_TICKS = protocolConstants.LEAD_TICKS;
+const STALL_DROP_MS = protocolConstants.STALL_DROP_MS;
 const REJOIN_GRACE_MS = 30 * 60 * 1000;
+const WS_KEEPALIVE_MS = 30_000;
 
 const DEFAULT_LOBBY = {
   mapId: 'duel_glade',
@@ -520,12 +523,15 @@ export function attachRelay(server) {
     });
 
     ws.on('message', (data) => {
-      let msg;
+      let raw;
       try {
-        msg = JSON.parse(String(data));
+        raw = JSON.parse(String(data));
       } catch {
         return;
       }
+
+      const msg = parseClientMessage(raw);
+      if (!msg) return;
 
       if (msg.t === 'join') {
         const roomId = String(msg.room ?? '').toUpperCase();

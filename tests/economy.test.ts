@@ -4,6 +4,7 @@ import { initMatch, spawnEntity, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { expectBuilding, expectUnit } from './entity-helpers';
+import { getProductionQueue } from '../src/sim/capabilities';
 import { TILE } from '../src/core/constants';
 
 const reg = getRegistry();
@@ -106,10 +107,10 @@ describe('economy & production (data-driven)', () => {
     p.mana = 9999;
     sim.enqueueNow([{ type: 'produce', playerId: 'player0', buildingId: circle.id, defId: 'imp_swarmling' }]);
     sim.step();
-    expect(circle.productionQueue?.length ?? 0).toBe(1);
+    expect(getProductionQueue(circle)?.length ?? 0).toBe(1);
 
     for (let i = 0; i < 40; i++) sim.step();
-    const progress = circle.productionQueue?.[0]?.progress ?? 0;
+    const progress = getProductionQueue(circle)?.[0]?.progress ?? 0;
     expect(progress).toBeGreaterThan(0);
     expect(progress).toBeLessThan(40);
   });

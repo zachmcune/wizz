@@ -1,6 +1,7 @@
 // Uniform-grid spatial hash for O(1) neighbor queries (avoidance + target acquisition).
 // Rebuilt each tick from entity positions. Not serialized.
 import type { Entity, EntityId } from './types';
+import { garrisonedInId } from './capabilities';
 
 const CELL = 48; // world units per bucket
 
@@ -35,7 +36,7 @@ export class SpatialHash {
     for (const id of ids) {
       const e = entities.get(id)!;
       if (e.kind === 'projectile') continue;
-      if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
+      if (e.kind === 'unit' && garrisonedInId(e) !== undefined) continue;
       this.insert(e);
     }
   }

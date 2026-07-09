@@ -4,6 +4,7 @@ import type { TrainMenuCategory } from '../../data/defs';
 import type { BuildingEntity } from '../../sim/entity-types';
 import type { GameState, PlayerId } from '../../sim/types';
 import { buildingHasPower, isPowerShort } from '../../sim/views';
+import { getProductionQueue, hasMorph } from '../../sim/capabilities';
 
 export interface ProducerInfo {
   entity: BuildingEntity;
@@ -15,7 +16,7 @@ export interface ProducerInfo {
 }
 
 export function isProducerReady(entity: BuildingEntity): boolean {
-  return entity.buildProgress === undefined && entity.morphProgress === undefined;
+  return entity.buildProgress === undefined && !hasMorph(entity);
 }
 
 function producerIndex(state: GameState, entity: BuildingEntity): number {
@@ -48,7 +49,7 @@ function toProducerInfo(
     entity,
     def,
     label: producerLabel(registry, state, entity),
-    queueLength: entity.productionQueue?.length ?? 0,
+    queueLength: getProductionQueue(entity)?.length ?? 0,
     offline: !buildingHasPower(state, registry, entity),
     slow: isPowerShort(state, playerId) && buildingHasPower(state, registry, entity),
   };

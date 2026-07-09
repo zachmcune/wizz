@@ -3,6 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { expectBuilding, expectUnit } from './entity-helpers';
+import { garrisonedIds, garrisonedInId, garrisonReservedIds } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -25,18 +26,18 @@ describe('Arcane Bunker garrison system', () => {
     sim.enqueueNow([{ type: 'garrison', playerId: 'player0', unitIds: ids, buildingId: bunker.id }]);
     for (let i = 0; i < 20; i++) sim.step();
 
-    expect(bunker.garrisonedIds?.length).toBe(4);
-    expect(bunker.garrisonReservedIds?.length ?? 0).toBe(0);
-    const inside = bunker.garrisonedIds![0]!;
-    expect(expectUnit(state.entities.get(inside)!).garrisonedIn).toBe(bunker.id);
+    expect(garrisonedIds(bunker).length).toBe(4);
+    expect(garrisonReservedIds(bunker).length).toBe(0);
+    const inside = garrisonedIds(bunker)[0]!;
+    expect(garrisonedInId(expectUnit(state.entities.get(inside)!))).toBe(bunker.id);
 
     sim.enqueueNow([{ type: 'unloadGarrison', playerId: 'player0', buildingId: bunker.id }]);
     sim.step();
 
-    expect(bunker.garrisonedIds?.length ?? 0).toBe(0);
+    expect(garrisonedIds(bunker).length).toBe(0);
     for (const id of ids.slice(0, 4)) {
       const unit = expectUnit(state.entities.get(id)!);
-      expect(unit.garrisonedIn).toBeUndefined();
+      expect(garrisonedInId(unit)).toBeUndefined();
       expect(unit.state).toBe('idle');
     }
   });
@@ -81,7 +82,7 @@ describe('Arcane Bunker garrison system', () => {
 
     expect(state.entities.has(bunker.id)).toBe(false);
     const unit = expectUnit(state.entities.get(archer.id)!);
-    expect(unit.garrisonedIn).toBeUndefined();
+    expect(garrisonedInId(unit)).toBeUndefined();
     expect(unit.hp).toBeLessThan(unit.maxHp);
   });
 });

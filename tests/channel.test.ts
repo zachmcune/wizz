@@ -4,6 +4,7 @@ import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { secondsToTicks } from '../src/core/constants';
 import { expectUnit } from './entity-helpers';
+import { isChanneling } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -21,7 +22,7 @@ describe('mana weaver channeling', () => {
     let pulse = sim.step();
     for (let i = 1; i < ticks; i++) pulse = sim.step();
 
-    expect(weaver.channeling).toBe(true);
+    expect(isChanneling(weaver)).toBe(true);
     expect(weaver.state).toBe('channeling');
     expect(human.mana).toBe(reg.balance.conjureManaAmount);
     expect(pulse.events).toContainEqual({
@@ -45,7 +46,7 @@ describe('mana weaver channeling', () => {
     sim.enqueueNow([{ type: 'stop', playerId: human.id, entityIds: [weaver.id] }]);
     sim.step();
 
-    expect(weaver.channeling).toBe(false);
+    expect(isChanneling(weaver)).toBe(false);
     expect(weaver.state).toBe('idle');
   });
 });

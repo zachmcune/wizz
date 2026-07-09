@@ -17,9 +17,7 @@ import type { ProjectionMode } from '../core/projection';
 import { setProjectionMode } from '../core/projection';
 import { defaultSaveMeta, saveGame, type SaveMeta } from '../storage/save';
 import type { Settings } from '../storage/settings';
-import { canBuildNearBase } from '../sim/build-zone';
-import { footprintOverlapsNode } from '../sim/resource-nodes';
-import { shouldRevealAllForViewer } from '../sim/views';
+import { canBuildNearBase, footprintOverlapsNode, shouldRevealAllForViewer } from '../sim/views';
 import type { Replay } from '../sim/replay';
 import type { LockstepClient } from '../net/lockstep';
 import type { WebSocketTransport } from '../net/ws-transport';
@@ -27,6 +25,7 @@ import { EventBridge } from './match/event-bridge';
 import { PointerBinder } from './match/pointer-binder';
 import { buildMatchOverlay } from './match/overlay-builder';
 import { SimController } from './match/sim-controller';
+import { createMatchDriver, type MatchDriver } from './match/match-driver';
 import { SandboxController } from '../sandbox/sandbox-controller';
 import { SandboxPanel } from '../sandbox/ui/sandbox-panel';
 import { createSandboxAiHook } from '../sandbox/ai-director';
@@ -63,6 +62,7 @@ export class Game {
   private minimap!: Minimap;
   private zoomSlider!: ZoomSlider;
   private loop!: GameLoop;
+  private matchDriver!: MatchDriver;
   private humanId: PlayerId;
   private colorByOwner = new Map<PlayerId, string>();
   private boxEl: HTMLDivElement;
@@ -314,8 +314,13 @@ export class Game {
 
     this.simCtrl.markSynced();
 
+    this.matchDriver = createMatchDriver(this.simCtrl, {
+      lockstep: this.lockstep !== null,
+      sandbox: this.sandboxMode,
+    });
+
     this.loop = new GameLoop(
-      () => this.simCtrl.stepFixed(),
+      () => this.matchDriver.stepFixed(),
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
@@ -446,7 +451,7 @@ export class Game {
       return;
     }
 
-    if (this.lockstep) this.simCtrl.drainLockstep((msg) => this.hud.showHint(msg));
+    if (this.lockstep) this.matchDriver.onFrame((msg) => this.hud.showHint(msg));
 
     if (this.state.ended && !this.postGameCameraReady) {
       this.postGameCameraReady = true;

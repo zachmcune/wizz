@@ -15,11 +15,14 @@ import {
 import type { z, ZodTypeAny } from 'zod';
 import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, ResearchDef, MapData, BalanceData, FactionDef } from './defs';
 import type { MatchConfig } from '../sim/types';
+import { assertRegistryValid } from './validate-registry';
+import { applyDataOverlays } from './mod-loader';
 
-const modules = import.meta.glob('/data/**/*.json', { eager: true, import: 'default' }) as Record<
+const rawModules = import.meta.glob('/data/**/*.json', { eager: true, import: 'default' }) as Record<
   string,
   unknown
 >;
+const modules = applyDataOverlays(rawModules);
 
 function validate<T extends ZodTypeAny>(schema: T, raw: unknown, path: string): z.infer<T> {
   const result = schema.safeParse(raw);
@@ -34,6 +37,7 @@ function validate<T extends ZodTypeAny>(schema: T, raw: unknown, path: string): 
 export function loadRegistry(): Registry {
   const reg = new Registry();
   for (const [path, raw] of Object.entries(modules)) {
+    if (path.endsWith('/manifest.json') || path.includes('/ai/')) continue;
     if (path.endsWith('/balance.json')) {
       reg.balance = validate(balanceSchema, raw, path) as BalanceData;
     } else if (path.includes('/units/')) {
@@ -64,5 +68,6 @@ export function loadRegistry(): Registry {
       reg.matches.set(`${d.mapId}:${d.players.length}`, d);
     }
   }
+  assertRegistryValid(reg);
   return reg;
 }

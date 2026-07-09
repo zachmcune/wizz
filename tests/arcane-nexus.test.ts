@@ -4,6 +4,7 @@ import { initMatch, spawnEntity, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { expectBuilding } from './entity-helpers';
+import { getProductionQueue } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -40,12 +41,12 @@ describe('Arcane Nexus tech center rework', () => {
 
     sim.enqueueNow([{ type: 'produce', playerId: player.id, buildingId: circle.id, defId: 'storm_caster' }]);
     sim.step();
-    expect(circle.productionQueue?.length ?? 0).toBe(0);
+    expect(getProductionQueue(circle)?.length ?? 0).toBe(0);
 
     unlockTech(state, player.id, 'arcane_nexus');
     sim.enqueueNow([{ type: 'produce', playerId: player.id, buildingId: circle.id, defId: 'storm_caster' }]);
     sim.step();
-    expect(circle.productionQueue?.length ?? 0).toBe(1);
+    expect(getProductionQueue(circle)?.length ?? 0).toBe(1);
   });
 
   it('does not allow normal battle spells from Nexus alone; Astral Spire unlocks them', () => {

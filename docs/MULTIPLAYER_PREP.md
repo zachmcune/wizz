@@ -42,7 +42,7 @@ solid **before** wiring transport.
 | Transport interface | Done | `Transport` in `lockstep.ts` |
 | In-memory relay | Done | `in-memory-relay.ts` for tests/local dev |
 | WebSocket transport | Done | `ws-transport.ts` (client; relay server TBD) |
-| Input delay | Done | `INPUT_DELAY_TICKS = 3` |
+| Input delay | Done | `INPUT_DELAY_TICKS = 6` |
 | Command merge | Done | Relay merges per-tick cmds; `Game` uses `Simulation.enqueue` |
 | Checksum cadence | Done | Every 60 ticks via `LockstepClient.detectDesync` |
 | Replay export | Done | `serializeReplay()` + desync logging in `Game` |

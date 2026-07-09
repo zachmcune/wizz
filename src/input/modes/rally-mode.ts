@@ -1,5 +1,6 @@
 import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
+import { getRally } from '../../sim/capabilities';
 import type { InputContext, ModeTapHandler } from '../input-context';
 
 export const rallyMode: ModeTapHandler = {
@@ -19,7 +20,8 @@ export function startRally(ctx: InputContext, buildingId: EntityId): void {
   if (!bdef?.producesUnits?.length) return;
   ctx.session.mode = 'rally';
   ctx.session.rallyBuildingId = buildingId;
-  ctx.session.rallyCursor = b.rally ? { ...b.rally } : { ...b.pos };
+  const rally = getRally(b);
+  ctx.session.rallyCursor = rally ? { ...rally } : { ...b.pos };
 }
 
 export function confirmRally(ctx: InputContext, world: Vec2): void {

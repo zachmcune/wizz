@@ -5,29 +5,32 @@ import type { BuildingEntity, UnitEntity } from '../entity-types';
 import type { GameState } from '../types';
 import { entitiesSorted } from '../queries';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
+import { getMorph, hasMorph, ensureMorph } from '../capabilities';
 import type { BuildingDef } from '../../data/defs';
 
 export function morphSystem(state: GameState, ctx: StepContext): void {
   let powerDirty = false;
   for (const e of entitiesSorted(state)) {
-    if (e.kind === 'unit' && e.morphProgress !== undefined && e.morphAction === 'deploy') {
+    if (e.kind === 'unit' && hasMorph(e) && getMorph(e)?.action === 'deploy') {
       const udef = ctx.services.registry.units.get(e.defId);
       if (!udef?.deploysAs) continue;
       const seconds = udef.deployTime ?? 10;
-      e.morphProgress += 1 / Math.max(1, seconds * 20);
-      if (e.morphProgress >= 1) {
+      const morph = ensureMorph(e);
+      morph.progress += 1 / Math.max(1, seconds * 20);
+      if (morph.progress >= 1) {
         finishDeploy(state, ctx, e, udef.deploysAs);
         powerDirty = true;
       }
       continue;
     }
 
-    if (e.kind === 'building' && e.morphProgress !== undefined && e.morphAction === 'pack') {
+    if (e.kind === 'building' && hasMorph(e) && getMorph(e)?.action === 'pack') {
       const bdef = ctx.services.registry.buildings.get(e.defId);
       if (!bdef?.packsInto) continue;
       const seconds = bdef.packTime ?? 8;
-      e.morphProgress += 1 / Math.max(1, seconds * 20);
-      if (e.morphProgress >= 1) {
+      const morph = ensureMorph(e);
+      morph.progress += 1 / Math.max(1, seconds * 20);
+      if (morph.progress >= 1) {
         finishPack(state, ctx, e, bdef);
         powerDirty = true;
       }
@@ -38,12 +41,13 @@ export function morphSystem(state: GameState, ctx: StepContext): void {
 
 function finishDeploy(state: GameState, ctx: StepContext, unit: UnitEntity, buildingDefId: string): void {
   const bdef = ctx.services.registry.buildings.get(buildingDefId);
-  if (!bdef || !unit.morphTargetPos) {
+  const targetPos = getMorph(unit)?.targetPos;
+  if (!bdef || !targetPos) {
     state.entities.delete(unit.id);
     return;
   }
   const ratio = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
-  const pos = unit.morphTargetPos;
+  const pos = targetPos;
   const b = spawnEntity(state, ctx.services, ctx, buildingDefId, unit.owner, pos.x, pos.y);
   if (b.kind !== 'building') return;
   b.hp = Math.max(1, Math.floor(b.maxHp * ratio));

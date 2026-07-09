@@ -1,8 +1,9 @@
 import type { Registry } from '../data/registry';
+import { garrisonedIds, garrisonReservedIds, garrisonedInId, isChanneling, hasMorph } from './capabilities';
 import type { BuildingEntity, UnitEntity } from './entity-types';
 
 export function garrisonOccupancy(building: BuildingEntity): number {
-  return (building.garrisonedIds?.length ?? 0) + (building.garrisonReservedIds?.length ?? 0);
+  return garrisonedIds(building).length + garrisonReservedIds(building).length;
 }
 
 export function garrisonFreeCapacity(registry: Registry, building: BuildingEntity): number {
@@ -14,10 +15,10 @@ export function garrisonFreeCapacity(registry: Registry, building: BuildingEntit
 export function canUnitGarrison(registry: Registry, unit: UnitEntity, building: BuildingEntity): boolean {
   const bdef = registry.buildings.get(building.defId);
   const garrison = bdef?.garrison;
-  if (!garrison || building.buildProgress !== undefined || building.morphProgress !== undefined) return false;
+  if (!garrison || building.buildProgress !== undefined || hasMorph(building)) return false;
   const udef = registry.units.get(unit.defId);
   if (!udef?.canGarrison) return false;
-  if (unit.garrisonedIn !== undefined || unit.morphProgress !== undefined || unit.channeling) return false;
+  if (garrisonedInId(unit) !== undefined || hasMorph(unit) || isChanneling(unit)) return false;
   if (garrison.requireWeapon && !udef.weapon) return false;
   if (garrison.allowedUnitIds?.length && !garrison.allowedUnitIds.includes(unit.defId)) return false;
   if (garrison.allowedRoles?.length && !garrison.allowedRoles.includes(udef.role)) return false;

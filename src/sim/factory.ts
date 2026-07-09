@@ -10,9 +10,11 @@ import { visibilitySystem } from './systems/visibility';
 import type {
   BuildingEntity,
   Entity,
+  ProjectileEntity,
   ResourceNodeEntity,
   UnitEntity,
 } from './entity-types';
+import { makeProjectileCapability, makeHarvesterCapability, ensureProduction } from './capabilities';
 import type { GameState, PlayerId, Player, MatchConfig, Relation } from './types';
 import { defaultSandboxSettings } from './sandbox-types';
 
@@ -35,8 +37,7 @@ export function makeUnit(id: number, owner: PlayerId, def: UnitDef, x: number, y
     buffs: [],
   };
   if (def.isHarvester) {
-    e.carry = 0;
-    e.carryMax = def.carry ?? 100;
+    e.caps = { harvester: makeHarvesterCapability(def.carry ?? 100) };
   }
   return e;
 }
@@ -59,8 +60,34 @@ export function makeBuilding(id: number, owner: PlayerId, def: BuildingDef, x: n
     cooldowns: {},
     buffs: [],
   };
-  if (def.producesUnits && def.producesUnits.length) e.productionQueue = [];
+  if (def.producesUnits && def.producesUnits.length) {
+    ensureProduction(e).productionQueue = [];
+  }
   return e;
+}
+
+export function makeProjectile(
+  id: number,
+  owner: PlayerId,
+  defId: string,
+  x: number,
+  y: number,
+  facing: number,
+  payload: ReturnType<typeof makeProjectileCapability>,
+): ProjectileEntity {
+  return {
+    id,
+    owner,
+    defId,
+    kind: 'projectile',
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    facing,
+    hp: 1,
+    maxHp: 1,
+    radius: 3,
+    caps: { projectile: payload },
+  };
 }
 
 /** @deprecated Prefer makeUnit / makeBuilding for typed spawning. */
@@ -105,6 +132,7 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, t
     team: cfg.team,
     color: cfg.color,
     factionId: cfg.factionId,
+    aiStrategyId: cfg.aiStrategyId,
     mana: startingMana,
     power: 0,
     powerUsed: 0,

@@ -2,6 +2,7 @@
 import { secondsToTicks } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState } from '../types';
+import { getChanneler, isChanneling } from '../capabilities';
 import { entitiesSorted, isAlive, getPlayer } from '../queries';
 
 export function channelSystem(state: GameState, ctx: StepContext): void {
@@ -9,11 +10,12 @@ export function channelSystem(state: GameState, ctx: StepContext): void {
   const intervalTicks = secondsToTicks(balance.conjureManaIntervalSeconds);
 
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'unit' || !isAlive(e) || !e.channeling) continue;
+    if (e.kind !== 'unit' || !isAlive(e) || !isChanneling(e)) continue;
+    const channeler = getChanneler(e)!;
     const udef = ctx.services.registry.units.get(e.defId);
     if (!udef?.canConjureMana) {
-      e.channeling = false;
-      e.channelTicks = undefined;
+      channeler.channeling = false;
+      channeler.channelTicks = undefined;
       if (e.state === 'channeling') e.state = 'idle';
       continue;
     }
@@ -22,12 +24,12 @@ export function channelSystem(state: GameState, ctx: StepContext): void {
     const player = getPlayer(state, e.owner);
     if (!player) continue;
 
-    const acc = (e.channelTicks ?? 0) + 1;
+    const acc = (channeler.channelTicks ?? 0) + 1;
     if (acc < intervalTicks) {
-      e.channelTicks = acc;
+      channeler.channelTicks = acc;
       continue;
     }
-    e.channelTicks = 0;
+    channeler.channelTicks = 0;
     player.mana += balance.conjureManaAmount;
     ctx.events.push({
       type: 'manaConjured',

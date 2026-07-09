@@ -1,5 +1,4 @@
-import { canUnitGarrison, garrisonFreeCapacity } from '../../sim/garrison';
-import { isAlive } from '../../sim/queries';
+import { canUnitGarrison, garrisonFreeCapacity, isAlive } from '../../sim/views';
 import { pickEntityForInput } from '../projected-pick';
 import type { ModeTapHandler } from '../input-context';
 

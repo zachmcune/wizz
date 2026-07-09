@@ -6,8 +6,7 @@ import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from '../sim/nav-grid';
 import type { GameState, Command, EntityId, Entity, Stance, PlayerId } from '../sim/types';
-import { isHarvester } from '../sim/entity-types';
-import { isAlive } from '../sim/queries';
+import { isHarvester, isAlive } from '../sim/views';
 import { createSession, type SessionState, type InputMode } from './session';
 import type { InputContext } from './input-context';
 import {
@@ -96,7 +95,7 @@ export class InputController {
 
   private ownCombatSelected(): EntityId[] {
     return this.selectionEntities()
-      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && e.carryMax === undefined)
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && !isHarvester(e))
       .map((e) => e.id);
   }
 
@@ -104,7 +103,7 @@ export class InputController {
     const st = this.getState();
     const out: EntityId[] = [];
     for (const e of st.entities.values()) {
-      if (e.owner === this.playerId && e.kind === 'unit' && e.carryMax !== undefined && isAlive(e)) out.push(e.id);
+      if (e.owner === this.playerId && e.kind === 'unit' && isHarvester(e) && isAlive(e)) out.push(e.id);
     }
     return out;
   }

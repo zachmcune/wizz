@@ -47,16 +47,17 @@ export function hasSanctum(state: GameState, owner: PlayerId): boolean {
 export function isAlive(e: Entity | undefined | null): e is Entity {
   if (!e || e.hp <= 0) return false;
   if (e.kind === 'resource_node') return (e.amount ?? 0) > 0;
+  if (e.kind === 'projectile') return true;
   return e.state !== 'dead';
 }
 
 export function hasBuff(e: Entity, kind: GameplayBuff['kind'], tick: number): boolean {
-  if (e.kind === 'resource_node') return false;
+  if (e.kind === 'resource_node' || e.kind === 'projectile') return false;
   return e.buffs.some((b) => b.kind === kind && b.expiresTick > tick);
 }
 
 export function activeBuffs(e: Entity, kind: GameplayBuff['kind'], tick: number): GameplayBuff[] {
-  if (e.kind === 'resource_node') return [];
+  if (e.kind === 'resource_node' || e.kind === 'projectile') return [];
   return e.buffs.filter((b) => b.kind === kind && b.expiresTick > tick);
 }
 

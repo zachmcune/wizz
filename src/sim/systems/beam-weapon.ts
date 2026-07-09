@@ -7,6 +7,17 @@ import type { GameState, Entity, EntityId } from '../types';
 import { applyDamage, applyOnHitStatus } from '../combat-util';
 import { isVisibleTo } from '../fog';
 import { buildingHasPower } from '../power';
+import {
+  getBeamWeapon,
+  setBeamWeapon,
+  clearBeamWeapon,
+  garrisonedInId,
+  getFrostExposure,
+  setFrostExposure,
+  getBurnLinger,
+  setBurnLinger,
+  clearBurnLinger,
+} from '../capabilities';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { isInBeamCone, rotateToward } from '../beam-util';
 import { acquireTarget, inWeaponBand, sightOf } from './combat';
@@ -33,10 +44,10 @@ function applyFrostExposure(state: GameState, target: UnitEntity | BuildingEntit
 }
 
 function decayFrostExposure(state: GameState, target: UnitEntity | BuildingEntity): void {
-  const exposure = target.frostExposure ?? 0;
+  const exposure = getFrostExposure(target) ?? 0;
   if (exposure <= 0) return;
   const next = exposure - 1;
-  target.frostExposure = next > 0 ? next : undefined;
+  setFrostExposure(target, next);
   if (next > 0) applyFrostExposure(state, target, next, 20);
 }
 
@@ -48,10 +59,11 @@ function collectBeamHits(
   beam: BeamWeaponDef,
 ): Entity[] {
   const hits: Entity[] = [];
-  const facing = tower.beamAttack!.facing;
+  const beamState = getBeamWeapon(tower)!;
+  const facing = beamState.facing;
   for (const target of entitiesSorted(state)) {
     if (target.kind === 'resource_node' || target.kind === 'projectile' || !isAlive(target)) continue;
-    if (target.kind === 'unit' && target.garrisonedIn !== undefined) continue;
+    if (target.kind === 'unit' && garrisonedInId(target) !== undefined) continue;
     if (!isEnemy(state, tower.owner, target.owner)) continue;
     if (!isVisibleTo(state, tower.owner, target, ctx.services.nav)) continue;
     if (
@@ -81,6 +93,7 @@ function applyBeamDamage(
   w: WeaponDef,
   beam: BeamWeaponDef,
 ): void {
+  const beamState = getBeamWeapon(tower)!;
   const hits = collectBeamHits(state, ctx, tower, w, beam);
   const hitIds = new Set(hits.map((h) => h.id));
   const maxExposure = beam.maxFrostExposure ?? 20;
@@ -90,71 +103,71 @@ function applyBeamDamage(
   for (const target of hits) {
     if (!isBeamTarget(target)) continue;
     if (w.damage > 0) applyDamage(state, ctx, target, w.damage, w.vs, tower.id);
-    target.burnLinger = undefined;
+    clearBurnLinger(target);
 
     if (beam.kind === 'frost') {
-      const exposure = Math.min(maxExposure, (target.frostExposure ?? 0) + 1);
-      target.frostExposure = exposure;
+      const exposure = Math.min(maxExposure, (getFrostExposure(target) ?? 0) + 1);
+      setFrostExposure(target, exposure);
       applyFrostExposure(state, target, exposure, maxExposure);
     }
   }
 
   if (beam.kind === 'flame') {
-    const prev = tower.beamAttack!.lastHitIds;
+    const prev = beamState.lastHitIds;
     for (const id of prev) {
       if (hitIds.has(id)) continue;
       const target = state.entities.get(id);
       if (!target || !isBeamTarget(target) || !isAlive(target)) continue;
-      if (target.burnLinger) continue;
-      target.burnLinger = {
+      if (getBurnLinger(target)) continue;
+      setBurnLinger(target, {
         remaining: lingerTicks,
         damagePerTick: w.damage * lingerFactor,
         vs: w.vs as Record<string, number>,
         sourceId: tower.id,
-      };
+      });
     }
   } else {
     for (const target of entitiesSorted(state)) {
       if (!isBeamTarget(target) || !isAlive(target)) continue;
-      if (target.kind === 'unit' && target.garrisonedIn !== undefined) continue;
+      if (target.kind === 'unit' && garrisonedInId(target) !== undefined) continue;
       if (!isEnemy(state, tower.owner, target.owner)) continue;
       if (hitIds.has(target.id)) continue;
       decayFrostExposure(state, target);
     }
   }
 
-  tower.beamAttack!.lastHitIds = [...hitIds].sort((a, b) => a - b);
+  beamState.lastHitIds = [...hitIds].sort((a, b) => a - b);
 }
 
 function processBurnLinger(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (!isBeamTarget(e) || !isAlive(e)) continue;
-    const burn = e.burnLinger;
+    const burn = getBurnLinger(e);
     if (!burn) continue;
     if (burn.damagePerTick > 0) {
       applyDamage(state, ctx, e, burn.damagePerTick, burn.vs as Record<ArmorClass, number>, burn.sourceId);
     }
     burn.remaining--;
-    if (burn.remaining <= 0) e.burnLinger = undefined;
+    if (burn.remaining <= 0) clearBurnLinger(e);
   }
 }
 
 function stopBeam(tower: BuildingEntity, ctx: StepContext): void {
-  if (tower.beamAttack) {
-    tower.beamAttack = undefined;
+  if (getBeamWeapon(tower)) {
+    clearBeamWeapon(tower);
     ctx.events.push({ type: 'beamStopped', sourceId: tower.id, x: tower.pos.x, y: tower.pos.y });
   }
 }
 
 function startBeam(tower: BuildingEntity, target: Entity, ctx: StepContext, beam: BeamWeaponDef): void {
   const facing = Math.atan2(target.pos.y - tower.pos.y, target.pos.x - tower.pos.x);
-  tower.beamAttack = {
+  setBeamWeapon(tower, {
     targetId: target.id,
     facing,
     ticksSinceDamage: beam.damageIntervalTicks,
     wobblePhase: (tower.id % 97) * 0.11,
     lastHitIds: [],
-  };
+  });
   tower.facing = facing;
   ctx.events.push({ type: 'beamStarted', sourceId: tower.id, x: tower.pos.x, y: tower.pos.y });
 }
@@ -178,18 +191,20 @@ export function beamWeaponSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
-    if (!e.beamAttack) startBeam(e, target, ctx, beam);
+    const beamState = getBeamWeapon(e);
+    if (!beamState) startBeam(e, target, ctx, beam);
 
+    const active = getBeamWeapon(e)!;
     const aim = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
     const maxTurn = beam.rotationSpeed * dt;
-    e.beamAttack!.facing = rotateToward(e.beamAttack!.facing, aim, maxTurn);
-    e.beamAttack!.targetId = target.id;
-    e.beamAttack!.wobblePhase += dt * 3.7;
-    e.facing = e.beamAttack!.facing;
+    active.facing = rotateToward(active.facing, aim, maxTurn);
+    active.targetId = target.id;
+    active.wobblePhase += dt * 3.7;
+    e.facing = active.facing;
 
-    e.beamAttack!.ticksSinceDamage++;
-    if (e.beamAttack!.ticksSinceDamage >= beam.damageIntervalTicks) {
-      e.beamAttack!.ticksSinceDamage = 0;
+    active.ticksSinceDamage++;
+    if (active.ticksSinceDamage >= beam.damageIntervalTicks) {
+      active.ticksSinceDamage = 0;
       applyBeamDamage(state, ctx, e, w, beam);
     }
   }
@@ -201,12 +216,13 @@ export function beamWeaponSystem(state: GameState, ctx: StepContext): void {
 function decayFrostExposureGlobal(state: GameState): void {
   const inFrost = new Set<EntityId>();
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'building' || !e.beamAttack) continue;
-    for (const id of e.beamAttack.lastHitIds) inFrost.add(id);
+    const beamState = getBeamWeapon(e);
+    if (e.kind !== 'building' || !beamState) continue;
+    for (const id of beamState.lastHitIds) inFrost.add(id);
   }
   for (const e of entitiesSorted(state)) {
     if (!isBeamTarget(e) || !isAlive(e)) continue;
-    if (!e.frostExposure || inFrost.has(e.id)) continue;
+    if (!getFrostExposure(e) || inFrost.has(e.id)) continue;
     decayFrostExposure(state, e);
   }
 }
