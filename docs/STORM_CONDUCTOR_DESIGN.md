@@ -12,7 +12,9 @@ The Conductor stops feeling like a machine that fires six separate lightning bol
 becomes a catalyst that **unleashes a storm**: the tower fires one enormous bolt, the
 first enemy struck becomes a temporary lightning conductor, and electricity violently
 erupts outward from that enemy through anything nearby. The tower starts the storm —
-nature finishes it.
+nature finishes it. The whole exchange should feel fast, violent, and chaotic — never a
+calm, mechanical light show — while staying readable even in large battles with many
+units on screen at once.
 
 ## Viewing Angle: Designed for the 2.5D Oblique View
 
@@ -82,7 +84,9 @@ primary target and where every visual choice should be judged.
   shifting from white-cyan toward pure blue — the eye reads this as "the storm running
   out of charge" as it spreads.
 - Bolts are drawn as 2–3 jagged segments with slight per-strike randomness so no two
-  strikes look identical.
+  strikes look identical, and every bolt should flicker/shimmer for its brief lifetime
+  rather than holding one static frame — the lightning needs to read as alive, not as a
+  mechanically drawn line.
 - If enemies are too spread out, the chain simply stops — no special "end" effect is
   needed; the absence of a next bolt communicates it.
 
@@ -91,7 +95,9 @@ primary target and where every visual choice should be judged.
   roughly 0.2s, selling "the storm losing energy" rather than a hard cutoff.
 
 This turns "six lightning bolts" into "one huge bolt, one violent eruption, and a fading
-cascade" — the same underlying chain mechanics, far more spectacle.
+cascade" — the same underlying chain mechanics, far more spectacle. The whole sequence
+should read as explosive rather than sequential: a single overwhelming strike followed
+by a burst of chaos, not a metronomic string of individual zaps.
 
 ## Enemy Reactions
 
@@ -124,7 +130,9 @@ No cooldown bar is required to know when the Conductor is ready:
 
 ## Visual Design of the Structure
 
-Silhouette should say "this controls storms" instantly, even at small mobile scale:
+Silhouette should say "this controls storms" instantly, even at small mobile scale. The
+Conductor should read as an ancient magical storm machine, not a traditional turret —
+closer to a standing arcane apparatus than a gun on a platform:
 - A three-tier vertical read: a heavy stone base, a mid-section with two
   counter-rotating conductor rings orbiting a floating crystal core, and two asymmetric
   arcane lightning rods jutting upward at different heights. The asymmetry breaks up the
