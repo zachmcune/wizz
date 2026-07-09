@@ -41,6 +41,10 @@ export interface RenderOverlay {
   confirm?: { x: number; y: number } | null;
   buildZones?: { x: number; y: number; r: number }[];
   rallyMarker?: { fromX: number; fromY: number; toX: number; toY: number };
+  debugCircles?: { x: number; y: number; r: number; color: number; alpha?: number }[];
+  debugLines?: { x1: number; y1: number; x2: number; y2: number; color: number }[];
+  debugLabels?: { x: number; y: number; text: string; color?: number }[];
+  statsText?: string;
 }
 
 interface RenderNode {
@@ -597,6 +601,19 @@ export class Renderer {
       this.overlayStrokePool,
       state.tick + alpha,
     );
+    if (overlay?.debugCircles?.length) {
+      for (const c of overlay.debugCircles) {
+        const p = this.drawPos(c.x, c.y);
+        this.strokeRing(p.x, p.y, c.r, 1.5, c.color, c.alpha ?? 0.25);
+      }
+    }
+    if (overlay?.debugLines?.length) {
+      for (const l of overlay.debugLines) {
+        const a = this.drawPos(l.x1, l.y1);
+        const b = this.drawPos(l.x2, l.y2);
+        this.overlayStrokePool.acquire().moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1, color: l.color, alpha: 0.8 });
+      }
+    }
     this.effects.update();
   }
 

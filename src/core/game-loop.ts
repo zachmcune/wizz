@@ -11,7 +11,8 @@ export class GameLoop {
   private rafId = 0;
   private running = false;
   private paused = false;
-  private maxCatchUp = 5; // avoid spiral-of-death after tab suspends
+  private timeScale = 1;
+  private maxCatchUp = 5;
 
   constructor(
     private step: StepFn,
@@ -27,8 +28,8 @@ export class GameLoop {
       let delta = now - this.last;
       this.last = now;
       if (!this.paused) {
-        if (delta > TICK_MS * 60) delta = TICK_MS; // huge gaps (backgrounded): skip ahead
-        this.accumulator += delta;
+        if (delta > TICK_MS * 60) delta = TICK_MS;
+        this.accumulator += delta * this.timeScale;
         let steps = 0;
         while (this.accumulator >= TICK_MS && steps < this.maxCatchUp) {
           if (!this.step()) break;
@@ -55,5 +56,19 @@ export class GameLoop {
 
   isPaused(): boolean {
     return this.paused;
+  }
+
+  setTimeScale(scale: number): void {
+    this.timeScale = Math.max(0.05, Math.min(8, scale));
+  }
+
+  getTimeScale(): number {
+    return this.timeScale;
+  }
+
+  /** Run one sim step immediately (used when paused in sandbox). */
+  stepOnce(step: StepFn): void {
+    step();
+    this.accumulator = 0;
   }
 }

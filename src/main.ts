@@ -1,5 +1,6 @@
 // App entry point. Boots data and delegates navigation to AppRouter.
 import './ui/styles.css';
+import './sandbox/commands/index';
 import { initOrientation } from './ui/orientation';
 import { initViewport } from './ui/viewport';
 import { initPwaUpdates } from './pwa';

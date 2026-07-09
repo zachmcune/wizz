@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Arcane Dominion - Vite build/dev config. Static PWA; dist/ deploys to Cloudflare Pages.
 export default defineConfig({
   base: './',
+  define: {
+    __SANDBOX_ENABLED__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+  },
   build: {
     target: 'es2022',
     sourcemap: true,

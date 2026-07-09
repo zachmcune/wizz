@@ -27,9 +27,18 @@ import { handleGarrison, handleUnloadGarrison } from './commands/garrison';
 import { handleSpell } from './commands/spell';
 import { handleSteerSuperweapon } from './commands/superweapon';
 import { handleSurrender } from './commands/surrender';
+import { applyDevCommand } from './commands/dev';
+
+function isDevCommand(cmd: Command): cmd is Extract<Command, { type: `dev${string}` }> {
+  return cmd.type.startsWith('dev');
+}
 
 export function applyCommands(state: GameState, ctx: StepContext, cmds: Command[]): void {
   for (const cmd of cmds) {
+    if (isDevCommand(cmd)) {
+      applyDevCommand(state, ctx, cmd);
+      continue;
+    }
     const player = getPlayer(state, cmd.playerId);
     if (!player || player.defeated) continue;
     switch (cmd.type) {

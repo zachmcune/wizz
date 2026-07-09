@@ -14,6 +14,7 @@ import type {
   UnitEntity,
 } from './entity-types';
 import type { GameState, PlayerId, Player, MatchConfig, Relation } from './types';
+import { defaultSandboxSettings } from './sandbox-types';
 
 export function makeUnit(id: number, owner: PlayerId, def: UnitDef, x: number, y: number): UnitEntity {
   const e: UnitEntity = {
@@ -151,6 +152,10 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
     beams: [],
     oneSuperweaponPerPlayer: config.oneSuperweaponPerPlayer ?? true,
   };
+
+  if (config.mode === 'sandbox') {
+    state.sandbox = { enabled: true, settings: defaultSandboxSettings(config.sandboxDefaults) };
+  }
 
   const nodeCap = pacedRegistry.balance.manaNodeCapacity;
   for (const node of map.manaNodes) {

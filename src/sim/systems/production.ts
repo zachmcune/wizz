@@ -6,6 +6,12 @@ import type { GameState } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { productionRate } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
+import {
+  sandboxInstantBuild,
+  sandboxInstantProduce,
+  sandboxInstantResearch,
+  sandboxNoSpellCooldowns,
+} from '../sandbox-flags';
 
 const SPAWN_DIRECTIONS = 16;
 const SPAWN_RINGS = 8;
@@ -13,8 +19,12 @@ const SPAWN_RINGS = 8;
 export function productionSystem(state: GameState, ctx: StepContext): void {
   // Decrement spell cooldowns + expire buffs handled here (deterministic, per tick).
   for (const p of state.players) {
-    for (const key of Object.keys(p.spellCooldowns)) {
-      if ((p.spellCooldowns[key] ?? 0) > 0) p.spellCooldowns[key]!--;
+    if (sandboxNoSpellCooldowns(state)) {
+      for (const key of Object.keys(p.spellCooldowns)) p.spellCooldowns[key] = 0;
+    } else {
+      for (const key of Object.keys(p.spellCooldowns)) {
+        if ((p.spellCooldowns[key] ?? 0) > 0) p.spellCooldowns[key]!--;
+      }
     }
   }
 
@@ -29,7 +39,8 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
 
     // Construction of the building itself.
     if (e.buildProgress !== undefined) {
-      const perTick = 1 / Math.max(1, bdef.buildTime * 20);
+      const instant = sandboxInstantBuild(state);
+      const perTick = instant ? 1 : 1 / Math.max(1, bdef.buildTime * 20);
       e.buildProgress += perTick * rate;
       e.hp = Math.min(e.maxHp, Math.max(1, e.maxHp * e.buildProgress));
       if (e.buildProgress >= 1) {
@@ -70,7 +81,8 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
     // Unit production queue.
     if (e.productionQueue && e.productionQueue.length) {
       const item = e.productionQueue[0]!;
-      item.progress += rate;
+      if (sandboxInstantProduce(state)) item.progress = item.required;
+      else item.progress += rate;
       if (item.progress >= item.required) {
         e.productionQueue.shift();
         spawnFreeUnit(state, ctx, e, item.defId);
@@ -80,7 +92,8 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
     // Research queue. No research content ships yet, but the queue is ready for Nexus upgrades.
     if (e.researchQueue && e.researchQueue.length) {
       const item = e.researchQueue[0]!;
-      item.progress += rate;
+      if (sandboxInstantResearch(state)) item.progress = item.required;
+      else item.progress += rate;
       if (item.progress >= item.required) {
         e.researchQueue.shift();
         if (!player.completedResearch.includes(item.defId)) player.completedResearch.push(item.defId);

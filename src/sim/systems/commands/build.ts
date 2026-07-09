@@ -3,20 +3,22 @@ import { buildingPlacementSpacing } from '../../../core/placement-spacing';
 import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
-import { spawnEntity } from '../../factory';
+import { spawnEntity, unlockTech } from '../../factory';
 import { canBuildNearBase } from '../../build-zone';
 import { footprintOverlapsNode } from '../../resource-nodes';
 import { requirementsMet, removeBuildingFromWorld } from './shared';
+import { sandboxIgnorePlacement, sandboxIgnoreTech, sandboxNoCosts, sandboxInstantBuild } from '../../sandbox-flags';
 
 export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
   const def = ctx.services.registry.buildings.get(cmd.defId);
   if (!def) return;
-  if (!requirementsMet(player, def.requires)) {
+  const ignoreTech = sandboxIgnoreTech(state);
+  if (!ignoreTech && !requirementsMet(player, def.requires)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
     return;
   }
-  if (def.isSuperweapon && state.oneSuperweaponPerPlayer) {
+  if (def.isSuperweapon && state.oneSuperweaponPerPlayer && !state.sandbox?.enabled) {
     const already = [...state.entities.values()].some(
       (e) => e.owner === cmd.playerId && e.kind === 'building' && e.defId === def.id && e.state !== 'dead',
     );
@@ -25,31 +27,38 @@ export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Com
       return;
     }
   }
-  if (player.mana < def.cost) {
+  if (!sandboxNoCosts(state) && player.mana < def.cost) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
     return;
   }
   const tx = Math.floor((cmd.x - (def.footprint * TILE) / 2) / TILE);
   const ty = Math.floor((cmd.y - (def.footprint * TILE) / 2) / TILE);
-  if (!ctx.services.nav.canPlace(tx, ty, def.footprint, buildingPlacementSpacing(def))) {
+  const ignorePlace = sandboxIgnorePlacement(state);
+  if (!ignorePlace && !ctx.services.nav.canPlace(tx, ty, def.footprint, buildingPlacementSpacing(def))) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }
-  if (footprintOverlapsNode(state, tx, ty, def.footprint)) {
+  if (!ignorePlace && footprintOverlapsNode(state, tx, ty, def.footprint)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'blocked' });
     return;
   }
-  if (!canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, def.footprint)) {
+  if (!ignorePlace && !canBuildNearBase(state, ctx.services, cmd.playerId, tx, ty, def.footprint)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'range' });
     return;
   }
-  player.mana -= def.cost;
+  if (!sandboxNoCosts(state)) player.mana -= def.cost;
   const cx = (tx + def.footprint / 2) * TILE;
   const cy = (ty + def.footprint / 2) * TILE;
   const e = spawnEntity(state, ctx.services, ctx, def.id, cmd.playerId, cx, cy);
   if (e.kind !== 'building') return;
-  e.buildProgress = 0;
-  e.hp = Math.max(1, Math.floor(def.hp * 0.1));
+  if (sandboxInstantBuild(state)) {
+    e.buildProgress = undefined;
+    e.hp = e.maxHp;
+    unlockTech(state, e.owner, e.defId);
+  } else {
+    e.buildProgress = 0;
+    e.hp = Math.max(1, Math.floor(def.hp * 0.1));
+  }
   ctx.events.push({ type: 'buildingPlaced', id: e.id, defId: def.id, owner: cmd.playerId });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
 }

@@ -3,6 +3,7 @@ import type { StepContext } from '../../context';
 import type { GameState, Command } from '../../types';
 import { getPlayer } from '../../queries';
 import { requirementsMet } from './shared';
+import { sandboxIgnoreTech, sandboxNoCosts, sandboxInstantProduce } from '../../sandbox-flags';
 
 export function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'produce' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
@@ -11,17 +12,18 @@ export function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<C
   const bdef = ctx.services.registry.buildings.get(b.defId) as BuildingDef | undefined;
   const udef = ctx.services.registry.units.get(cmd.defId);
   if (!bdef || !udef || !bdef.producesUnits?.includes(cmd.defId)) return;
-  if (!requirementsMet(player, udef.requires)) {
+  if (!sandboxIgnoreTech(state) && !requirementsMet(player, udef.requires)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
     return;
   }
-  if (player.mana < udef.cost) {
+  if (!sandboxNoCosts(state) && player.mana < udef.cost) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'mana' });
     return;
   }
-  player.mana -= udef.cost;
+  if (!sandboxNoCosts(state)) player.mana -= udef.cost;
   b.productionQueue ??= [];
-  b.productionQueue.push({ defId: cmd.defId, progress: 0, required: Math.round(udef.buildTime * 20) });
+  const required = sandboxInstantProduce(state) ? 1 : Math.round(udef.buildTime * 20);
+  b.productionQueue.push({ defId: cmd.defId, progress: sandboxInstantProduce(state) ? 1 : 0, required });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
 }
 

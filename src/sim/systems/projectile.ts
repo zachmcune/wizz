@@ -6,8 +6,10 @@ import { entitiesSorted, isAlive } from '../queries';
 import { len, normalize } from '../math';
 import { applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import type { ArmorClass } from '../../data/defs';
+import { sandboxFreezeProjectiles } from '../sandbox-flags';
 
 export function projectileSystem(state: GameState, ctx: StepContext): void {
+  if (sandboxFreezeProjectiles(state)) return;
   const dt = 1 / TICK_HZ;
   const toRemove: number[] = [];
   for (const e of entitiesSorted(state)) {
