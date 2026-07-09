@@ -4,7 +4,7 @@ import type { GameEvent, GameState, PlayerId } from '../../sim/types';
 import { isWorldPointVisible, shouldRevealAllForViewer } from '../../sim/views';
 import type { AudioManager } from '../../audio/audio';
 import type { EffectsLayer } from '../../render/effects';
-import { spawnCelestialScorch } from '../../render/celestial-cannon-vfx';
+import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/celestial-cannon-vfx';
 
 export class EventBridge {
   constructor(
@@ -70,6 +70,7 @@ export class EventBridge {
           this.effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
           this.effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
           spawnCelestialScorch(ev.x, ev.y, ev.radius);
+          spawnCelestialSkyStrike(ev.x, ev.y, ev.radius);
         }
         break;
       case 'entityDied':
