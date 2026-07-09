@@ -166,6 +166,7 @@ export class Game {
       this.audio,
       this.renderer.effects,
       (text) => this.hud?.showHint(text),
+      this.renderer.camera,
     );
 
     const aiEnabled = this.sandboxMode

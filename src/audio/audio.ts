@@ -125,4 +125,32 @@ export class AudioManager {
     this.synthVoice({ freq: 55, freqEnd: 28, dur: 0.65, type: 'sine', gain: 0.45 }, 'celestialImpactBoom', 0.15);
     this.synthVoice({ freq: 880, freqEnd: 440, dur: 0.35, type: 'triangle', gain: 0.22 }, 'celestialImpactRing', 0.15);
   }
+
+  /** Storm Conductor charge — rising electrical whine. */
+  playStormChargeStart(): void {
+    this.synthVoice({ freq: 90, freqEnd: 280, dur: 0.48, type: 'sawtooth', gain: 0.22 }, 'stormCharge', 0.75);
+    this.synthVoice({ freq: 180, freqEnd: 420, dur: 0.42, type: 'sine', gain: 0.1 }, 'stormChargeHi', 0.75);
+  }
+
+  /** Storm Conductor primary strike — bass crack-boom + treble snap. */
+  playStormPrimaryStrike(): void {
+    this.synthVoice({ freq: 48, freqEnd: 22, dur: 0.55, type: 'sine', gain: 0.42 }, 'stormPrimaryBoom', 0.12);
+    this.synthVoice({ freq: 1200, freqEnd: 600, dur: 0.08, type: 'square', gain: 0.18 }, 'stormPrimarySnap', 0.12);
+  }
+
+  /** Storm Conductor chain jump — descending crackle-zap. */
+  playStormChainJump(index: number): void {
+    const base = 680 - index * 85;
+    const gain = Math.max(0.04, 0.14 - index * 0.02);
+    this.synthVoice(
+      { freq: base, freqEnd: base * 0.6, dur: 0.06 + index * 0.008, type: 'square', gain },
+      `stormChain${index}`,
+      0.02,
+    );
+  }
+
+  /** Storm Conductor idle — occasional soft arc tick. */
+  playStormIdleTick(): void {
+    this.synthVoice({ freq: 420, freqEnd: 280, dur: 0.04, type: 'triangle', gain: 0.06 }, 'stormIdleTick', 1.2);
+  }
 }

@@ -16,6 +16,10 @@ export class Camera implements CameraView {
   x = 0;
   y = 0;
   zoom = 1;
+  /** Screen-space micro-shake offset (decays each frame). */
+  shakeX = 0;
+  shakeY = 0;
+  private shakeFrames = 0;
 
   constructor(
     private viewW: number,
@@ -112,6 +116,27 @@ export class Camera implements CameraView {
     else this.x = clamp(this.x, -pad.x, this.worldW - viewWorldW + pad.x);
     if (viewWorldH >= this.worldH) this.y = (this.worldH - viewWorldH) / 2;
     else this.y = clamp(this.y, -pad.y, this.worldH - viewWorldH + pad.y);
+  }
+
+  /** One-frame mobile-safe camera micro-shake (screen pixels). */
+  triggerMicroShake(intensity = 4): void {
+    this.shakeX = (Math.random() - 0.5) * intensity * 2;
+    this.shakeY = (Math.random() - 0.5) * intensity * 2;
+    this.shakeFrames = 2;
+  }
+
+  /** Decay shake offset; call once per rendered frame. */
+  tickShake(): void {
+    if (this.shakeFrames <= 0) {
+      this.shakeX = 0;
+      this.shakeY = 0;
+      return;
+    }
+    this.shakeFrames--;
+    if (this.shakeFrames <= 0) {
+      this.shakeX = 0;
+      this.shakeY = 0;
+    }
   }
 
   view(): CameraView {

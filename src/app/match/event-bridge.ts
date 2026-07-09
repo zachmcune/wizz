@@ -5,8 +5,13 @@ import { isWorldPointVisible, shouldRevealAllForViewer } from '../../sim/views';
 import type { AudioManager } from '../../audio/audio';
 import type { EffectsLayer } from '../../render/effects';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/celestial-cannon-vfx';
+import { spawnStormSequence } from '../../render/storm-conductor-vfx';
+import type { Camera } from '../../render/camera';
 
 export class EventBridge {
+  /** Suppresses generic damage flashes while a Storm Conductor chain resolves. */
+  private pendingStormChain = false;
+
   constructor(
     private getState: () => GameState,
     private humanId: PlayerId,
@@ -15,6 +20,7 @@ export class EventBridge {
     private audio: AudioManager,
     private effects: EffectsLayer,
     private onNotify?: (text: string) => void,
+    private camera?: Camera,
   ) {}
 
   setHumanId(humanId: PlayerId): void {
@@ -32,6 +38,8 @@ export class EventBridge {
         if (src?.defId === 'celestial_cannon') {
           this.audio.playCelestialFire();
           this.effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
+        } else if (src?.defId === 'storm_conductor') {
+          this.pendingStormChain = true;
         } else {
           this.audio.play(ev);
           this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
@@ -47,7 +55,9 @@ export class EventBridge {
       case 'beamStopped':
         break;
       case 'damageDealt':
-        if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+        if (visible && !this.pendingStormChain) {
+          this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+        }
         break;
       case 'healApplied':
         if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
@@ -57,12 +67,28 @@ export class EventBridge {
         const src = state.entities.get(ev.sourceId);
         if (src?.defId === 'celestial_cannon') {
           this.audio.playCelestialChargeStart();
+        } else if (src?.defId === 'storm_conductor') {
+          this.audio.playStormChargeStart();
         } else {
           this.audio.play(ev);
           this.effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
         }
         break;
       }
+      case 'chainLightningFired':
+        if (visible) {
+          this.pendingStormChain = false;
+          this.audio.playStormPrimaryStrike();
+          for (let i = 1; i < ev.hits.length; i++) {
+            this.audio.playStormChainJump(i);
+          }
+          this.effects.spawn('flash', ev.hits[0]!.x, ev.hits[0]!.y, 0xffffff, 22);
+          spawnStormSequence(ev.x, ev.y, ev.hits);
+          this.camera?.triggerMicroShake(5);
+        } else {
+          this.pendingStormChain = false;
+        }
+        break;
       case 'artilleryImpact':
         if (visible) {
           this.audio.playCelestialImpact();
@@ -139,6 +165,7 @@ export class EventBridge {
       case 'damageDealt':
       case 'healApplied':
       case 'attackCharging':
+      case 'chainLightningFired':
       case 'artilleryImpact':
       case 'entityDied':
       case 'manaDeposited':

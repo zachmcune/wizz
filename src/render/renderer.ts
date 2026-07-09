@@ -17,6 +17,7 @@ import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
 import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { renderCelestialCannons } from './celestial-cannon-vfx';
+import { renderStormConductors } from './storm-conductor-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
@@ -259,12 +260,15 @@ export class Renderer {
 
   private applyCameraTransform(): void {
     const cam = this.camera.view();
+    this.camera.tickShake();
     this.world.scale.set(cam.zoom);
+    const shakeX = this.camera.shakeX;
+    const shakeY = this.camera.shakeY;
     if (this.isOblique()) {
       const camProj = projectGround({ x: cam.x, y: cam.y });
-      this.world.position.set(-camProj.x * cam.zoom, -camProj.y * cam.zoom);
+      this.world.position.set(-camProj.x * cam.zoom + shakeX, -camProj.y * cam.zoom + shakeY);
     } else {
-      this.world.position.set(-cam.x * cam.zoom, -cam.y * cam.zoom);
+      this.world.position.set(-cam.x * cam.zoom + shakeX, -cam.y * cam.zoom + shakeY);
     }
   }
 
@@ -605,6 +609,17 @@ export class Renderer {
       state.tick + alpha,
     );
     renderCelestialCannons(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
+    );
+    renderStormConductors(
       state,
       this.registry,
       this.viewerId,
