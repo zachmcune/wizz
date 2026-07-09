@@ -4,6 +4,7 @@ import type { TrainMenuCategory } from '../../data/defs';
 import type { BuildingEntity } from '../../sim/entity-types';
 import type { GameState, PlayerId } from '../../sim/types';
 import { buildingHasPower, isPowerShort } from '../../sim/views';
+import { getProductionQueue } from '../../sim/capabilities';
 
 export interface ProducerInfo {
   entity: BuildingEntity;
@@ -48,7 +49,7 @@ function toProducerInfo(
     entity,
     def,
     label: producerLabel(registry, state, entity),
-    queueLength: entity.productionQueue?.length ?? 0,
+    queueLength: getProductionQueue(entity)?.length ?? 0,
     offline: !buildingHasPower(state, registry, entity),
     slow: isPowerShort(state, playerId) && buildingHasPower(state, registry, entity),
   };

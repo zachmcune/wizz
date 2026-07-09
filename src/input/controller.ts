@@ -95,7 +95,7 @@ export class InputController {
 
   private ownCombatSelected(): EntityId[] {
     return this.selectionEntities()
-      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && e.carryMax === undefined)
+      .filter((e) => e.owner === this.playerId && e.kind === 'unit' && !isHarvester(e))
       .map((e) => e.id);
   }
 
@@ -103,7 +103,7 @@ export class InputController {
     const st = this.getState();
     const out: EntityId[] = [];
     for (const e of st.entities.values()) {
-      if (e.owner === this.playerId && e.kind === 'unit' && e.carryMax !== undefined && isAlive(e)) out.push(e.id);
+      if (e.owner === this.playerId && e.kind === 'unit' && isHarvester(e) && isAlive(e)) out.push(e.id);
     }
     return out;
   }

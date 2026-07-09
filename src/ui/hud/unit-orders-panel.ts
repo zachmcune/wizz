@@ -1,6 +1,7 @@
 import type { Registry } from '../../data/registry';
 import type { GameState, Entity, PlayerId, UnitEntity } from '../../sim/types';
 import { isUnit, isBuilding } from '../../sim/types';
+import { isChanneling, garrisonedInId, getProductionQueue } from '../../sim/capabilities';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 import { Collapsible } from './collapsible';
@@ -57,7 +58,7 @@ export class UnitOrdersPanel {
       });
       if (!ids.length) return;
       const single = st.entities.get(ids[0]!);
-      this.controller.channel(ids, !(single && isUnit(single) && single.channeling));
+      this.controller.channel(ids, !(single && isUnit(single) && isChanneling(single)));
     });
     this.garrisonBtn.style.display = 'none';
     this.garrisonBtn.addEventListener('click', () => this.controller.startGarrison());
@@ -83,7 +84,7 @@ export class UnitOrdersPanel {
       single.owner === this.playerId &&
       single.defId === 'waystone_camp' &&
       single.morphProgress === undefined &&
-      !(single.productionQueue?.length);
+      !(getProductionQueue(single)?.length);
     this.deployBtn.style.display = wagonReady && !inPlaceMode ? '' : 'none';
     this.packBtn.style.display = campReady && !inPlaceMode ? '' : 'none';
 
@@ -94,7 +95,7 @@ export class UnitOrdersPanel {
     const showConjure = !inPlaceMode && weaversSelected.length > 0;
     this.conjureBtn.style.display = showConjure ? '' : 'none';
     if (showConjure) {
-      const channeling = weaversSelected.some((e) => e.channeling);
+      const channeling = weaversSelected.some((e) => isChanneling(e));
       const bal = this.registry.balance;
       this.conjureBtn.textContent = channeling
         ? 'Stop Conjuring'
@@ -106,7 +107,7 @@ export class UnitOrdersPanel {
       (e) =>
         e.owner === this.playerId &&
         e.kind === 'unit' &&
-        e.garrisonedIn === undefined &&
+        garrisonedInId(e) === undefined &&
         !!this.registry.units.get(e.defId)?.canGarrison,
     );
     this.garrisonBtn.style.display = !inPlaceMode && garrisonableSelected ? '' : 'none';

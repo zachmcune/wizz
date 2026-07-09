@@ -4,6 +4,7 @@ import type { CameraView, Vec2 } from '../core/coords';
 import { getProjectionMode } from '../core/projection';
 import type { NavGrid } from '../sim/nav-grid';
 import { pickEntity, pickResourceNode, isVisibleTo } from '../sim/views';
+import { garrisonedInId } from '../sim/capabilities';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 
 export function useScreenPicking(): boolean {
@@ -52,7 +53,7 @@ export function pickEntityScreen(
   let bestScore = -Infinity;
   for (const e of state.entities.values()) {
     if (e.kind === 'projectile') continue;
-    if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
+    if (e.kind === 'unit' && garrisonedInId(e) !== undefined) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
     const s = worldToScreen(e.pos, cam);
     const dx = screen.x - s.x;
@@ -108,7 +109,7 @@ export function unitsInScreenBox(
   const units: EntityId[] = [];
   for (const e of state.entities.values()) {
     if (e.owner !== ownerId || e.kind !== 'unit') continue;
-    if (e.garrisonedIn !== undefined) continue;
+    if (garrisonedInId(e) !== undefined) continue;
     const s = worldToScreen(e.pos, cam);
     if (s.x >= minSX && s.x <= maxSX && s.y >= minSY && s.y <= maxSY) units.push(e.id);
   }

@@ -7,6 +7,7 @@ import type { GameState, Entity, EntityId } from '../types';
 import { applyDamage, applyOnHitStatus } from '../combat-util';
 import { isVisibleTo } from '../fog';
 import { buildingHasPower } from '../power';
+import { getBeamWeapon, setBeamWeapon, clearBeamWeapon, garrisonedInId } from '../capabilities';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { isInBeamCone, rotateToward } from '../beam-util';
 import { acquireTarget, inWeaponBand, sightOf } from './combat';
@@ -48,10 +49,11 @@ function collectBeamHits(
   beam: BeamWeaponDef,
 ): Entity[] {
   const hits: Entity[] = [];
-  const facing = tower.beamAttack!.facing;
+  const beamState = getBeamWeapon(tower)!;
+  const facing = beamState.facing;
   for (const target of entitiesSorted(state)) {
     if (target.kind === 'resource_node' || target.kind === 'projectile' || !isAlive(target)) continue;
-    if (target.kind === 'unit' && target.garrisonedIn !== undefined) continue;
+    if (target.kind === 'unit' && garrisonedInId(target) !== undefined) continue;
     if (!isEnemy(state, tower.owner, target.owner)) continue;
     if (!isVisibleTo(state, tower.owner, target, ctx.services.nav)) continue;
     if (
@@ -81,6 +83,7 @@ function applyBeamDamage(
   w: WeaponDef,
   beam: BeamWeaponDef,
 ): void {
+  const beamState = getBeamWeapon(tower)!;
   const hits = collectBeamHits(state, ctx, tower, w, beam);
   const hitIds = new Set(hits.map((h) => h.id));
   const maxExposure = beam.maxFrostExposure ?? 20;
@@ -100,7 +103,7 @@ function applyBeamDamage(
   }
 
   if (beam.kind === 'flame') {
-    const prev = tower.beamAttack!.lastHitIds;
+    const prev = beamState.lastHitIds;
     for (const id of prev) {
       if (hitIds.has(id)) continue;
       const target = state.entities.get(id);
@@ -116,14 +119,14 @@ function applyBeamDamage(
   } else {
     for (const target of entitiesSorted(state)) {
       if (!isBeamTarget(target) || !isAlive(target)) continue;
-      if (target.kind === 'unit' && target.garrisonedIn !== undefined) continue;
+      if (target.kind === 'unit' && garrisonedInId(target) !== undefined) continue;
       if (!isEnemy(state, tower.owner, target.owner)) continue;
       if (hitIds.has(target.id)) continue;
       decayFrostExposure(state, target);
     }
   }
 
-  tower.beamAttack!.lastHitIds = [...hitIds].sort((a, b) => a - b);
+  beamState.lastHitIds = [...hitIds].sort((a, b) => a - b);
 }
 
 function processBurnLinger(state: GameState, ctx: StepContext): void {
@@ -140,21 +143,21 @@ function processBurnLinger(state: GameState, ctx: StepContext): void {
 }
 
 function stopBeam(tower: BuildingEntity, ctx: StepContext): void {
-  if (tower.beamAttack) {
-    tower.beamAttack = undefined;
+  if (getBeamWeapon(tower)) {
+    clearBeamWeapon(tower);
     ctx.events.push({ type: 'beamStopped', sourceId: tower.id, x: tower.pos.x, y: tower.pos.y });
   }
 }
 
 function startBeam(tower: BuildingEntity, target: Entity, ctx: StepContext, beam: BeamWeaponDef): void {
   const facing = Math.atan2(target.pos.y - tower.pos.y, target.pos.x - tower.pos.x);
-  tower.beamAttack = {
+  setBeamWeapon(tower, {
     targetId: target.id,
     facing,
     ticksSinceDamage: beam.damageIntervalTicks,
     wobblePhase: (tower.id % 97) * 0.11,
     lastHitIds: [],
-  };
+  });
   tower.facing = facing;
   ctx.events.push({ type: 'beamStarted', sourceId: tower.id, x: tower.pos.x, y: tower.pos.y });
 }
@@ -178,18 +181,20 @@ export function beamWeaponSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
-    if (!e.beamAttack) startBeam(e, target, ctx, beam);
+    const beamState = getBeamWeapon(e);
+    if (!beamState) startBeam(e, target, ctx, beam);
 
+    const active = getBeamWeapon(e)!;
     const aim = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
     const maxTurn = beam.rotationSpeed * dt;
-    e.beamAttack!.facing = rotateToward(e.beamAttack!.facing, aim, maxTurn);
-    e.beamAttack!.targetId = target.id;
-    e.beamAttack!.wobblePhase += dt * 3.7;
-    e.facing = e.beamAttack!.facing;
+    active.facing = rotateToward(active.facing, aim, maxTurn);
+    active.targetId = target.id;
+    active.wobblePhase += dt * 3.7;
+    e.facing = active.facing;
 
-    e.beamAttack!.ticksSinceDamage++;
-    if (e.beamAttack!.ticksSinceDamage >= beam.damageIntervalTicks) {
-      e.beamAttack!.ticksSinceDamage = 0;
+    active.ticksSinceDamage++;
+    if (active.ticksSinceDamage >= beam.damageIntervalTicks) {
+      active.ticksSinceDamage = 0;
       applyBeamDamage(state, ctx, e, w, beam);
     }
   }
@@ -201,8 +206,9 @@ export function beamWeaponSystem(state: GameState, ctx: StepContext): void {
 function decayFrostExposureGlobal(state: GameState): void {
   const inFrost = new Set<EntityId>();
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'building' || !e.beamAttack) continue;
-    for (const id of e.beamAttack.lastHitIds) inFrost.add(id);
+    const beamState = getBeamWeapon(e);
+    if (e.kind !== 'building' || !beamState) continue;
+    for (const id of beamState.lastHitIds) inFrost.add(id);
   }
   for (const e of entitiesSorted(state)) {
     if (!isBeamTarget(e) || !isAlive(e)) continue;

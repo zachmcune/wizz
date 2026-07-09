@@ -6,6 +6,7 @@ import type { GameState } from '../types';
 import { entitiesSorted, isAlive } from '../queries';
 import { productionRate } from '../power';
 import { spawnEntity, recomputePower, unlockTech } from '../factory';
+import { getProductionQueue, getResearchQueue, getRally, garrisonedInId } from '../capabilities';
 import {
   sandboxInstantBuild,
   sandboxInstantProduce,
@@ -85,23 +86,24 @@ export function productionSystem(state: GameState, ctx: StepContext): void {
     }
 
     // Unit production queue.
-    if (e.productionQueue && e.productionQueue.length) {
-      const item = e.productionQueue[0]!;
+    const productionQueue = getProductionQueue(e);
+    if (productionQueue && productionQueue.length) {
+      const item = productionQueue[0]!;
       if (sandboxInstantProduce(state)) item.progress = item.required;
       else item.progress += rate;
       if (item.progress >= item.required) {
-        e.productionQueue.shift();
+        productionQueue.shift();
         spawnFreeUnit(state, ctx, e, item.defId);
       }
     }
 
-    // Research queue. No research content ships yet, but the queue is ready for Nexus upgrades.
-    if (e.researchQueue && e.researchQueue.length) {
-      const item = e.researchQueue[0]!;
+    const researchQueue = getResearchQueue(e);
+    if (researchQueue && researchQueue.length) {
+      const item = researchQueue[0]!;
       if (sandboxInstantResearch(state)) item.progress = item.required;
       else item.progress += rate;
       if (item.progress >= item.required) {
-        e.researchQueue.shift();
+        researchQueue.shift();
         if (!player.completedResearch.includes(item.defId)) player.completedResearch.push(item.defId);
       }
     }
@@ -116,8 +118,9 @@ function spawnFreeUnit(state: GameState, ctx: StepContext, building: BuildingEnt
   const spawnY = spawn.y;
   const u = spawnEntity(state, ctx.services, ctx, unitDefId, building.owner, spawnX, spawnY);
   if (u.kind !== 'unit') return;
-  if (building.rally) {
-    u.orders = [{ type: 'move', x: building.rally.x, y: building.rally.y }];
+  const rally = getRally(building);
+  if (rally) {
+    u.orders = [{ type: 'move', x: rally.x, y: rally.y }];
     u.state = 'moving';
   }
 }
@@ -158,9 +161,10 @@ export function findSpawnPosition(
 }
 
 function spawnDirection(building: BuildingEntity): { x: number; y: number } {
-  if (!building.rally) return { x: 0, y: 1 };
-  const dx = building.rally.x - building.pos.x;
-  const dy = building.rally.y - building.pos.y;
+  const rally = getRally(building);
+  if (!rally) return { x: 0, y: 1 };
+  const dx = rally.x - building.pos.x;
+  const dy = rally.y - building.pos.y;
   const d = Math.hypot(dx, dy);
   if (d < 1) return { x: 0, y: 1 };
   return { x: dx / d, y: dy / d };
@@ -177,7 +181,7 @@ function canSpawnAt(
   if (ctx.services.nav.isBlockedDiscFor(x, y, unitRadius, building.owner, state.relations)) return false;
   for (const other of state.entities.values()) {
     if (other.kind === 'projectile' || !isAlive(other)) continue;
-    if (other.kind === 'unit' && other.garrisonedIn !== undefined) continue;
+    if (other.kind === 'unit' && garrisonedInId(other) !== undefined) continue;
     const minDist = unitRadius + other.radius;
     const dx = x - other.pos.x;
     const dy = y - other.pos.y;

@@ -6,6 +6,7 @@ import { TILE } from '../core/constants';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from './nav-grid';
 import type { BuildingEntity } from './entity-types';
+import { garrisonedInId } from './capabilities';
 import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower, isPowerShort } from './power';
@@ -83,7 +84,7 @@ function revealSight(
 
 function isSightSource(state: GameState, registry: Registry, e: Entity): boolean {
   if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') return false;
-  if (e.kind === 'unit' && e.garrisonedIn !== undefined) return false;
+  if (e.kind === 'unit' && garrisonedInId(e) !== undefined) return false;
   if (e.kind === 'building') {
     if (e.buildProgress !== undefined || e.morphProgress !== undefined) return false;
     if (!buildingHasPower(state, registry, e)) return false;

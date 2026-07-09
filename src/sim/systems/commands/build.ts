@@ -7,6 +7,7 @@ import { spawnEntity, unlockTech } from '../../factory';
 import { canBuildNearBase } from '../../build-zone';
 import { footprintOverlapsNode } from '../../resource-nodes';
 import { requirementsMet, removeBuildingFromWorld } from './shared';
+import { ensureProduction, getProductionQueue, garrisonedIds, garrisonReservedIds } from '../../capabilities';
 import { sandboxIgnorePlacement, sandboxIgnoreTech, sandboxNoCosts, sandboxInstantBuild } from '../../sandbox-flags';
 
 export function handleBuild(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'build' }>): void {
@@ -107,7 +108,8 @@ export function handlePack(state: GameState, ctx: StepContext, cmd: Extract<Comm
   }
   const bdef = ctx.services.registry.buildings.get(b.defId);
   if (!bdef?.packsInto) return;
-  if (b.productionQueue && b.productionQueue.length > 0) {
+  const productionQueue = getProductionQueue(b);
+  if (productionQueue && productionQueue.length > 0) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
@@ -123,7 +125,7 @@ export function handleSetRally(state: GameState, ctx: StepContext, cmd: Extract<
   if (b.buildProgress !== undefined || b.morphProgress !== undefined) return;
   const bdef = ctx.services.registry.buildings.get(b.defId);
   if (!bdef?.producesUnits?.length) return;
-  b.rally = { x: cmd.x, y: cmd.y };
+  ensureProduction(b).rally = { x: cmd.x, y: cmd.y };
   ctx.events.push({ type: 'orderIssued', playerId: cmd.playerId, kind: 'rally', x: cmd.x, y: cmd.y });
 }
 
@@ -140,11 +142,12 @@ export function handleSellBuilding(state: GameState, ctx: StepContext, cmd: Extr
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
-  if (b.productionQueue && b.productionQueue.length > 0) {
+  const productionQueue = getProductionQueue(b);
+  if (productionQueue && productionQueue.length > 0) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }
-  if ((b.garrisonedIds && b.garrisonedIds.length > 0) || (b.garrisonReservedIds && b.garrisonReservedIds.length > 0)) {
+  if (garrisonedIds(b).length > 0 || garrisonReservedIds(b).length > 0) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'busy' });
     return;
   }

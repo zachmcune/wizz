@@ -4,6 +4,7 @@ import { initMatch, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { expectBuilding } from './entity-helpers';
+import { getRally } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -52,11 +53,11 @@ describe('building actions', () => {
 
     sim.enqueueNow([{ type: 'setRally', playerId: human.id, buildingId: circle.id, x: 900, y: 700 }]);
     sim.step();
-    expect(circle.rally).toEqual({ x: 900, y: 700 });
+    expect(getRally(circle)).toEqual({ x: 900, y: 700 });
 
     sim.enqueueNow([{ type: 'setRally', playerId: human.id, buildingId: circle.id, x: 500, y: 400 }]);
     sim.step();
-    expect(circle.rally).toEqual({ x: 500, y: 400 });
+    expect(getRally(circle)).toEqual({ x: 500, y: 400 });
   });
 });
 

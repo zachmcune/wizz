@@ -27,6 +27,7 @@ import { movementSystem } from '../src/sim/systems/movement';
 import { projectileSystem } from '../src/sim/systems/projectile';
 import { stepSimulation } from '../src/sim/step';
 import { isAlive } from '../src/sim/queries';
+import { getProductionQueue, getResearchQueue, ensureProduction } from '../src/sim/capabilities';
 import { BUILTIN_SCENARIOS } from '../src/sandbox/scenario-store';
 
 function emptyCtx(services: ReturnType<typeof initMatch>['services']) {
@@ -60,7 +61,7 @@ describe('sandbox economy & build flags', () => {
     });
     expect(sandboxNoCosts(state)).toBe(true);
     expect(player.mana).toBe(0);
-    expect(building.kind === 'building' && building.productionQueue?.length).toBe(1);
+    expect(building.kind === 'building' && (getProductionQueue(building)?.length ?? 0)).toBe(1);
   });
 
   it('instantProduce completes production queue on the next production tick', () => {
@@ -106,9 +107,9 @@ describe('sandbox economy & build flags', () => {
     });
     const building = [...state.entities.values()].find((e) => e.defId === 'arcane_nexus' && e.owner === 'player0')!;
     if (building.kind !== 'building') throw new Error('expected building');
-    building.researchQueue = [{ defId: 'test_research', progress: 0, required: 100 }];
+    ensureProduction(building).researchQueue = [{ defId: 'test_research', progress: 0, required: 100 }];
     productionSystem(state, emptyCtx(services));
-    expect(building.researchQueue.length).toBe(0);
+    expect(getResearchQueue(building)?.length ?? 0).toBe(0);
     expect(state.players[0]!.completedResearch).toContain('test_research');
   });
 
@@ -164,7 +165,7 @@ describe('sandbox economy & build flags', () => {
       buildingId: building.id,
       defId: researchId,
     });
-    expect(building.kind === 'building' && (building.researchQueue?.length ?? 0)).toBe(1);
+    expect(building.kind === 'building' && (getResearchQueue(building)?.length ?? 0)).toBe(1);
     services.registry.research.delete(researchId);
   });
 });

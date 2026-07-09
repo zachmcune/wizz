@@ -1,5 +1,6 @@
 // World-space hit testing for input. Uses authoritative sim positions (not display smoothing).
 import type { NavGrid } from './nav-grid';
+import { garrisonedInId } from './capabilities';
 import type { GameState, Entity, PlayerId } from './types';
 import { isVisibleTo } from './views';
 
@@ -44,7 +45,7 @@ export function pickEntity(
   let bestScore = -Infinity;
   for (const e of state.entities.values()) {
     if (e.kind === 'projectile') continue;
-    if (e.kind === 'unit' && e.garrisonedIn !== undefined) continue;
+    if (e.kind === 'unit' && garrisonedInId(e) !== undefined) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
     const dx = wx - e.pos.x;
     const dy = wy - e.pos.y;

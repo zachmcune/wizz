@@ -14,7 +14,7 @@ import type {
   ResourceNodeEntity,
   UnitEntity,
 } from './entity-types';
-import { makeProjectileCapability } from './capabilities';
+import { makeProjectileCapability, makeHarvesterCapability, ensureProduction } from './capabilities';
 import type { GameState, PlayerId, Player, MatchConfig, Relation } from './types';
 import { defaultSandboxSettings } from './sandbox-types';
 
@@ -37,8 +37,7 @@ export function makeUnit(id: number, owner: PlayerId, def: UnitDef, x: number, y
     buffs: [],
   };
   if (def.isHarvester) {
-    e.carry = 0;
-    e.carryMax = def.carry ?? 100;
+    e.caps = { harvester: makeHarvesterCapability(def.carry ?? 100) };
   }
   return e;
 }
@@ -61,7 +60,9 @@ export function makeBuilding(id: number, owner: PlayerId, def: BuildingDef, x: n
     cooldowns: {},
     buffs: [],
   };
-  if (def.producesUnits && def.producesUnits.length) e.productionQueue = [];
+  if (def.producesUnits && def.producesUnits.length) {
+    ensureProduction(e).productionQueue = [];
+  }
   return e;
 }
 
@@ -131,6 +132,7 @@ function makePlayer(cfg: MatchConfig['players'][number], startingMana: number, t
     team: cfg.team,
     color: cfg.color,
     factionId: cfg.factionId,
+    aiStrategyId: cfg.aiStrategyId,
     mana: startingMana,
     power: 0,
     powerUsed: 0,

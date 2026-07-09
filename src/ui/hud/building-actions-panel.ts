@@ -2,6 +2,7 @@ import type { Registry } from '../../data/registry';
 import type { BuildingDef } from '../../data/defs';
 import type { GameState, Entity, Player } from '../../sim/types';
 import { isBuilding } from '../../sim/types';
+import { getRally, getResearchQueue, getProductionQueue, garrisonedIds, garrisonReservedIds } from '../../sim/capabilities';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
 
@@ -72,7 +73,7 @@ export class BuildingActionsPanel {
     if (!building || !isBuilding(building) || !complete) return false;
     const defs = [...this.registry.research.values()].filter((r) => r.researchedAt === building.defId);
     for (const research of defs) {
-      const queued = building.researchQueue?.some((item) => item.defId === research.id) ?? false;
+      const queued = getResearchQueue(building)?.some((item) => item.defId === research.id) ?? false;
       const completed = player.completedResearch.includes(research.id);
       const unlocked = research.requires.every((r) => player.unlockedTech.includes(r));
       const btn = el('button', 'btn', completed ? `${research.name} Done` : `Research ${research.name}`);
@@ -141,7 +142,7 @@ export class BuildingActionsPanel {
     if (canSell && ownBuilding) {
       const refund = Math.floor(ownBuilding.cost * this.registry.balance.sellRefundRatio);
       this.sellBtn.textContent = `Sell (+${refund})`;
-      this.sellBtn.disabled = !!(building?.productionQueue?.length || building?.repairing);
+      this.sellBtn.disabled = !!(getProductionQueue(building)?.length || building?.repairing);
     }
     this.repairBtn.style.display = canRepair || building?.repairing ? '' : 'none';
     if (canRepair || building?.repairing) {
@@ -157,7 +158,7 @@ export class BuildingActionsPanel {
     if (inRallyMode) {
       this.rallyBtn.textContent = 'Cancel';
       this.rallyBtn.title = 'Cancel rally placement';
-    } else if (canRally && building?.rally) {
+    } else if (canRally && building && getRally(building)) {
       this.rallyBtn.textContent = 'Rally';
       this.rallyBtn.title = 'Move rally point';
     } else {
@@ -167,8 +168,8 @@ export class BuildingActionsPanel {
 
     this.unloadBtn.style.display = canUnload ? '' : 'none';
     if (canUnload && building && ownBuilding.garrison) {
-      const current = building.garrisonedIds?.length ?? 0;
-      const reserved = building.garrisonReservedIds?.length ?? 0;
+      const current = garrisonedIds(building).length;
+      const reserved = garrisonReservedIds(building).length;
       this.unloadBtn.textContent = `Garrison ${current + reserved}/${ownBuilding.garrison.capacity}`;
       this.unloadBtn.title = current > 0 ? 'Unload all garrisoned units' : 'No units garrisoned';
       this.unloadBtn.disabled = current === 0;

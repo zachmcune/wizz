@@ -2,6 +2,7 @@
 import type { StepContext } from './context';
 import type { GameState, Entity, EntityId, GameplayBuff, PlayerId } from './types';
 import type { ArmorClass, WeaponDef } from '../data/defs';
+import { garrisonedInId } from './capabilities';
 import { distSq } from './math';
 import { entitiesSorted, hasBuff, isAlive, isEnemy } from './queries';
 
@@ -20,7 +21,7 @@ export function applyDamage(
   killerId?: EntityId,
 ): void {
   if (target.kind === 'resource_node' || target.kind === 'projectile' || target.state === 'dead') return;
-  if (target.kind === 'unit' && target.garrisonedIn !== undefined) return;
+  if (target.kind === 'unit' && garrisonedInId(target) !== undefined) return;
   if (hasBuff(target, 'aegis', state.tick)) return; // Aegis = temporary invulnerability
   const cls = armorClassOf(ctx, target);
   const mult = vs[cls] ?? 1;

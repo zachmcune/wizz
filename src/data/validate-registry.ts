@@ -96,6 +96,12 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
       if (player.factionId && !factionIds.has(player.factionId)) {
         issues.push({ path: `match/${id}.json`, message: `player factionId "${player.factionId}" is not a known faction` });
       }
+      if (player.aiStrategyId && !loadAiStrategies().has(player.aiStrategyId)) {
+        issues.push({
+          path: `match/${id}.json`,
+          message: `player aiStrategyId "${player.aiStrategyId}" is not a known AI strategy`,
+        });
+      }
       const map = registry.maps.get(match.mapId);
       if (map && player.startIndex >= map.startLocations.length) {
         issues.push({

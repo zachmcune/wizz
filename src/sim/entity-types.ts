@@ -1,6 +1,6 @@
 // Discriminated entity types — each kind owns only its relevant fields.
 import type { Vec2 } from '../core/coords';
-import type { EntityId, GameplayBuff, Order, PlayerId, ProductionItem, Stance, UnitState } from './types';
+import type { EntityId, GameplayBuff, Order, PlayerId, Stance, UnitState } from './types';
 import type { EntityCapabilities } from './capabilities/types';
 
 export interface EntityCore {
@@ -24,27 +24,12 @@ export interface UnitEntity extends EntityCore {
   targetId?: EntityId;
   cooldowns: Record<string, number>;
   buffs: GameplayBuff[];
-  carry?: number;
-  carryMax?: number;
-  homeSpireId?: EntityId;
   morphProgress?: number;
   morphAction?: 'deploy' | 'pack';
   morphTargetPos?: Vec2;
   morphTargetDefId?: string;
-  channeling?: boolean;
-  channelTicks?: number;
-  garrisonedIn?: EntityId;
   frostExposure?: number;
   burnLinger?: BurnLinger;
-}
-
-/** Runtime state for a tower's continuous beam weapon. */
-export interface TowerBeamState {
-  targetId: EntityId;
-  facing: number;
-  ticksSinceDamage: number;
-  wobblePhase: number;
-  lastHitIds: EntityId[];
 }
 
 /** Short burn applied after leaving an inferno beam. */
@@ -64,16 +49,10 @@ export interface BuildingEntity extends EntityCore {
   cooldowns: Record<string, number>;
   buffs: GameplayBuff[];
   buildProgress?: number;
-  productionQueue?: ProductionItem[];
-  researchQueue?: ProductionItem[];
-  rally?: Vec2;
   repairing?: boolean;
   morphProgress?: number;
   morphAction?: 'pack';
-  garrisonedIds?: EntityId[];
-  garrisonReservedIds?: EntityId[];
   chargingAttack?: { targetId: EntityId; remainingTicks: number };
-  beamAttack?: TowerBeamState;
   frostExposure?: number;
   burnLinger?: BurnLinger;
 }
@@ -108,10 +87,10 @@ export function isResourceNode(e: Entity): e is ResourceNodeEntity {
   return e.kind === 'resource_node';
 }
 
-export function isHarvester(e: Entity): e is UnitEntity & { carryMax: number } {
-  return e.kind === 'unit' && e.carryMax !== undefined;
+export function isHarvester(e: Entity): e is UnitEntity & { caps: EntityCapabilities & { harvester: import('./capabilities/types').HarvesterCapability } } {
+  return e.kind === 'unit' && e.caps?.harvester !== undefined;
 }
 
 export function isCombatUnit(e: Entity): e is UnitEntity {
-  return e.kind === 'unit' && e.carryMax === undefined;
+  return e.kind === 'unit' && e.caps?.harvester === undefined;
 }

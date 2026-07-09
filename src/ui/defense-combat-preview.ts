@@ -5,6 +5,7 @@ import { setProjectionMode } from '../core/projection';
 import type { Registry } from '../data/registry';
 import type { BuildingEntity, UnitEntity } from '../sim/entity-types';
 import { initMatch, recomputePower, spawnEntity, unlockTech } from '../sim/factory';
+import { setGarrisonedIn, ensureGarrisonHost } from '../sim/capabilities';
 import { Simulation } from '../sim/simulation';
 import { visibilitySystem } from '../sim/systems/visibility';
 import type { StepContext } from '../sim/context';
@@ -85,12 +86,12 @@ function garrisonArchers(state: GameState, services: StepContext['services'], bu
   const archerIds: EntityId[] = [];
   for (const ox of [-36, 36]) {
     const archer = spawnEntity(state, services, null, 'arcane_archer', DEFENDER, bunker.pos.x + ox, bunker.pos.y + 24) as UnitEntity;
-    archer.garrisonedIn = bunker.id;
+    setGarrisonedIn(archer, bunker.id);
     archer.orders = [];
     archer.state = 'garrisoned';
     archerIds.push(archer.id);
   }
-  bunker.garrisonedIds = archerIds;
+  ensureGarrisonHost(bunker).garrisonedIds = archerIds;
 }
 
 function setupScene(registry: Registry, defenseId: string, teamColor: string): {

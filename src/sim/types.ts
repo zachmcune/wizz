@@ -18,6 +18,7 @@ export interface Player {
   team: TeamId;
   color: string; // hex, rendering only
   factionId?: string;
+  aiStrategyId?: string;
   mana: number;
   power: number; // produced power
   powerUsed: number; // consumed power
@@ -211,6 +212,7 @@ export interface MatchPlayerConfig {
   color: string;
   startIndex: number;
   factionId?: string;
+  aiStrategyId?: string;
   aiDifficulty?: 'easy' | 'normal' | 'hard';
 }
 

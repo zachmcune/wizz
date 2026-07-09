@@ -4,6 +4,7 @@ import type { BuildingEntity } from '../../sim/entity-types';
 import type { GameState, Player, PlayerId } from '../../sim/types';
 import type { InputController } from '../../input/controller';
 import { buildingHasPower, isPowerShort } from '../../sim/views';
+import { getProductionQueue } from '../../sim/capabilities';
 import { el } from './dom';
 import { Collapsible } from './collapsible';
 import { CategoryChips } from './category-chips';
@@ -161,7 +162,7 @@ export class CommandMenuPanel {
 
   updateTrainQueue(registry: Registry, controller: InputController, building: BuildingEntity | null): void {
     this.trainQueueEl.innerHTML = '';
-    const queue = building?.productionQueue;
+    const queue = building ? getProductionQueue(building) : undefined;
     if (!building || !queue?.length) {
       this.trainQueueEl.style.display = 'none';
       return;

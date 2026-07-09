@@ -7,6 +7,7 @@ import type { SimServices } from '../../sim/context';
 import { buildZoneCircles } from '../../sim/build-zone';
 import type { GameState, PlayerId } from '../../sim/types';
 import type { SessionState } from '../../input/session';
+import { getRally } from '../../sim/capabilities';
 
 function placementGhost(
   state: GameState,
@@ -64,8 +65,9 @@ export function buildMatchOverlay(
   } else if (session.selection.size === 1) {
     const id = [...session.selection][0]!;
     const b = state.entities.get(id);
-    if (b?.kind === 'building' && b.rally) {
-      rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: b.rally.x, toY: b.rally.y };
+    const rally = b ? getRally(b) : undefined;
+    if (b?.kind === 'building' && rally) {
+      rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: rally.x, toY: rally.y };
     }
   }
   const buildZones = session.mode === 'build' ? buildZoneCircles(state, services, humanId) : undefined;

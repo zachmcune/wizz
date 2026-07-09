@@ -3,6 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, recomputePower, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { hasBuff, strongestSlowAttackCooldownFactor, strongestSlowMoveFactor } from '../src/sim/queries';
+import { getBeamWeapon } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -29,7 +30,7 @@ describe('advanced defense mechanics', () => {
     for (let i = 0; i < 80; i++) {
       sim.step();
       const beacon = [...state.entities.values()].find((e) => e.kind === 'building' && e.defId === 'inferno_beacon');
-      if (beacon && beacon.kind === 'building' && beacon.beamAttack) sawBeam = true;
+      if (beacon && beacon.kind === 'building' && getBeamWeapon(beacon)) sawBeam = true;
     }
 
     expect(a.hp).toBeLessThan(hpA);
@@ -47,7 +48,7 @@ describe('advanced defense mechanics', () => {
     for (let i = 0; i < 80; i++) {
       sim.step();
       const spire = [...state.entities.values()].find((e) => e.kind === 'building' && e.defId === 'frost_spire');
-      if (spire && spire.kind === 'building' && spire.beamAttack) sawBeam = true;
+      if (spire && spire.kind === 'building' && getBeamWeapon(spire)) sawBeam = true;
     }
 
     expect(hasBuff(target, 'slow', state.tick)).toBe(true);
@@ -63,12 +64,12 @@ describe('advanced defense mechanics', () => {
     const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
 
     for (let i = 0; i < 20; i++) sim.step();
-    expect(spire.kind === 'building' && spire.beamAttack).toBeTruthy();
+    expect(spire.kind === 'building' && getBeamWeapon(spire)).toBeTruthy();
 
     target.pos.x = 1200;
     target.pos.y = 1200;
     for (let i = 0; i < 5; i++) sim.step();
-    expect(spire.kind === 'building' && !spire.beamAttack).toBe(true);
+    expect(spire.kind === 'building' && !getBeamWeapon(spire)).toBe(true);
   });
 
   it('chains lightning from Storm Conductor to nearby enemies', () => {

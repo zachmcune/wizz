@@ -11,7 +11,7 @@ import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } fr
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 import { resolveWeaponStat } from '../modifiers';
-import { makeProjectileCapability } from '../capabilities';
+import { makeProjectileCapability, hasHarvester, isChanneling, garrisonedInId } from '../capabilities';
 import { makeProjectile } from '../factory';
 
 const scratch: EntityId[] = [];
@@ -55,7 +55,7 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
   for (const id of ids) {
     const o = state.entities.get(id);
     if (!o || o.kind === 'resource_node' || o.kind === 'projectile' || !isAlive(o)) continue;
-    if (o.kind === 'unit' && o.garrisonedIn !== undefined) continue;
+    if (o.kind === 'unit' && garrisonedInId(o) !== undefined) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
@@ -121,13 +121,13 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
   for (const e of entitiesSorted(state)) {
     if (!isAlive(e) || e.kind === 'projectile' || e.kind === 'resource_node') continue;
     if (e.kind === 'building' && !buildingHasPower(state, ctx.services.registry, e)) continue;
-    if (e.kind === 'unit' && (e.state === 'garrisoned' || e.garrisonedIn !== undefined)) continue;
+    if (e.kind === 'unit' && (e.state === 'garrisoned' || garrisonedInId(e) !== undefined)) continue;
     if (e.cooldowns.attack && e.cooldowns.attack > 0) e.cooldowns.attack--;
     const w = weaponOf(ctx, e);
     if (!w) continue;
     if (e.kind === 'building' && w.beam) continue; // continuous beams handled by beamWeaponSystem
-    if (e.kind === 'unit' && e.carryMax !== undefined) continue; // harvesters don't fight
-    if (e.kind === 'unit' && e.channeling) continue;
+    if (e.kind === 'unit' && hasHarvester(e)) continue; // harvesters don't fight
+    if (e.kind === 'unit' && isChanneling(e)) continue;
 
     if (e.kind === 'building' && e.chargingAttack) {
       const target = state.entities.get(e.chargingAttack.targetId);
@@ -145,7 +145,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
 
     if (order && order.type === 'attack') {
       target = state.entities.get(order.targetId) ?? null;
-      if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
+      if (!isAlive(target) || (target.kind === 'unit' && garrisonedInId(target) !== undefined) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
         e.orders.shift();
         target = null;
         if (e.state === 'attacking') e.state = 'idle';

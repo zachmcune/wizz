@@ -1,0 +1,17 @@
+{
+  "id": "skirmish_1v1_rush",
+  "mapId": "duel_glade",
+  "seed": 12345,
+  "players": [
+    { "id": "player0", "controller": "human", "team": 0, "color": "#4f9dff", "startIndex": 0 },
+    {
+      "id": "player1",
+      "controller": "ai",
+      "team": 1,
+      "color": "#ff5d5d",
+      "startIndex": 3,
+      "aiDifficulty": "normal",
+      "aiStrategyId": "arcane_rush"
+    }
+  ]
+}

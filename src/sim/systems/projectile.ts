@@ -7,7 +7,7 @@ import { len, normalize } from '../math';
 import { applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import type { ArmorClass } from '../../data/defs';
 import { sandboxFreezeProjectiles } from '../sandbox-flags';
-import { getProjectileCapability } from '../capabilities';
+import { getProjectileCapability, garrisonedInId } from '../capabilities';
 
 export function projectileSystem(state: GameState, ctx: StepContext): void {
   if (sandboxFreezeProjectiles(state)) return;
@@ -21,7 +21,7 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
     const target = state.entities.get(cap.targetId);
-    if (!isAlive(target) || (target.kind === 'unit' && target.garrisonedIn !== undefined)) {
+    if (!isAlive(target) || (target.kind === 'unit' && garrisonedInId(target) !== undefined)) {
       toRemove.push(e.id);
       continue;
     }

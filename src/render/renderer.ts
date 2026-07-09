@@ -9,6 +9,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer, hasBuff, pickEntity, pickResourceNode } from '../sim/views';
+import { garrisonedInId, getHarvester } from '../sim/capabilities';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
@@ -409,7 +410,7 @@ export class Renderer {
     for (const [id, n] of this.nodes) {
       const e = state.entities.get(id);
       if (!e) continue;
-      if (e.kind === 'unit' && e.garrisonedIn !== undefined) {
+      if (e.kind === 'unit' && garrisonedInId(e) !== undefined) {
         n.sprite.visible = false;
         if (n.label) n.label.visible = false;
         continue;
@@ -532,7 +533,8 @@ export class Renderer {
         const bar = this.positionOverlayAt(x, y, e.radius + 6);
         this.fillRect(bar.x - e.radius, bar.y, e.radius * 2 * e.morphProgress, 3, 0x8b6cff);
       }
-      if (e.kind === 'unit' && e.carry !== undefined && e.carry > 0) {
+      const harvester = getHarvester(e);
+      if (e.kind === 'unit' && harvester && harvester.carry > 0) {
         const dot = this.positionOverlayAt(x, y, -e.radius - 4);
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }

@@ -1,6 +1,7 @@
 import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
 import { isHarvester, isEnemy, canUnitGarrison, garrisonFreeCapacity } from '../../sim/views';
+import { garrisonedInId } from '../../sim/capabilities';
 import {
   pickEntityForInput,
   pickResourceNodeForInput,
@@ -132,7 +133,7 @@ function unitsInWorldBox(ctx: InputContext, ownerId: string, a: Vec2, b: Vec2): 
   const units: EntityId[] = [];
   for (const e of st.entities.values()) {
     if (e.owner !== ownerId || e.kind !== 'unit') continue;
-    if (e.garrisonedIn !== undefined) continue;
+    if (garrisonedInId(e) !== undefined) continue;
     if (e.pos.x >= minX && e.pos.x <= maxX && e.pos.y >= minY && e.pos.y <= maxY) units.push(e.id);
   }
   return units;

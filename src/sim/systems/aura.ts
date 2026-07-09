@@ -1,6 +1,7 @@
 import type { StepContext } from '../context';
 import type { Entity } from '../entity-types';
 import type { GameState } from '../types';
+import { garrisonedInId } from '../capabilities';
 import { buildingHasPower } from '../power';
 import { distSq } from '../math';
 import { entitiesSorted, isAlive, isAlly } from '../queries';
@@ -8,7 +9,7 @@ import { entitiesSorted, isAlive, isAlly } from '../queries';
 function canHealTarget(source: Entity, target: Entity, affects: 'units' | 'buildings' | 'allies'): boolean {
   if (target.kind === 'resource_node' || target.kind === 'projectile') return false;
   if (target.hp >= target.maxHp) return false;
-  if (target.kind === 'unit' && target.garrisonedIn !== undefined) return false;
+  if (target.kind === 'unit' && garrisonedInId(target) !== undefined) return false;
   if (affects === 'units') return target.kind === 'unit';
   if (affects === 'buildings') return target.kind === 'building';
   void source;

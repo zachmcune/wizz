@@ -4,6 +4,7 @@ import { initMatch, spawnEntity, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { expectBuilding } from './entity-helpers';
+import { getProductionQueue } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -23,7 +24,7 @@ describe('economy gating', () => {
     sim.enqueueNow([{ type: 'produce', playerId: human.id, buildingId: spire.id, defId: 'mana_weaver' }]);
     sim.step();
 
-    expect(spire.productionQueue?.length ?? 0).toBe(0);
+    expect(getProductionQueue(spire)?.length ?? 0).toBe(0);
     expect(ownedBy(state, human.id).filter((e) => e.defId === 'mana_weaver').length).toBe(0);
   });
 
@@ -41,6 +42,6 @@ describe('economy gating', () => {
 
     sim.enqueueNow([{ type: 'produce', playerId: human.id, buildingId: vault.id, defId: 'mana_weaver' }]);
     sim.step();
-    expect(vault.productionQueue?.length ?? 0).toBe(1);
+    expect(getProductionQueue(vault)?.length ?? 0).toBe(1);
   });
 });

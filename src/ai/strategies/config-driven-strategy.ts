@@ -3,6 +3,7 @@ import type { BuildingEntity } from '../../sim/entity-types';
 import { isHarvester, isCombatUnit } from '../../sim/types';
 import { ownedBy, buildingsOf } from '../../sim/queries';
 import { isPowerShort, buildingHasPower } from '../../sim/power';
+import { getProductionQueue } from '../../sim/capabilities';
 import type { AiDecisionContext, AiStrategy, AiStrategyConfig } from './types';
 import {
   enemiesNear,
@@ -84,7 +85,7 @@ export class ConfigDrivenStrategy implements AiStrategy {
       (b) => b.defId === cfg.production.harvesterBuilding && b.buildProgress === undefined,
     );
     if (spire && buildingHasPower(state, reg, spire) && wisps.length < diff.wispTarget) {
-      const q = spire.productionQueue?.length ?? 0;
+      const q = getProductionQueue(spire)?.length ?? 0;
       const wdef = reg.units.get(cfg.production.harvesterUnit);
       if (q === 0 && wdef && p.mana >= wdef.cost) {
         cmds.push({ type: 'produce', playerId: p.id, buildingId: spire.id, defId: cfg.production.harvesterUnit });
@@ -138,7 +139,7 @@ export class ConfigDrivenStrategy implements AiStrategy {
 
     const tryProduce = (building: BuildingEntity | undefined, defId: string): boolean => {
       if (!building || !buildingHasPower(state, reg, building)) return false;
-      if ((building.productionQueue?.length ?? 0) >= 2) return false;
+      if ((getProductionQueue(building)?.length ?? 0) >= 2) return false;
       const udef = reg.units.get(defId);
       if (!udef || p.mana < udef.cost) return false;
       if (!udef.requires.every((r) => p.unlockedTech.includes(r))) return false;

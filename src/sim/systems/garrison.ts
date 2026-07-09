@@ -1,6 +1,7 @@
 import type { StepContext } from '../context';
 import type { Entity, UnitEntity } from '../entity-types';
 import type { EntityId, GameState } from '../types';
+import { garrisonedIds, garrisonedInId } from '../capabilities';
 import { distSq } from '../math';
 import { buildingHasPower } from '../power';
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
@@ -32,14 +33,15 @@ export function garrisonSystem(state: GameState, ctx: StepContext): void {
   for (const building of entitiesSorted(state)) {
     if (building.kind !== 'building' || !isAlive(building)) continue;
     if (building.buildProgress !== undefined || building.morphProgress !== undefined) continue;
-    if (!building.garrisonedIds?.length) continue;
+    const ids = garrisonedIds(building);
+    if (!ids.length) continue;
     if (!buildingHasPower(state, ctx.services.registry, building)) continue;
     const garrison = ctx.services.registry.buildings.get(building.defId)?.garrison;
     if (!garrison) continue;
 
-    for (const id of [...building.garrisonedIds].sort((a, b) => a - b)) {
+    for (const id of [...ids].sort((a, b) => a - b)) {
       const unit = state.entities.get(id);
-      if (!unit || unit.kind !== 'unit' || !isAlive(unit) || unit.garrisonedIn !== building.id) continue;
+      if (!unit || unit.kind !== 'unit' || !isAlive(unit) || garrisonedInId(unit) !== building.id) continue;
       if (unit.cooldowns.attack && unit.cooldowns.attack > 0) unit.cooldowns.attack--;
       const weapon = ctx.services.registry.units.get(unit.defId)?.weapon;
       if (!weapon || (unit.cooldowns.attack ?? 0) > 0) continue;

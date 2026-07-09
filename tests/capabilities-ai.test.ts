@@ -3,8 +3,8 @@ import { getRegistry } from './helpers';
 import { initMatch } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { hashState } from '../src/sim/hash';
-import { makeProjectileCapability, getProjectileCapability, hashProjectileCapability } from '../src/sim/capabilities';
-import { makeProjectile } from '../src/sim/factory';
+import { makeProjectileCapability, getProjectileCapability, hashProjectileCapability, getHarvester, getProduction, ensureProduction } from '../src/sim/capabilities';
+import { makeProjectile, makeUnit, makeBuilding } from '../src/sim/factory';
 import { runHeadless } from '../src/testing/headless';
 import { strategyForPlayer } from '../src/ai/strategies/registry';
 import { listAiStrategies } from '../src/ai/strategies/registry';
@@ -33,6 +33,21 @@ describe('projectile capabilities', () => {
     const b = runHeadless(reg, reg.match('skirmish_1v1'), 400);
     expect(hashState(a)).toBe(hashState(b));
   });
+
+  it('harvester capability stores carry on unit caps', () => {
+    const def = reg.unit('wisp');
+    const wisp = makeUnit(1, 'player0', def, 0, 0);
+    const harvester = getHarvester(wisp);
+    expect(harvester?.carryMax).toBe(def.carry ?? 100);
+    expect(harvester?.carry).toBe(0);
+  });
+
+  it('production capability stores queues on building caps', () => {
+    const circle = reg.building('summoning_circle');
+    const b = makeBuilding(3, 'player0', circle, 100, 100);
+    ensureProduction(b).productionQueue = [];
+    expect(getProduction(b)?.productionQueue).toEqual([]);
+  });
 });
 
 describe('AI strategies', () => {
@@ -43,6 +58,16 @@ describe('AI strategies', () => {
     const strategy = strategyForPlayer(aiPlayer);
     expect(strategy.config.id).toBe('arcane_standard');
     expect(strategy.config.buildOrder[0]).toBe('attunement_spire');
+  });
+
+  it('loads arcane_rush when aiStrategyId is set', () => {
+    expect(listAiStrategies()).toContain('arcane_rush');
+    const { state } = initMatch(reg, reg.match('skirmish_1v1_rush'));
+    const aiPlayer = state.players.find((p) => p.controller === 'ai')!;
+    expect(aiPlayer.aiStrategyId).toBe('arcane_rush');
+    const strategy = strategyForPlayer(aiPlayer);
+    expect(strategy.config.id).toBe('arcane_rush');
+    expect(strategy.config.combat.defendFraction).toBe(0.2);
   });
 
   it('strategy-driven AI match is deterministic', () => {

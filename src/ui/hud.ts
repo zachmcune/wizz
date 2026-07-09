@@ -2,6 +2,7 @@
 import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
 import { isAlive, isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
+import { getRally, garrisonedIds, garrisonReservedIds, isChanneling } from '../sim/capabilities';
 import type { Registry } from '../data/registry';
 import type { ArtDef, BuildingDef } from '../data/defs';
 import type { InputController } from '../input/controller';
@@ -389,10 +390,10 @@ export class Hud {
 
     if (inRallyMode) {
       this.selName.textContent = ownBuilding?.name ?? 'Set rally point';
-      this.selDesc.textContent = singleBuilding?.rally
+      this.selDesc.textContent = singleBuilding && getRally(singleBuilding)
         ? 'Tap the map to move the rally point.'
         : 'Tap the map where new units should go after training.';
-      this.selMeta.textContent = singleBuilding?.rally ? 'Rally point set — tap map to move' : 'No rally point';
+      this.selMeta.textContent = singleBuilding && getRally(singleBuilding) ? 'Rally point set — tap map to move' : 'No rally point';
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inGarrisonMode) {
       this.selName.textContent = 'Garrison';
@@ -428,10 +429,10 @@ export class Hud {
         }
         if (singleBuilding.morphProgress !== undefined) meta.push(`Packing ${Math.round(singleBuilding.morphProgress * 100)}%`);
         if (singleBuilding.repairing) meta.push('repairing');
-        if (singleBuilding.rally) meta.push('rally set');
+        if (getRally(singleBuilding)) meta.push('rally set');
         if (ownBuilding.garrison) {
-          const current = singleBuilding.garrisonedIds?.length ?? 0;
-          const reserved = singleBuilding.garrisonReservedIds?.length ?? 0;
+          const current = garrisonedIds(singleBuilding).length;
+          const reserved = garrisonReservedIds(singleBuilding).length;
           meta.push(`garrison ${current + reserved}/${ownBuilding.garrison.capacity}`);
         }
         this.commandMenu.updateTrainQueue(
@@ -446,7 +447,7 @@ export class Hud {
         if (single.morphProgress !== undefined) {
           meta += ` · ${single.morphAction === 'deploy' ? 'Deploying' : 'Packing'} ${Math.round(single.morphProgress * 100)}%`;
         }
-        if (single.channeling) meta += ' · conjuring mana';
+        if (isChanneling(single)) meta += ' · conjuring mana';
         this.selMeta.textContent = meta;
         this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
       } else {
@@ -492,7 +493,7 @@ export class Hud {
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';
-      this.buildConfirmLabel.textContent = singleBuilding?.rally
+      this.buildConfirmLabel.textContent = singleBuilding && getRally(singleBuilding)
         ? 'Tap map to move rally point'
         : 'Tap map to set rally point';
       this.buildConfirmBtn.style.display = 'none';

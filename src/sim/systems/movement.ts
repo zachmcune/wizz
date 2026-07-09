@@ -2,10 +2,18 @@
 // Makes group movement look coherent (no overlap/jitter). This is a "feel" system.
 import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
+import type { BuildingEntity } from '../entity-types';
 import type { GameState, UnitEntity, EntityId } from '../types';
 import { entitiesSorted, isAlive, getPlayer } from '../queries';
 import { steerToGoal, applyVelocityMove, slidePosition, makePathContext, moveTowardGoal } from '../pathing';
 import { canUnitGarrison } from '../garrison';
+import {
+  ensureGarrisonHost,
+  getGarrisonHost,
+  garrisonedInId,
+  isChanneling,
+  setGarrisonedIn,
+} from '../capabilities';
 import { sandboxFreezeUnits } from '../sandbox-flags';
 import { resolveUnitStat } from '../modifiers';
 
@@ -37,9 +45,10 @@ function goalOf(e: UnitEntity): { x: number; y: number } | null {
   return null;
 }
 
-function removeReservation(building: { garrisonReservedIds?: EntityId[] }, unitId: EntityId): void {
-  if (!building.garrisonReservedIds) return;
-  building.garrisonReservedIds = building.garrisonReservedIds.filter((id) => id !== unitId);
+function removeReservation(building: BuildingEntity, unitId: EntityId): void {
+  const host = getGarrisonHost(building);
+  if (!host?.garrisonReservedIds) return;
+  host.garrisonReservedIds = host.garrisonReservedIds.filter((id) => id !== unitId);
 }
 
 export function movementSystem(state: GameState, ctx: StepContext): void {
@@ -50,11 +59,11 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'unit' || !isAlive(e)) continue;
-    if (e.state === 'garrisoned' || e.garrisonedIn !== undefined) {
+    if (e.state === 'garrisoned' || garrisonedInId(e) !== undefined) {
       e.vel = { x: 0, y: 0 };
       continue;
     }
-    if (e.morphProgress !== undefined || e.channeling) {
+    if (e.morphProgress !== undefined || isChanneling(e)) {
       e.vel = { x: 0, y: 0 };
       continue;
     }
@@ -76,9 +85,9 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       const d = Math.hypot(building.pos.x - e.pos.x, building.pos.y - e.pos.y);
       if (d <= e.radius + building.radius + 8) {
         removeReservation(building, e.id);
-        building.garrisonedIds ??= [];
-        if (!building.garrisonedIds.includes(e.id)) building.garrisonedIds.push(e.id);
-        e.garrisonedIn = building.id;
+        const host = ensureGarrisonHost(building);
+        if (!host.garrisonedIds.includes(e.id)) host.garrisonedIds.push(e.id);
+        setGarrisonedIn(e, building.id);
         e.pos = { x: building.pos.x, y: building.pos.y };
         e.vel = { x: 0, y: 0 };
         e.orders = [];
@@ -142,7 +151,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
   }
 
   for (const e of entitiesSorted(state)) {
-    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || e.channeling || e.state === 'garrisoned') continue;
+    if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || isChanneling(e) || e.state === 'garrisoned') continue;
     const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
     const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 2.5, scratch);
     let sepX = 0;

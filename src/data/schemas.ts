@@ -276,6 +276,7 @@ export const matchConfigSchema = z.object({
       color: z.string(),
       startIndex: z.number().int().nonnegative(),
       factionId: z.string().optional(),
+      aiStrategyId: z.string().optional(),
       aiDifficulty: z.enum(['easy', 'normal', 'hard']).optional(),
     }),
   ),

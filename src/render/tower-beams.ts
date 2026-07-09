@@ -2,6 +2,7 @@
 import type { Registry } from '../data/registry';
 import type { GameState, PlayerId } from '../sim/types';
 import { isVisibleTo } from '../sim/views';
+import { getBeamWeapon } from '../sim/capabilities';
 import type { NavGrid } from '../sim/nav-grid';
 import type { GraphicsPool } from './graphics-pool';
 
@@ -202,7 +203,8 @@ export function renderTowerBeams(
   animPhase: number,
 ): void {
   for (const e of state.entities.values()) {
-    if (e.kind !== 'building' || !e.beamAttack) continue;
+    const beamState = getBeamWeapon(e);
+    if (e.kind !== 'building' || !beamState) continue;
     if (!revealAll && nav && !isVisibleTo(state, viewerId, e, nav)) continue;
 
     const def = registry.buildings.get(e.defId);
@@ -211,9 +213,9 @@ export function renderTowerBeams(
     if (!w || !beam) continue;
 
     const src = drawPos(e.pos.x, e.pos.y);
-    const end = beamEndpoint(e.pos.x, e.pos.y, e.beamAttack.facing, w.range, e.beamAttack.wobblePhase + animPhase * 0.05);
+    const end = beamEndpoint(e.pos.x, e.pos.y, beamState.facing, w.range, beamState.wobblePhase + animPhase * 0.05);
     const dst = drawPos(end.ex, end.ey);
-    const phase = e.beamAttack.wobblePhase + animPhase * 0.08;
+    const phase = beamState.wobblePhase + animPhase * 0.08;
     const seed = e.id * 0.17 + state.tick * 0.03;
 
     if (beam.kind === 'flame') {

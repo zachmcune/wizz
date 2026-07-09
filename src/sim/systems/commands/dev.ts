@@ -8,6 +8,7 @@ import { handleSpell } from './spell';
 import { createFogTiles } from '../../fog';
 import type { BuildingEntity } from '../../entity-types';
 import { sandboxInstantBuild } from '../../sandbox-flags';
+import { getResearchQueue, ensureProduction } from '../../capabilities';
 
 type DevHandler = (state: GameState, ctx: StepContext, cmd: DevCommand) => void;
 
@@ -130,11 +131,12 @@ function handleCompleteResearch(state: GameState, _ctx: StepContext, cmd: Extrac
     return;
   }
   for (const e of state.entities.values()) {
-    if (e.kind !== 'building' || e.owner !== cmd.playerId || !e.researchQueue?.length) continue;
-    for (const item of e.researchQueue) {
+    const queue = getResearchQueue(e);
+    if (e.kind !== 'building' || e.owner !== cmd.playerId || !queue?.length) continue;
+    for (const item of queue) {
       if (!player.completedResearch.includes(item.defId)) player.completedResearch.push(item.defId);
     }
-    e.researchQueue = [];
+    ensureProduction(e).researchQueue = [];
   }
 }
 

@@ -2,7 +2,23 @@
 // All gameplay-relevant fields must be registered here. Fog tiles are per-viewer presentation
 // and are intentionally excluded from the hash (lockstep peers may diverge on fog masks).
 import type { Entity, GameState, Player, SuperweaponBeam } from './types';
-import { hashProjectileCapability, getProjectileCapability } from './capabilities';
+import {
+  hashProjectileCapability,
+  hashHarvesterCapability,
+  hashChannelerCapability,
+  hashGarrisonableCapability,
+  hashProductionCapability,
+  hashGarrisonHostCapability,
+  hashBeamWeaponCapability,
+  getProjectileCapability,
+  getHarvester,
+  getChanneler,
+  getGarrisonable,
+  getProduction,
+  getGarrisonHost,
+  getBeamWeapon,
+  isChanneling,
+} from './capabilities';
 
 export const SYNC_SURFACE_VERSION = 1;
 
@@ -74,17 +90,16 @@ function hashCooldowns(e: Entity): string {
 }
 
 function hashEntityFlags(e: Entity): string {
+  const beam = getBeamWeapon(e);
   return [
-    e.kind === 'unit' && e.channeling ? 'C' : '',
+    isChanneling(e) ? 'C' : '',
     e.kind === 'building' && e.repairing ? 'R' : '',
     e.kind === 'building' && e.buildProgress !== undefined ? `BP${r(e.buildProgress)}` : '',
     (e.kind === 'unit' || e.kind === 'building') && e.morphProgress !== undefined ? `M${r(e.morphProgress)}` : '',
     e.kind === 'building' && e.chargingAttack
       ? `Q${e.chargingAttack.targetId}:${e.chargingAttack.remainingTicks}`
       : '',
-    e.kind === 'building' && e.beamAttack
-      ? `BM${e.beamAttack.targetId}:${r(e.beamAttack.facing)}:${e.beamAttack.ticksSinceDamage}`
-      : '',
+    beam ? `BM${beam.targetId}:${r(beam.facing)}:${beam.ticksSinceDamage}` : '',
     (e.kind === 'unit' || e.kind === 'building') && e.frostExposure ? `F${e.frostExposure}` : '',
     (e.kind === 'unit' || e.kind === 'building') && e.burnLinger ? `L${e.burnLinger.remaining}` : '',
     e.kind !== 'resource_node' && e.kind !== 'projectile' ? `ST${e.stance}` : '',
@@ -94,11 +109,23 @@ function hashEntityFlags(e: Entity): string {
 
 function hashEntity(state: GameState, e: Entity): string {
   const stateStr = e.kind === 'resource_node' ? 'node' : e.kind === 'projectile' ? 'projectile' : e.state;
-  const carryStr = e.kind === 'unit' ? r(e.carry ?? 0) : 0;
+  const harvester = getHarvester(e);
+  const carryStr = harvester ? r(harvester.carry) : 0;
   const amountStr = e.kind === 'resource_node' ? r(e.amount) : 0;
-  const channelStr = e.kind === 'unit' ? (e.channelTicks ?? 0) : 0;
+  const channeler = getChanneler(e);
+  const channelStr = channeler?.channelTicks ?? 0;
   const projCap = getProjectileCapability(e);
   const projStr = projCap ? hashProjectileCapability(projCap) : '';
+  const harvestStr = harvester ? hashHarvesterCapability(harvester) : '';
+  const channelCapStr = channeler ? hashChannelerCapability(channeler) : '';
+  const garrisonable = getGarrisonable(e);
+  const garrisonableStr = garrisonable ? hashGarrisonableCapability(garrisonable) : '';
+  const production = getProduction(e);
+  const prodStr = production ? hashProductionCapability(production) : '';
+  const garrisonHost = getGarrisonHost(e);
+  const garrisonHostStr = garrisonHost ? hashGarrisonHostCapability(garrisonHost) : '';
+  const beam = getBeamWeapon(e);
+  const beamStr = beam ? hashBeamWeaponCapability(beam) : '';
   const buffsStr =
     e.kind === 'resource_node' || e.kind === 'projectile'
       ? ''
@@ -111,18 +138,6 @@ function hashEntity(state: GameState, e: Entity): string {
           )
           .sort()
           .join(',');
-  const prodStr =
-    e.kind === 'building'
-      ? `PQ${(e.productionQueue ?? []).map((q) => `${q.defId}:${r(q.progress)}/${q.required}`).join(',')}`
-      : '';
-  const garrisonStr =
-    e.kind === 'building'
-      ? `G${[...(e.garrisonedIds ?? [])].sort((a, b) => a - b).join(',')}/X${[...(e.garrisonReservedIds ?? [])]
-          .sort((a, b) => a - b)
-          .join(',')}/RQ${(e.researchQueue ?? []).map((q) => `${q.defId}:${r(q.progress)}/${q.required}`).join(',')}`
-      : e.kind === 'unit'
-        ? `GI${e.garrisonedIn ?? 0}`
-        : '';
   const facingStr = e.kind !== 'resource_node' ? r(e.facing) : 0;
   return [
     `E${e.id}`,
@@ -140,7 +155,11 @@ function hashEntity(state: GameState, e: Entity): string {
     hashCooldowns(e),
     buffsStr,
     prodStr,
-    garrisonStr,
+    garrisonHostStr,
+    garrisonableStr,
+    harvestStr,
+    channelCapStr,
+    beamStr,
     projStr,
   ].join(':');
 }
