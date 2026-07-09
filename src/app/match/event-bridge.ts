@@ -66,7 +66,6 @@ export class EventBridge {
       case 'artilleryImpact':
         if (visible) {
           this.audio.playCelestialImpact();
-          this.effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
           this.effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
           this.effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
           spawnCelestialScorch(ev.x, ev.y, ev.radius);

@@ -269,24 +269,6 @@ function drawTargetRune(
   fillPool.acquire().circle(p.x, p.y, r * 0.15).fill({ color: HOT, alpha: alpha * 0.4 * pulse });
 }
 
-function drawProjectileTrail(
-  strokePool: GraphicsPool,
-  fillPool: GraphicsPool,
-  drawPos: CelestialDrawPosFn,
-  px: number,
-  py: number,
-  facing: number,
-  phase: number,
-): void {
-  const p = drawPos(px, py);
-  const tail = 24;
-  const tx = p.x - Math.cos(facing) * tail;
-  const ty = p.y - Math.sin(facing) * tail;
-  strokePool.acquire().moveTo(tx, ty).lineTo(p.x, p.y).stroke({ width: 4, color: ACCENT, alpha: 0.55 });
-  strokePool.acquire().moveTo(tx, ty).lineTo(p.x, p.y).stroke({ width: 1.5, color: HOT_CORE, alpha: 0.75 });
-  fillPool.acquire().circle(p.x, p.y, 5 + Math.sin(phase * 8) * 1.5).fill({ color: HOT, alpha: 0.7 });
-}
-
 function drawSkyStrikes(
   strokePool: GraphicsPool,
   fillPool: GraphicsPool,
@@ -434,12 +416,6 @@ export function renderCelestialCannons(
     if (hasTarget && e.chargingAttack) {
       drawTargetRune(strokePool, fillPool, drawPos, targetX, targetY, impactRadius, chargeT, phase);
     }
-  }
-
-  for (const e of state.entities.values()) {
-    if (e.kind !== 'projectile' || e.defId !== 'celestial_shot') continue;
-    if (!revealAll && nav && !isVisibleTo(state, viewerId, e, nav)) continue;
-    drawProjectileTrail(strokePool, fillPool, drawPos, e.pos.x, e.pos.y, e.facing, phase);
   }
 
   drawSkyStrikes(strokePool, fillPool, drawPos, phase);

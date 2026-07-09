@@ -162,7 +162,6 @@ function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects']): void {
       effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
       break;
     case 'artilleryImpact':
-      effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
       effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
       effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
       spawnCelestialScorch(ev.x, ev.y, ev.radius);
