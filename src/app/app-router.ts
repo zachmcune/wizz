@@ -60,11 +60,15 @@ export class AppRouter {
     }, {
       useWorker: false,
       matchId: 'sandbox',
-      startPaused: true,
+      startPaused: false,
       sandbox: true,
       matchConfig: config,
     });
-    void this.game.start();
+    void this.game.start().catch((err) => {
+      console.error('Sandbox failed to start', err);
+      this.game = null;
+      void this.showMenu();
+    });
   }
 
   private clearHost(): void {
