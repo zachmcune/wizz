@@ -16,6 +16,10 @@ export class EventBridge {
     private onNotify?: (text: string) => void,
   ) {}
 
+  setHumanId(humanId: PlayerId): void {
+    this.humanId = humanId;
+  }
+
   handle(ev: GameEvent): void {
     const visible = this.isVisible(ev);
     if (visible) this.audio.play(ev);

@@ -30,6 +30,8 @@ export interface SandboxGameplaySettings {
   freezeUnits: boolean;
   freezeProjectiles: boolean;
   freezeAi: boolean;
+  /** When enabled, switch the local human to any player slot from the sandbox panel. */
+  multiPlayerControl: boolean;
 }
 
 export interface SandboxSpellSettings {
@@ -100,6 +102,7 @@ export function defaultSandboxSettings(overrides?: Partial<SandboxSettings>): Sa
       freezeUnits: false,
       freezeProjectiles: false,
       freezeAi: false,
+      multiPlayerControl: false,
     },
     spells: {
       noCooldowns: false,

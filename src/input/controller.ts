@@ -5,7 +5,7 @@ import type { Vec2 } from '../core/coords';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from '../sim/nav-grid';
-import type { GameState, Command, EntityId, Entity, Stance } from '../sim/types';
+import type { GameState, Command, EntityId, Entity, Stance, PlayerId } from '../sim/types';
 import { isHarvester } from '../sim/entity-types';
 import { isAlive } from '../sim/queries';
 import { createSession, type SessionState, type InputMode } from './session';
@@ -50,6 +50,11 @@ export class InputController {
     private canBuildNear: (tx: number, ty: number, footprint: number) => boolean,
     private onNode: (tx: number, ty: number, footprint: number) => boolean,
   ) {}
+
+  setPlayerId(id: PlayerId): void {
+    this.playerId = id;
+    this.clearSelection();
+  }
 
   private ctx(): InputContext {
     return {

@@ -25,6 +25,10 @@ export class UnitOrdersPanel {
     this.buildButtons();
   }
 
+  setPlayerId(playerId: PlayerId): void {
+    this.playerId = playerId;
+  }
+
   private buildButtons(): void {
     const deselect = el('button', 'btn', 'Deselect');
     deselect.addEventListener('click', () => this.controller.clearSelection());

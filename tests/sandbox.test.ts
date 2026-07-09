@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { initMatch } from '../src/sim/factory';
 import { createSimulation } from '../src/app/create-simulation';
 import { buildSandboxMatchConfig, getSandboxProjectionMode } from '../src/sandbox/sandbox-config';
+import { createSandboxAiHook } from '../src/sandbox/ai-director';
+import { defaultSandboxSettings } from '../src/sim/sandbox-types';
 import { applyDevCommand } from '../src/sim/systems/commands/dev';
 import type { DevCommand } from '../src/sim/types';
 import { loadRegistry } from '../src/data/loader';
@@ -80,6 +82,47 @@ describe('sandbox mode', () => {
     sim.enqueueNow(cmds);
     sim.step();
     expect(state.ended).toBe(false);
+  });
+
+  it('force attack sends AI combat units toward the enemy HQ', () => {
+    const config = buildSandboxMatchConfig();
+    const { state, services } = initMatch(registry, config);
+    const settings = defaultSandboxSettings();
+    settings.ai.forceMode = 'attack';
+    state.sandbox!.settings = settings;
+    const ctx = { services, events: [] as import('../src/sim/types').GameEvent[] };
+    applyDevCommand(state, ctx, {
+      type: 'devSpawnUnit',
+      playerId: 'player1',
+      defId: 'imp_swarmling',
+      x: 500,
+      y: 500,
+      count: 4,
+    });
+    const hook = createSandboxAiHook(() => settings.ai, () => settings, () => 'player0');
+    const cmds = hook(state, services);
+    expect(cmds.some((c) => c.type === 'attackMove' && c.playerId === 'player1')).toBe(true);
+  });
+
+  it('force attack still runs when AI is marked disabled', () => {
+    const config = buildSandboxMatchConfig();
+    const { state, services } = initMatch(registry, config);
+    const settings = defaultSandboxSettings();
+    settings.ai.forceMode = 'attack';
+    settings.ai.disabled = true;
+    state.sandbox!.settings = settings;
+    const ctx = { services, events: [] as import('../src/sim/types').GameEvent[] };
+    applyDevCommand(state, ctx, {
+      type: 'devSpawnUnit',
+      playerId: 'player1',
+      defId: 'imp_swarmling',
+      x: 500,
+      y: 500,
+      count: 2,
+    });
+    const hook = createSandboxAiHook(() => settings.ai, () => settings, () => 'player0');
+    const cmds = hook(state, services);
+    expect(cmds.length).toBeGreaterThan(0);
   });
 });
 

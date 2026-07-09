@@ -68,6 +68,10 @@ export class CommandPalette {
     host.appendChild(this.root);
   }
 
+  setHumanId(humanId: string): void {
+    this.ctx.humanId = humanId;
+  }
+
   show(): void {
     this.visible = true;
     this.root.style.display = 'flex';
