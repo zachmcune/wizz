@@ -13,7 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
-import { buildSandboxMatchConfig, isSandboxFeatureEnabled, shouldOpenSandbox } from '../sandbox/sandbox-config';
+import { buildSandboxMatchConfig, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -347,12 +347,10 @@ export class AppRouter {
         menu.destroy();
         void this.showArtGallery();
       },
-      onDevSandbox: isSandboxFeatureEnabled()
-        ? () => {
-            menu.destroy();
-            this.startSandbox();
-          }
-        : undefined,
+      onDevSandbox: () => {
+        menu.destroy();
+        this.startSandbox();
+      },
     });
     this.deps.host.appendChild(menu.root);
   }

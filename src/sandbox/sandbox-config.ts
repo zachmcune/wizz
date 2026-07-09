@@ -1,35 +1,13 @@
 import type { MatchConfig } from '../sim/types';
 import { defaultSandboxSettings } from '../sim/sandbox-types';
 
-const SANDBOX_UNLOCK_KEY = 'arcane_sandbox_unlock';
-
-declare const __SANDBOX_ENABLED__: boolean | undefined;
-
 export function isSandboxFeatureEnabled(): boolean {
-  if (typeof __SANDBOX_ENABLED__ !== 'undefined' && __SANDBOX_ENABLED__) return true;
-  try {
-    return localStorage.getItem(SANDBOX_UNLOCK_KEY) === '1';
-  } catch {
-    return import.meta.env.DEV;
-  }
-}
-
-export function unlockSandboxFeature(): void {
-  try {
-    localStorage.setItem(SANDBOX_UNLOCK_KEY, '1');
-  } catch {
-    /* ignore */
-  }
+  return true;
 }
 
 export function shouldOpenSandbox(): boolean {
-  if (!isSandboxFeatureEnabled()) return false;
   const params = new URLSearchParams(window.location.search);
-  if (params.get('sandbox') === '1' || params.get('sandbox') === 'true') {
-    unlockSandboxFeature();
-    return true;
-  }
-  return false;
+  return params.get('sandbox') === '1' || params.get('sandbox') === 'true';
 }
 
 export function scenarioIdFromUrl(): string | null {
