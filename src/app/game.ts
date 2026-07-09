@@ -2,7 +2,7 @@
 import { BUILD_SPACING_TILES, TICK_MS } from '../core/constants';
 import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
-import type { GameState, Command, PlayerId } from '../sim/types';
+import type { GameState, Command, PlayerId, MatchConfig } from '../sim/types';
 import type { SimServices } from '../sim/context';
 import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
@@ -27,6 +27,12 @@ import { EventBridge } from './match/event-bridge';
 import { PointerBinder } from './match/pointer-binder';
 import { buildMatchOverlay } from './match/overlay-builder';
 import { SimController } from './match/sim-controller';
+import { SandboxController } from '../sandbox/sandbox-controller';
+import { SandboxPanel } from '../sandbox/ui/sandbox-panel';
+import { createSandboxAiHook } from '../sandbox/ai-director';
+import { buildSandboxDebugOverlay } from '../sandbox/overlays/build-debug-overlay';
+import type { SandboxDebugOverlay } from '../sandbox/overlays/build-debug-overlay';
+import { isTouchPrimaryDevice } from '../sandbox/ui/touch';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -73,6 +79,14 @@ export class Game {
   private readonly matchProjectionMode: ProjectionMode;
   private saveMeta: SaveMeta;
   private startPaused: boolean;
+  private readonly sandboxMode: boolean;
+  private readonly matchConfig: MatchConfig | null;
+  private sandboxCtrl: SandboxController | null = null;
+  private sandboxPanel: SandboxPanel | null = null;
+  private frameMs = 16;
+  private onSandboxKeyDown = (e: KeyboardEvent): void => {
+    this.sandboxPanel?.handleGlobalKey(e);
+  };
   private onVisibilityResume = (): void => {
     if (document.visibilityState !== 'visible' || this.disposed) return;
     initViewport();
@@ -102,8 +116,15 @@ export class Game {
       relayTransport?: WebSocketTransport;
       saveMeta?: SaveMeta;
       startPaused?: boolean;
+      sandbox?: boolean;
+      matchConfig?: MatchConfig;
     },
   ) {
+    if (opts?.sandbox && opts?.lockstep) {
+      throw new Error('Sandbox mode cannot run in lockstep/online matches');
+    }
+    this.sandboxMode = opts?.sandbox ?? false;
+    this.matchConfig = opts?.matchConfig ?? null;
     this.lockstep = opts?.lockstep ?? null;
     this.matchId = opts?.matchId ?? 'skirmish_1v1';
     this.onDesync = opts?.onDesync ?? null;
@@ -120,9 +141,7 @@ export class Game {
         this.matchProjectionMode,
       );
     const wantWorker = opts?.useWorker ?? workerSupported();
-    // The sim runs in a Web Worker in both solo and multiplayer so heavy tick work never
-    // competes with rendering — critical for smooth catch-up on weaker phones.
-    this.useWorker = wantWorker && workerSupported();
+    this.useWorker = this.sandboxMode ? false : wantWorker && workerSupported();
 
     this.humanId =
       opts?.localPlayerId ??
@@ -146,7 +165,15 @@ export class Game {
       (text) => this.hud?.showHint(text),
     );
 
-    const aiEnabled = this.lockstep ? this.state.players.some((p) => p.controller === 'ai') : true;
+    const aiEnabled = this.sandboxMode
+      ? !this.state.sandbox!.settings.ai.disabled
+      : this.lockstep
+        ? this.state.players.some((p) => p.controller === 'ai')
+        : true;
+    const aiHook =
+      this.sandboxMode && this.state.sandbox
+        ? createSandboxAiHook(() => this.state.sandbox!.settings.ai)
+        : undefined;
     this.simCtrl = new SimController(
       this.state,
       this.services,
@@ -161,12 +188,13 @@ export class Game {
       this.useWorker,
       aiEnabled,
       this.relayTransport,
+      aiHook,
     );
     this.simCtrl.onResync = () => {
       this.renderer.syncTick(this.state);
       this.renderer.snapDisplay();
     };
-    this.simCtrl.setSaveMeta(this.saveMeta);
+    this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
     if (this.startPaused) this.setPaused(true);
 
     const canvasHost = document.createElement('div');
@@ -285,7 +313,44 @@ export class Game {
       (alpha) => this.frame(alpha),
     );
     this.loop.start();
-    this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
+    if (this.sandboxMode && this.matchConfig) {
+      this.sandboxCtrl = new SandboxController({
+        state: this.state,
+        services: this.services,
+        registry: this.registry,
+        simCtrl: this.simCtrl,
+        humanId: this.humanId,
+        controller: this.controller,
+        camera: this.renderer.camera,
+        matchConfig: this.matchConfig,
+        saveMeta: this.saveMeta,
+      });
+      this.sandboxPanel = new SandboxPanel(
+        this.sandboxCtrl,
+        this.registry,
+        this.humanId,
+        {
+          onPause: () => this.setPaused(true),
+          onResume: () => this.setPaused(false),
+          onStepFrame: () => {
+            this.simCtrl.stepOneTick();
+            this.renderer.syncTick(this.state);
+          },
+          onSetTimeScale: (s) => this.loop.setTimeScale(s),
+          isPaused: () => this.simCtrl.isPaused,
+        },
+        this.host,
+      );
+      this.sandboxPanel.mount(this.host);
+      window.addEventListener('keydown', this.onSandboxKeyDown);
+      this.hud.showHint(
+        isTouchPrimaryDevice()
+          ? 'Sandbox — tap ⚙ (bottom-left) for dev tools'
+          : 'Sandbox — press ` for dev panel, Ctrl+Shift+P for commands',
+      );
+    } else {
+      this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
+    }
   }
 
   private setupGestures(): void {
@@ -328,11 +393,11 @@ export class Game {
 
   private setPaused(paused: boolean): void {
     this.saveMeta = { ...this.saveMeta, paused };
-    this.simCtrl.setSaveMeta(this.saveMeta);
+    this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
     this.simCtrl.setPaused(paused);
     this.loop.setPaused(paused);
     this.hud.setPaused(paused);
-    if (!paused) void saveGame(this.state, this.saveMeta);
+    if (!paused && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
   }
 
   private frame(_loopAlpha: number): void {
@@ -343,8 +408,13 @@ export class Game {
     }
     this.lastFrameTime = now;
 
+    this.frameMs = dt;
+
     if (this.simCtrl.isPaused) {
       this.hud.update();
+      if (this.sandboxMode && this.state.sandbox) {
+        this.renderSandboxFrame(1);
+      }
       return;
     }
 
@@ -361,15 +431,7 @@ export class Game {
     this.gesture.update(now);
     this.controller.syncSuperweaponMode();
     const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
-    const overlay = buildMatchOverlay(
-      this.state,
-      this.services,
-      this.registry,
-      this.humanId,
-      this.controller.session,
-      this.renderer.camera,
-      lastPointer,
-    );
+    const overlay = this.buildFrameOverlay(lastPointer);
     const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt, revealAll);
     this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
@@ -378,9 +440,41 @@ export class Game {
     this.hud.setDebug(this.fps, this.state.tick, this.state.entities.size);
   }
 
+  private buildFrameOverlay(lastPointer: { x: number; y: number }) {
+    const base = buildMatchOverlay(
+      this.state,
+      this.services,
+      this.registry,
+      this.humanId,
+      this.controller.session,
+      this.renderer.camera,
+      lastPointer,
+    );
+    if (!this.sandboxMode || !this.state.sandbox) return base;
+    const debug = buildSandboxDebugOverlay(
+      this.state,
+      this.services,
+      this.registry,
+      this.state.sandbox.settings,
+      this.fps,
+      this.frameMs,
+    );
+    return { ...base, ...debug } as SandboxDebugOverlay;
+  }
+
+  private renderSandboxFrame(alpha: number): void {
+    const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
+    const overlay = this.buildFrameOverlay(lastPointer);
+    const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
+    this.renderer.render(this.state, alpha, this.controller.session.selection, overlay, this.frameMs, revealAll);
+    this.hud.update();
+  }
+
   exit(): void {
     if (this.disposed) return;
     this.disposed = true;
+    window.removeEventListener('keydown', this.onSandboxKeyDown);
+    this.sandboxPanel?.destroy();
     document.removeEventListener('visibilitychange', this.onVisibilityResume);
     window.removeEventListener('pageshow', this.onVisibilityResume);
     this.keyboard?.detach();

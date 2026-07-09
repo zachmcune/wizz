@@ -249,12 +249,16 @@ export function isVisibleOnMinimap(
   return isVisibleTo(state, viewerId, entity, nav);
 }
 
-/** True when the viewer should see the full live map (post-game or dead-spectator mode). */
+/** True when the viewer should see the full live map (post-game, dead-spectator, or sandbox reveal). */
 export function shouldRevealAllForViewer(
   state: GameState,
   viewerId: PlayerId,
   deadSpectatorReveal: boolean,
 ): boolean {
+  if (state.sandbox?.enabled) {
+    const s = state.sandbox.settings;
+    if (s.map.revealMap || !s.map.fogEnabled) return true;
+  }
   if (state.ended) return true;
   if (!deadSpectatorReveal) return false;
   const viewer = getPlayer(state, viewerId);

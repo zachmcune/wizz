@@ -17,6 +17,7 @@ import type { LockstepEntry } from '../../sim/worker/messages';
 import type { SimServices } from '../../sim/context';
 import type { Registry } from '../../data/registry';
 import { createSimulation } from '../create-simulation';
+import type { AiHook } from '../../sim/step';
 import { WorkerSimClient, type WorkerLockstepResult } from '../worker-client';
 import { ReplayRecorder, serializeReplay, type Replay } from '../../sim/replay';
 import { saveGame, type SaveMeta } from '../../storage/save';
@@ -37,19 +38,40 @@ export class SimController {
   private syncingShown = false;
   private lastSnapshotRequestMs = 0;
   private readonly aiEnabled: boolean;
+  private readonly aiHook?: AiHook;
   private saveMeta: SaveMeta | null = null;
+  private sandboxMode = false;
   private paused = false;
   get isPaused(): boolean {
     return this.paused;
   }
 
-  setSaveMeta(meta: SaveMeta): void {
+  setSaveMeta(meta: SaveMeta | null, sandbox = false): void {
     this.saveMeta = meta;
+    this.sandboxMode = sandbox;
+  }
+
+  setAiEnabled(enabled: boolean): void {
+    if (this.worker) this.worker.setAi(enabled);
+    else this.sim?.setAiEnabled(enabled);
+  }
+
+  /** Advance exactly one tick while paused (sandbox debugging). */
+  stepOneTick(): void {
+    if (this.lockstep || this.state.ended) return;
+    if (this.worker) {
+      this.worker.requestStep();
+      return;
+    }
+    const res = this.sim!.step();
+    this.onTick(res.events);
+    this.onSync();
+    this.markSynced();
   }
 
   setPaused(paused: boolean): void {
     this.paused = paused;
-    if (paused && this.saveMeta && !this.lockstep) void saveGame(this.state, this.saveMeta);
+    if (paused && this.saveMeta && !this.lockstep && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
   }
 
   /** After tab foregrounding in multiplayer, aggressively catch up. */
@@ -78,12 +100,14 @@ export class SimController {
     useWorker: boolean,
     aiEnabled: boolean,
     private relayTransport: WebSocketTransport | null = null,
+    aiHook?: AiHook,
   ) {
     this.aiEnabled = aiEnabled;
+    this.aiHook = aiHook;
     if (useWorker) {
       this.worker = new WorkerSimClient();
     } else {
-      this.sim = createSimulation(state, services, { aiEnabled });
+      this.sim = createSimulation(state, services, { aiEnabled, aiHook });
     }
     this.wireSnapshotHandlers();
   }
@@ -168,7 +192,7 @@ export class SimController {
     this.onSync();
     this.markSynced();
     this.tickCounter++;
-    if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta) void saveGame(this.state, this.saveMeta);
+    if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
     return true;
   }
 
@@ -202,7 +226,7 @@ export class SimController {
           this.onSync();
           this.markSynced();
           this.tickCounter++;
-          if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta) void saveGame(this.state, this.saveMeta);
+          if (this.tickCounter % AUTOSAVE_EVERY_TICKS === 0 && this.saveMeta && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
         };
       }
       worker.initState(packState(this.state));
@@ -222,7 +246,7 @@ export class SimController {
     if (!this.worker) return;
     this.worker.terminate();
     this.worker = null;
-    this.sim = createSimulation(this.state, this.services, { aiEnabled: this.aiEnabled });
+    this.sim = createSimulation(this.state, this.services, { aiEnabled: this.aiEnabled, aiHook: this.aiHook });
   }
 
   catchUpLockstep(): void {
@@ -292,7 +316,7 @@ export class SimController {
   }
 
   autosaveOnExit(): void {
-    if (!this.lockstep && this.saveMeta) void saveGame(this.state, this.saveMeta);
+    if (!this.lockstep && this.saveMeta && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
   }
 
   terminate(): void {

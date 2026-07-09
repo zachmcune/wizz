@@ -1,0 +1,441 @@
+.sandbox-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.sandbox-panel * {
+  pointer-events: auto;
+}
+
+.sandbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 0.2s ease;
+}
+
+.sandbox-panel.expanded .sandbox-backdrop {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sandbox-panel.collapsed .sandbox-backdrop {
+  pointer-events: none;
+}
+
+.sandbox-fab {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: #2a2840;
+  color: #c8b6ff;
+  font-size: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  z-index: 121;
+  touch-action: manipulation;
+}
+
+.sandbox-panel.expanded .sandbox-fab {
+  opacity: 0.85;
+}
+
+/* Desktop: right dock */
+.sandbox-dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(340px, 42vw);
+  background: rgba(14, 13, 24, 0.96);
+  border-left: 1px solid rgba(139, 108, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(0);
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  z-index: 122;
+}
+
+.sandbox-panel.collapsed .sandbox-dock {
+  transform: translateX(105%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sandbox-sheet-handle {
+  display: none;
+}
+
+.sandbox-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.sandbox-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.sandbox-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d9d2ff;
+}
+
+.sandbox-btn-icon {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+.sandbox-search,
+.sandbox-name-input {
+  margin: 8px 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: #eee;
+  font-size: 16px;
+  width: calc(100% - 20px);
+  touch-action: manipulation;
+}
+
+.sandbox-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  flex-shrink: 0;
+}
+
+.sandbox-tab {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ccc;
+  touch-action: manipulation;
+}
+
+.sandbox-tab.active {
+  background: rgba(139, 108, 255, 0.35);
+  color: #fff;
+}
+
+.sandbox-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px max(16px, env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.sandbox-section {
+  margin-bottom: 14px;
+}
+
+.sandbox-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.sandbox-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sandbox-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sandbox-chip {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ddd;
+  touch-action: manipulation;
+}
+
+.sandbox-chip.active {
+  background: rgba(95, 255, 138, 0.18);
+  border-color: rgba(95, 255, 138, 0.45);
+  color: #b8ffd0;
+}
+
+.sandbox-action {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
+  font-size: 14px;
+  touch-action: manipulation;
+}
+
+.sandbox-select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: #eee;
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+.sandbox-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sandbox-stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  font-size: 20px;
+  touch-action: manipulation;
+}
+
+.sandbox-stepper-val {
+  min-width: 36px;
+  text-align: center;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sandbox-list-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: #ddd;
+  padding: 12px 10px;
+  min-height: 48px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  touch-action: manipulation;
+}
+
+.sandbox-list-row:active {
+  background: rgba(139, 108, 255, 0.2);
+}
+
+/* Command palette */
+.sandbox-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: max(10vh, env(safe-area-inset-top));
+}
+
+.sandbox-palette-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sandbox-palette-panel {
+  position: relative;
+  width: min(520px, 92vw);
+  max-height: min(80vh, calc(var(--app-h, 100dvh) - 24px));
+  display: flex;
+  flex-direction: column;
+  background: #12101c;
+  border: 1px solid rgba(139, 108, 255, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.sandbox-palette-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sandbox-palette-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sandbox-palette-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.sandbox-palette-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #0a0912;
+  color: #fff;
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+.sandbox-palette-error {
+  color: #ff7a7a;
+  font-size: 13px;
+  margin-top: 6px;
+  min-height: 18px;
+}
+
+.sandbox-palette-results {
+  margin-top: 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
+
+.sandbox-palette-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #ddd;
+  padding: 12px 8px;
+  min-height: 48px;
+  border-radius: 8px;
+  font-size: 14px;
+  touch-action: manipulation;
+}
+
+.sandbox-palette-row:active {
+  background: rgba(139, 108, 255, 0.2);
+}
+
+.sandbox-palette-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sandbox-palette-run {
+  min-width: 88px;
+}
+
+/* Touch / phone: bottom sheet, FAB on left, avoid HUD overlap */
+.sandbox-panel.touch .sandbox-fab {
+  left: max(12px, env(safe-area-inset-left));
+  right: auto;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+}
+
+.sandbox-panel.touch .sandbox-dock {
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: min(52vh, 320px);
+  border-left: none;
+  border-top: 1px solid rgba(139, 108, 255, 0.4);
+  border-radius: 16px 16px 0 0;
+  transform: translateY(0);
+}
+
+.sandbox-panel.touch.collapsed .sandbox-dock {
+  transform: translateY(110%);
+  opacity: 1;
+}
+
+.sandbox-panel.touch .sandbox-sheet-handle {
+  display: block;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.28);
+  align-self: center;
+  margin: 2px auto 4px;
+}
+
+.sandbox-panel.touch .sandbox-header {
+  touch-action: none;
+  cursor: grab;
+}
+
+.sandbox-panel.touch .sandbox-palette {
+  align-items: flex-end;
+  padding-top: 0;
+}
+
+.sandbox-panel.touch .sandbox-palette-panel,
+.sandbox-palette.touch .sandbox-palette-panel {
+  width: 100%;
+  max-width: none;
+  border-radius: 16px 16px 0 0;
+  max-height: min(70vh, calc(var(--app-h, 100dvh) - 40px));
+}
+
+.sandbox-panel.touch .sandbox-palette-results,
+.sandbox-palette.touch .sandbox-palette-results {
+  max-height: 40vh;
+}
+
+/* Narrow landscape phones */
+@media (max-height: 420px) {
+  .sandbox-panel.touch .sandbox-dock {
+    max-height: 65vh;
+  }
+
+  .sandbox-tab {
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+}

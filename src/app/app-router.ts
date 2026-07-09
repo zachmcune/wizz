@@ -13,6 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
+import { buildSandboxMatchConfig, isSandboxFeatureEnabled, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -42,7 +43,28 @@ export class AppRouter {
       await this.showArtGallery();
       return;
     }
+    if (shouldOpenSandbox()) {
+      this.startSandbox();
+      return;
+    }
     await this.showMenu();
+  }
+
+  startSandbox(): void {
+    this.clearHost();
+    const config = buildSandboxMatchConfig();
+    const { state, services } = initMatch(this.deps.registry, config);
+    this.game = new Game(this.deps.host, this.deps.registry, state, services, this.deps.audio, this.deps.settings, () => {
+      this.game = null;
+      void this.showMenu();
+    }, {
+      useWorker: false,
+      matchId: 'sandbox',
+      startPaused: true,
+      sandbox: true,
+      matchConfig: config,
+    });
+    void this.game.start();
   }
 
   private clearHost(): void {
@@ -325,6 +347,12 @@ export class AppRouter {
         menu.destroy();
         void this.showArtGallery();
       },
+      onDevSandbox: isSandboxFeatureEnabled()
+        ? () => {
+            menu.destroy();
+            this.startSandbox();
+          }
+        : undefined,
     });
     this.deps.host.appendChild(menu.root);
   }

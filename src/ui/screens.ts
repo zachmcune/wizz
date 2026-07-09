@@ -8,6 +8,7 @@ export interface MenuOptions {
   onContinue: (() => void) | null;
   onRejoinOnline: (() => void) | null;
   onDevGallery?: () => void;
+  onDevSandbox?: () => void;
 }
 
 export class MainMenu {
@@ -48,6 +49,15 @@ export class MainMenu {
       gallery.title = 'Preview troop and building art (also ?gallery=1)';
       gallery.addEventListener('click', () => opts.onDevGallery?.());
       list.append(devLabel, gallery);
+    }
+
+    if (opts.onDevSandbox) {
+      if (!opts.onDevGallery) list.appendChild(el('p', 'menu-section', 'Developer'));
+      const sandbox = el('button', 'btn big', 'Developer Sandbox');
+      sandbox.title = 'Internal dev & balance testing (also ?sandbox=1)';
+      sandbox.dataset.testid = 'menu-dev-sandbox';
+      sandbox.addEventListener('click', () => opts.onDevSandbox?.());
+      list.appendChild(sandbox);
     }
 
     this.root.append(title, sub, list);

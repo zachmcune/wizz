@@ -6,6 +6,7 @@ import type { GameState, UnitEntity, EntityId } from '../types';
 import { entitiesSorted, isAlive, hasBuff, strongestSlowMoveFactor } from '../queries';
 import { steerToGoal, applyVelocityMove, slidePosition, makePathContext, moveTowardGoal } from '../pathing';
 import { canUnitGarrison } from '../garrison';
+import { sandboxFreezeUnits } from '../sandbox-flags';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
@@ -41,6 +42,7 @@ function removeReservation(building: { garrisonReservedIds?: EntityId[] }, unitI
 }
 
 export function movementSystem(state: GameState, ctx: StepContext): void {
+  if (sandboxFreezeUnits(state)) return;
   const nav = ctx.services.nav;
   const flow = ctx.services.flow;
   const dt = 1 / TICK_HZ;

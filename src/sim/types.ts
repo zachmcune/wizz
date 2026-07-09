@@ -106,6 +106,36 @@ export interface SuperweaponBeam {
 export type { Entity, UnitEntity, BuildingEntity, ProjectileEntity, ResourceNodeEntity } from './entity-types';
 export { isUnit, isBuilding, isProjectile, isResourceNode, isHarvester, isCombatUnit } from './entity-types';
 
+export type DevCommand =
+  | { type: 'devSetMana'; playerId: PlayerId; amount: number; mode: 'set' | 'add' | 'remove' }
+  | { type: 'devSpawnUnit'; playerId: PlayerId; defId: string; x: number; y: number; count?: number }
+  | { type: 'devSpawnBuilding'; playerId: PlayerId; defId: string; x: number; y: number; complete?: boolean }
+  | { type: 'devDestroyEntity'; playerId: PlayerId; entityIds: EntityId[] }
+  | { type: 'devSetEntityHp'; playerId: PlayerId; entityId: EntityId; hp: number | 'max' | 'kill' }
+  | { type: 'devUnlockTech'; playerId: PlayerId; defId: string | 'all' }
+  | { type: 'devClearUnits'; playerId: PlayerId; targetPlayerId?: PlayerId }
+  | { type: 'devCastSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
+  | { type: 'devCompleteResearch'; playerId: PlayerId; defId?: string }
+  | {
+      type: 'devAddPlayer';
+      playerId: PlayerId;
+      newPlayerId: PlayerId;
+      controller: 'human' | 'ai';
+      team: TeamId;
+      color: string;
+      startIndex: number;
+      aiDifficulty?: 'easy' | 'normal' | 'hard';
+    }
+  | { type: 'devRemovePlayer'; playerId: PlayerId; targetPlayerId: PlayerId }
+  | {
+      type: 'devConfigurePlayer';
+      playerId: PlayerId;
+      targetPlayerId: PlayerId;
+      team?: TeamId;
+      aiDifficulty?: 'easy' | 'normal' | 'hard';
+      controller?: 'human' | 'ai';
+    };
+
 export type Command =
   | { type: 'move'; playerId: PlayerId; entityIds: EntityId[]; x: number; y: number }
   | { type: 'attack'; playerId: PlayerId; entityIds: EntityId[]; targetId: EntityId }
@@ -129,7 +159,8 @@ export type Command =
   | { type: 'channel'; playerId: PlayerId; entityIds: EntityId[]; enabled: boolean }
   | { type: 'castSpell'; playerId: PlayerId; spellId: string; x: number; y: number; entityIds?: EntityId[] }
   | { type: 'steerSuperweapon'; playerId: PlayerId; x: number; y: number }
-  | { type: 'surrender'; playerId: PlayerId };
+  | { type: 'surrender'; playerId: PlayerId }
+  | DevCommand;
 
 export type GameEvent =
   | { type: 'entitySpawned'; id: EntityId; defId: string; owner: PlayerId }
@@ -170,6 +201,7 @@ export interface GameState {
   ended: boolean;
   beams: SuperweaponBeam[];
   oneSuperweaponPerPlayer: boolean;
+  sandbox?: import('./sandbox-types').SandboxRuntime;
 }
 
 export interface MatchPlayerConfig {
@@ -194,4 +226,7 @@ export interface MatchConfig {
   oneSuperweaponPerPlayer?: boolean;
   /** Economy pacing preset for this match. */
   economyPacing?: 'standard' | 'tight';
+  /** Sandbox dev matches bypass retail autosave and enable dev commands. */
+  mode?: 'standard' | 'sandbox';
+  sandboxDefaults?: Partial<import('./sandbox-types').SandboxSettings>;
 }
