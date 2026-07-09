@@ -47,14 +47,13 @@ export class SandboxPanel {
   constructor(
     private controller: SandboxController,
     private registry: Registry,
-    private humanId: string,
     private callbacks: SandboxPanelCallbacks,
     host: HTMLElement,
   ) {
     this.touchMode = isTouchPrimaryDevice();
     if (this.touchMode) this.root.classList.add('touch');
 
-    this.palette = new CommandPalette(controller, registry, humanId, () => {});
+    this.palette = new CommandPalette(controller, registry, controller.humanPlayerId, () => {});
     this.palette.mount(host);
 
     this.fab.type = 'button';
@@ -132,6 +131,10 @@ export class SandboxPanel {
     this.palette.show();
   }
 
+  setControlledPlayer(playerId: string): void {
+    this.palette.setHumanId(playerId);
+  }
+
   handleGlobalKey(e: KeyboardEvent): boolean {
     if (this.touchMode) return false;
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p') {
@@ -197,7 +200,7 @@ export class SandboxPanel {
       opt.textContent = `${p.id} (${p.controller})`;
       select.appendChild(opt);
     }
-    select.value = this.humanId;
+    select.value = this.controller.humanPlayerId;
     return select;
   }
 
@@ -310,9 +313,9 @@ export class SandboxPanel {
       const s = this.section('Mana');
       const row = el('div', 'sandbox-btn-row');
       row.append(
-        this.btn('Set 5k', () => this.controller.setPlayerMana(this.humanId, 5000, 'set')),
-        this.btn('+50k', () => this.controller.setPlayerMana(this.humanId, 50000, 'add')),
-        this.btn('−1k', () => this.controller.setPlayerMana(this.humanId, 1000, 'remove')),
+        this.btn('Set 5k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 5000, 'set')),
+        this.btn('+50k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 50000, 'add')),
+        this.btn('−1k', () => this.controller.setPlayerMana(this.controller.humanPlayerId, 1000, 'remove')),
       );
       s.appendChild(row);
       this.body.appendChild(s);
@@ -343,7 +346,7 @@ export class SandboxPanel {
       });
       s.append(unitSelect, playerSelect, countStepper);
       s.appendChild(this.btn('Spawn', () => {
-        this.controller.spawnUnit(playerSelect.value || this.humanId, unitSelect.value, count);
+        this.controller.spawnUnit(playerSelect.value || this.controller.humanPlayerId, unitSelect.value, count);
       }));
       this.body.appendChild(s);
     }
@@ -365,7 +368,7 @@ export class SandboxPanel {
     const playerSelect = this.makePlayerSelect();
     s.append(buildingSelect, playerSelect);
     s.appendChild(this.btn('Spawn building', () => {
-      this.controller.spawnBuilding(playerSelect.value || this.humanId, buildingSelect.value, true);
+      this.controller.spawnBuilding(playerSelect.value || this.controller.humanPlayerId, buildingSelect.value, true);
     }));
     const b = this.controller.settings.build;
     s.append(this.chip('Free placement', 'build', 'ignorePlacementRestrictions', b.ignorePlacementRestrictions));
@@ -375,14 +378,45 @@ export class SandboxPanel {
   private renderAi(filter: string): void {
     void filter;
     const a = this.controller.settings.ai;
-    const s = this.section('AI control');
+    const g = this.controller.settings.gameplay;
+    const s = this.section('Player control');
+    const controlRow = el('div', 'sandbox-chip-grid');
+    controlRow.append(this.chip('Control any player', 'gameplay', 'multiPlayerControl', g.multiPlayerControl));
+    s.appendChild(controlRow);
+
+    const active = this.section('Active player');
+    const activeSelect = this.makePlayerSelect();
+    activeSelect.addEventListener('change', () => {
+      if (this.controller.switchControlledPlayer(activeSelect.value)) this.renderTab();
+    });
+    active.appendChild(activeSelect);
+
+    const slots = this.section('Player slots');
+    for (const p of this.controller.players) {
+      const row = el('div', 'sandbox-btn-row');
+      const label = el('span', 'sandbox-player-label', `${p.id} · team ${p.team} · ${p.controller}`);
+      const humanBtn = this.btn('Human', () => {
+        this.controller.setPlayerController(p.id, 'human');
+        this.renderTab();
+      });
+      const aiBtn = this.btn('AI', () => {
+        this.controller.setPlayerController(p.id, 'ai');
+        this.renderTab();
+      });
+      if (p.controller === 'human') humanBtn.classList.add('active');
+      else aiBtn.classList.add('active');
+      row.append(label, humanBtn, aiBtn);
+      slots.appendChild(row);
+    }
+
+    const aiSection = this.section('AI control');
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
       this.chip('Pause AI', 'ai', 'paused', a.paused),
       this.chip('Disable AI', 'ai', 'disabled', a.disabled),
       this.chip('Show intel', 'ai', 'revealIntel', a.revealIntel),
     );
-    s.appendChild(chips);
+    aiSection.appendChild(chips);
     const force = this.section('Force mode');
     const forceRow = el('div', 'sandbox-chip-grid');
     for (const mode of ['none', 'attack', 'defend', 'expand'] as const) {
@@ -397,7 +431,12 @@ export class SandboxPanel {
       forceRow.appendChild(btn);
     }
     force.appendChild(forceRow);
-    this.body.append(force, s);
+    const hint = el(
+      'p',
+      'sandbox-hint',
+      'Force attack sends combat units to the enemy HQ. Spawn troops first — harvesters cannot fight.',
+    );
+    this.body.append(s, active, slots, aiSection, force, hint);
   }
 
   private renderMap(filter: string): void {
@@ -469,7 +508,7 @@ export class SandboxPanel {
     const row = el('div', 'sandbox-btn-row');
     row.append(
       this.btn('Clear all units', () => this.controller.clearUnits()),
-      this.btn('Clear mine', () => this.controller.clearUnits(this.humanId)),
+      this.btn('Clear mine', () => this.controller.clearUnits(this.controller.humanPlayerId)),
       this.btn('Restart', () => this.controller.restartScenario()),
     );
     s.appendChild(row);

@@ -172,7 +172,11 @@ export class Game {
         : true;
     const aiHook =
       this.sandboxMode && this.state.sandbox
-        ? createSandboxAiHook(() => this.state.sandbox!.settings.ai)
+        ? createSandboxAiHook(
+            () => this.state.sandbox!.settings.ai,
+            () => this.state.sandbox!.settings,
+            () => this.humanId,
+          )
         : undefined;
     this.simCtrl = new SimController(
       this.state,
@@ -318,16 +322,17 @@ export class Game {
         services: this.services,
         registry: this.registry,
         simCtrl: this.simCtrl,
-        humanId: this.humanId,
+        getHumanId: () => this.humanId,
+        setHumanId: (playerId) => this.switchControlledPlayer(playerId),
         controller: this.controller,
         camera: this.renderer.camera,
         matchConfig: this.matchConfig,
         saveMeta: this.saveMeta,
       });
+      this.sandboxCtrl.syncAi();
       this.sandboxPanel = new SandboxPanel(
         this.sandboxCtrl,
         this.registry,
-        this.humanId,
         {
           onPause: () => this.setPaused(true),
           onResume: () => this.setPaused(false),
@@ -390,6 +395,22 @@ export class Game {
       },
       this.settings.dragMode,
     );
+  }
+
+  private switchControlledPlayer(playerId: PlayerId): void {
+    if (!this.sandboxMode || this.disposed) return;
+    if (!this.state.players.some((p) => p.id === playerId && !p.defeated)) return;
+    this.humanId = playerId;
+    this.controller.setPlayerId(playerId);
+    this.eventBridge.setHumanId(playerId);
+    this.hud.setPlayerId(playerId);
+    this.renderer.setOwnerColors(this.state, this.humanId);
+    this.saveMeta = { ...this.saveMeta, localPlayerId: playerId };
+    this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
+    this.sandboxPanel?.setControlledPlayer(playerId);
+    const sanctum = [...this.state.entities.values()].find((e) => e.owner === playerId && e.defId === 'sanctum');
+    if (sanctum) this.renderer.camera.centerOn(sanctum.pos.x, sanctum.pos.y);
+    this.hud.showHint(`Now controlling ${playerId}`);
   }
 
   private setPaused(paused: boolean): void {

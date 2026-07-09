@@ -66,6 +66,11 @@ export class Hud {
 
   onExit: (() => void) | null = null;
 
+  setPlayerId(playerId: PlayerId): void {
+    this.playerId = playerId;
+    this.unitOrdersPanel.setPlayerId(playerId);
+  }
+
   private syncSidebarVisibility(): void {
     const tabsVisible = this.panelTabRow.style.display !== 'none';
     const actionsVisible = this.buildingActions.row.style.display !== 'none';

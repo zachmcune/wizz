@@ -18,7 +18,8 @@ export interface SandboxControllerDeps {
   services: SimServices;
   registry: Registry;
   simCtrl: SimController;
-  humanId: PlayerId;
+  getHumanId: () => PlayerId;
+  setHumanId: (playerId: PlayerId) => void;
   controller: InputController;
   camera: Camera;
   matchConfig: MatchConfig;
@@ -37,11 +38,31 @@ export class SandboxController {
   }
 
   get humanPlayerId(): PlayerId {
-    return this.deps.humanId;
+    return this.deps.getHumanId();
   }
 
   get players() {
     return this.deps.state.players;
+  }
+
+  switchControlledPlayer(playerId: PlayerId): boolean {
+    if (!this.deps.state.players.some((p) => p.id === playerId && !p.defeated)) return false;
+    if (!this.settings.gameplay.multiPlayerControl) {
+      const player = this.deps.state.players.find((p) => p.id === playerId);
+      if (player?.controller !== 'human') return false;
+    }
+    this.deps.setHumanId(playerId);
+    return true;
+  }
+
+  setPlayerController(targetPlayerId: PlayerId, controller: 'human' | 'ai'): void {
+    this.enqueueDev({
+      type: 'devConfigurePlayer',
+      playerId: this.humanPlayerId,
+      targetPlayerId,
+      controller,
+    });
+    this.syncAi();
   }
 
   enqueueDev(cmd: DevCommand): void {
@@ -69,7 +90,9 @@ export class SandboxController {
 
   syncAi(): void {
     const ai = this.settings.ai;
-    const enabled = !ai.disabled && !ai.paused && !this.settings.gameplay.freezeAi;
+    const forceActive = ai.forceMode === 'attack' || ai.forceMode === 'defend';
+    const enabled =
+      forceActive || (!ai.disabled && !ai.paused && !this.settings.gameplay.freezeAi);
     this.deps.simCtrl.setAiEnabled(enabled);
   }
 
@@ -89,7 +112,7 @@ export class SandboxController {
     this.enqueueDev({ type: 'devSpawnUnit', playerId: owner, defId, x: wx, y: wy, count });
     const ids: EntityId[] = [];
     for (let id = before; id < before + count; id++) ids.push(id);
-    if (owner === this.deps.humanId) this.selectEntities(ids);
+    if (owner === this.humanPlayerId) this.selectEntities(ids);
   }
 
   spawnBuilding(owner: PlayerId, defId: string, complete = true, x?: number, y?: number): void {
@@ -107,36 +130,36 @@ export class SandboxController {
   destroySelected(): void {
     const ids = [...this.deps.controller.session.selection];
     if (!ids.length) return;
-    this.enqueueDev({ type: 'devDestroyEntity', playerId: this.deps.humanId, entityIds: ids });
+    this.enqueueDev({ type: 'devDestroyEntity', playerId: this.humanPlayerId, entityIds: ids });
     this.deps.controller.clearSelection();
   }
 
   healSelected(): void {
     for (const id of this.deps.controller.session.selection) {
-      this.enqueueDev({ type: 'devSetEntityHp', playerId: this.deps.humanId, entityId: id, hp: 'max' });
+      this.enqueueDev({ type: 'devSetEntityHp', playerId: this.humanPlayerId, entityId: id, hp: 'max' });
     }
   }
 
   killSelected(): void {
     for (const id of this.deps.controller.session.selection) {
-      this.enqueueDev({ type: 'devSetEntityHp', playerId: this.deps.humanId, entityId: id, hp: 'kill' });
+      this.enqueueDev({ type: 'devSetEntityHp', playerId: this.humanPlayerId, entityId: id, hp: 'kill' });
     }
     this.deps.controller.clearSelection();
   }
 
   clearUnits(playerId?: PlayerId): void {
-    this.enqueueDev({ type: 'devClearUnits', playerId: this.deps.humanId, targetPlayerId: playerId });
+    this.enqueueDev({ type: 'devClearUnits', playerId: this.humanPlayerId, targetPlayerId: playerId });
   }
 
   unlockAllTech(playerId?: PlayerId): void {
-    this.enqueueDev({ type: 'devUnlockTech', playerId: playerId ?? this.deps.humanId, defId: 'all' });
+    this.enqueueDev({ type: 'devUnlockTech', playerId: playerId ?? this.humanPlayerId, defId: 'all' });
   }
 
   castSpell(spellId: string, x?: number, y?: number): void {
     const cam = this.deps.camera.view();
     this.enqueueDev({
       type: 'devCastSpell',
-      playerId: this.deps.humanId,
+      playerId: this.humanPlayerId,
       spellId,
       x: x ?? cam.x,
       y: y ?? cam.y,
@@ -146,7 +169,7 @@ export class SandboxController {
   addAiPlayer(id: PlayerId, team: number, difficulty: 'easy' | 'normal' | 'hard', startIndex: number): void {
     this.enqueueDev({
       type: 'devAddPlayer',
-      playerId: this.deps.humanId,
+      playerId: this.humanPlayerId,
       newPlayerId: id,
       controller: 'ai',
       team,
