@@ -2,7 +2,7 @@
   "id": "frost_spire",
   "name": "Frost Spire",
   "shortLabel": "FRST",
-  "description": "Advanced crowd-control defense. Channels a freezing energy stream that builds slow on enemies inside the beam; slow fades gradually after they leave.",
+  "description": "Advanced crowd-control defense. Channels a freezing energy stream that builds movement and attack slow on enemies inside the beam; slow fades gradually after they leave.",
   "kind": "building",
   "cost": 650,
   "buildTime": 10,
@@ -29,8 +29,8 @@
     "onHitStatus": {
       "kind": "slow",
       "durationTicks": 12,
-      "moveFactor": 0.85,
-      "attackCooldownFactor": 1.1
+      "moveFactor": 0.8,
+      "attackCooldownFactor": 1.2
     },
     "vs": { "light": 0.8, "heavy": 0.6, "building": 0.25 }
   },

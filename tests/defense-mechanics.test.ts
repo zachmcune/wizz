@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
 import { initMatch, recomputePower, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
-import { hasBuff } from '../src/sim/queries';
+import { hasBuff, strongestSlowAttackCooldownFactor, strongestSlowMoveFactor } from '../src/sim/queries';
 
 const reg = getRegistry();
 
@@ -51,6 +51,8 @@ describe('advanced defense mechanics', () => {
     }
 
     expect(hasBuff(target, 'slow', state.tick)).toBe(true);
+    expect(strongestSlowMoveFactor(target, state.tick)).toBeLessThan(0.85);
+    expect(strongestSlowAttackCooldownFactor(target, state.tick)).toBeGreaterThan(1.1);
     expect([...state.entities.values()].some((e) => e.kind === 'projectile' && e.defId === 'frost_bolt')).toBe(false);
     expect(sawBeam).toBe(true);
   });
