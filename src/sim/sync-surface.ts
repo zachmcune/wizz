@@ -1,7 +1,7 @@
 // Authoritative sync surface: single source for hash, transfer, and snapshot serialization.
 // All gameplay-relevant fields must be registered here. Fog tiles are per-viewer presentation
 // and are intentionally excluded from the hash (lockstep peers may diverge on fog masks).
-import type { Entity, GameState, Player, SuperweaponBeam } from './types';
+import type { Entity, GameState, Player, PlayerId, Relation, SuperweaponBeam } from './types';
 import {
   hashProjectileCapability,
   hashHarvesterCapability,
@@ -10,6 +10,7 @@ import {
   hashProductionCapability,
   hashGarrisonHostCapability,
   hashBeamWeaponCapability,
+  hashMorphCapability,
   getProjectileCapability,
   getHarvester,
   getChanneler,
@@ -92,16 +93,26 @@ function hashCooldowns(e: Entity): string {
   return parts.join(',');
 }
 
+function hashRelations(relations: Record<PlayerId, Record<PlayerId, Relation>>): string {
+  const owners = Object.keys(relations).sort();
+  const parts: string[] = [];
+  for (const a of owners) {
+    const row = relations[a]!;
+    for (const b of Object.keys(row).sort()) {
+      parts.push(`${a}>${b}:${row[b]}`);
+    }
+  }
+  return `REL${parts.join(',')}`;
+}
+
 function hashEntityFlags(e: Entity): string {
   const beam = getBeamWeapon(e);
-  const morph = getMorph(e);
   const frost = getFrostExposure(e);
   const burn = getBurnLinger(e);
   return [
     isChanneling(e) ? 'C' : '',
     e.kind === 'building' && e.repairing ? 'R' : '',
     e.kind === 'building' && e.buildProgress !== undefined ? `BP${r(e.buildProgress)}` : '',
-    morph ? `M${r(morph.progress)}` : '',
     e.kind === 'building' && e.chargingAttack
       ? `Q${e.chargingAttack.targetId}:${e.chargingAttack.remainingTicks}`
       : '',
@@ -132,6 +143,8 @@ function hashEntity(state: GameState, e: Entity): string {
   const garrisonHostStr = garrisonHost ? hashGarrisonHostCapability(garrisonHost) : '';
   const beam = getBeamWeapon(e);
   const beamStr = beam ? hashBeamWeaponCapability(beam) : '';
+  const morph = getMorph(e);
+  const morphStr = morph ? hashMorphCapability(morph) : '';
   const buffsStr =
     e.kind === 'resource_node' || e.kind === 'projectile'
       ? ''
@@ -166,6 +179,7 @@ function hashEntity(state: GameState, e: Entity): string {
     harvestStr,
     channelCapStr,
     beamStr,
+    morphStr,
     projStr,
   ].join(':');
 }
@@ -187,6 +201,7 @@ export function hashAuthoritativeState(state: GameState): string {
   for (const p of [...state.players].sort((a, b) => (a.id < b.id ? -1 : 1))) {
     parts.push(hashPlayer(p));
   }
+  parts.push(hashRelations(state.relations));
   const ids = [...state.entities.keys()].sort((a, b) => a - b);
   for (const id of ids) {
     parts.push(hashEntity(state, state.entities.get(id)!));

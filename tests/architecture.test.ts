@@ -8,6 +8,8 @@ import { initMatch } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { validateRegistryRefs } from '../src/data/validate-registry';
 import { parseClientMessage, parseServerMessage } from '../src/net/protocol-schema';
+import { ensureMorph } from '../src/sim/capabilities';
+import { makeUnit } from '../src/sim/factory';
 
 const reg = getRegistry();
 
@@ -35,6 +37,28 @@ describe('sync surface', () => {
     if (unit.kind === 'unit') unit.orders = [{ type: 'move', x: 100, y: 200 }];
     const h1 = hashState(state);
     player.spellCooldowns['aegis_ward'] = 0;
+    const h2 = hashState(state);
+    expect(h1).not.toBe(h2);
+  });
+
+  it('includes morph action and target in hash', () => {
+    const { state } = initMatch(reg, reg.match('skirmish_1v1'));
+    const wagon = makeUnit(9000, 'player0', reg.unit('waystone_wagon'), 100, 100);
+    state.entities.set(wagon.id, wagon);
+    const morph = ensureMorph(wagon);
+    morph.progress = 0.25;
+    morph.action = 'deploy';
+    morph.targetPos = { x: 200, y: 300 };
+    const h1 = hashState(state);
+    morph.action = 'pack';
+    const h2 = hashState(state);
+    expect(h1).not.toBe(h2);
+  });
+
+  it('includes player relations in hash', () => {
+    const { state } = initMatch(reg, reg.match('skirmish_1v1'));
+    const h1 = hashState(state);
+    state.relations['player0']!['player1'] = 'ally';
     const h2 = hashState(state);
     expect(h1).not.toBe(h2);
   });
