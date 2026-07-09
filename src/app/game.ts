@@ -195,7 +195,6 @@ export class Game {
       this.renderer.snapDisplay();
     };
     this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
-    if (this.startPaused) this.setPaused(true);
 
     const canvasHost = document.createElement('div');
     canvasHost.className = 'game-canvas-host';
@@ -351,6 +350,8 @@ export class Game {
     } else {
       this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
     }
+
+    if (this.startPaused) this.setPaused(true);
   }
 
   private setupGestures(): void {
@@ -395,8 +396,8 @@ export class Game {
     this.saveMeta = { ...this.saveMeta, paused };
     this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
     this.simCtrl.setPaused(paused);
-    this.loop.setPaused(paused);
-    this.hud.setPaused(paused);
+    this.loop?.setPaused(paused);
+    this.hud?.setPaused(paused);
     if (!paused && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
   }
 
