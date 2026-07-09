@@ -32,6 +32,7 @@ import { SandboxPanel } from '../sandbox/ui/sandbox-panel';
 import { createSandboxAiHook } from '../sandbox/ai-director';
 import { buildSandboxDebugOverlay } from '../sandbox/overlays/build-debug-overlay';
 import type { SandboxDebugOverlay } from '../sandbox/overlays/build-debug-overlay';
+import { isTouchPrimaryDevice } from '../sandbox/ui/touch';
 
 const ORDER_COLORS: Record<string, number> = {
   move: 0x7fe3ff,
@@ -342,7 +343,11 @@ export class Game {
       );
       this.sandboxPanel.mount(this.host);
       window.addEventListener('keydown', this.onSandboxKeyDown);
-      this.hud.showHint('Sandbox Mode — press ` to toggle dev panel');
+      this.hud.showHint(
+        isTouchPrimaryDevice()
+          ? 'Sandbox — tap ⚙ (bottom-left) for dev tools'
+          : 'Sandbox — press ` for dev panel, Ctrl+Shift+P for commands',
+      );
     } else {
       this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
     }
