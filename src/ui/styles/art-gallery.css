@@ -226,3 +226,35 @@
 .art-gallery-combat-close {
   align-self: flex-end;
 }
+
+/* Short landscape phones (compact-ui from viewport.ts) */
+.compact-ui .art-gallery {
+  padding: 8px 12px 24px;
+  gap: 12px;
+}
+.compact-ui .art-gallery-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.compact-ui .art-gallery-card {
+  padding: 8px 10px;
+}
+.compact-ui .art-gallery-frame-ortho,
+.compact-ui .art-gallery-frame-oblique {
+  height: 56px;
+}
+.compact-ui .art-gallery-frame-icon {
+  height: 28px;
+}
+.compact-ui .art-gallery-combat-overlay {
+  padding: 8px;
+  align-items: flex-end;
+}
+.compact-ui .art-gallery-combat-panel {
+  max-height: calc(var(--app-h, 100dvh) - 16px);
+  overflow-y: auto;
+}
+.compact-ui .art-gallery-combat-canvas {
+  height: min(42vh, 280px);
+  min-height: 160px;
+}
