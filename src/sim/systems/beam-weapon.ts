@@ -21,8 +21,8 @@ function isBeamTarget(e: Entity): e is UnitEntity | BuildingEntity {
 
 function applyFrostExposure(state: GameState, target: UnitEntity | BuildingEntity, exposure: number, maxExposure: number): void {
   const t = Math.min(exposure, maxExposure) / maxExposure;
-  const moveFactor = 1 - t * 0.65;
-  const attackCooldownFactor = 1 + t * 0.5;
+  const moveFactor = 1 - t * 0.8;
+  const attackCooldownFactor = 1 + t * 1;
   const durationTicks = Math.max(8, Math.ceil(12 + exposure * 2));
   applyOnHitStatus(state, target, {
     kind: 'slow',
