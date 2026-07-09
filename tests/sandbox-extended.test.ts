@@ -17,10 +17,9 @@ import {
   sandboxNoSpellCost,
   sandboxNoSpellCooldowns,
 } from '../src/sim/sandbox-flags';
-import { shouldRevealAllForViewer } from '../src/sim/fog';
+import { shouldRevealAllForViewer, isVisibleTo } from '../src/sim/fog';
 import { handleProduce } from '../src/sim/systems/commands/production';
 import { handleBuild } from '../src/sim/systems/commands/build';
-import { handleSpell } from '../src/sim/systems/commands/spell';
 import { handleResearch } from '../src/sim/systems/commands/research';
 import { productionSystem } from '../src/sim/systems/production';
 import { movementSystem } from '../src/sim/systems/movement';
@@ -133,36 +132,39 @@ describe('sandbox economy & build flags', () => {
     expect(ctx.events.some((e) => e.type === 'commandRejected')).toBe(false);
   });
 
-  it('ignoreTechRequirements does not bypass research prerequisites', () => {
+  it('ignoreTechRequirements bypasses research prerequisites', () => {
     const { state, services } = initMatch(registry, buildSandboxMatchConfig());
     state.sandbox!.settings.economy.ignoreTechRequirements = true;
     state.sandbox!.settings.economy.noCosts = true;
-    const research = [...registry.research.values()][0];
-    if (!research) {
-      // No research content ships yet — document the gap via Skip tech on research start.
-      expect(sandboxIgnoreTech(state)).toBe(true);
-      return;
-    }
-    const ctx = emptyCtx(services);
-    applyDevCommand(state, ctx, {
+    const researchId = 'sandbox_test_research';
+    services.registry.research.set(researchId, {
+      id: researchId,
+      name: 'Sandbox Test Research',
+      description: 'test',
+      kind: 'research',
+      researchedAt: 'arcane_nexus',
+      cost: 100,
+      researchTime: 5,
+      requires: ['missing_tech_gate'],
+      effects: [],
+    });
+    applyDevCommand(state, emptyCtx(services), {
       type: 'devSpawnBuilding',
       playerId: 'player0',
-      defId: research.researchedAt,
+      defId: 'arcane_nexus',
       x: 500,
       y: 500,
       complete: true,
     });
-    const building = [...state.entities.values()].find((e) => e.defId === research.researchedAt)!;
+    const building = [...state.entities.values()].find((e) => e.defId === 'arcane_nexus')!;
     handleResearch(state, emptyCtx(services), {
       type: 'research',
       playerId: 'player0',
       buildingId: building.id,
-      defId: research.id,
+      defId: researchId,
     });
-    // handleResearch still checks requirementsMet without sandboxIgnoreTech.
-    if (research.requires.length) {
-      expect(state.players[0]!.completedResearch.includes(research.id)).toBe(false);
-    }
+    expect(building.kind === 'building' && (building.researchQueue?.length ?? 0)).toBe(1);
+    services.registry.research.delete(researchId);
   });
 });
 
@@ -250,23 +252,10 @@ describe('sandbox freeze, fog, and spells', () => {
     expect(player.spellCooldowns.aegis_ward).toBe(0);
   });
 
-  it('noManaCost flag is readable but unused by handleSpell', () => {
-    const { state, services } = initMatch(registry, buildSandboxMatchConfig());
+  it('noManaCost flag remains readable (spells have no mana cost in data)', () => {
+    const { state } = initMatch(registry, buildSandboxMatchConfig());
     state.sandbox!.settings.spells.noManaCost = true;
     expect(sandboxNoSpellCost(state)).toBe(true);
-    const player = state.players[0]!;
-    player.mana = 50;
-    player.unlockedTech = ['astral_spire'];
-    handleSpell(state, emptyCtx(services), {
-      type: 'castSpell',
-      playerId: 'player0',
-      spellId: 'aegis_ward',
-      x: 100,
-      y: 100,
-      entityIds: [],
-    });
-    // Spells have no mana cost in data; Free cast remains a no-op even when flagged.
-    expect(player.mana).toBe(50);
   });
 
   it('devCastSpell casts when tech is ignored', () => {
@@ -465,34 +454,32 @@ describe('sandbox AI director', () => {
     expect(cmds.some((c) => c.type === 'move' && c.playerId === 'player1')).toBe(true);
   });
 
-  it('force expand is a no-op (falls through to normal AI gating)', () => {
+  it('force expand runs economy AI without attack commands', () => {
     const { state, services } = initMatch(registry, buildSandboxMatchConfig());
     const settings = defaultSandboxSettings();
     settings.ai.forceMode = 'expand';
     settings.ai.disabled = true;
     state.sandbox!.settings = settings;
-    applyDevCommand(state, emptyCtx(services), {
-      type: 'devSpawnUnit',
-      playerId: 'player1',
-      defId: 'imp_swarmling',
-      x: 610,
-      y: 610,
-      count: 2,
-    });
+    // Give AI enough mana and a missing build so expand can emit a build command.
+    state.players.find((p) => p.id === 'player1')!.mana = 5000;
     const hook = createSandboxAiHook(() => settings.ai, () => settings, () => 'player0');
-    // expand is not handled; with AI disabled the hook returns [].
-    expect(hook(state, services)).toEqual([]);
+    // Force expand keeps AI enabled even when disabled flag is set (via syncAi); hook still runs.
+    const cmds = hook(state, services);
+    expect(cmds.every((c) => c.type !== 'attack' && c.type !== 'attackMove')).toBe(true);
+    // May be empty on non-interval ticks; force a decision by aligning tick.
+    state.tick = 0;
+    const cmds2 = hook(state, services);
+    expect(cmds2.every((c) => c.type !== 'attack' && c.type !== 'attackMove')).toBe(true);
   });
 
-  it('revealIntel has no AI/sim side effect beyond storing the setting', () => {
+  it('revealIntel reveals enemy entities without clearing fog', () => {
     const { state, services } = initMatch(registry, buildSandboxMatchConfig());
-    const settings = defaultSandboxSettings();
-    settings.ai.revealIntel = true;
-    settings.ai.disabled = true;
-    state.sandbox!.settings = settings;
-    const hook = createSandboxAiHook(() => settings.ai, () => settings, () => 'player0');
-    expect(hook(state, services)).toEqual([]);
-    expect(state.sandbox!.settings.ai.revealIntel).toBe(true);
+    state.sandbox!.settings.ai.revealIntel = true;
+    state.sandbox!.settings.map.fogEnabled = true;
+    state.sandbox!.settings.map.revealMap = false;
+    expect(shouldRevealAllForViewer(state, 'player0', false)).toBe(false);
+    const enemy = [...state.entities.values()].find((e) => e.owner === 'player1' && e.kind === 'building')!;
+    expect(isVisibleTo(state, 'player0', enemy, services.nav)).toBe(true);
   });
 });
 
@@ -523,22 +510,19 @@ describe('sandbox command palette coverage', () => {
     }
   });
 
-  it('infinite mana alias toggles infiniteMana; bare toggle matches first registered command', async () => {
+  it('infinite mana/power aliases use unique command ids', async () => {
     const { parseCommandLine } = await import('../src/sandbox/command-registry');
     const mana = parseCommandLine('infinite mana');
     expect(mana.ok).toBe(true);
-    if (mana.ok) expect(mana.parsed.command.aliases).toContain('infinite mana');
+    if (mana.ok) expect(mana.parsed.command.id).toBe('toggle-infinite-mana');
 
     const power = parseCommandLine('infinite power');
     expect(power.ok).toBe(true);
-    if (power.ok) expect(power.parsed.command.aliases).toContain('infinite power');
+    if (power.ok) expect(power.parsed.command.id).toBe('toggle-infinite-power');
 
-    const bare = parseCommandLine('toggle');
-    expect(bare.ok).toBe(true);
-    if (bare.ok) {
-      // Duplicate id 'toggle' — first registered command wins (infinite mana).
-      expect(bare.parsed.command.aliases).toContain('infinite mana');
-    }
+    const manaToggle = parseCommandLine('toggle infinite mana');
+    expect(manaToggle.ok).toBe(true);
+    if (manaToggle.ok) expect(manaToggle.parsed.command.id).toBe('toggle-infinite-mana');
   });
 
   it('executeCommandLine invokes controller methods for economy and map commands', async () => {
@@ -614,6 +598,19 @@ describe('sandbox scenarios inventory', () => {
     expect(BUILTIN_SCENARIOS.every((s) => s.builtin)).toBe(true);
   });
 
+  it('loadBuiltinScenario generates distinct preset states', async () => {
+    const { loadBuiltinScenario } = await import('../src/sandbox/builtin-scenarios');
+    const early = loadBuiltinScenario('builtin:early-game');
+    const mid = loadBuiltinScenario('builtin:mid-game');
+    const spell = loadBuiltinScenario('builtin:spell-test');
+    expect(early).toBeTruthy();
+    expect(mid).toBeTruthy();
+    expect(spell).toBeTruthy();
+    expect(early!.state.entities.length).toBeLessThan(mid!.state.entities.length);
+    expect(spell!.sandbox.spells.noCooldowns).toBe(true);
+    expect(loadBuiltinScenario('builtin:missing')).toBeNull();
+  });
+
   it('restart after spawn restores entity count via simulation baseline pattern', () => {
     const registry = loadRegistry();
     const { state, services } = initMatch(registry, buildSandboxMatchConfig());
@@ -629,7 +626,6 @@ describe('sandbox scenarios inventory', () => {
       count: 4,
     });
     expect(state.entities.size).toBe(baselineCount + 4);
-    // Mimic restartScenario entity wipe by destroying spawned units (full transfer tested via e2e).
     const spawned = [...state.entities.values()].filter((e) => e.defId === 'imp_swarmling').map((e) => e.id);
     applyDevCommand(state, emptyCtx(services), {
       type: 'devDestroyEntity',

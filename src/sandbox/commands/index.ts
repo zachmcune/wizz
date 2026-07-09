@@ -63,15 +63,31 @@ export function registerSandboxCommands(): void {
     return null;
   });
 
-  reg('toggle', 'economy', ['infinite mana'], 'Toggle infinite mana', [{ name: 'state', type: 'string', optional: true }], 'infinite mana on', (ctx) => {
-    ctx.controller.toggleSetting('economy', 'infiniteMana');
-    return null;
-  });
+  reg(
+    'toggle-infinite-mana',
+    'economy',
+    ['infinite mana', 'toggle infinite mana'],
+    'Toggle infinite mana',
+    [{ name: 'state', type: 'string', optional: true }],
+    'infinite mana on',
+    (ctx) => {
+      ctx.controller.toggleSetting('economy', 'infiniteMana');
+      return null;
+    },
+  );
 
-  reg('toggle', 'economy', ['infinite power'], 'Toggle infinite power', [{ name: 'state', type: 'string', optional: true }], 'infinite power on', (ctx) => {
-    ctx.controller.toggleSetting('economy', 'infinitePower');
-    return null;
-  });
+  reg(
+    'toggle-infinite-power',
+    'economy',
+    ['infinite power', 'toggle infinite power'],
+    'Toggle infinite power',
+    [{ name: 'state', type: 'string', optional: true }],
+    'infinite power on',
+    (ctx) => {
+      ctx.controller.toggleSetting('economy', 'infinitePower');
+      return null;
+    },
+  );
 
   reg('reveal', 'map', ['reveal map'], 'Reveal entire map', [], 'reveal map', (ctx) => {
     ctx.controller.setSetting('map', { revealMap: true, fogEnabled: false });

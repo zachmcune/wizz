@@ -62,9 +62,15 @@ export function sandboxNoSpellCost(state: GameState): boolean {
   return sandboxSettings(state)?.spells.noManaCost === true;
 }
 
+/** When false, the viewer should see the full live map (Reveal all / Fog off). */
 export function sandboxFogEnabled(state: GameState): boolean {
   const s = sandboxSettings(state);
   if (!s) return true;
   if (s.map.revealMap) return false;
   return s.map.fogEnabled;
+}
+
+/** Show enemy units/buildings and node reserves without clearing terrain fog. */
+export function sandboxRevealIntel(state: GameState): boolean {
+  return sandboxSettings(state)?.ai.revealIntel === true;
 }

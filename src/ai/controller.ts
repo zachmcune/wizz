@@ -29,6 +29,19 @@ const DEFEND_RADIUS = 280;
 const GARRISON_RADIUS = 220;
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
+  return runAiPlayers(state, services, { skipCombat: false });
+}
+
+/** Economy/build/produce only — used by sandbox Force expand. */
+export function aiEconomyStep(state: GameState, services: SimServices): Command[] {
+  return runAiPlayers(state, services, { skipCombat: true });
+}
+
+function runAiPlayers(
+  state: GameState,
+  services: SimServices,
+  opts: { skipCombat: boolean },
+): Command[] {
   const cmds: Command[] = [];
   let idx = 0;
   for (const p of state.players) {
@@ -36,7 +49,7 @@ export function aiStep(state: GameState, services: SimServices): Command[] {
     if (p.controller !== 'ai' || p.defeated) continue;
     const diff = services.registry.balance.ai[p.aiDifficulty ?? 'normal'];
     if ((state.tick + playerIndex) % diff.interval !== 0) continue;
-    decideForPlayer(state, services, p, diff, cmds);
+    decideForPlayer(state, services, p, diff, cmds, opts);
   }
   return cmds;
 }
@@ -97,7 +110,14 @@ function idleCombat(combat: UnitEntity[]): EntityId[] {
   return combat.filter((e) => isAlive(e) && e.orders.length === 0 && e.state === 'idle').map((e) => e.id);
 }
 
-function decideForPlayer(state: GameState, services: SimServices, p: Player, diff: AiParams, cmds: Command[]): void {
+function decideForPlayer(
+  state: GameState,
+  services: SimServices,
+  p: Player,
+  diff: AiParams,
+  cmds: Command[],
+  opts: { skipCombat: boolean } = { skipCombat: false },
+): void {
   const reg = services.registry;
   const sanctum = findSanctum(state, p.id);
   if (!sanctum) return;
@@ -105,7 +125,7 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
   const wisps = own.filter(isHarvester);
   const combat = own.filter(isCombatUnit);
 
-  if (p.unlockedTech.includes('astral_spire')) {
+  if (!opts.skipCombat && p.unlockedTech.includes('astral_spire')) {
     const beam = state.beams.find((b) => b.owner === p.id);
     const cd = p.spellCooldowns['astral_lance'] ?? 0;
     const target = findEnemySanctum(state, p.id) ?? nearestEnemyBuilding(state, p.id, sanctum.pos);
@@ -191,6 +211,8 @@ function decideForPlayer(state: GameState, services: SimServices, p: Player, dif
       }
     }
   }
+
+  if (opts.skipCombat) return;
 
   let attackPool = idleCombat(combat);
   const minPush = Math.max(4, Math.floor(diff.armyThreshold * 0.5));

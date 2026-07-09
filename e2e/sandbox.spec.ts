@@ -128,7 +128,6 @@ test.describe('developer sandbox', () => {
 
     await page.getByTestId('sandbox-tab-spells').click();
     await page.getByTestId('sandbox-chip-noCooldowns').click();
-    await page.getByTestId('sandbox-chip-noManaCost').click();
     await page.getByTestId('sandbox-cast-spell').click();
 
     await page.getByTestId('sandbox-tab-buildings').click();

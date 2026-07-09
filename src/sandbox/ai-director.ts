@@ -1,4 +1,4 @@
-import { aiStep } from '../ai/controller';
+import { aiEconomyStep, aiStep } from '../ai/controller';
 import type { SimServices } from '../sim/context';
 import type { Command, GameState, PlayerId } from '../sim/types';
 import type { SandboxAiSettings, SandboxSettings } from '../sim/sandbox-types';
@@ -79,6 +79,9 @@ export function createSandboxAiHook(
         cmds.push(...forceDefendCommands(state, p.id));
       }
       return cmds;
+    }
+    if (ai.forceMode === 'expand') {
+      return filterCommandsForPlayer(aiEconomyStep(state, services), skipPlayerId);
     }
     if (ai.disabled || ai.paused) return [];
     return filterCommandsForPlayer(aiStep(state, services), skipPlayerId);

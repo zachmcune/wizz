@@ -83,6 +83,7 @@ export class Game {
   private readonly matchConfig: MatchConfig | null;
   private sandboxCtrl: SandboxController | null = null;
   private sandboxPanel: SandboxPanel | null = null;
+  private sandboxScenarioId: string | null = null;
   private frameMs = 16;
   private onSandboxKeyDown = (e: KeyboardEvent): void => {
     this.sandboxPanel?.handleGlobalKey(e);
@@ -118,6 +119,7 @@ export class Game {
       startPaused?: boolean;
       sandbox?: boolean;
       matchConfig?: MatchConfig;
+      sandboxScenarioId?: string;
     },
   ) {
     if (opts?.sandbox && opts?.lockstep) {
@@ -125,6 +127,7 @@ export class Game {
     }
     this.sandboxMode = opts?.sandbox ?? false;
     this.matchConfig = opts?.matchConfig ?? null;
+    this.sandboxScenarioId = opts?.sandboxScenarioId ?? null;
     this.lockstep = opts?.lockstep ?? null;
     this.matchId = opts?.matchId ?? 'skirmish_1v1';
     this.onDesync = opts?.onDesync ?? null;
@@ -346,6 +349,9 @@ export class Game {
         this.host,
       );
       this.sandboxPanel.mount(this.host);
+      if (this.sandboxScenarioId) {
+        this.sandboxCtrl.loadBuiltin(this.sandboxScenarioId);
+      }
       window.addEventListener('keydown', this.onSandboxKeyDown);
       this.hud.showHint(
         isTouchPrimaryDevice()

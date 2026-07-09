@@ -9,6 +9,7 @@ import type { BuildingEntity } from './entity-types';
 import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types';
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower, isPowerShort } from './power';
+import { sandboxFogEnabled, sandboxRevealIntel } from './sandbox-flags';
 
 export function createFogTiles(tileCount: number): number[] {
   return new Array(tileCount).fill(0);
@@ -220,6 +221,9 @@ export function isVisibleTo(
   // Static map features (mana nodes) are always visible through fog.
   if (entity.kind === 'resource_node') return true;
 
+  // Sandbox "Show intel": reveal enemy units/buildings without clearing terrain fog.
+  if (sandboxRevealIntel(state) && entity.owner !== 'neutral') return true;
+
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
 }
 
@@ -231,6 +235,7 @@ export function isNodeIntelVisible(
   nav: NavGrid,
 ): boolean {
   if (entity.kind !== 'resource_node') return true;
+  if (sandboxRevealIntel(state)) return true;
   const viewer = getPlayer(state, viewerId);
   if (!viewer) return false;
   return isTileVisible(viewer, entity.pos.x, entity.pos.y, nav);
@@ -255,10 +260,7 @@ export function shouldRevealAllForViewer(
   viewerId: PlayerId,
   deadSpectatorReveal: boolean,
 ): boolean {
-  if (state.sandbox?.enabled) {
-    const s = state.sandbox.settings;
-    if (s.map.revealMap || !s.map.fogEnabled) return true;
-  }
+  if (state.sandbox?.enabled && !sandboxFogEnabled(state)) return true;
   if (state.ended) return true;
   if (!deadSpectatorReveal) return false;
   const viewer = getPlayer(state, viewerId);

@@ -13,7 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
-import { buildSandboxMatchConfig, getSandboxProjectionMode, shouldOpenSandbox } from '../sandbox/sandbox-config';
+import { buildSandboxMatchConfig, getSandboxProjectionMode, scenarioIdFromUrl, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -54,6 +54,7 @@ export class AppRouter {
     this.clearHost();
     const config = buildSandboxMatchConfig();
     const { state, services } = initMatch(this.deps.registry, config);
+    const scenarioId = scenarioIdFromUrl();
     this.game = new Game(this.deps.host, this.deps.registry, state, services, this.deps.audio, this.deps.settings, () => {
       this.game = null;
       void this.showMenu();
@@ -64,6 +65,7 @@ export class AppRouter {
       sandbox: true,
       matchProjectionMode: getSandboxProjectionMode(),
       matchConfig: config,
+      sandboxScenarioId: scenarioId ?? undefined,
     });
     void this.game.start().catch((err) => {
       console.error('Sandbox failed to start', err);

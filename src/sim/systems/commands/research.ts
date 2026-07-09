@@ -3,7 +3,7 @@ import type { StepContext } from '../../context';
 import type { Command, GameState } from '../../types';
 import { getPlayer, isAlive } from '../../queries';
 import { requirementsMet } from './shared';
-import { sandboxNoCosts } from '../../sandbox-flags';
+import { sandboxIgnoreTech, sandboxNoCosts } from '../../sandbox-flags';
 
 export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<Command, { type: 'research' }>): void {
   const player = getPlayer(state, cmd.playerId)!;
@@ -15,7 +15,7 @@ export function handleResearch(state: GameState, ctx: StepContext, cmd: Extract<
   }
   const research = ctx.services.registry.research.get(cmd.defId);
   if (!research || research.researchedAt !== building.defId) return;
-  if (!requirementsMet(player, research.requires)) {
+  if (!sandboxIgnoreTech(state) && !requirementsMet(player, research.requires)) {
     ctx.events.push({ type: 'commandRejected', playerId: cmd.playerId, reason: 'requires' });
     return;
   }

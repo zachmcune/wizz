@@ -14,6 +14,7 @@ export function isSandboxFeatureEnabled(): boolean {
 }
 
 export function shouldOpenSandbox(): boolean {
+  if (!isSandboxFeatureEnabled()) return false;
   const params = new URLSearchParams(window.location.search);
   return params.get('sandbox') === '1' || params.get('sandbox') === 'true';
 }

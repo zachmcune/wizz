@@ -520,7 +520,6 @@ export class SandboxPanel {
     const chips = el('div', 'sandbox-chip-grid');
     chips.append(
       this.chip('No CD', 'spells', 'noCooldowns', sp.noCooldowns, 'sandbox-chip-noCooldowns'),
-      this.chip('Free cast', 'spells', 'noManaCost', sp.noManaCost, 'sandbox-chip-noManaCost'),
       this.chip('Show radius', 'overlays', 'spellRadius', this.controller.settings.overlays.spellRadius, 'sandbox-chip-spellRadius'),
     );
     s.appendChild(chips);
@@ -569,7 +568,7 @@ export class SandboxPanel {
 
   private async loadScenario(summary: ScenarioSummary): Promise<void> {
     if (summary.builtin) {
-      this.controller.restartScenario();
+      this.controller.loadBuiltin(summary.id);
       return;
     }
     const sc = await loadUserScenario(summary.id);
@@ -587,11 +586,18 @@ export class SandboxPanel {
       'memory',
       'unitIds',
       'healthBars',
+      'currentTarget',
+      'aiState',
+      'currentPath',
+      'collisionShapes',
+      'cooldownTimers',
       'visionRadius',
       'attackRadius',
+      'spellRadius',
+      'pathfinding',
+      'collision',
       'navigationGrid',
       'buildingFootprints',
-      'spellRadius',
     ];
     for (const key of keys) {
       chips.appendChild(this.chip(key, 'overlays', key, o[key], `sandbox-overlay-${key}`));
