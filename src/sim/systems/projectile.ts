@@ -45,15 +45,6 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
           cap.sourceId,
           cap.onHitStatus,
         );
-        if (e.defId === 'celestial_shot') {
-          ctx.events.push({
-            type: 'artilleryImpact',
-            x: target.pos.x,
-            y: target.pos.y,
-            radius,
-            sourceId: cap.sourceId,
-          });
-        }
       } else {
         applyDamage(state, ctx, target, cap.damage, vs, cap.sourceId);
         applyOnHitStatus(state, target, cap.onHitStatus);

@@ -109,7 +109,17 @@ export function fire(state: GameState, ctx: StepContext, e: UnitEntity | Buildin
   } else if (w.chain) {
     applyChainDamage(state, ctx, e.owner, target, w, e.id);
   } else if (w.splashRadius !== undefined || w.impactRadius !== undefined) {
-    applySplashDamage(state, ctx, e.owner, target.pos.x, target.pos.y, w.splashRadius ?? w.impactRadius ?? 0, w.damage, w.vs, e.id, w.onHitStatus);
+    const radius = w.splashRadius ?? w.impactRadius ?? 0;
+    applySplashDamage(state, ctx, e.owner, target.pos.x, target.pos.y, radius, w.damage, w.vs, e.id, w.onHitStatus);
+    if (w.impactRadius !== undefined) {
+      ctx.events.push({
+        type: 'artilleryImpact',
+        x: target.pos.x,
+        y: target.pos.y,
+        radius: w.impactRadius,
+        sourceId: e.id,
+      });
+    }
   } else {
     applyDamage(state, ctx, target, w.damage, w.vs, e.id);
     applyOnHitStatus(state, target, w.onHitStatus);

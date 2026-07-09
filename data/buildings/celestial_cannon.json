@@ -2,7 +2,7 @@
   "id": "celestial_cannon",
   "name": "Celestial Cannon",
   "shortLabel": "CANN",
-  "description": "Late-game artillery defense. Extremely long ranged, slow to charge, devastating on impact, and unable to fire at nearby enemies.",
+  "description": "Late-game artillery defense. Channels skyfire onto distant enemies after a long charge. Devastating area impact with a blind spot at close range.",
   "kind": "building",
   "cost": 2200,
   "buildTime": 28,
@@ -19,7 +19,7 @@
     "minRange": 120,
     "chargeTicks": 60,
     "cooldownTicks": 100,
-    "projectile": "celestial_shot",
+    "projectile": null,
     "impactRadius": 90,
     "vs": { "light": 1.0, "heavy": 1.3, "building": 0.8 }
   },
