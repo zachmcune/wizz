@@ -1,9 +1,10 @@
 // Main-thread client for the simulation Web Worker.
-import type { ToWorker, FromWorker, TransferState, LockstepEntry } from '../sim/worker/messages';
+import type { ToWorker, FromWorker, TransferState, TransferDelta, LockstepEntry } from '../sim/worker/messages';
 import type { Command, GameEvent } from '../sim/types';
 
 export interface WorkerTickResult {
-  state: TransferState;
+  state?: TransferState;
+  delta?: TransferDelta;
   events: GameEvent[];
 }
 
@@ -39,7 +40,7 @@ export class WorkerSimClient {
     }
     if (msg.type === 'tick') {
       this.stepPending = false;
-      this.onTick?.({ state: msg.state, events: msg.events });
+      this.onTick?.({ state: msg.state, delta: msg.delta, events: msg.events });
       return;
     }
     if (msg.type === 'lockstepResult') {

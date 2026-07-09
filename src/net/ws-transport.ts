@@ -3,6 +3,7 @@ import type { Command } from '../sim/types';
 import { LockstepClient } from './lockstep';
 import type { Transport } from './lockstep';
 import type { ClientMessage, ServerMessage } from './protocol';
+import { parseServerMessage } from './protocol-schema';
 import type { LobbyStateWire } from './protocol';
 
 export type MatchStartHandler = (startTick: number, seed: number, state: LobbyStateWire) => void;
@@ -155,16 +156,18 @@ export class WebSocketTransport implements Transport {
   }
 
   private handleMessage(ev: MessageEvent): void {
-    let msg: ServerMessage;
+    let raw: unknown;
     try {
-      msg = JSON.parse(String(ev.data)) as ServerMessage;
+      raw = JSON.parse(String(ev.data));
     } catch {
       return;
     }
+    const msg = parseServerMessage(raw);
+    if (!msg) return;
     switch (msg.t) {
       case 'tick':
-        if (this.tickCb) this.tickCb(msg.tick, msg.cmds);
-        else this.tickBuffer.push({ tick: msg.tick, cmds: msg.cmds });
+        if (this.tickCb) this.tickCb(msg.tick, msg.cmds as Command[]);
+        else this.tickBuffer.push({ tick: msg.tick, cmds: msg.cmds as Command[] });
         break;
       case 'peerChecksum':
         if (this.peerCb) this.peerCb(msg.playerId, msg.tick, msg.hash);

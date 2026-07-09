@@ -15,6 +15,7 @@ import {
 import type { z, ZodTypeAny } from 'zod';
 import type { UnitDef, BuildingDef, SpellDef, ProjectileDef, ResearchDef, MapData, BalanceData, FactionDef } from './defs';
 import type { MatchConfig } from '../sim/types';
+import { assertRegistryValid } from './validate-registry';
 
 const modules = import.meta.glob('/data/**/*.json', { eager: true, import: 'default' }) as Record<
   string,
@@ -64,5 +65,6 @@ export function loadRegistry(): Registry {
       reg.matches.set(`${d.mapId}:${d.players.length}`, d);
     }
   }
+  assertRegistryValid(reg);
   return reg;
 }

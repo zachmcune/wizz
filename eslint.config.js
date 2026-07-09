@@ -74,6 +74,38 @@ export default [
     },
   },
   {
+    // Presentation layers read sim state through sim/views.ts only.
+    files: ['src/render/**/*.ts', 'src/ui/**/*.ts', 'src/input/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '../sim/queries',
+                '../sim/fog',
+                '../sim/power',
+                '../sim/picking',
+                '../sim/build-zone',
+                '../sim/resource-nodes',
+                '../sim/garrison',
+                '../../sim/queries',
+                '../../sim/fog',
+                '../../sim/power',
+                '../../sim/picking',
+                '../../sim/build-zone',
+                '../../sim/resource-nodes',
+                '../../sim/garrison',
+              ],
+              message: 'Import presentation queries from sim/views instead of sim internals.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['relay/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,

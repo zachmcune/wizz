@@ -3,9 +3,8 @@ import { worldToScreen } from '../core/coords';
 import type { CameraView, Vec2 } from '../core/coords';
 import { getProjectionMode } from '../core/projection';
 import type { NavGrid } from '../sim/nav-grid';
-import { pickEntity, pickResourceNode } from '../sim/picking';
+import { pickEntity, pickResourceNode, isVisibleTo } from '../sim/views';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
-import { isVisibleTo } from '../sim/views';
 
 export function useScreenPicking(): boolean {
   return getProjectionMode() === 'oblique';

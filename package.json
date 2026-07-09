@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "validate-data": "vitest run tests/architecture.test.ts -t \"content validation\"",
     "test": "vitest run --exclude tests/balance.test.ts",
     "test:slow": "vitest run tests/balance.test.ts",
     "test:full": "vitest run",

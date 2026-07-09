@@ -6,6 +6,7 @@ import type { Command, GameState, GameEvent } from '../types';
 import { initMatch } from '../factory';
 import { Simulation } from '../simulation';
 import { packState, unpackState, type TransferState } from '../state-transfer';
+import { packDelta, type TransferDelta } from '../sync-delta';
 import { NavGrid } from '../nav-grid';
 import { createServices } from '../context';
 import { rebuildBuildingNav } from '../building-nav';
@@ -23,8 +24,15 @@ export interface LockstepBatchResult {
   checksums: { tick: number; hash: string }[];
 }
 
+export interface StepOutput {
+  state?: TransferState;
+  delta?: TransferDelta;
+  events: GameEvent[];
+}
+
 export class SimHost {
   private sim: Simulation | null = null;
+  private lastTransfer: TransferState | null = null;
 
   constructor(
     private registry: Registry,
@@ -35,7 +43,9 @@ export class SimHost {
     const config = this.registry.match(matchId);
     const { state, services } = initMatch(this.registry, config);
     this.sim = new Simulation(state, services, this.defaultAiHook);
-    return packState(state);
+    const packed = packState(state);
+    this.lastTransfer = packed;
+    return packed;
   }
 
   initState(transfer: TransferState): TransferState {
@@ -45,7 +55,9 @@ export class SimHost {
     const services = createServices(this.registry, nav);
     rebuildBuildingNav(state, services, this.registry);
     this.sim = new Simulation(state, services, this.defaultAiHook);
-    return packState(state);
+    const packed = packState(state);
+    this.lastTransfer = packed;
+    return packed;
   }
 
   enqueue(cmds: Command[]): void {
@@ -56,11 +68,15 @@ export class SimHost {
     this.sim?.setAiEnabled(enabled);
   }
 
-  /** Advance one tick; returns packed state + events for that tick. */
-  step(): { state: TransferState; events: GameEvent[] } {
+  /** Advance one tick; returns packed state or delta + events for that tick. */
+  step(): StepOutput & { events: GameEvent[] } {
     if (!this.sim) throw new Error('SimHost not initialized');
     const res = this.sim.step();
-    return { state: packState(this.sim.state), events: res.events };
+    const packed = packState(this.sim.state);
+    const delta = packDelta(this.lastTransfer, packed);
+    this.lastTransfer = packed;
+    if (delta) return { delta, events: res.events };
+    return { state: packed, events: res.events };
   }
 
   /**
@@ -84,7 +100,9 @@ export class SimHost {
         checksums.push({ tick: entry.tick, hash: hashState(this.sim.state) });
       }
     }
-    return { state: packState(this.sim.state), events, lastTick, checksums };
+    const packed = packState(this.sim.state);
+    this.lastTransfer = packed;
+    return { state: packed, events, lastTick, checksums };
   }
 
   snapshot(): TransferState {

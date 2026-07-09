@@ -9,7 +9,7 @@ import {
 import type { LockstepClient } from '../../net/lockstep';
 import type { WebSocketTransport } from '../../net/ws-transport';
 import { hashState } from '../../sim/hash';
-import { applyTransferState, packState, type TransferState } from '../../sim/state-transfer';
+import { applyTransferState, applyWorkerSync, packState, type TransferState } from '../../sim/state-transfer';
 import { rebuildBuildingNav } from '../../sim/building-nav';
 import type { Simulation } from '../../sim/simulation';
 import type { GameEvent, GameState, Command } from '../../sim/types';
@@ -219,9 +219,9 @@ export class SimController {
         worker.onLockstepResult = (res) => this.applyWorkerLockstepResult(res);
         worker.onSnapshot = (state) => this.relayTransport?.sendSnapshot(state.tick, state);
       } else {
-        worker.onTick = ({ state, events }) => {
-          applyTransferState(this.state, state);
-          rebuildBuildingNav(this.state, this.services, this.registry);
+        worker.onTick = ({ state, delta, events }) => {
+          const navDirty = applyWorkerSync(this.state, { state, delta });
+          if (navDirty) rebuildBuildingNav(this.state, this.services, this.registry);
           this.onTick(events);
           this.onSync();
           this.markSynced();

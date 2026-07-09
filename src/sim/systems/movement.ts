@@ -3,10 +3,11 @@
 import { TILE, TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { GameState, UnitEntity, EntityId } from '../types';
-import { entitiesSorted, isAlive, hasBuff, strongestSlowMoveFactor } from '../queries';
+import { entitiesSorted, isAlive, getPlayer } from '../queries';
 import { steerToGoal, applyVelocityMove, slidePosition, makePathContext, moveTowardGoal } from '../pathing';
 import { canUnitGarrison } from '../garrison';
 import { sandboxFreezeUnits } from '../sandbox-flags';
+import { resolveUnitStat } from '../modifiers';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
@@ -59,10 +60,9 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     }
     const order = e.orders[0];
     const udef = ctx.services.registry.unit(e.defId);
-    let speed = udef.speed;
-    if (hasBuff(e, 'haste', state.tick)) speed *= 1.5;
+    const player = getPlayer(state, e.owner)!;
+    let speed = resolveUnitStat(ctx.services.registry, player, udef, 'speed', state.tick, e);
     if (order?.type === 'moveInOrder') speed = order.groupSpeed;
-    speed *= strongestSlowMoveFactor(e, state.tick);
 
     if (order?.type === 'garrison') {
       const building = state.entities.get(order.buildingId);

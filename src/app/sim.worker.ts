@@ -27,8 +27,8 @@ ctx.onmessage = (ev) => {
       break;
     }
     case 'step': {
-      const { state, events } = host.step();
-      ctx.postMessage({ type: 'tick', state, events });
+      const { state, delta, events } = host.step();
+      ctx.postMessage({ type: 'tick', state, delta, events });
       break;
     }
     case 'command':

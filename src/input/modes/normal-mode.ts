@@ -1,8 +1,6 @@
 import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
-import { isHarvester } from '../../sim/entity-types';
-import { isEnemy } from '../../sim/queries';
-import { canUnitGarrison, garrisonFreeCapacity } from '../../sim/garrison';
+import { isHarvester, isEnemy, canUnitGarrison, garrisonFreeCapacity } from '../../sim/views';
 import {
   pickEntityForInput,
   pickResourceNodeForInput,

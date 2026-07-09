@@ -3,13 +3,14 @@ import { TICK_HZ } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { ProjectileEntity, UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
-import { entitiesSorted, isAlive, isEnemy, strongestSlowAttackCooldownFactor } from '../queries';
+import { entitiesSorted, isAlive, isEnemy, getPlayer } from '../queries';
 import { buildingHasPower } from '../power';
 import { isVisibleTo } from '../fog';
 import { len, distSq } from '../math';
 import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } from '../combat-util';
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
+import { resolveWeaponStat } from '../modifiers';
 
 const scratch: EntityId[] = [];
 
@@ -76,7 +77,9 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
 }
 
 export function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
-  e.cooldowns.attack = Math.max(1, Math.ceil(w.cooldownTicks * strongestSlowAttackCooldownFactor(e, state.tick)));
+  const player = getPlayer(state, e.owner)!;
+  const cooldownTicks = resolveWeaponStat(ctx.services.registry, player, e, w, 'cooldownTicks', state.tick);
+  e.cooldowns.attack = Math.max(1, Math.ceil(cooldownTicks));
   e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
   ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
   if (w.projectile) {

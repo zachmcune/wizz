@@ -1,10 +1,9 @@
 // In-match DOM HUD: context-sensitive, collapsible panels for mobile landscape.
 import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
-import { isAlive } from '../sim/queries';
+import { isAlive, isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
 import type { Registry } from '../data/registry';
 import type { ArtDef, BuildingDef } from '../data/defs';
-import { isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
 import type { InputController } from '../input/controller';
 import type { Minimap } from './minimap';
 import { el } from './hud/dom';
