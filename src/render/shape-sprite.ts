@@ -169,9 +169,14 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.circle(r * 0.48, -r * 0.35, r * 0.08).fill(accent);
   },
   celestial_cannon: (g, r, accent) => {
-    g.circle(0, 0, r * 0.32).stroke({ width: 2, color: accent });
-    g.moveTo(-r * 0.55, r * 0.25).lineTo(r * 0.7, -r * 0.35).stroke({ width: 3, color: accent });
-    g.circle(r * 0.72, -r * 0.36, r * 0.1).fill(accent);
+    g.poly([0, -r * 0.15, r * 0.42, r * 0.55, -r * 0.42, r * 0.55]).stroke({ width: 1.5, color: accent, alpha: 0.7 });
+    g.poly([0, -r * 0.55, r * 0.22, r * 0.05, -r * 0.22, r * 0.05]).stroke({ width: 1.5, color: accent, alpha: 0.85 });
+    g.poly([0, -r * 0.88, r * 0.12, -r * 0.35, -r * 0.12, -r * 0.35]).stroke({ width: 2, color: accent });
+    g.circle(0, -r * 1.05, r * 0.14).fill(accent);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      g.circle(Math.cos(a) * r * 0.38, r * 0.35 + Math.sin(a) * r * 0.12, r * 0.04).fill(accent);
+    }
   },
   sanctuary_spire: (g, r, accent) => {
     g.moveTo(0, -r * 0.72).lineTo(0, r * 0.55).stroke({ width: 2.5, color: accent });
@@ -186,8 +191,10 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.arc(0, 0, r * 0.72, -0.6, 2.2).stroke({ width: 1.5, color: accent });
   },
   celestial_shot: (g, r, accent) => {
-    g.poly([0, -r * 0.85, r * 0.72, 0, 0, r * 0.85, -r * 0.72, 0]).stroke({ width: 2, color: accent });
-    g.circle(0, 0, r * 0.22).fill(accent);
+    g.poly([0, -r * 0.95, r * 0.35, -r * 0.15, r * 0.55, r * 0.2, 0, r * 0.85, -r * 0.55, r * 0.2, -r * 0.35, -r * 0.15])
+      .fill(accent)
+      .stroke({ width: 1, color: accent, alpha: 0.9 });
+    g.circle(0, -r * 0.05, r * 0.18).fill({ color: 0xffffff, alpha: 0.85 });
   },
 };
 
@@ -372,11 +379,20 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
   },
   celestial_cannon: (g, size, fill, accent) => {
     const r = size / 2;
-    g.roundRect(-r * 0.95, -r * 0.12, r * 1.9, r * 0.72, r * 0.1).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.roundRect(-r * 0.32, -r * 0.42, r * 0.64, r * 0.52, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.roundRect(r * 0.08, -r * 0.25, r * 0.82, r * 0.2, 3).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.circle(r * 0.88, -r * 0.15, r * 0.1).fill(accent).stroke({ width: 1, color: OUTLINE });
-    g.circle(0, -r * 0.18, r * 0.22).stroke({ width: 2, color: accent });
+    g.poly([0, r * 0.55, r * 0.72, r * 0.42, r * 0.48, -r * 0.05, -r * 0.48, -r * 0.05, -r * 0.72, r * 0.42])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.12, r * 0.28, -r * 0.42, -r * 0.28, -r * 0.42])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.48, r * 0.14, -r * 0.82, -r * 0.14, -r * 0.82])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    g.circle(0, -r * 0.98, r * 0.12).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    for (let i = 0; i < 4; i++) {
+      const y = r * 0.35 - i * r * 0.22;
+      g.moveTo(-r * 0.35, y).lineTo(r * 0.35, y).stroke({ width: 1, color: accent, alpha: 0.55 });
+    }
   },
   sanctuary_spire: (g, size, fill, accent) => {
     const r = size / 2;
@@ -403,7 +419,7 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   frost_spire: { wMul: 0.88, hMul: 0.68 },
   inferno_beacon: { wMul: 0.88, hMul: 0.62 },
   storm_conductor: { wMul: 0.85, hMul: 0.78 },
-  celestial_cannon: { wMul: 1.25, hMul: 0.5 },
+  celestial_cannon: { wMul: 0.92, hMul: 0.92 },
   sanctuary_spire: { wMul: 0.82, hMul: 0.82 },
   stone_golem: { wMul: 0.95, hMul: 0.55 },
   siege_behemoth: { wMul: 1.1, hMul: 0.5 },
@@ -708,11 +724,19 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   celestial_cannon: (g, size, fill, accent) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.35, r * 1.0, r * 0.36, r * 0.3, fillN);
-    drawIsoPrism(g, 0, -r * 0.02, r * 0.4, r * 0.2, r * 0.38, fillN);
-    drawIsoPrism(g, r * 0.52, -r * 0.38, r * 0.62, r * 0.08, r * 0.12, fillN);
-    g.circle(r * 1.0, -r * 0.44, r * 0.11).fill(accent).stroke({ width: 1.5, color: OUTLINE });
-    g.circle(0, -r * 0.32, r * 0.16).stroke({ width: 2, color: accent });
+    const accentN = parseHex(accent);
+    drawIsoPlate(g, 0, r * 0.42, r * 0.95, r * 0.38, shade(fillN, 0.45));
+    drawIsoPrism(g, 0, r * 0.28, r * 0.72, r * 0.34, r * 0.32, fillN);
+    drawIsoPrism(g, 0, r * 0.02, r * 0.48, r * 0.24, r * 0.42, shade(fillN, 0.92));
+    drawIsoPyramid(g, 0, -r * 0.18, r * 0.22, r * 0.12, r * 0.72, fillN);
+    for (let i = 0; i < 3; i++) {
+      const y = r * 0.32 - i * r * 0.18;
+      g.moveTo(-r * 0.38, y).lineTo(r * 0.38, y).stroke({ width: 1.2, color: accent, alpha: 0.5 });
+    }
+    g.circle(0, -r * 1.02, r * 0.14).fill(accentN).stroke({ width: 1.5, color: OUTLINE });
+    g.poly([0, -r * 1.22, r * 0.1, -r * 1.02, 0, -r * 0.82, -r * 0.1, -r * 1.02])
+      .fill(shade(accentN, 0.85))
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.8 });
   },
   sanctuary_spire: (g, size, fill, accent) => {
     const r = size / 2;

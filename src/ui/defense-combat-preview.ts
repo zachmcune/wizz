@@ -38,7 +38,7 @@ const SCENARIOS: Record<string, PreviewScenario> = {
   frost_spire: { kind: 'combat', caption: 'Frost Spire channeling a freezing energy stream.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
   inferno_beacon: { kind: 'combat', caption: 'Inferno Beacon sweeping a continuous flamethrower through a swarm.', attackerUnit: 'imp_swarmling', attackerCount: 4, attackerDx: 150, attackerDy: -20, attackerSpacing: 28 },
   storm_conductor: { kind: 'combat', caption: 'Storm Conductor chaining lightning through heavies.', attackerUnit: 'stone_golem', attackerCount: 3, attackerDx: 165, attackerDy: 0, attackerSpacing: 40 },
-  celestial_cannon: { kind: 'combat', caption: 'Celestial Cannon charging long-range artillery shots.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 340, attackerDy: 0, attackerSpacing: 56 },
+  celestial_cannon: { kind: 'combat', caption: 'Celestial Cannon channeling skyfire — rune warning, then devastating impact.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 340, attackerDy: 0, attackerSpacing: 56 },
   sanctuary_spire: { kind: 'heal', caption: 'Sanctuary Spire healing a wounded ally in its ward.', attackerUnit: 'stone_golem', attackerCount: 1, attackerDx: 220, attackerDy: 0, attackerSpacing: 0 },
   arcane_bunker: { kind: 'garrison', caption: 'Arcane Bunker with garrisoned archers firing at attackers.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 175, attackerDy: 0, attackerSpacing: 44 },
   stone_wall: { kind: 'combat', caption: 'Stone Wall holding the line while enemies break against it.', attackerUnit: 'imp_swarmling', attackerCount: 3, attackerDx: 90, attackerDy: 0, attackerSpacing: 24 },
@@ -159,6 +159,11 @@ function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects']): void {
       break;
     case 'attackCharging':
       effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+      break;
+    case 'artilleryImpact':
+      effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
+      effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
+      effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
       break;
     case 'entityDied':
       effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);

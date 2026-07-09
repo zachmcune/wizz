@@ -175,6 +175,7 @@ export type GameEvent =
   | { type: 'healApplied'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
   | { type: 'attackCharging'; sourceId: EntityId; x: number; y: number }
+  | { type: 'artilleryImpact'; x: number; y: number; radius: number; sourceId?: EntityId }
   | { type: 'beamStarted'; sourceId: EntityId; x: number; y: number }
   | { type: 'beamStopped'; sourceId: EntityId; x: number; y: number }
   | { type: 'manaChanged'; playerId: PlayerId; mana: number }

@@ -4,6 +4,7 @@ import type { GameEvent, GameState, PlayerId } from '../../sim/types';
 import { isWorldPointVisible, shouldRevealAllForViewer } from '../../sim/views';
 import type { AudioManager } from '../../audio/audio';
 import type { EffectsLayer } from '../../render/effects';
+import { spawnCelestialScorch } from '../../render/celestial-cannon-vfx';
 
 export class EventBridge {
   constructor(
@@ -22,13 +23,26 @@ export class EventBridge {
 
   handle(ev: GameEvent): void {
     const visible = this.isVisible(ev);
-    if (visible) this.audio.play(ev);
+    const state = this.getState();
+
     switch (ev.type) {
-      case 'attackFired':
-        if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+      case 'attackFired': {
+        if (!visible) break;
+        const src = state.entities.get(ev.sourceId);
+        if (src?.defId === 'celestial_cannon') {
+          this.audio.playCelestialFire();
+          this.effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
+        } else {
+          this.audio.play(ev);
+          this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+        }
         break;
+      }
       case 'beamStarted':
-        if (visible) this.effects.spawn('flash', ev.x, ev.y, 0xffa060, 8);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('flash', ev.x, ev.y, 0xffa060, 8);
+        }
         break;
       case 'beamStopped':
         break;
@@ -38,37 +52,76 @@ export class EventBridge {
       case 'healApplied':
         if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
         break;
-      case 'attackCharging':
-        if (visible) this.effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+      case 'attackCharging': {
+        if (!visible) break;
+        const src = state.entities.get(ev.sourceId);
+        if (src?.defId === 'celestial_cannon') {
+          this.audio.playCelestialChargeStart();
+        } else {
+          this.audio.play(ev);
+          this.effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+        }
+        break;
+      }
+      case 'artilleryImpact':
+        if (visible) {
+          this.audio.playCelestialImpact();
+          this.effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
+          this.effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
+          this.effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
+          spawnCelestialScorch(ev.x, ev.y, ev.radius);
+        }
         break;
       case 'entityDied':
-        if (visible) this.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
+        }
         break;
       case 'buildingComplete': {
-        const b = this.getState().entities.get(ev.id);
+        const b = state.entities.get(ev.id);
         const nav = this.getServices().nav;
-        if (b && isWorldPointVisible(this.getState(), this.humanId, b.pos.x, b.pos.y, nav)) {
+        if (b && isWorldPointVisible(state, this.humanId, b.pos.x, b.pos.y, nav)) {
+          this.audio.play(ev);
           this.effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
         }
         break;
       }
       case 'manaDeposited':
-        if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
+        }
         break;
       case 'manaConjured':
-        if (visible) this.effects.spawn('spark', ev.x, ev.y, 0xb58cff, 6);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('spark', ev.x, ev.y, 0xb58cff, 6);
+        }
         break;
       case 'spellCast':
-        if (visible) this.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('ring', ev.x, ev.y, 0xffd166, 60);
+        }
         break;
       case 'superweaponLaunched': {
         const mine = ev.playerId === this.humanId;
         this.onNotify?.(mine ? 'Astral Lance launched!' : 'Warning: enemy Astral Lance detected!');
-        this.effects.spawn('ring', ev.x, ev.y, 0xff5d5d, 60);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('ring', ev.x, ev.y, 0xff5d5d, 60);
+        }
         break;
       }
       case 'superweaponFired':
-        this.effects.spawn('flash', ev.x, ev.y, 0x9fdcff, 40);
+        if (visible) {
+          this.audio.play(ev);
+          this.effects.spawn('flash', ev.x, ev.y, 0x9fdcff, 40);
+        }
+        break;
+      default:
+        if (visible) this.audio.play(ev);
         break;
     }
   }
@@ -86,6 +139,7 @@ export class EventBridge {
       case 'damageDealt':
       case 'healApplied':
       case 'attackCharging':
+      case 'artilleryImpact':
       case 'entityDied':
       case 'manaDeposited':
       case 'manaConjured':
