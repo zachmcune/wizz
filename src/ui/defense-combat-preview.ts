@@ -10,6 +10,7 @@ import { Simulation } from '../sim/simulation';
 import { visibilitySystem } from '../sim/systems/visibility';
 import type { StepContext } from '../sim/context';
 import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
+import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
 import { Renderer } from '../render/renderer';
 import { el } from './dom';
 
@@ -164,6 +165,8 @@ function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects']): void {
       effects.spawn('strike', ev.x, ev.y, 0xfff4d0, ev.radius);
       effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
       effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
+      spawnCelestialScorch(ev.x, ev.y, ev.radius);
+      spawnCelestialSkyStrike(ev.x, ev.y, ev.radius);
       break;
     case 'entityDied':
       effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);

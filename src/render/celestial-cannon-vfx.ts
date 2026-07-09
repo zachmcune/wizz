@@ -26,10 +26,26 @@ interface ScorchedMark {
 
 const scorchMarks: ScorchedMark[] = [];
 
+interface SkyStrike {
+  x: number;
+  y: number;
+  radius: number;
+  age: number;
+  life: number;
+}
+
+const skyStrikes: SkyStrike[] = [];
+
 /** Register a ground scorch mark after an artillery impact (called from EventBridge). */
 export function spawnCelestialScorch(x: number, y: number, radius: number): void {
   if (scorchMarks.length > 24) scorchMarks.shift();
   scorchMarks.push({ x, y, age: 0, life: 50, radius });
+}
+
+/** Sky-to-ground strike column on impact (Astral Lance-style payoff beam). */
+export function spawnCelestialSkyStrike(x: number, y: number, radius: number): void {
+  if (skyStrikes.length > 12) skyStrikes.shift();
+  skyStrikes.push({ x, y, radius, age: 0, life: 22 });
 }
 
 function detRand(seed: number): number {
@@ -89,20 +105,19 @@ function drawBaseRunes(
   drawPos: CelestialDrawPosFn,
   bx: number,
   by: number,
-  facing: number,
   runeProgress: number,
-  minRange: number,
-  radius: number,
+  footprintRadius: number,
   stutter: boolean,
   phase: number,
 ): void {
   const p = drawPos(bx, by);
   const runeCount = 6;
+  // Runes ring the building base — centered on the structure, not the dead-zone radius.
+  const ringR = Math.max(14, footprintRadius * 0.55);
   for (let i = 0; i < runeCount; i++) {
-    const ang = facing + (i / runeCount) * Math.PI * 2;
-    const dist = minRange * 0.55 + radius * 0.3;
-    const rx = p.x + Math.cos(ang) * dist;
-    const ry = p.y + Math.sin(ang) * dist * 0.55;
+    const ang = (i / runeCount) * Math.PI * 2 - Math.PI / 2;
+    const rx = p.x + Math.cos(ang) * ringR;
+    const ry = p.y + Math.sin(ang) * ringR * 0.55;
     const lit = runeProgress >= (i + 1) / runeCount;
     const flicker = stutter && Math.sin(phase * 14 + i * 2.1) > 0.3 ? 0.35 : 1;
     const alpha = (lit ? 0.75 : 0.18) * flicker;
@@ -110,6 +125,8 @@ function drawBaseRunes(
     strokePool.acquire().moveTo(rx - 3, ry).lineTo(rx + 3, ry).stroke({ width: 2, color, alpha });
     if (lit) fillPool.acquire().circle(rx, ry, 2).fill({ color: HOT_CORE, alpha: alpha * 0.6 });
   }
+  // Inner base glow — reinforces that runes belong to the tower footprint.
+  fillPool.acquire().circle(p.x, p.y, ringR * 0.35).fill({ color: ACCENT, alpha: 0.04 + runeProgress * 0.08 });
 }
 
 function drawOrbitingRings(
@@ -124,7 +141,7 @@ function drawOrbitingRings(
   crystalGlow: number,
 ): void {
   const p = drawPos(bx, by);
-  const lift = 28;
+  const lift = 22;
   for (let ring = 0; ring < 2; ring++) {
     const ringR = 18 + ring * 10;
     const spin = phase * spinRate * (ring === 0 ? 1 : -0.7);
@@ -167,7 +184,7 @@ function drawFloatingCrystal(
   const p = drawPos(bx, by);
   const bob = Math.sin(phase * 0.6) * 2;
   const cx = p.x;
-  const cy = p.y - 42 + bob;
+  const cy = p.y - 34 + bob;
   const flicker = stutter ? 0.55 + Math.sin(phase * 18) * 0.35 : 1;
   const coreR = 7 + glow * 4;
   const color = lerpColor(ACCENT, HOT, glow);
@@ -270,6 +287,53 @@ function drawProjectileTrail(
   fillPool.acquire().circle(p.x, p.y, 5 + Math.sin(phase * 8) * 1.5).fill({ color: HOT, alpha: 0.7 });
 }
 
+function drawSkyStrikes(
+  strokePool: GraphicsPool,
+  fillPool: GraphicsPool,
+  drawPos: CelestialDrawPosFn,
+  phase: number,
+): void {
+  for (let i = skyStrikes.length - 1; i >= 0; i--) {
+    const s = skyStrikes[i]!;
+    s.age++;
+    const t = s.age / s.life;
+    if (t >= 1) {
+      skyStrikes.splice(i, 1);
+      continue;
+    }
+    const p = drawPos(s.x, s.y);
+    const alpha = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+    const beamTop = p.y - 420 - s.radius * 0.4;
+    const width = 6 + s.radius * 0.12 * (1 - t * 0.35);
+
+    strokePool.acquire()
+      .moveTo(p.x, beamTop)
+      .lineTo(p.x, p.y)
+      .stroke({ width: width * 1.6, color: ACCENT, alpha: alpha * 0.35 });
+    strokePool.acquire()
+      .moveTo(p.x, beamTop)
+      .lineTo(p.x, p.y)
+      .stroke({ width, color: HOT_CORE, alpha: alpha * 0.82 });
+    strokePool.acquire()
+      .moveTo(p.x, beamTop)
+      .lineTo(p.x, p.y)
+      .stroke({ width: width * 0.35, color: HOT, alpha: alpha * 0.95 });
+
+    fillPool.acquire().circle(p.x, p.y, s.radius * (0.22 + t * 0.08)).fill({ color: HOT, alpha: alpha * 0.55 });
+    fillPool.acquire().circle(p.x, p.y, s.radius * 0.12).fill({ color: HOT_CORE, alpha: alpha * 0.75 });
+    strokePool.acquire().circle(p.x, p.y, s.radius * (0.35 + t * 0.5)).stroke({
+      width: 3 - t * 1.5,
+      color: ACCENT,
+      alpha: alpha * 0.7,
+    });
+
+    // Brief aurora patch at the top of the beam (matches charge-up sky connection).
+    const vortexY = beamTop + 28;
+    const vortexR = 16 + Math.sin(phase * 2 + s.x) * 3;
+    strokePool.acquire().circle(p.x, vortexY, vortexR).stroke({ width: 1.5, color: ACCENT_VIOLET, alpha: alpha * 0.35 });
+  }
+}
+
 function drawScorchMarks(
   strokePool: GraphicsPool,
   fillPool: GraphicsPool,
@@ -360,7 +424,7 @@ export function renderCelestialCannons(
     }
 
     const seed = e.id * 0.31 + state.tick * 0.02;
-    drawBaseRunes(strokePool, fillPool, drawPos, e.pos.x, e.pos.y, e.facing, runeProgress, minRange, e.radius, stutter, phase);
+    drawBaseRunes(strokePool, fillPool, drawPos, e.pos.x, e.pos.y, runeProgress, e.radius, stutter, phase);
     drawOrbitingRings(strokePool, fillPool, drawPos, e.pos.x, e.pos.y, spinRate, phase, seed, crystalGlow);
     drawFloatingCrystal(fillPool, strokePool, drawPos, e.pos.x, e.pos.y, crystalGlow, stutter && !e.chargingAttack, phase);
 
@@ -378,6 +442,7 @@ export function renderCelestialCannons(
     drawProjectileTrail(strokePool, fillPool, drawPos, e.pos.x, e.pos.y, e.facing, phase);
   }
 
+  drawSkyStrikes(strokePool, fillPool, drawPos, phase);
   drawScorchMarks(strokePool, fillPool, drawPos);
 }
 

@@ -419,7 +419,7 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   frost_spire: { wMul: 0.88, hMul: 0.68 },
   inferno_beacon: { wMul: 0.88, hMul: 0.62 },
   storm_conductor: { wMul: 0.85, hMul: 0.78 },
-  celestial_cannon: { wMul: 0.92, hMul: 0.92 },
+  celestial_cannon: { wMul: 0.82, hMul: 0.78 },
   sanctuary_spire: { wMul: 0.82, hMul: 0.82 },
   stone_golem: { wMul: 0.95, hMul: 0.55 },
   siege_behemoth: { wMul: 1.1, hMul: 0.5 },

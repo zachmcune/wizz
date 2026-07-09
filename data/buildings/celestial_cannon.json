@@ -25,7 +25,7 @@
   },
   "art": {
     "shape": "building",
-    "size": 90,
+    "size": 74,
     "accent": "#d9f3ff",
     "sprite": "celestial_cannon"
   }
