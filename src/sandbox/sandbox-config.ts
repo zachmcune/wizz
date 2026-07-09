@@ -1,5 +1,13 @@
 import type { MatchConfig } from '../sim/types';
+import type { ProjectionMode } from '../core/projection';
 import { defaultSandboxSettings } from '../sim/sandbox-types';
+
+/** Developer sandbox always runs in oblique 2.5D for parity with the voxel art pipeline. */
+export const SANDBOX_PROJECTION_MODE: ProjectionMode = 'oblique';
+
+export function getSandboxProjectionMode(): ProjectionMode {
+  return SANDBOX_PROJECTION_MODE;
+}
 
 export function isSandboxFeatureEnabled(): boolean {
   return true;

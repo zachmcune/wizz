@@ -13,7 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
-import { buildSandboxMatchConfig, shouldOpenSandbox } from '../sandbox/sandbox-config';
+import { buildSandboxMatchConfig, getSandboxProjectionMode, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -62,6 +62,7 @@ export class AppRouter {
       matchId: 'sandbox',
       startPaused: false,
       sandbox: true,
+      matchProjectionMode: getSandboxProjectionMode(),
       matchConfig: config,
     });
     void this.game.start().catch((err) => {
