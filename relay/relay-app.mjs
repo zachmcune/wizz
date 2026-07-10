@@ -69,6 +69,34 @@ function availableSlot(state) {
   return state.slots.find((s) => (s.kind === 'open' || s.kind === 'human') && !s.claimedBy);
 }
 
+function takenStartIndices(state, exceptSlotId = null) {
+  const taken = new Set();
+  for (const slot of state.slots) {
+    if (slot.kind === 'closed') continue;
+    if (slot.id === exceptSlotId) continue;
+    const occupiesPosition = slot.kind === 'ai' || !!slot.claimedBy;
+    if (!occupiesPosition) continue;
+    if (slot.startIndex !== null && slot.startIndex !== undefined) taken.add(slot.startIndex);
+  }
+  return taken;
+}
+
+/** Pick the lowest unused spawn index for a slot, keeping a valid preset when possible. */
+function assignAvailableStartIndex(state, slot) {
+  const taken = takenStartIndices(state, slot.id);
+  const current = slot.startIndex;
+  if (current !== null && current !== undefined && !taken.has(current)) return current;
+  const maxCandidates = Math.max(state.slots.filter((s) => s.kind !== 'closed').length, 4);
+  for (let i = 0; i < maxCandidates; i++) {
+    if (!taken.has(i)) {
+      slot.startIndex = i;
+      return i;
+    }
+  }
+  slot.startIndex = null;
+  return null;
+}
+
 class Room {
   /** @param {string} id @param {Map<string, Room>} rooms */
   constructor(id, rooms) {
@@ -126,6 +154,7 @@ class Room {
       if (slot.kind === 'open') slot.kind = 'human';
       slot.claimedBy = connId;
       slot.ready = false;
+      assignAvailableStartIndex(this.lobbyState, slot);
       slotId = slot.id;
     }
 
@@ -249,16 +278,6 @@ class Room {
       ws.send(JSON.stringify({ t: 'error', message: 'Slot already claimed' }));
       return;
     }
-    const cornerTaken =
-      startIndex !== null &&
-      startIndex !== undefined &&
-      this.lobbyState.slots.some(
-        (s) => s.id !== slotId && s.kind !== 'closed' && s.startIndex === startIndex,
-      );
-    if (cornerTaken) {
-      ws.send(JSON.stringify({ t: 'error', message: 'Corner already taken' }));
-      return;
-    }
 
     const updatingOwnSlot = slot.claimedBy === info.connId;
     if (!updatingOwnSlot) {
@@ -277,8 +296,17 @@ class Room {
 
     slot.team = team;
     slot.color = color;
-    slot.startIndex = startIndex;
     slot.factionId = factionId;
+    if (startIndex !== null && startIndex !== undefined) {
+      slot.startIndex = startIndex;
+    }
+    if (
+      slot.startIndex === null ||
+      slot.startIndex === undefined ||
+      takenStartIndices(this.lobbyState, slot.id).has(slot.startIndex)
+    ) {
+      assignAvailableStartIndex(this.lobbyState, slot);
+    }
 
     if (!updatingOwnSlot) {
       ws.send(JSON.stringify({ t: 'joined', connId: info.connId, playerId: slotId, seed: this.seed, startTick: 0, isHost: ws === this.hostWs, lobbyState: this.lobbyState, waiting: true }));

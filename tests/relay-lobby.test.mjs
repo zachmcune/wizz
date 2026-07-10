@@ -53,6 +53,36 @@ describe('relay lobby', () => {
     expect(room.clients.get(host).slotId).toBe('player0');
   });
 
+  it('auto-assigns an unused starting position when a guest joins', () => {
+    const rooms = new Map();
+    const room = new Room('SPAWN', rooms);
+    const lobby = cloneLobby(DEFAULT_LOBBY);
+    lobby.slots[0].startIndex = 0;
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+
+    expect(room.lobbyState.slots[0].startIndex).toBe(0);
+    expect(room.lobbyState.slots[1].startIndex).toBe(1);
+  });
+
+  it('reassigns starting position when the slot preset conflicts', () => {
+    const rooms = new Map();
+    const room = new Room('CONFLICT', rooms);
+    const lobby = lobbyWithSlots(3);
+    lobby.slots[1].startIndex = 0;
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+
+    expect(room.lobbyState.slots[0].startIndex).toBe(0);
+    expect(room.lobbyState.slots[1].startIndex).toBe(1);
+  });
+
   it('auto-assigns guests to the next open slot on join', () => {
     const rooms = new Map();
     const room = new Room('AUTO', rooms);
