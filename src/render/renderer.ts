@@ -9,7 +9,7 @@ import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../si
 import type { Registry } from '../data/registry';
 import type { MapData, ArtDef } from '../data/defs';
 import { buildingHasPower, buildingPowerUse, isVisibleTo, isTileFogged, listBuildingGhosts, isBuildingInLiveSight, isNodeIntelVisible, getPlayer, hasBuff, pickEntity, pickResourceNode } from '../sim/views';
-import { garrisonedInId, getHarvester, getFrostExposure, hasMorph, getMorph } from '../sim/capabilities';
+import { garrisonedInId, getHarvester, getFrostExposure, hasMorph, getMorph, getProjectileCapability } from '../sim/capabilities';
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
@@ -440,7 +440,11 @@ export class Renderer {
       n.sprite.visible = liveVisible && !showAsGhost;
       if (n.label) n.label.visible = liveVisible && !showAsGhost;
       if (e.kind === 'projectile' && e.defId === 'arcane_bolt') {
-        n.sprite.visible = false;
+        const cap = getProjectileCapability(e);
+        const src = cap ? state.entities.get(cap.sourceId) : undefined;
+        if (src?.defId === 'arcane_sentry') {
+          n.sprite.visible = false;
+        }
       }
       if (!liveVisible && !showAsGhost) continue;
       if (showAsGhost) continue;
