@@ -65,6 +65,10 @@ function connectedHumans(room) {
   return [...room.clients.values()].filter((c) => c.slotId).length;
 }
 
+function availableSlot(state) {
+  return state.slots.find((s) => (s.kind === 'open' || s.kind === 'human') && !s.claimedBy);
+}
+
 class Room {
   /** @param {string} id @param {Map<string, Room>} rooms */
   constructor(id, rooms) {
@@ -112,6 +116,17 @@ class Room {
         hostSlot.ready = true;
         slotId = hostSlot.id;
       }
+    } else {
+      const slot = availableSlot(this.lobbyState);
+      if (!slot) {
+        ws.send(JSON.stringify({ t: 'error', message: 'Lobby is full' }));
+        ws.close();
+        return null;
+      }
+      if (slot.kind === 'open') slot.kind = 'human';
+      slot.claimedBy = connId;
+      slot.ready = false;
+      slotId = slot.id;
     }
 
     // lastAckTick: highest sim tick this client reports processed (-1 = none yet).
@@ -135,6 +150,7 @@ class Room {
     );
 
     this.broadcastExcept(ws, { t: 'peerJoined', playerId: connId });
+    if (!isHost) this.broadcast({ t: 'lobbyState', state: this.lobbyState });
     this.broadcastWaiting();
 
     return connId;
@@ -244,16 +260,29 @@ class Room {
       return;
     }
 
-    if (slot.kind === 'open') slot.kind = 'human';
-    slot.claimedBy = info.connId;
+    const updatingOwnSlot = slot.claimedBy === info.connId;
+    if (!updatingOwnSlot) {
+      for (const other of this.lobbyState.slots) {
+        if (other.claimedBy === info.connId && other.id !== slotId) {
+          other.claimedBy = null;
+          other.ready = false;
+          if (other.kind === 'human' && ws !== this.hostWs) other.kind = 'open';
+        }
+      }
+      if (slot.kind === 'open') slot.kind = 'human';
+      slot.claimedBy = info.connId;
+      slot.ready = false;
+      info.slotId = slotId;
+    }
+
     slot.team = team;
     slot.color = color;
     slot.startIndex = startIndex;
     slot.factionId = factionId;
-    slot.ready = false;
-    info.slotId = slotId;
 
-    ws.send(JSON.stringify({ t: 'joined', connId: info.connId, playerId: slotId, seed: this.seed, startTick: 0, isHost: ws === this.hostWs, lobbyState: this.lobbyState, waiting: true }));
+    if (!updatingOwnSlot) {
+      ws.send(JSON.stringify({ t: 'joined', connId: info.connId, playerId: slotId, seed: this.seed, startTick: 0, isHost: ws === this.hostWs, lobbyState: this.lobbyState, waiting: true }));
+    }
 
     this.broadcast({ t: 'lobbyState', state: this.lobbyState });
     this.broadcastWaiting();
@@ -469,7 +498,7 @@ class Room {
 
   broadcastWaiting() {
     const max = maxHumans(this.lobbyState);
-    const count = this.clients.size;
+    const count = connectedHumans(this);
     this.broadcast({ t: 'waiting', playerCount: count, maxPlayers: max });
   }
 

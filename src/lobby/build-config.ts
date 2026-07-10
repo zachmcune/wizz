@@ -56,7 +56,7 @@ export function validateLobby(state: LobbyState, mode: LobbyMode, map: MapData, 
     if (mode === 'guest' && localId) {
       const mine = state.slots.find((s) => s.id === localId);
       if (mine && !mine.ready) {
-        errors.push('Mark yourself ready before starting');
+        errors.push('Ready up when you are finished configuring');
       }
     }
   }

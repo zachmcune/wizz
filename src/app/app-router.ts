@@ -24,6 +24,13 @@ import type { Settings } from '../storage/settings';
 import type { LobbyState } from '../lobby/types';
 import type { WebSocketTransport } from '../net/ws-transport';
 
+function guestLocalSlotId(connId: string, lobbyState: LobbyState, playerId: string): string | undefined {
+  const mine = lobbyState.slots.find((s) => s.claimedBy === connId);
+  if (mine) return mine.id;
+  if (/^player[0-3]$/.test(playerId)) return playerId;
+  return undefined;
+}
+
 export interface AppRouterDeps {
   host: HTMLElement;
   registry: Registry;
@@ -225,13 +232,18 @@ export class AppRouter {
     this.clearHost();
     try {
       this.session = await joinMultiplayerRoom(room);
+      const localSlotId = guestLocalSlotId(
+        this.session.connId,
+        this.session.lobbyState,
+        this.session.localPlayerId,
+      );
       const lobby = new MatchLobby({
         mode: 'guest',
         registry: this.deps.registry,
         initialState: this.session.lobbyState,
         room,
         connId: this.session.connId,
-        localSlotId: undefined,
+        localSlotId,
         lobbyClient: this.session.lobby,
         onStart: () => {},
         onBack: () => {
@@ -241,7 +253,7 @@ export class AppRouter {
         },
       });
       this.deps.host.appendChild(lobby.root);
-      lobby.setStatus('Claim a slot, configure your settings, then ready up.');
+      lobby.setStatus('Configure your settings, then ready up.');
       this.wireOnlineLobby(this.session, lobby);
     } catch (err) {
       this.disconnectSession();
