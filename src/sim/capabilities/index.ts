@@ -15,6 +15,7 @@ import type {
   MorphCapability,
   ProductionCapability,
   ProjectileCapability,
+  TurretWeaponCapability,
 } from './types';
 
 export type {
@@ -29,6 +30,7 @@ export type {
   MorphCapability,
   FrostExposureCapability,
   BurnLingerCapability,
+  TurretWeaponCapability,
   CapabilityKind,
 } from './types';
 
@@ -228,6 +230,29 @@ export function clearBeamWeapon(e: BuildingEntity): void {
 export function hashBeamWeaponCapability(cap: BeamWeaponCapability): string {
   const hits = [...cap.lastHitIds].sort((a, b) => a - b).join(',');
   return `BM${cap.targetId}:${cap.facing}:${cap.ticksSinceDamage}:${hits}`;
+}
+
+// --- Turret weapon ---
+
+export function getTurretWeapon(e: Entity): TurretWeaponCapability | null {
+  if (e.kind !== 'building') return null;
+  return e.caps?.turretWeapon ?? null;
+}
+
+export function ensureTurretWeapon(e: BuildingEntity): TurretWeaponCapability {
+  const caps = ensureCaps(e);
+  if (!caps.turretWeapon) {
+    caps.turretWeapon = { angularVelocity: 0, crystalIndex: 0, hadTarget: false };
+  }
+  return caps.turretWeapon;
+}
+
+export function clearTurretWeapon(e: BuildingEntity): void {
+  if (e.caps) delete e.caps.turretWeapon;
+}
+
+export function hashTurretWeaponCapability(cap: TurretWeaponCapability): string {
+  return `TW${cap.angularVelocity}:${cap.crystalIndex}:${cap.hadTarget ? 1 : 0}`;
 }
 
 // --- Morph ---

@@ -28,6 +28,11 @@ const sfxSchema = z
 
 const vsSchema = z.object({ light: z.number(), heavy: z.number(), building: z.number() });
 
+const turretWeaponSchema = z.object({
+  rotationSpeed: z.number().positive(),
+  fireArcRadians: z.number().positive(),
+});
+
 const beamWeaponSchema = z.object({
   kind: z.enum(['flame', 'frost']),
   startWidth: z.number().positive(),
@@ -44,6 +49,7 @@ const weaponSchema = z.object({
   range: z.number().nonnegative(),
   cooldownTicks: z.number().int().positive(),
   projectile: z.string().nullable(),
+  turret: turretWeaponSchema.optional(),
   beam: beamWeaponSchema.optional(),
   splashRadius: z.number().nonnegative().optional(),
   impactRadius: z.number().nonnegative().optional(),

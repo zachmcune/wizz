@@ -11,8 +11,9 @@ import { applyChainDamage, applyDamage, applyOnHitStatus, applySplashDamage } fr
 import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 import { resolveWeaponStat } from '../modifiers';
-import { makeProjectileCapability, hasHarvester, isChanneling, garrisonedInId } from '../capabilities';
+import { makeProjectileCapability, hasHarvester, isChanneling, garrisonedInId, ensureTurretWeapon } from '../capabilities';
 import { makeProjectile } from '../factory';
+import { angleDelta, rotateToward } from '../beam-util';
 
 const scratch: EntityId[] = [];
 
@@ -78,12 +79,27 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
   return best;
 }
 
-export function fire(state: GameState, ctx: StepContext, e: UnitEntity | BuildingEntity, target: Entity, w: WeaponDef): void {
+export function fire(
+  state: GameState,
+  ctx: StepContext,
+  e: UnitEntity | BuildingEntity,
+  target: Entity,
+  w: WeaponDef,
+  opts?: { crystalIndex?: number },
+): void {
   const player = getPlayer(state, e.owner)!;
   const cooldownTicks = resolveWeaponStat(ctx.services.registry, player, e, w, 'cooldownTicks', state.tick);
   e.cooldowns.attack = Math.max(1, Math.ceil(cooldownTicks));
-  e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
-  ctx.events.push({ type: 'attackFired', sourceId: e.id, x: e.pos.x, y: e.pos.y });
+  if (!w.turret) {
+    e.facing = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
+  }
+  ctx.events.push({
+    type: 'attackFired',
+    sourceId: e.id,
+    x: e.pos.x,
+    y: e.pos.y,
+    crystalIndex: opts?.crystalIndex,
+  });
   if (w.projectile) {
     const pdef = ctx.services.registry.projectile(w.projectile);
     const proj = makeProjectile(
@@ -126,6 +142,38 @@ export function fire(state: GameState, ctx: StepContext, e: UnitEntity | Buildin
   }
 }
 
+function updateTurretFacing(
+  e: BuildingEntity,
+  w: WeaponDef,
+  aim: number | null,
+  dt: number,
+): void {
+  const turret = w.turret!;
+  const turretState = ensureTurretWeapon(e);
+  const maxStep = turret.rotationSpeed * dt;
+
+  if (aim !== null) {
+    const prevFacing = e.facing;
+    const nextFacing = rotateToward(prevFacing, aim, maxStep);
+    turretState.angularVelocity = (nextFacing - prevFacing) / dt;
+    e.facing = nextFacing;
+    turretState.hadTarget = true;
+    return;
+  }
+
+  if (Math.abs(turretState.angularVelocity) > 0.001) {
+    const decay = Math.pow(0.15, dt);
+    turretState.angularVelocity *= decay;
+    if (Math.abs(turretState.angularVelocity) < 0.05) turretState.angularVelocity = 0;
+    e.facing += turretState.angularVelocity * dt;
+  }
+  turretState.hadTarget = false;
+}
+
+function canTurretFire(e: BuildingEntity, w: WeaponDef, aim: number): boolean {
+  return Math.abs(angleDelta(e.facing, aim)) <= w.turret!.fireArcRadians;
+}
+
 export function combatSystem(state: GameState, ctx: StepContext): void {
   const dt = 1 / TICK_HZ;
   for (const e of entitiesSorted(state)) {
@@ -166,16 +214,31 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     if (!target && (e.stance === 'aggressive' || (order && order.type === 'attackMove') || e.kind === 'building')) {
       target = acquireTarget(state, ctx, e, sightOf(ctx, e), w);
     }
+
+    if (e.kind === 'building' && w.turret) {
+      const aim = target && isAlive(target) && isVisibleTo(state, e.owner, target, ctx.services.nav)
+        ? Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x)
+        : null;
+      updateTurretFacing(e, w, aim, dt);
+    }
+
     if (!target) continue;
 
     const d = len(target.pos.x - e.pos.x, target.pos.y - e.pos.y);
     const reach = w.range + e.radius + target.radius;
     const minReach = (w.minRange ?? 0) + e.radius + target.radius;
     if (d <= reach && d >= minReach) {
-      if ((e.cooldowns.attack ?? 0) <= 0) {
+      const aim = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
+      const turretReady = !w.turret || (e.kind === 'building' && canTurretFire(e, w, aim));
+      if ((e.cooldowns.attack ?? 0) <= 0 && turretReady) {
         if (e.kind === 'building' && w.chargeTicks && w.chargeTicks > 0) {
           e.chargingAttack = { targetId: target.id, remainingTicks: w.chargeTicks };
           ctx.events.push({ type: 'attackCharging', sourceId: e.id, x: e.pos.x, y: e.pos.y });
+        } else if (e.kind === 'building' && w.turret) {
+          const turret = ensureTurretWeapon(e);
+          const crystalIndex = turret.crystalIndex;
+          turret.crystalIndex = (crystalIndex + 1) % 3;
+          fire(state, ctx, e, target, w, { crystalIndex });
         } else {
           fire(state, ctx, e, target, w);
         }

@@ -10,6 +10,7 @@ import {
   hashProductionCapability,
   hashGarrisonHostCapability,
   hashBeamWeaponCapability,
+  hashTurretWeaponCapability,
   hashMorphCapability,
   getProjectileCapability,
   getHarvester,
@@ -18,6 +19,7 @@ import {
   getProduction,
   getGarrisonHost,
   getBeamWeapon,
+  getTurretWeapon,
   getMorph,
   getFrostExposure,
   getBurnLinger,
@@ -143,6 +145,8 @@ function hashEntity(state: GameState, e: Entity): string {
   const garrisonHostStr = garrisonHost ? hashGarrisonHostCapability(garrisonHost) : '';
   const beam = getBeamWeapon(e);
   const beamStr = beam ? hashBeamWeaponCapability(beam) : '';
+  const turret = getTurretWeapon(e);
+  const turretStr = turret ? hashTurretWeaponCapability(turret) : '';
   const morph = getMorph(e);
   const morphStr = morph ? hashMorphCapability(morph) : '';
   const buffsStr =
@@ -179,6 +183,7 @@ function hashEntity(state: GameState, e: Entity): string {
     harvestStr,
     channelCapStr,
     beamStr,
+    turretStr,
     morphStr,
     projStr,
   ].join(':');

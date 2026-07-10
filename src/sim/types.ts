@@ -171,9 +171,9 @@ export type GameEvent =
   | { type: 'mobileHQPacked'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'buildingSold'; id: EntityId; defId: string; owner: PlayerId; refund: number }
   | { type: 'buildingPlaced'; id: EntityId; defId: string; owner: PlayerId }
-  | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number }
+  | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number; sourceId?: EntityId }
   | { type: 'healApplied'; targetId: EntityId; amount: number; x: number; y: number }
-  | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
+  | { type: 'attackFired'; sourceId: EntityId; x: number; y: number; crystalIndex?: number }
   | { type: 'attackCharging'; sourceId: EntityId; x: number; y: number }
   | {
       type: 'chainLightningFired';

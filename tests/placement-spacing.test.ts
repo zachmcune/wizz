@@ -38,7 +38,7 @@ describe('building placement spacing', () => {
     const spotTy = Math.floor(sanctum.pos.y / 32);
     const wallSpacing = buildingPlacementSpacing(reg.building('stone_wall'));
     const gateSpacing = buildingPlacementSpacing(reg.building('arcane_gate'));
-    const turretSpacing = buildingPlacementSpacing(reg.building('ward_turret'));
+    const turretSpacing = buildingPlacementSpacing(reg.building('arcane_sentry'));
 
     nav.setBuildingBlock(spotTx, spotTy, 1, true);
     expect(nav.canPlace(spotTx + 1, spotTy, 1, gateSpacing)).toBe(true);

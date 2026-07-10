@@ -29,7 +29,7 @@ describe('RA2 low power', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const human = state.players.find((p) => p.id === 'player0')!;
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
-    const turret = spawnEntity(state, services, null, 'ward_turret', human.id, sanctum!.pos.x + 64, sanctum!.pos.y);
+    const turret = spawnEntity(state, services, null, 'arcane_sentry', human.id, sanctum!.pos.x + 64, sanctum!.pos.y);
     const circle = spawnEntity(state, services, null, 'summoning_circle', human.id, sanctum!.pos.x + 128, sanctum!.pos.y);
     recomputePower(state, services);
     expect(isPowerShort(state, human.id)).toBe(true);
@@ -45,7 +45,7 @@ describe('RA2 low power', () => {
     const human = state.players.find((p) => p.id === 'player0')!;
     human.mana = 5000;
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
-    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'ward_turret', x: sanctum!.pos.x + 96, y: sanctum!.pos.y }]);
+    sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'arcane_sentry', x: sanctum!.pos.x + 96, y: sanctum!.pos.y }]);
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
     sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'summoning_circle', x: sanctum!.pos.x + 176, y: sanctum!.pos.y }]);
@@ -55,7 +55,7 @@ describe('RA2 low power', () => {
     sim.step();
     for (let i = 0; i < 120; i++) sim.step();
     expect(isPowerShort(state, human.id)).toBe(true);
-    const turret = expectBuilding(ownedBy(state, human.id).find((e) => e.defId === 'ward_turret')!);
+    const turret = expectBuilding(ownedBy(state, human.id).find((e) => e.defId === 'arcane_sentry')!);
     const enemy = [...state.entities.values()].find((e) => e.owner !== human.id && e.kind === 'unit')!;
     const hpBefore = enemy.hp;
     for (let i = 0; i < 80; i++) sim.step();

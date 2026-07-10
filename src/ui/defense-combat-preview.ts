@@ -13,6 +13,7 @@ import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../render/storm-conductor-vfx';
 import { isUnitInSanctuaryAura, resetSanctuaryVfx, spawnSanctuaryAttackTrail } from '../render/sanctuary-spire-vfx';
+import { resetArcaneSentryVfx } from '../render/arcane-sentry-vfx';
 import { Renderer } from '../render/renderer';
 import { el } from './dom';
 
@@ -37,7 +38,7 @@ interface PreviewScenario {
 }
 
 const SCENARIOS: Record<string, PreviewScenario> = {
-  ward_turret: { kind: 'combat', caption: 'Ward Turret firing at advancing heavy troops.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
+  arcane_sentry: { kind: 'combat', caption: 'Arcane Sentry firing rapid arcane bolts at advancing heavy troops.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
   frost_spire: { kind: 'combat', caption: 'Frost Spire channeling a freezing energy stream.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
   inferno_beacon: { kind: 'combat', caption: 'Inferno Beacon sweeping a continuous flamethrower through a swarm.', attackerUnit: 'imp_swarmling', attackerCount: 4, attackerDx: 150, attackerDy: -20, attackerSpacing: 28 },
   storm_conductor: { kind: 'combat', caption: 'Storm Conductor chaining lightning through heavies.', attackerUnit: 'stone_golem', attackerCount: 3, attackerDx: 165, attackerDy: 0, attackerSpacing: 40 },
@@ -330,6 +331,7 @@ export class DefenseCombatPreview {
     this.renderer?.syncTick(built.state);
     this.renderer?.effects.reset();
     resetSanctuaryVfx();
+    resetArcaneSentryVfx();
     this.renderer?.snapDisplay();
     this.frameCamera();
   }

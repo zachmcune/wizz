@@ -3,7 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, recomputePower, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { hasBuff, strongestSlowAttackCooldownFactor, strongestSlowMoveFactor } from '../src/sim/queries';
-import { getBeamWeapon } from '../src/sim/capabilities';
+import { getBeamWeapon, ensureTurretWeapon } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -119,5 +119,43 @@ describe('advanced defense mechanics', () => {
 
     expect(ally.hp).toBeGreaterThan(ally.maxHp - 20);
     expect(ally.hp).toBeLessThanOrEqual(ally.maxHp);
+  });
+
+  it('fires rapid arcane bolts with smooth turret tracking', () => {
+    const { state, services, sim } = setup();
+    const sentry = spawnEntity(state, services, null, 'arcane_sentry', 'player0', 640, 640);
+    const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
+    const hp0 = target.hp;
+
+    let sawProjectile = false;
+    for (let i = 0; i < 40; i++) {
+      sim.step();
+      if ([...state.entities.values()].some((e) => e.kind === 'projectile' && e.defId === 'arcane_bolt')) {
+        sawProjectile = true;
+      }
+    }
+
+    expect(sawProjectile).toBe(true);
+    expect(target.hp).toBeLessThan(hp0);
+    expect(sentry.kind).toBe('building');
+    if (sentry.kind === 'building') {
+      expect(ensureTurretWeapon(sentry).crystalIndex).toBeGreaterThan(0);
+    }
+  });
+
+  it('preserves sustained DPS after rapid-fire redesign', () => {
+    const { state, services, sim } = setup();
+    spawnEntity(state, services, null, 'arcane_sentry', 'player0', 640, 640);
+    const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
+
+    for (let i = 0; i < 20; i++) sim.step();
+    const hpStart = target.hp;
+
+    for (let i = 0; i < 40; i++) sim.step();
+    const damage = hpStart - target.hp;
+
+    // 3 dmg × 10/sec × 0.9 vs heavy ≈ 27 DPS → ~54 HP over 2 seconds
+    expect(damage).toBeGreaterThan(45);
+    expect(damage).toBeLessThan(65);
   });
 });

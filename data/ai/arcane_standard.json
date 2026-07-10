@@ -23,7 +23,7 @@
     "celestial_cannon"
   ],
   "turret": {
-    "defId": "ward_turret",
+    "defId": "arcane_sentry",
     "requiresBuilding": "golem_forge",
     "armyThresholdFactor": 0.5,
     "manaReserveFactor": 2

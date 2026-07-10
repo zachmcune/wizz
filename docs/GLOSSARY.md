@@ -10,7 +10,7 @@
 - **Resonance Vault** — mine economy upgrade; boosts harvest rate and trains Mana Weavers.
 - **Ley Conduit** — power building. **Summoning Circle** — infantry-tier producer.
 - **Golem Forge** — vehicle-tier producer. **Arcane Nexus** — tech + spell hub.
-- **Ward Turret** — static defense.
+- **Arcane Sentry** — sustained-fire static defense (rapid arcane bolts).
 - **Spell** — global archmage power on cooldown (Meteor Storm, Aegis Ward, Blink Gate).
 - **Tick** — one fixed simulation step (20/sec). **Command** — a serializable intent.
   **Event** — a fact the sim emits after a change (for UI/audio).

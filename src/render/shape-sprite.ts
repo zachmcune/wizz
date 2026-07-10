@@ -129,9 +129,15 @@ const GLYPHS: Record<string, GlyphFn> = {
       }
     }
   },
-  ward_turret: (g, r, accent, dir = 0) => {
+  arcane_sentry: (g, r, accent, dir = 0) => {
     const ang = facingAngle(dir);
-    g.moveTo(0, 0).lineTo(Math.cos(ang) * r * 0.75, Math.sin(ang) * r * 0.75).stroke({ width: 3, color: accent });
+    g.circle(0, -r * 0.35, r * 0.22).stroke({ width: 1.5, color: accent, alpha: 0.85 });
+    g.moveTo(0, -r * 0.35).lineTo(Math.cos(ang) * r * 0.55, -r * 0.35 + Math.sin(ang) * r * 0.55)
+      .stroke({ width: 2, color: accent, alpha: 0.9 });
+    for (let i = 0; i < 3; i++) {
+      const a = ang + (i / 3) * Math.PI * 2;
+      g.circle(Math.cos(a) * r * 0.28, -r * 0.35 + Math.sin(a) * r * 0.16, r * 0.07).fill(accent);
+    }
   },
   arcane_gate: (g, r, accent) => {
     g.arc(0, r * 0.15, r * 0.45, Math.PI, 0).stroke({ width: 2.5, color: accent });
@@ -304,11 +310,14 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
     g.roundRect(-r * 0.95, -r * 0.35, r * 1.9, r * 0.7, r * 0.06).fill(fill).stroke({ width: 2, color: OUTLINE });
     GLYPHS.stone_wall!(g, r, accent);
   },
-  ward_turret: (g, size, fill, accent, dir) => {
+  arcane_sentry: (g, size, fill, accent, dir) => {
     const r = size / 2;
-    g.roundRect(-r * 0.75, -r * 0.15, r * 1.5, r * 0.85, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.circle(0, -r * 0.35, r * 0.4).fill(fill).stroke({ width: 2, color: OUTLINE });
-    GLYPHS.ward_turret!(g, r, accent, dir);
+    g.roundRect(-r * 0.7, r * 0.05, r * 1.4, r * 0.35, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r * 0.82, r * 0.18, -r * 0.38, 0, -r * 0.22, -r * 0.18, -r * 0.38])
+      .fill(fill)
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.circle(0, -r * 0.55, r * 0.2).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    GLYPHS.arcane_sentry!(g, r, accent, dir);
   },
   arcane_gate: (g, size, fill, accent) => {
     const r = size / 2;
@@ -420,7 +429,7 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   summoning_circle: { wMul: 1.0, hMul: 0.35 },
   golem_forge: { wMul: 1.15, hMul: 0.7 },
   stone_wall: { wMul: 1.2, hMul: 0.28 },
-  ward_turret: { wMul: 0.85, hMul: 0.55 },
+  arcane_sentry: { wMul: 0.85, hMul: 0.58 },
   arcane_gate: { wMul: 1.1, hMul: 0.4 },
   scrying_obelisk: { wMul: 0.7, hMul: 0.8 },
   arcane_nexus: { wMul: 1.0, hMul: 0.5 },
@@ -656,14 +665,14 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     }
     drawAccentGlyph(g, 'stone_wall', 0, -r * 0.05, r * 0.7, accent, dir);
   },
-  ward_turret: (g, size, fill, accent, dir) => {
+  arcane_sentry: (g, size, fill, accent, dir) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.42, r * 0.62, r * 0.3, r * 0.35, fillN);
-    drawIsoPrism(g, 0, -r * 0.02, r * 0.36, r * 0.18, r * 0.52, fillN);
-    drawIsoPrism(g, r * 0.42, -r * 0.55, r * 0.5, r * 0.1, r * 0.12, fillN);
-    g.circle(r * 0.92, -r * 0.62, r * 0.11).fill(accent).stroke({ width: 1, color: OUTLINE });
-    drawAccentGlyph(g, 'ward_turret', 0, -r * 0.48, r * 0.4, accent, dir);
+    drawIsoPlate(g, 0, r * 0.38, r * 0.78, r * 0.28, fillN);
+    drawIsoPrism(g, 0, r * 0.12, r * 0.22, r * 0.14, r * 0.18, fillN);
+    drawIsoPyramid(g, 0, -r * 0.08, r * 0.2, r * 0.12, r * 0.75, fillN);
+    g.circle(0, -r * 0.68, r * 0.16).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    drawAccentGlyph(g, 'arcane_sentry', 0, -r * 0.55, r * 0.42, accent, dir);
   },
   arcane_gate: (g, size, fill, accent, dir) => {
     const r = size / 2;
@@ -892,6 +901,12 @@ function drawObliqueBox(
   }
 }
 
+const ROTATABLE_BUILDING_SPRITES = new Set(['arcane_sentry']);
+
+function isRotatableBuildingSprite(sprite: string): boolean {
+  return ROTATABLE_BUILDING_SPRITES.has(sprite);
+}
+
 export class ShapeSpriteProvider implements SpriteProvider {
   private cache = new Map<string, Texture>();
 
@@ -906,7 +921,12 @@ export class ShapeSpriteProvider implements SpriteProvider {
     const mode = getProjectionMode();
     const sprite = art.sprite ?? '';
     const isBuildingDesign = sprite && ORTHO_DESIGNS[sprite] && !isUnitSprite(sprite);
-    const dir = art.shape === 'building' || isBuildingDesign ? 0 : direction % 8;
+    const rotatableBuilding = isRotatableBuildingSprite(sprite);
+    const dir = rotatableBuilding
+      ? direction % 8
+      : art.shape === 'building' || isBuildingDesign
+        ? 0
+        : direction % 8;
     const key = `${mode}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
     let tex = this.cache.get(key);
     if (!tex) {

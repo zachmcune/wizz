@@ -1,8 +1,8 @@
 {
-  "id": "ward_turret",
-  "name": "Ward Turret",
-  "shortLabel": "TWR",
-  "description": "Defensive tower. Automatically attacks enemies in range.",
+  "id": "arcane_sentry",
+  "name": "Arcane Sentry",
+  "shortLabel": "SNTR",
+  "description": "Signature sustained-fire defense. Channels rapid arcane bolts through orbiting focusing crystals — constant pressure, no charge-up.",
   "kind": "building",
   "cost": 250,
   "buildTime": 5,
@@ -16,10 +16,14 @@
   ],
   "powerUsed": 20,
   "weapon": {
-    "damage": 24,
+    "damage": 3,
     "range": 165,
-    "cooldownTicks": 16,
+    "cooldownTicks": 2,
     "projectile": "arcane_bolt",
+    "turret": {
+      "rotationSpeed": 8.98,
+      "fireArcRadians": 1.047
+    },
     "vs": {
       "light": 1.1,
       "heavy": 0.9,
@@ -29,7 +33,7 @@
   "art": {
     "shape": "building",
     "size": 30,
-    "accent": "#d65b6b",
-    "sprite": "ward_turret"
+    "accent": "#7fe3ff",
+    "sprite": "arcane_sentry"
   }
 }
