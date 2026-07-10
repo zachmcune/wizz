@@ -67,12 +67,23 @@ This is the constant, ambient layer; the pulse is the dramatic layer on top of i
 
 ## Dynamic Scaling With Army Size
 
-The field should visibly reward gathering: with 1–2 units present, keep the rune circle and
-motes subtle. At a squad (roughly 4+), brighten the crystal's resting glow one notch, thicken the
-mist, and add a second, larger outer wave-ring lagging just behind the main pulse wave. With a
-full army camped inside, push the crystal to near its Bloom brightness even at rest, fill the
-mist with visible drifting light, and let the pulse wave leave a faint, slowly-fading afterimage
-ring. The tower should look genuinely different defended by an army versus standing empty.
+The field should visibly reward gathering, stepped through exactly three discrete tiers rather
+than a smooth continuous ramp — three clearly different looks are memorable and readable at a
+glance; a continuous scale is nearly invisible to a player scanning a battle:
+
+- **Tier 1 — Watch (1–3 units).** Baseline presentation: rune circle and motes stay subtle, the
+  crystal sits at normal resting brightness, and only the single main pulse wave-ring plays.
+- **Tier 2 — Garrison (roughly 4–9 units).** Brighten the crystal's resting glow one full notch,
+  thicken the mist, and add a second, larger outer wave-ring that lags just behind the main
+  pulse wave on every Bloom.
+- **Tier 3 — Host (roughly 10+ units).** Push the crystal to near its Bloom brightness even at
+  rest, fill the mist with visibly drifting light, and let the pulse wave leave a faint, slowly
+  fading afterimage ring behind it.
+
+Each tier should snap on with a brief (~0.5s) crossfade the moment the unit count crosses its
+threshold — no per-unit incremental scaling in between — so the transition itself reads as a
+reward beat ("we just filled the sanctuary") rather than a gradual, easy-to-miss creep. The
+tower should look genuinely different defended by an army versus standing empty.
 
 ## Idle Animation
 
@@ -137,6 +148,7 @@ Avoid simple percentage increases; each upgrade should create a strategic decisi
   other buildings) so, paired with the Conductor's boom, players can identify both signature
   towers by ear alone — this is the single highest-leverage audio choice for making the Spire
   iconic.
-- Recommend capping Dynamic Scaling at three visible tiers (solo/squad/army) rather than a smooth
-  continuous scale — continuous scaling is nearly invisible to players glancing at a battle,
-  while three discrete, clearly different looks are memorable and screenshot-worthy.
+- Adopted: Dynamic Scaling is defined above as exactly three discrete, named tiers (Watch /
+  Garrison / Host) that snap on at fixed unit-count thresholds, rather than a smooth continuous
+  scale — continuous scaling is nearly invisible to players glancing at a battle, while three
+  discrete, clearly different looks are memorable and screenshot-worthy.
