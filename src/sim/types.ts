@@ -173,7 +173,7 @@ export type GameEvent =
   | { type: 'buildingPlaced'; id: EntityId; defId: string; owner: PlayerId }
   | { type: 'damageDealt'; targetId: EntityId; amount: number; x: number; y: number }
   | { type: 'healApplied'; targetId: EntityId; amount: number; x: number; y: number }
-  | { type: 'attackFired'; sourceId: EntityId; x: number; y: number }
+  | { type: 'attackFired'; sourceId: EntityId; x: number; y: number; crystalIndex?: number }
   | { type: 'attackCharging'; sourceId: EntityId; x: number; y: number }
   | {
       type: 'chainLightningFired';

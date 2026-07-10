@@ -19,6 +19,7 @@ import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { renderCelestialCannons } from './celestial-cannon-vfx';
 import { renderStormConductors } from './storm-conductor-vfx';
 import { renderSanctuarySpires } from './sanctuary-spire-vfx';
+import { renderArcaneSentries } from './arcane-sentry-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
@@ -432,6 +433,9 @@ export class Renderer {
 
       n.sprite.visible = liveVisible && !showAsGhost;
       if (n.label) n.label.visible = liveVisible && !showAsGhost;
+      if (e.kind === 'projectile' && e.defId === 'arcane_bolt') {
+        n.sprite.visible = false;
+      }
       if (!liveVisible && !showAsGhost) continue;
       if (showAsGhost) continue;
 
@@ -632,6 +636,18 @@ export class Renderer {
       state.tick + alpha,
     );
     renderSanctuarySpires(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
+      dtMs / 1000,
+    );
+    renderArcaneSentries(
       state,
       this.registry,
       this.viewerId,

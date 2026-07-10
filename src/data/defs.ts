@@ -32,6 +32,12 @@ export interface SfxDef {
 
 export type BeamKind = 'flame' | 'frost';
 
+/** Smooth-tracking turret — eases toward targets and may fire within a forward arc while still turning. */
+export interface TurretWeaponDef {
+  rotationSpeed: number; // radians per second for eased aim
+  fireArcRadians: number; // half-angle from barrel within which firing is allowed
+}
+
 /** Continuous beam weapon — towers track a target and damage/slow all enemies in the beam volume. */
 export interface BeamWeaponDef {
   kind: BeamKind;
@@ -49,6 +55,7 @@ export interface WeaponDef {
   range: number; // world units
   cooldownTicks: number;
   projectile: string | null; // projectile defId, or null for instant/melee
+  turret?: TurretWeaponDef; // smooth tracking + fire-while-turning (Arcane Sentry)
   beam?: BeamWeaponDef; // continuous beam (replaces projectile for beam towers)
   splashRadius?: number;
   impactRadius?: number;

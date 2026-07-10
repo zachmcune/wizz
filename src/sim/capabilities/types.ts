@@ -57,6 +57,13 @@ export interface BeamWeaponCapability {
   lastHitIds: EntityId[];
 }
 
+/** Smooth-tracking turret runtime state (Arcane Sentry). */
+export interface TurretWeaponCapability {
+  angularVelocity: number;
+  crystalIndex: number;
+  hadTarget: boolean;
+}
+
 /** Mobile HQ deploy/pack progress. */
 export interface MorphCapability {
   progress: number;
@@ -87,6 +94,7 @@ export interface EntityCapabilities {
   production?: ProductionCapability;
   garrisonHost?: GarrisonHostCapability;
   beamWeapon?: BeamWeaponCapability;
+  turretWeapon?: TurretWeaponCapability;
   morph?: MorphCapability;
   frost?: FrostExposureCapability;
   burnLinger?: BurnLingerCapability;

@@ -235,4 +235,65 @@ export class AudioManager {
   playSanctuaryBuffShimmer(): void {
     this.synthVoice({ freq: 880, freqEnd: 660, dur: 0.05, type: 'sine', gain: 0.05 }, 'sanctuaryBuffShimmer', 0.06);
   }
+
+  private sentryIdleOsc: OscillatorNode | null = null;
+  private sentryIdleGain: GainNode | null = null;
+  private sentryCombatGain = 0;
+
+  /** Quiet magical resonance hum while Arcane Sentries are on screen. */
+  tickSentryIdle(combat: boolean): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const now = this.ctx.currentTime;
+    const targetCombat = combat ? 1 : 0;
+    this.sentryCombatGain += (targetCombat - this.sentryCombatGain) * 0.12;
+
+    if (!this.sentryIdleOsc) {
+      this.sentryIdleOsc = this.ctx.createOscillator();
+      this.sentryIdleGain = this.ctx.createGain();
+      this.sentryIdleOsc.type = 'sine';
+      this.sentryIdleOsc.frequency.value = 176;
+      this.sentryIdleGain.gain.value = 0.0001;
+      this.sentryIdleOsc.connect(this.sentryIdleGain);
+      this.sentryIdleGain.connect(this.master);
+      this.sentryIdleOsc.start(now);
+    }
+
+    const idleLevel = 0.012 + this.sentryCombatGain * 0.014;
+    this.sentryIdleGain!.gain.setTargetAtTime(idleLevel, now, combat ? 0.08 : 0.3);
+    this.sentryIdleOsc.frequency.setTargetAtTime(176 + this.sentryCombatGain * 44, now, 0.15);
+  }
+
+  stopSentryIdle(): void {
+    if (!this.ctx || !this.sentryIdleOsc || !this.sentryIdleGain) return;
+    const now = this.ctx.currentTime;
+    this.sentryIdleGain.gain.setTargetAtTime(0.0001, now, 0.3);
+    this.sentryCombatGain = 0;
+    this.sentryIdleOsc.stop(now + 0.35);
+    this.sentryIdleOsc.disconnect();
+    this.sentryIdleGain.disconnect();
+    this.sentryIdleOsc = null;
+    this.sentryIdleGain = null;
+  }
+
+  /** Brief rising tick when the sentry acquires a target. */
+  playSentryAcquire(): void {
+    this.synthVoice({ freq: 440, freqEnd: 660, dur: 0.12, type: 'sine', gain: 0.08 }, 'sentryAcquire', 0.2);
+  }
+
+  /** Soft zip/fizzle for each bolt — three pitches cycle in round-robin order. */
+  playSentryBolt(crystalIndex: number): void {
+    const pitches = [880, 1046, 1318];
+    const freq = pitches[crystalIndex % 3]!;
+    const jitter = (crystalIndex * 17 % 5) * 0.001;
+    this.synthVoice(
+      { freq, freqEnd: freq * 0.82, dur: 0.035 + jitter, type: 'triangle', gain: 0.045 },
+      `sentryBolt${crystalIndex % 3}`,
+      0.03,
+    );
+  }
+
+  /** Tiny sparkle tink on bolt impact. */
+  playSentryImpact(): void {
+    this.synthVoice({ freq: 2200, freqEnd: 1400, dur: 0.04, type: 'sine', gain: 0.03 }, 'sentryImpact', 0.025);
+  }
 }

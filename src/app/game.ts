@@ -23,6 +23,7 @@ import type { LockstepClient } from '../net/lockstep';
 import type { WebSocketTransport } from '../net/ws-transport';
 import { EventBridge } from './match/event-bridge';
 import { tickSanctuarySpireAudio } from '../render/sanctuary-spire-vfx';
+import { tickArcaneSentryAudio } from '../render/arcane-sentry-vfx';
 import { PointerBinder } from './match/pointer-binder';
 import { buildMatchOverlay } from './match/overlay-builder';
 import { SimController } from './match/sim-controller';
@@ -470,6 +471,7 @@ export class Game {
     const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt, revealAll);
     tickSanctuarySpireAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
+    tickArcaneSentryAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
     this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
@@ -504,6 +506,7 @@ export class Game {
     const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay, this.frameMs, revealAll);
     tickSanctuarySpireAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
+    tickArcaneSentryAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
     this.hud.update();
   }
 

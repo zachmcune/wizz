@@ -1,5 +1,5 @@
 {
   "id": "arcane_bolt",
-  "speed": 420,
-  "art": { "shape": "circle", "size": 6, "accent": "#c9b8ff" }
+  "speed": 1200,
+  "art": { "shape": "circle", "size": 4, "accent": "#ffffff" }
 }

@@ -7,6 +7,7 @@ import type { EffectsLayer } from '../../render/effects';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../../render/storm-conductor-vfx';
 import { isUnitInSanctuaryAura, spawnSanctuaryAttackTrail } from '../../render/sanctuary-spire-vfx';
+import { registerSentryBoltFired } from '../../render/arcane-sentry-vfx';
 import type { Camera } from '../../render/camera';
 
 export class EventBridge {
@@ -41,6 +42,10 @@ export class EventBridge {
           this.effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
         } else if (src?.defId === 'storm_conductor') {
           this.pendingStormChain = true;
+        } else if (src?.defId === 'ward_turret') {
+          const crystalIndex = ev.crystalIndex ?? 0;
+          this.audio.playSentryBolt(crystalIndex);
+          registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing);
         } else if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, this.getServices().registry, src)) {
           this.audio.playSanctuaryBuffShimmer();
           spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);

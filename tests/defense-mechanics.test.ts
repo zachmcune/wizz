@@ -3,7 +3,7 @@ import { getRegistry } from './helpers';
 import { initMatch, recomputePower, spawnEntity } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { hasBuff, strongestSlowAttackCooldownFactor, strongestSlowMoveFactor } from '../src/sim/queries';
-import { getBeamWeapon } from '../src/sim/capabilities';
+import { getBeamWeapon, ensureTurretWeapon } from '../src/sim/capabilities';
 
 const reg = getRegistry();
 
@@ -119,5 +119,24 @@ describe('advanced defense mechanics', () => {
 
     expect(ally.hp).toBeGreaterThan(ally.maxHp - 20);
     expect(ally.hp).toBeLessThanOrEqual(ally.maxHp);
+  });
+
+  it('fires rapid arcane bolts with smooth turret tracking', () => {
+    const { state, services, sim } = setup();
+    const sentry = spawnEntity(state, services, null, 'ward_turret', 'player0', 640, 640);
+    const target = spawnEntity(state, services, null, 'stone_golem', 'player1', 760, 640);
+    const hp0 = target.hp;
+
+    let shots = 0;
+    let sawProjectile = false;
+    for (let i = 0; i < 40; i++) {
+      sim.step();
+      shots = [...state.entities.values()].filter((e) => e.kind === 'projectile' && e.defId === 'arcane_bolt').length;
+      if (shots > 0) sawProjectile = true;
+    }
+
+    expect(sawProjectile).toBe(true);
+    expect(target.hp).toBeLessThan(hp0);
+    expect(ensureTurretWeapon(sentry).crystalIndex).toBeGreaterThan(0);
   });
 });
