@@ -6,6 +6,7 @@ import type { AudioManager } from '../../audio/audio';
 import type { EffectsLayer } from '../../render/effects';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../../render/storm-conductor-vfx';
+import { isUnitInSanctuaryAura, spawnSanctuaryAttackTrail } from '../../render/sanctuary-spire-vfx';
 import type { Camera } from '../../render/camera';
 
 export class EventBridge {
@@ -40,6 +41,9 @@ export class EventBridge {
           this.effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
         } else if (src?.defId === 'storm_conductor') {
           this.pendingStormChain = true;
+        } else if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, this.getServices().registry, src)) {
+          this.audio.playSanctuaryBuffShimmer();
+          spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
         } else {
           this.audio.play(ev);
           this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
@@ -60,7 +64,12 @@ export class EventBridge {
         }
         break;
       case 'healApplied':
-        if (visible) this.effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
+        if (visible) {
+          const target = state.entities.get(ev.targetId);
+          const inSanctuary = target?.kind === 'unit'
+            && isUnitInSanctuaryAura(state, this.getServices().registry, target);
+          if (!inSanctuary) this.effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
+        }
         break;
       case 'attackCharging': {
         if (!visible) break;
