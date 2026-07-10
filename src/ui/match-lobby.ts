@@ -293,7 +293,7 @@ export class MatchLobby {
   private renderSlotPanel(panel: HTMLElement, slot: LobbySlot, index: number): void {
     panel.replaceChildren();
     const canEdit = this.canEditSlot(slot);
-    const isMine = slot.id === this.opts.localSlotId || (this.opts.mode === 'solo' && index === 0);
+    const isMine = slot.claimedBy === this.opts.connId || (this.opts.mode === 'solo' && index === 0);
     const isPickTarget = this.pickSlotId === slot.id;
 
     panel.classList.toggle('pick-target', isPickTarget);
@@ -302,7 +302,7 @@ export class MatchLobby {
     const name = el('span', 'lobby-player-name', `P${index + 1}`);
     if (slot.claimedBy) {
       const you = slot.claimedBy === this.opts.connId || slot.claimedBy === 'local';
-      if (you) name.title = 'You';
+      if (you) name.textContent = `P${index + 1} (You)`;
     }
     panel.appendChild(name);
 
@@ -408,8 +408,9 @@ export class MatchLobby {
     panel.appendChild(swatches);
 
     if (this.opts.mode === 'guest' && isMine && slot.claimedBy === this.opts.connId) {
-      const readyBtn = el('button', 'btn lobby-mini-btn', slot.ready ? '…' : '✓');
-      readyBtn.title = slot.ready ? 'Unready' : 'Ready';
+      const readyBtn = el('button', 'btn lobby-mini-btn', slot.ready ? 'Unready' : 'Ready');
+      readyBtn.title = slot.ready ? 'Click to unready' : 'Ready up';
+      readyBtn.classList.toggle('lobby-ready-active', !!slot.ready);
       readyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         slot.ready = !slot.ready;
@@ -418,24 +419,12 @@ export class MatchLobby {
       });
       panel.appendChild(readyBtn);
     }
-
-    if (this.opts.mode === 'guest' && !slot.claimedBy && (slot.kind === 'human' || slot.kind === 'open')) {
-      const claimBtn = el('button', 'btn lobby-mini-btn', '+');
-      claimBtn.title = 'Claim slot';
-      claimBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.opts.lobbyClient?.claimSlot(slot.id, slot.team, slot.color, slot.startIndex, slot.factionId);
-      });
-      panel.appendChild(claimBtn);
-    }
   }
 
   private canEditSlot(slot: LobbySlot): boolean {
     if (this.opts.mode === 'solo') return true;
     if (this.opts.mode === 'host') return true;
-    if (slot.claimedBy === this.opts.connId) return true;
-    if (!slot.claimedBy && (slot.kind === 'human' || slot.kind === 'open')) return true;
-    return false;
+    return slot.claimedBy === this.opts.connId;
   }
 
   private canEditKind(): boolean {
@@ -449,7 +438,14 @@ export class MatchLobby {
   }
 
   private pushUpdate(): void {
-    if (this.opts.mode === 'host') this.opts.lobbyClient?.updateLobby(this.state);
+    if (this.opts.mode === 'host') {
+      this.opts.lobbyClient?.updateLobby(this.state);
+    } else if (this.opts.mode === 'guest' && this.opts.localSlotId) {
+      const slot = this.state.slots.find((s) => s.id === this.opts.localSlotId);
+      if (slot && slot.claimedBy === this.opts.connId) {
+        this.opts.lobbyClient?.claimSlot(slot.id, slot.team, slot.color, slot.startIndex, slot.factionId);
+      }
+    }
     this.refresh();
   }
 

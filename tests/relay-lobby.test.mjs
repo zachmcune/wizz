@@ -32,7 +32,13 @@ function lobbyWithSlots(openCount) {
 }
 
 function claimGuest(room, ws, slotId, startIndex) {
-  room.claimSlot(ws, slotId, 'b', '#ff5d5d', startIndex, 'arcane');
+  const info = room.clients.get(ws);
+  const assigned = info?.slotId;
+  if (assigned !== slotId) {
+    room.claimSlot(ws, slotId, 'b', '#ff5d5d', startIndex, 'arcane');
+  } else if (startIndex !== null && startIndex !== undefined) {
+    room.claimSlot(ws, slotId, 'b', '#ff5d5d', startIndex, 'arcane');
+  }
   room.setReady(ws, slotId, true);
 }
 
@@ -45,6 +51,57 @@ describe('relay lobby', () => {
     expect(connId).toBeTruthy();
     expect(host.sent[0].playerId).toBe('player0');
     expect(room.clients.get(host).slotId).toBe('player0');
+  });
+
+  it('auto-assigns guests to the next open slot on join', () => {
+    const rooms = new Map();
+    const room = new Room('AUTO', rooms);
+    const lobby = lobbyWithSlots(3);
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    const guestConnId = room.addClient(guest, undefined);
+
+    expect(guestConnId).toBeTruthy();
+    expect(guest.sent[0].playerId).toBe('player1');
+    expect(room.clients.get(guest).slotId).toBe('player1');
+    expect(room.lobbyState.slots[1].claimedBy).toBe(guestConnId);
+    expect(room.lobbyState.slots[1].kind).toBe('human');
+  });
+
+  it('rejects join when the lobby is full', () => {
+    const rooms = new Map();
+    const room = new Room('FULL', rooms);
+    const lobby = lobbyWithSlots(2);
+    const host = mockWs();
+    const guest1 = mockWs();
+    const guest2 = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest1, undefined);
+    const extraConnId = room.addClient(guest2, undefined);
+
+    expect(extraConnId).toBeNull();
+    expect(guest2.sent.some((m) => m.t === 'error' && m.message.includes('full'))).toBe(true);
+  });
+
+  it('clears a previous slot when a guest claims a different one', () => {
+    const rooms = new Map();
+    const room = new Room('SWAP', rooms);
+    const lobby = lobbyWithSlots(3);
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+    expect(room.clients.get(guest).slotId).toBe('player1');
+
+    room.claimSlot(guest, 'player2', 'c', '#5dff8f', 2, 'arcane');
+    expect(room.clients.get(guest).slotId).toBe('player2');
+    expect(room.lobbyState.slots[1].claimedBy).toBeNull();
+    expect(room.lobbyState.slots[1].kind).toBe('open');
+    expect(room.lobbyState.slots[2].claimedBy).toBe(room.clients.get(guest).connId);
   });
 
   it('starts a 3-player match when all slots are claimed and ready', () => {
