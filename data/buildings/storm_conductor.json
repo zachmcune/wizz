@@ -19,7 +19,7 @@
     "cooldownTicks": 45,
     "chargeTicks": 10,
     "projectile": null,
-    "chain": { "jumps": 3, "range": 72, "falloff": 0.75 },
+    "chain": { "jumps": 3, "range": 108, "falloff": 0.75 },
     "vs": { "light": 0.8, "heavy": 1.35, "building": 0.5 }
   },
   "art": {
