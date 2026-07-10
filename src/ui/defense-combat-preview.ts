@@ -12,9 +12,16 @@ import type { StepContext } from '../sim/context';
 import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../render/storm-conductor-vfx';
-import { isUnitInSanctuaryAura, resetSanctuaryVfx, spawnSanctuaryAttackTrail } from '../render/sanctuary-spire-vfx';
-import { resetArcaneSentryVfx } from '../render/arcane-sentry-vfx';
+import { isUnitInSanctuaryAura, resetSanctuaryVfx, spawnSanctuaryAttackTrail, tickSanctuarySpireAudio } from '../render/sanctuary-spire-vfx';
+import {
+  isSentryDamageSource,
+  registerSentryBoltFired,
+  resetArcaneSentryVfx,
+  spawnSentrySilhouetteFlash,
+  tickArcaneSentryAudio,
+} from '../render/arcane-sentry-vfx';
 import { Renderer } from '../render/renderer';
+import { AudioManager } from '../audio/audio';
 import { el } from './dom';
 
 // Open meadow tile — away from the center mana node at (2064, 1424).
@@ -157,25 +164,47 @@ function handlePreviewEvent(
   effects: Renderer['effects'],
   getState: () => GameState,
   registry: Registry,
+  audio: AudioManager,
 ): void {
   const state = getState();
   switch (ev.type) {
     case 'attackFired': {
       const src = state.entities.get(ev.sourceId);
+      if (src?.defId === 'celestial_cannon') {
+        audio.playCelestialFire();
+        effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
+        break;
+      }
       if (src?.defId === 'storm_conductor') {
         previewPendingStormChain = true;
         break;
       }
+      if (src?.defId === 'arcane_sentry') {
+        const crystalIndex = ev.crystalIndex ?? 0;
+        audio.playSentryBolt(crystalIndex);
+        registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing, ev.x, ev.y);
+        break;
+      }
       if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, src)) {
+        audio.playSanctuaryBuffShimmer();
         spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
         break;
       }
+      audio.play(ev);
       effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
       break;
     }
+    case 'beamStarted':
+      audio.play(ev);
+      effects.spawn('flash', ev.x, ev.y, 0xffa060, 8);
+      break;
     case 'damageDealt':
       if (!previewPendingStormChain) {
-        effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+        if (isSentryDamageSource(state, ev.sourceId)) {
+          spawnSentrySilhouetteFlash(ev.targetId, ev.x, ev.y);
+        } else {
+          effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+        }
       }
       break;
     case 'healApplied': {
@@ -186,22 +215,34 @@ function handlePreviewEvent(
     }
     case 'attackCharging': {
       const src = state.entities.get(ev.sourceId);
-      if (src?.defId === 'storm_conductor') break;
-      effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+      if (src?.defId === 'celestial_cannon') {
+        audio.playCelestialChargeStart();
+      } else if (src?.defId === 'storm_conductor') {
+        audio.playStormChargeStart();
+      } else {
+        audio.play(ev);
+        effects.spawn('ring', ev.x, ev.y, 0xd9f3ff, 36);
+      }
       break;
     }
     case 'chainLightningFired':
       previewPendingStormChain = false;
+      audio.playStormPrimaryStrike();
+      for (let i = 1; i < ev.hits.length; i++) {
+        audio.playStormChainJump(i);
+      }
       effects.spawn('flash', ev.hits[0]!.x, ev.hits[0]!.y, 0xffffff, 22);
       spawnStormSequence(ev.x, ev.y, ev.hits);
       break;
     case 'artilleryImpact':
+      audio.playCelestialImpact();
       effects.spawn('flash', ev.x, ev.y, 0xffffff, ev.radius * 0.55);
       effects.spawn('shockwave', ev.x, ev.y, 0xd9f3ff, ev.radius);
       spawnCelestialScorch(ev.x, ev.y, ev.radius);
       spawnCelestialSkyStrike(ev.x, ev.y, ev.radius);
       break;
     case 'entityDied':
+      audio.play(ev);
       effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
       break;
   }
@@ -223,6 +264,7 @@ export class DefenseCombatPreview {
   private ticksSinceReset = 0;
   private destroyed = false;
   private panActive = false;
+  private audio = new AudioManager();
   private lastPanX = 0;
   private lastPanY = 0;
   private readonly onResize = (): void => this.applyViewport();
@@ -246,6 +288,7 @@ export class DefenseCombatPreview {
 
   async open(): Promise<void> {
     document.body.appendChild(this.overlay);
+    this.audio.unlock();
     this.bootstrapScene();
 
     const map = this.registry.map('duel_glade');
@@ -353,7 +396,7 @@ export class DefenseCombatPreview {
     if (this.destroyed || !this.sim || !this.renderer) return false;
     const result = this.sim.step();
     for (const ev of result.events) {
-      handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state, this.registry);
+      handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state, this.registry, this.audio);
     }
     this.renderer.syncTick(this.sim.state);
     this.ticksSinceReset++;
@@ -365,12 +408,17 @@ export class DefenseCombatPreview {
 
   private renderFrame(alpha: number): void {
     if (this.destroyed || !this.sim || !this.renderer) return;
+    const nav = this.sim.services.nav;
+    tickSanctuarySpireAudio(this.audio, this.sim.state, this.registry, DEFENDER, nav, true);
+    tickArcaneSentryAudio(this.audio, this.sim.state, this.registry, DEFENDER, nav, true);
     this.renderer.render(this.sim.state, alpha, new Set(), undefined, TICK_MS, true);
   }
 
   close(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.audio.stopSanctuaryIdle();
+    this.audio.stopSentryIdle();
     this.loop?.stop();
     this.loop = null;
     this.renderer?.app.renderer.off('resize', this.onResize);

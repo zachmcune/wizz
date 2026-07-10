@@ -67,9 +67,18 @@ interface SilhouetteFlash {
   life: number;
 }
 
+interface FlyingStreak {
+  x: number;
+  y: number;
+  facing: number;
+  age: number;
+  life: number;
+}
+
 const crystalFlashes: CrystalFlash[] = [];
 const filamentSnaps: FilamentSnap[] = [];
 const boltTrails: BoltTrail[] = [];
+const flyingStreaks: FlyingStreak[] = [];
 const impacts: SentryImpact[] = [];
 const silhouetteFlashes: SilhouetteFlash[] = [];
 const trackedBolts = new Map<EntityId, { x: number; y: number; targetId: EntityId }>();
@@ -96,6 +105,8 @@ export function registerSentryBoltFired(
   sentryId: EntityId,
   crystalIndex: number,
   facing: number,
+  sourceX: number,
+  sourceY: number,
 ): void {
   crystalFlashes.push({
     sentryId,
@@ -110,8 +121,16 @@ export function registerSentryBoltFired(
     age: 0,
     life: Math.ceil(CRYSTAL_FLASH_SEC * 60) + 2,
   });
+  flyingStreaks.push({
+    x: sourceX,
+    y: sourceY,
+    facing,
+    age: 0,
+    life: 6,
+  });
   if (crystalFlashes.length > 96) crystalFlashes.shift();
   if (filamentSnaps.length > 96) filamentSnaps.shift();
+  if (flyingStreaks.length > 96) flyingStreaks.shift();
 }
 
 function crystalOrbitAngle(tick: number, sentryId: EntityId, crystalIndex: number, phaseSec: number): number {
@@ -208,6 +227,7 @@ function drawIdleSparkExchange(
 function drawArcaneBolt(
   fillPool: GraphicsPool,
   strokePool: GraphicsPool,
+  drawPos: SentryDrawPosFn,
   x: number,
   y: number,
   facing: number,
@@ -221,12 +241,12 @@ function drawArcaneBolt(
   const py = y + perpY * waver;
 
   const trailLen = 14;
-  const tx = px - Math.cos(facing) * trailLen;
-  const ty = py - Math.sin(facing) * trailLen;
-  strokePool.acquire().moveTo(tx, ty).lineTo(px, py).stroke({ width: 3, color: CYAN, alpha: 0.35 });
-  strokePool.acquire().moveTo(tx, ty).lineTo(px, py).stroke({ width: 1.2, color: WHITE, alpha: 0.55 });
-  fillPool.acquire().circle(px, py, 2.2).fill({ color: WHITE, alpha: 0.9 });
-  fillPool.acquire().circle(px, py, 4).fill({ color: CYAN, alpha: 0.25 });
+  const head = drawPos(px, py);
+  const tail = drawPos(px - Math.cos(facing) * trailLen, py - Math.sin(facing) * trailLen);
+  strokePool.acquire().moveTo(tail.x, tail.y).lineTo(head.x, head.y).stroke({ width: 3, color: CYAN, alpha: 0.35 });
+  strokePool.acquire().moveTo(tail.x, tail.y).lineTo(head.x, head.y).stroke({ width: 1.2, color: WHITE, alpha: 0.55 });
+  fillPool.acquire().circle(head.x, head.y, 2.2).fill({ color: WHITE, alpha: 0.9 });
+  fillPool.acquire().circle(head.x, head.y, 4).fill({ color: CYAN, alpha: 0.25 });
 }
 
 function drawSilhouetteFlash(
@@ -425,10 +445,20 @@ export function renderArcaneSentries(
 
   for (const trail of boltTrails) {
     const seed = trail.projId * 0.23;
-    drawArcaneBolt(fillPool, strokePool, trail.x, trail.y, trail.facing, phaseSec + trail.age * 0.1, seed);
+    drawArcaneBolt(fillPool, strokePool, drawPos, trail.x, trail.y, trail.facing, phaseSec + trail.age * 0.1, seed);
     trail.age += dtSec * 60;
   }
   boltTrails.length = 0;
+
+  const streakStep = 18 * dtSec * 60;
+  for (let i = flyingStreaks.length - 1; i >= 0; i--) {
+    const streak = flyingStreaks[i]!;
+    drawArcaneBolt(fillPool, strokePool, drawPos, streak.x, streak.y, streak.facing, phaseSec + streak.age * 0.2, streak.x * 0.17);
+    streak.x += Math.cos(streak.facing) * streakStep;
+    streak.y += Math.sin(streak.facing) * streakStep;
+    streak.age += dtSec * 60;
+    if (streak.age >= streak.life) flyingStreaks.splice(i, 1);
+  }
 
   for (let i = crystalFlashes.length - 1; i >= 0; i--) {
     const f = crystalFlashes[i]!;
@@ -483,6 +513,7 @@ export function resetArcaneSentryVfx(): void {
   boltTrails.length = 0;
   impacts.length = 0;
   silhouetteFlashes.length = 0;
+  flyingStreaks.length = 0;
   trackedBolts.clear();
   lastHadTarget.clear();
   sentryCombatGlow.clear();

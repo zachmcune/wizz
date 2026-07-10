@@ -45,7 +45,7 @@ export class EventBridge {
         } else if (src?.defId === 'arcane_sentry') {
           const crystalIndex = ev.crystalIndex ?? 0;
           this.audio.playSentryBolt(crystalIndex);
-          registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing);
+          registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing, ev.x, ev.y);
         } else if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, this.getServices().registry, src)) {
           this.audio.playSanctuaryBuffShimmer();
           spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
