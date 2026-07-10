@@ -65,8 +65,15 @@ function connectedHumans(room) {
   return [...room.clients.values()].filter((c) => c.slotId).length;
 }
 
-function availableSlot(state) {
-  return state.slots.find((s) => (s.kind === 'open' || s.kind === 'human') && !s.claimedBy);
+function seatedSlotIds(clients) {
+  return new Set([...clients.values()].map((c) => c.slotId).filter(Boolean));
+}
+
+function availableSlot(state, clients) {
+  const seated = seatedSlotIds(clients);
+  const openSlot = state.slots.find((s) => s.kind === 'open' && !s.claimedBy && !seated.has(s.id));
+  if (openSlot) return openSlot;
+  return state.slots.find((s) => s.kind === 'human' && !s.claimedBy && !seated.has(s.id));
 }
 
 function takenStartIndices(state, exceptSlotId = null) {
@@ -74,8 +81,6 @@ function takenStartIndices(state, exceptSlotId = null) {
   for (const slot of state.slots) {
     if (slot.kind === 'closed') continue;
     if (slot.id === exceptSlotId) continue;
-    const occupiesPosition = slot.kind === 'ai' || !!slot.claimedBy;
-    if (!occupiesPosition) continue;
     if (slot.startIndex !== null && slot.startIndex !== undefined) taken.add(slot.startIndex);
   }
   return taken;
@@ -123,6 +128,30 @@ class Room {
     this.snapshotRequesters = new Set();
   }
 
+  /** Keep lobby claims aligned with seated clients so updates cannot double-book a slot. */
+  reconcileSeatedClaims() {
+    for (const [ws, info] of this.clients) {
+      if (!info.slotId) continue;
+      const slot = this.lobbyState.slots.find((s) => s.id === info.slotId);
+      if (!slot || slot.kind === 'closed' || slot.kind === 'ai') continue;
+
+      for (const other of this.lobbyState.slots) {
+        if (other.id === slot.id) continue;
+        if (other.claimedBy === info.connId) {
+          other.claimedBy = null;
+          other.ready = false;
+          if (other.kind === 'human' && ws !== this.hostWs) other.kind = 'open';
+        }
+      }
+
+      if (slot.claimedBy !== info.connId) {
+        if (slot.kind === 'open') slot.kind = 'human';
+        slot.claimedBy = info.connId;
+        if (ws === this.hostWs) slot.ready = true;
+      }
+    }
+  }
+
   /** @param {import('ws').WebSocket} ws @param {import('./relay-types').LobbyStateWire | undefined} initialLobby */
   addClient(ws, initialLobby) {
     if (this.started) {
@@ -138,14 +167,16 @@ class Room {
       this.hostWs = ws;
       this.hostConnId = connId;
       if (initialLobby) this.lobbyState = cloneLobby(initialLobby);
-      const hostSlot = this.lobbyState.slots.find((s) => s.kind === 'human');
+      const hostSlot = this.lobbyState.slots.find((s) => s.kind === 'human' || s.kind === 'open');
       if (hostSlot) {
+        if (hostSlot.kind === 'open') hostSlot.kind = 'human';
         hostSlot.claimedBy = connId;
         hostSlot.ready = true;
         slotId = hostSlot.id;
       }
     } else {
-      const slot = availableSlot(this.lobbyState);
+      this.reconcileSeatedClaims();
+      const slot = availableSlot(this.lobbyState, this.clients);
       if (!slot) {
         ws.send(JSON.stringify({ t: 'error', message: 'Lobby is full' }));
         ws.close();
@@ -261,6 +292,7 @@ class Room {
       const hostSlot = this.lobbyState.slots.find((s) => s.claimedBy === hostInfo.connId);
       if (hostSlot) hostSlot.ready = true;
     }
+    this.reconcileSeatedClaims();
     this.broadcast({ t: 'lobbyState', state: this.lobbyState });
     this.broadcastWaiting();
   }
@@ -312,6 +344,7 @@ class Room {
       ws.send(JSON.stringify({ t: 'joined', connId: info.connId, playerId: slotId, seed: this.seed, startTick: 0, isHost: ws === this.hostWs, lobbyState: this.lobbyState, waiting: true }));
     }
 
+    this.reconcileSeatedClaims();
     this.broadcast({ t: 'lobbyState', state: this.lobbyState });
     this.broadcastWaiting();
   }

@@ -83,6 +83,49 @@ describe('relay lobby', () => {
     expect(room.lobbyState.slots[1].startIndex).toBe(1);
   });
 
+  it('keeps host and guest in separate seats after a host lobby update clears claims', () => {
+    const rooms = new Map();
+    const room = new Room('SEATS', rooms);
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, cloneLobby(DEFAULT_LOBBY));
+    room.addClient(guest, undefined);
+    const hostConnId = room.clients.get(host).connId;
+    const guestConnId = room.clients.get(guest).connId;
+
+    expect(room.lobbyState.slots[0].claimedBy).toBe(hostConnId);
+    expect(room.lobbyState.slots[1].claimedBy).toBe(guestConnId);
+
+    const wiped = cloneLobby(room.lobbyState);
+    wiped.slots[0].claimedBy = null;
+    wiped.slots[1].claimedBy = null;
+    room.updateLobby(host, wiped);
+
+    expect(room.lobbyState.slots[0].claimedBy).toBe(hostConnId);
+    expect(room.lobbyState.slots[1].claimedBy).toBe(guestConnId);
+    expect(room.clients.get(host).slotId).toBe('player0');
+    expect(room.clients.get(guest).slotId).toBe('player1');
+  });
+
+  it('assigns guests to open slots before unclaimed human slots', () => {
+    const rooms = new Map();
+    const room = new Room('OPENFIRST', rooms);
+    const lobby = cloneLobby(DEFAULT_LOBBY);
+    lobby.slots[0].startIndex = 0;
+    lobby.slots[1].kind = 'open';
+    lobby.slots[2].kind = 'human';
+    lobby.slots[2].startIndex = 2;
+    const host = mockWs();
+    const guest = mockWs();
+
+    room.addClient(host, lobby);
+    room.addClient(guest, undefined);
+
+    expect(room.clients.get(guest).slotId).toBe('player1');
+    expect(room.lobbyState.slots[1].kind).toBe('human');
+  });
+
   it('auto-assigns guests to the next open slot on join', () => {
     const rooms = new Map();
     const room = new Room('AUTO', rooms);

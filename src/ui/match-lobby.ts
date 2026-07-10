@@ -439,6 +439,13 @@ export class MatchLobby {
 
   private pushUpdate(): void {
     if (this.opts.mode === 'host') {
+      if (this.opts.connId && this.opts.localSlotId) {
+        const mine = this.state.slots.find((s) => s.id === this.opts.localSlotId);
+        if (mine?.kind === 'human' || mine?.kind === 'open') {
+          mine.claimedBy = this.opts.connId;
+          mine.ready = true;
+        }
+      }
       this.opts.lobbyClient?.updateLobby(this.state);
     } else if (this.opts.mode === 'guest' && this.opts.localSlotId) {
       const slot = this.state.slots.find((s) => s.id === this.opts.localSlotId);
@@ -527,6 +534,13 @@ export class MatchLobby {
 
   setRemoteState(state: LobbyState): void {
     this.state = state;
+    if (this.opts.connId) {
+      const mine = state.slots.find((s) => s.claimedBy === this.opts.connId);
+      if (mine) {
+        this.opts.localSlotId = mine.id;
+        this.pickSlotId = mine.id as SlotId;
+      }
+    }
     this.mapPreview.setMap(this.opts.registry.map(this.state.mapId));
     this.refresh();
   }

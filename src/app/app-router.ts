@@ -27,7 +27,10 @@ import type { WebSocketTransport } from '../net/ws-transport';
 function guestLocalSlotId(connId: string, lobbyState: LobbyState, playerId: string): string | undefined {
   const mine = lobbyState.slots.find((s) => s.claimedBy === connId);
   if (mine) return mine.id;
-  if (/^player[0-3]$/.test(playerId)) return playerId;
+  if (/^player[0-3]$/.test(playerId)) {
+    const slot = lobbyState.slots.find((s) => s.id === playerId);
+    if (slot?.claimedBy === connId) return playerId;
+  }
   return undefined;
 }
 
