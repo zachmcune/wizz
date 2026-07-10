@@ -59,13 +59,37 @@ interface SentryImpact {
   playAudio: boolean;
 }
 
+interface SilhouetteFlash {
+  targetId: EntityId;
+  x: number;
+  y: number;
+  age: number;
+  life: number;
+}
+
 const crystalFlashes: CrystalFlash[] = [];
 const filamentSnaps: FilamentSnap[] = [];
 const boltTrails: BoltTrail[] = [];
 const impacts: SentryImpact[] = [];
+const silhouetteFlashes: SilhouetteFlash[] = [];
 const trackedBolts = new Map<EntityId, { x: number; y: number; targetId: EntityId }>();
 const lastHadTarget = new Map<EntityId, boolean>();
 const sentryCombatGlow = new Map<EntityId, number>();
+
+const MAX_SILHOUETTE_FLASHES = 32;
+const SILHOUETTE_FLASH_LIFE = 2;
+
+/** One-frame white flash across the struck unit's silhouette (called from EventBridge). */
+export function spawnSentrySilhouetteFlash(targetId: EntityId, x: number, y: number): void {
+  if (silhouetteFlashes.length >= MAX_SILHOUETTE_FLASHES) silhouetteFlashes.shift();
+  silhouetteFlashes.push({ targetId, x, y, age: 0, life: SILHOUETTE_FLASH_LIFE });
+}
+
+export function isSentryDamageSource(state: GameState, sourceId?: EntityId): boolean {
+  if (sourceId === undefined) return false;
+  const src = state.entities.get(sourceId);
+  return src?.kind === 'building' && src.defId === 'arcane_sentry';
+}
 
 /** Register a bolt launch for crystal flash + filament VFX (called from EventBridge). */
 export function registerSentryBoltFired(
@@ -205,6 +229,21 @@ function drawArcaneBolt(
   fillPool.acquire().circle(px, py, 4).fill({ color: CYAN, alpha: 0.25 });
 }
 
+function drawSilhouetteFlash(
+  fillPool: GraphicsPool,
+  drawPos: SentryDrawPosFn,
+  flash: SilhouetteFlash,
+  dtSec: number,
+): void {
+  flash.age += dtSec * 60;
+  if (flash.age >= flash.life) return;
+  const t = flash.age / flash.life;
+  const alpha = 1 - t;
+  const p = drawPos(flash.x, flash.y);
+  fillPool.acquire().ellipse(p.x, p.y, 14, 10).fill({ color: WHITE, alpha: alpha * 0.55 });
+  fillPool.acquire().ellipse(p.x, p.y, 10, 7).fill({ color: CYAN, alpha: alpha * 0.2 });
+}
+
 function drawImpact(
   fillPool: GraphicsPool,
   strokePool: GraphicsPool,
@@ -269,7 +308,7 @@ function updateBoltTracking(state: GameState): void {
     const cap = getProjectileCapability(e);
     if (!cap) continue;
     const src = state.entities.get(cap.sourceId);
-    if (!src || src.defId !== 'ward_turret') continue;
+    if (!src || src.defId !== 'arcane_sentry') continue;
 
     active.add(e.id);
     trackedBolts.set(e.id, { x: e.pos.x, y: e.pos.y, targetId: cap.targetId });
@@ -320,8 +359,14 @@ export function renderArcaneSentries(
     if (imp.age >= imp.life) impacts.splice(i, 1);
   }
 
+  for (let i = silhouetteFlashes.length - 1; i >= 0; i--) {
+    const flash = silhouetteFlashes[i]!;
+    drawSilhouetteFlash(fillPool, drawPos, flash, dtSec);
+    if (flash.age >= flash.life) silhouetteFlashes.splice(i, 1);
+  }
+
   for (const e of state.entities.values()) {
-    if (e.kind !== 'building' || e.defId !== 'ward_turret') continue;
+    if (e.kind !== 'building' || e.defId !== 'arcane_sentry') continue;
     if (!buildingHasPower(state, registry, e)) continue;
     if (!revealAll && nav && !isVisibleTo(state, viewerId, e, nav)) continue;
 
@@ -404,7 +449,7 @@ export function tickArcaneSentryAudio(
   let anyCombat = false;
 
   for (const e of state.entities.values()) {
-    if (e.kind !== 'building' || e.defId !== 'ward_turret') continue;
+    if (e.kind !== 'building' || e.defId !== 'arcane_sentry') continue;
     if (!buildingHasPower(state, registry, e)) continue;
     if (!revealAll && nav && !isVisibleTo(state, viewerId, e, nav)) continue;
     anyVisible = true;
@@ -437,6 +482,7 @@ export function resetArcaneSentryVfx(): void {
   filamentSnaps.length = 0;
   boltTrails.length = 0;
   impacts.length = 0;
+  silhouetteFlashes.length = 0;
   trackedBolts.clear();
   lastHadTarget.clear();
   sentryCombatGlow.clear();

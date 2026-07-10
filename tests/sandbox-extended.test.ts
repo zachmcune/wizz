@@ -279,19 +279,19 @@ describe('sandbox dev commands', () => {
 
   it('devSpawnBuilding creates a completed building', () => {
     const { state, services } = initMatch(registry, buildSandboxMatchConfig());
-    const before = [...state.entities.values()].filter((e) => e.defId === 'ward_turret').length;
+    const before = [...state.entities.values()].filter((e) => e.defId === 'arcane_sentry').length;
     applyDevCommand(state, emptyCtx(services), {
       type: 'devSpawnBuilding',
       playerId: 'player0',
-      defId: 'ward_turret',
+      defId: 'arcane_sentry',
       x: 360,
       y: 360,
       complete: true,
     });
-    const turret = [...state.entities.values()].find((e) => e.defId === 'ward_turret');
+    const turret = [...state.entities.values()].find((e) => e.defId === 'arcane_sentry');
     expect(turret).toBeTruthy();
     expect(turret!.kind === 'building' && turret!.buildProgress).toBeUndefined();
-    expect([...state.entities.values()].filter((e) => e.defId === 'ward_turret').length).toBe(before + 1);
+    expect([...state.entities.values()].filter((e) => e.defId === 'arcane_sentry').length).toBe(before + 1);
   });
 
   it('devClearUnits removes units for all or one player', () => {
@@ -498,7 +498,7 @@ describe('sandbox command palette coverage', () => {
       { line: 'unlock tech', id: 'unlock' },
       { line: 'restart scenario', id: 'restart' },
       { line: 'cast meteor_storm', id: 'cast' },
-      { line: 'build ward_turret', id: 'build' },
+      { line: 'build arcane_sentry', id: 'build' },
       { line: 'heal selected', id: 'heal' },
       { line: 'kill selected', id: 'kill' },
       { line: 'delete selected', id: 'delete' },
@@ -563,8 +563,8 @@ describe('sandbox command palette coverage', () => {
     expect(executeCommandLine(ctx, 'spawn imp_swarmling 3').ok).toBe(true);
     expect(controller.spawnUnit).toHaveBeenCalledWith('player0', 'imp_swarmling', 3);
 
-    expect(executeCommandLine(ctx, 'build ward_turret').ok).toBe(true);
-    expect(controller.spawnBuilding).toHaveBeenCalledWith('player0', 'ward_turret', true);
+    expect(executeCommandLine(ctx, 'build arcane_sentry').ok).toBe(true);
+    expect(controller.spawnBuilding).toHaveBeenCalledWith('player0', 'arcane_sentry', true);
 
     expect(executeCommandLine(ctx, 'reveal map').ok).toBe(true);
     expect(controller.setSetting).toHaveBeenCalledWith('map', { revealMap: true, fogEnabled: false });

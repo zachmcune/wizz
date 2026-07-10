@@ -7,7 +7,7 @@ import type { EffectsLayer } from '../../render/effects';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../../render/storm-conductor-vfx';
 import { isUnitInSanctuaryAura, spawnSanctuaryAttackTrail } from '../../render/sanctuary-spire-vfx';
-import { registerSentryBoltFired } from '../../render/arcane-sentry-vfx';
+import { registerSentryBoltFired, isSentryDamageSource, spawnSentrySilhouetteFlash } from '../../render/arcane-sentry-vfx';
 import type { Camera } from '../../render/camera';
 
 export class EventBridge {
@@ -42,7 +42,7 @@ export class EventBridge {
           this.effects.spawn('flash', ev.x, ev.y, 0xd9f3ff, 12);
         } else if (src?.defId === 'storm_conductor') {
           this.pendingStormChain = true;
-        } else if (src?.defId === 'ward_turret') {
+        } else if (src?.defId === 'arcane_sentry') {
           const crystalIndex = ev.crystalIndex ?? 0;
           this.audio.playSentryBolt(crystalIndex);
           registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing);
@@ -65,7 +65,11 @@ export class EventBridge {
         break;
       case 'damageDealt':
         if (visible && !this.pendingStormChain) {
-          this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+          if (isSentryDamageSource(state, ev.sourceId)) {
+            spawnSentrySilhouetteFlash(ev.targetId, ev.x, ev.y);
+          } else {
+            this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+          }
         }
         break;
       case 'healApplied':

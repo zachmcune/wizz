@@ -139,7 +139,7 @@ export interface BuildingDef {
   isRadar?: boolean; // reveals entire map on minimap (RA2 radar)
   isWall?: boolean;
   isGate?: boolean; // allies pass; enemies blocked
-  weapon?: WeaponDef | null; // Ward Turret
+  weapon?: WeaponDef | null; // Arcane Sentry
   garrison?: GarrisonDef;
   aura?: AuraDef;
   art: ArtDef;

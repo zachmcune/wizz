@@ -27,7 +27,14 @@ export function applyDamage(
   const mult = vs[cls] ?? 1;
   const amount = baseAmount * mult;
   target.hp -= amount;
-  ctx.events.push({ type: 'damageDealt', targetId: target.id, amount, x: target.pos.x, y: target.pos.y });
+  ctx.events.push({
+    type: 'damageDealt',
+    targetId: target.id,
+    amount,
+    x: target.pos.x,
+    y: target.pos.y,
+    sourceId: killerId,
+  });
 
   // Notify the owner they're under attack (for alerts), throttled by cooldown key.
   const owner = state.players.find((p) => p.id === target.owner);

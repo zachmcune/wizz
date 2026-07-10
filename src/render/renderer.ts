@@ -298,6 +298,12 @@ export class Renderer {
     if (this.projectionMode === 'oblique' && (e.kind === 'unit' || e.kind === 'projectile')) {
       return this.provider.texture(art, color, facingToDirection(e.facing));
     }
+    if (e.kind === 'building' && this.projectionMode !== 'oblique') {
+      const bdef = this.registry.building(e.defId);
+      if (bdef.weapon?.turret) {
+        return this.provider.texture(art, color, facingToDirection(e.facing));
+      }
+    }
     return this.provider.texture(art, color);
   }
 

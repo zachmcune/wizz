@@ -153,7 +153,7 @@ function towerTest(registry: Registry, matchConfig: MatchConfig): SavedScenario 
   const p0 = startOf(registry, matchConfig, 'player0');
   const mid = { x: (p0.x + startOf(registry, matchConfig, 'player1').x) / 2, y: p0.y + TILE * 8 };
   unlockAll(state, ctx, 'player0');
-  spawnBuildingNear(state, ctx, 'player0', 'ward_turret', mid, -TILE * 3, 0);
+  spawnBuildingNear(state, ctx, 'player0', 'arcane_sentry', mid, -TILE * 3, 0);
   spawnBuildingNear(state, ctx, 'player0', 'frost_spire', mid, 0, 0);
   spawnBuildingNear(state, ctx, 'player0', 'inferno_beacon', mid, TILE * 3, 0);
   spawnNear(state, ctx, 'player1', 'imp_swarmling', mid, 12, 0, TILE * 10);
