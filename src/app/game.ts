@@ -22,6 +22,7 @@ import type { Replay } from '../sim/replay';
 import type { LockstepClient } from '../net/lockstep';
 import type { WebSocketTransport } from '../net/ws-transport';
 import { EventBridge } from './match/event-bridge';
+import { tickSanctuarySpireAudio } from '../render/sanctuary-spire-vfx';
 import { PointerBinder } from './match/pointer-binder';
 import { buildMatchOverlay } from './match/overlay-builder';
 import { SimController } from './match/sim-controller';
@@ -468,6 +469,7 @@ export class Game {
     const overlay = this.buildFrameOverlay(lastPointer);
     const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, renderAlpha, this.controller.session.selection, overlay, dt, revealAll);
+    tickSanctuarySpireAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
     this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
     this.zoomSlider.syncFromCamera();
     this.hud.update();
@@ -501,6 +503,7 @@ export class Game {
     const overlay = this.buildFrameOverlay(lastPointer);
     const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
     this.renderer.render(this.state, alpha, this.controller.session.selection, overlay, this.frameMs, revealAll);
+    tickSanctuarySpireAudio(this.audio, this.state, this.registry, this.humanId, this.services.nav, revealAll);
     this.hud.update();
   }
 
@@ -514,6 +517,7 @@ export class Game {
     this.keyboard?.detach();
     this.pointerBinder?.detach();
     this.loop?.stop();
+    this.audio.stopSanctuaryIdle();
     this.simCtrl.terminate();
     this.simCtrl.autosaveOnExit();
     this.renderer.destroy();

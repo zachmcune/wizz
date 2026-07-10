@@ -180,9 +180,10 @@ const GLYPHS: Record<string, GlyphFn> = {
     }
   },
   sanctuary_spire: (g, r, accent) => {
-    g.moveTo(0, -r * 0.72).lineTo(0, r * 0.55).stroke({ width: 2.5, color: accent });
-    g.moveTo(-r * 0.45, -r * 0.1).lineTo(r * 0.45, -r * 0.1).stroke({ width: 2.5, color: accent });
-    g.circle(0, -r * 0.1, r * 0.58).stroke({ width: 1.5, color: accent, alpha: 0.8 });
+    g.circle(0, -r * 0.55, r * 0.14).fill(accent);
+    g.ellipse(0, -r * 0.38, r * 0.34, r * 0.1).stroke({ width: 1.2, color: accent, alpha: 0.7 });
+    g.ellipse(0, -r * 0.52, r * 0.26, r * 0.08).stroke({ width: 1.2, color: accent, alpha: 0.55 });
+    g.moveTo(0, -r * 0.72).lineTo(0, r * 0.42).stroke({ width: 2, color: accent, alpha: 0.85 });
   },
   frost_bolt: (g, r, accent) => {
     g.poly([0, -r * 0.8, r * 0.22, 0, 0, r * 0.8, -r * 0.22, 0]).fill(accent);
@@ -399,9 +400,14 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
   },
   sanctuary_spire: (g, size, fill, accent) => {
     const r = size / 2;
-    g.roundRect(-r * 0.38, r * 0.38, r * 0.76, r * 0.32, r * 0.08).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.poly([0, -r * 0.92, r * 0.2, r * 0.18, -r * 0.2, r * 0.18]).fill(fill).stroke({ width: 2, color: OUTLINE });
-    GLYPHS.sanctuary_spire!(g, r, accent);
+    g.roundRect(-r * 0.42, r * 0.32, r * 0.84, r * 0.28, r * 0.1).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.roundRect(-r * 0.28, r * 0.02, r * 0.56, r * 0.22, r * 0.08).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.ellipse(0, -r * 0.18, r * 0.32, r * 0.1).stroke({ width: 1.5, color: accent, alpha: 0.65 });
+    g.ellipse(0, -r * 0.34, r * 0.24, r * 0.08).stroke({ width: 1.5, color: accent, alpha: 0.5 });
+    g.circle(0, -r * 0.58, r * 0.12).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    g.poly([0, -r * 0.78, r * 0.16, -r * 0.42, 0, -r * 0.28, -r * 0.16, -r * 0.42])
+      .fill(accent)
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.85 });
   },
 };
 
@@ -749,11 +755,16 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   sanctuary_spire: (g, size, fill, accent) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.44, r * 0.46, r * 0.2, r * 0.28, fillN);
-    drawIsoPyramid(g, 0, r * 0.08, r * 0.28, r * 0.14, r * 1.02, fillN);
-    g.circle(0, -r * 0.58, r * 0.3).stroke({ width: 1.5, color: accent, alpha: 0.8 });
-    g.moveTo(0, -r * 0.92).lineTo(0, -r * 0.38).stroke({ width: 2.5, color: accent });
-    g.moveTo(-r * 0.26, -r * 0.58).lineTo(r * 0.26, -r * 0.58).stroke({ width: 2.5, color: accent });
+    const accentN = parseHex(accent);
+    drawIsoPlate(g, 0, r * 0.44, r * 0.88, r * 0.34, shade(fillN, 0.42));
+    drawIsoPrism(g, 0, r * 0.3, r * 0.52, r * 0.22, r * 0.26, fillN);
+    drawIsoPrism(g, 0, r * 0.08, r * 0.34, r * 0.14, r * 0.42, shade(fillN, 0.94));
+    g.ellipse(0, -r * 0.42, r * 0.3, r * 0.09).stroke({ width: 1.2, color: accent, alpha: 0.6 });
+    g.ellipse(0, -r * 0.56, r * 0.22, r * 0.07).stroke({ width: 1.2, color: accent, alpha: 0.45 });
+    g.circle(0, -r * 0.88, r * 0.14).fill(accentN).stroke({ width: 1.5, color: OUTLINE });
+    g.poly([0, -r * 1.08, r * 0.1, -r * 0.86, 0, -r * 0.68, -r * 0.1, -r * 0.86])
+      .fill(shade(accentN, 0.88))
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.85 });
   },
 };
 

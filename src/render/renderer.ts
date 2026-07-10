@@ -18,6 +18,7 @@ import { EffectsLayer } from './effects';
 import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { renderCelestialCannons } from './celestial-cannon-vfx';
 import { renderStormConductors } from './storm-conductor-vfx';
+import { renderSanctuarySpires } from './sanctuary-spire-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
@@ -629,6 +630,18 @@ export class Renderer {
       this.overlayFillPool,
       this.overlayStrokePool,
       state.tick + alpha,
+    );
+    renderSanctuarySpires(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
+      dtMs / 1000,
     );
     if (overlay?.debugCircles?.length) {
       for (const c of overlay.debugCircles) {

@@ -14,7 +14,7 @@ export {
   shouldRevealAllForViewer,
 } from './fog';
 export { isPowerShort, powerDeficit, buildingHasPower, buildingPowerUse } from './power';
-export { getPlayer, isAlive, hasBuff, entitiesSorted, isEnemy } from './queries';
+export { getPlayer, isAlive, hasBuff, entitiesSorted, isEnemy, isAlly } from './queries';
 export { isHarvester, isCombatUnit, isUnit, isBuilding, isProjectile, isResourceNode } from './entity-types';
 export { pickEntity, pickResourceNode } from './picking';
 export { canBuildNearBase } from './build-zone';

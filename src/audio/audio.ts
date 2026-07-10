@@ -153,4 +153,86 @@ export class AudioManager {
   playStormIdleTick(): void {
     this.synthVoice({ freq: 420, freqEnd: 280, dur: 0.04, type: 'triangle', gain: 0.06 }, 'stormIdleTick', 1.2);
   }
+
+  private sanctuaryIdleOsc: OscillatorNode | null = null;
+  private sanctuaryIdleGain: GainNode | null = null;
+  private lastSanctuaryIdlePulse = 0;
+
+  /** Very quiet sustained warm pad while a Sanctuary Spire is on screen. */
+  tickSanctuaryIdle(): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const now = this.ctx.currentTime;
+    if (!this.sanctuaryIdleOsc) {
+      this.sanctuaryIdleOsc = this.ctx.createOscillator();
+      this.sanctuaryIdleGain = this.ctx.createGain();
+      this.sanctuaryIdleOsc.type = 'sine';
+      this.sanctuaryIdleOsc.frequency.value = 110;
+      this.sanctuaryIdleGain.gain.value = 0.0001;
+      this.sanctuaryIdleOsc.connect(this.sanctuaryIdleGain);
+      this.sanctuaryIdleGain.connect(this.master);
+      this.sanctuaryIdleOsc.start(now);
+      this.sanctuaryIdleOsc.frequency.setTargetAtTime(132, now, 0.8);
+      this.sanctuaryIdleGain.gain.setTargetAtTime(0.018, now, 0.6);
+    }
+    if (now - this.lastSanctuaryIdlePulse > 5.5) {
+      this.lastSanctuaryIdlePulse = now;
+      this.synthVoice({ freq: 264, freqEnd: 330, dur: 1.8, type: 'triangle', gain: 0.04 }, 'sanctuaryShimmer', 5);
+    }
+  }
+
+  stopSanctuaryIdle(): void {
+    if (!this.ctx || !this.sanctuaryIdleOsc || !this.sanctuaryIdleGain) return;
+    const now = this.ctx.currentTime;
+    this.sanctuaryIdleGain.gain.setTargetAtTime(0.0001, now, 0.4);
+    this.sanctuaryIdleOsc.stop(now + 0.5);
+    this.sanctuaryIdleOsc.disconnect();
+    this.sanctuaryIdleGain.disconnect();
+    this.sanctuaryIdleOsc = null;
+    this.sanctuaryIdleGain = null;
+  }
+
+  /** Rising bowed-glass tone during pulse anticipation (~1s ramp). */
+  playSanctuaryAnticipation(progress: number): void {
+    const base = 220 + progress * 180;
+    this.synthVoice(
+      { freq: base, freqEnd: base * 1.08, dur: 0.14, type: 'sine', gain: 0.06 + progress * 0.08 },
+      `sanctuaryAnticipation${Math.floor(progress * 8)}`,
+      0.1,
+    );
+  }
+
+  /** Warm singing-bowl swell on pulse bloom. */
+  playSanctuaryPulse(): void {
+    this.synthVoice({ freq: 196, freqEnd: 392, dur: 0.55, type: 'sine', gain: 0.22 }, 'sanctuaryPulse', 0.35);
+    this.synthVoice({ freq: 392, freqEnd: 294, dur: 0.42, type: 'triangle', gain: 0.1 }, 'sanctuaryPulseHi', 0.35);
+  }
+
+  /** Unique two-note harp flourish for first-entry blessing. */
+  playSanctuaryBlessing(): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const now = this.ctx.currentTime;
+    if (this.lastPlay.sanctuaryBlessA !== undefined && now - this.lastPlay.sanctuaryBlessA < 0.25) return;
+    this.lastPlay.sanctuaryBlessA = now;
+
+    const playNote = (freq: number, start: number, dur: number, type: OscillatorType, gain: number): void => {
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      g.gain.setValueAtTime(gain, start);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(g);
+      g.connect(this.master!);
+      osc.start(start);
+      osc.stop(start + dur);
+    };
+
+    playNote(523, now, 0.18, 'sine', 0.14);
+    playNote(659, now + 0.14, 0.22, 'triangle', 0.12);
+  }
+
+  /** Subtle shimmer under empowered unit attacks (not a repeating cue). */
+  playSanctuaryBuffShimmer(): void {
+    this.synthVoice({ freq: 880, freqEnd: 660, dur: 0.05, type: 'sine', gain: 0.05 }, 'sanctuaryBuffShimmer', 0.06);
+  }
 }

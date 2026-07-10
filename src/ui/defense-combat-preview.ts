@@ -12,6 +12,7 @@ import type { StepContext } from '../sim/context';
 import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../render/storm-conductor-vfx';
+import { isUnitInSanctuaryAura, resetSanctuaryVfx, spawnSanctuaryAttackTrail } from '../render/sanctuary-spire-vfx';
 import { Renderer } from '../render/renderer';
 import { el } from './dom';
 
@@ -150,13 +151,22 @@ function setupScene(registry: Registry, defenseId: string, teamColor: string): {
 
 let previewPendingStormChain = false;
 
-function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects'], getState: () => GameState): void {
+function handlePreviewEvent(
+  ev: GameEvent,
+  effects: Renderer['effects'],
+  getState: () => GameState,
+  registry: Registry,
+): void {
   const state = getState();
   switch (ev.type) {
     case 'attackFired': {
       const src = state.entities.get(ev.sourceId);
       if (src?.defId === 'storm_conductor') {
         previewPendingStormChain = true;
+        break;
+      }
+      if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, src)) {
+        spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
         break;
       }
       effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
@@ -167,9 +177,12 @@ function handlePreviewEvent(ev: GameEvent, effects: Renderer['effects'], getStat
         effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
       }
       break;
-    case 'healApplied':
-      effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
+    case 'healApplied': {
+      const target = state.entities.get(ev.targetId);
+      const inSanctuary = target?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, target);
+      if (!inSanctuary) effects.spawn('spark', ev.x, ev.y, 0x8fffd2, 5);
       break;
+    }
     case 'attackCharging': {
       const src = state.entities.get(ev.sourceId);
       if (src?.defId === 'storm_conductor') break;
@@ -316,6 +329,7 @@ export class DefenseCombatPreview {
     this.captionEl.textContent = built.scenario.caption;
     this.renderer?.syncTick(built.state);
     this.renderer?.effects.reset();
+    resetSanctuaryVfx();
     this.renderer?.snapDisplay();
     this.frameCamera();
   }
@@ -336,7 +350,9 @@ export class DefenseCombatPreview {
   private stepSim(): boolean {
     if (this.destroyed || !this.sim || !this.renderer) return false;
     const result = this.sim.step();
-    for (const ev of result.events) handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state);
+    for (const ev of result.events) {
+      handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state, this.registry);
+    }
     this.renderer.syncTick(this.sim.state);
     this.ticksSinceReset++;
     if (this.shouldReset(this.sim.state)) {
