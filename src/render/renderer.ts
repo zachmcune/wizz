@@ -144,6 +144,7 @@ export class Renderer {
       antialias: true,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
+      autoStart: false,
     });
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
@@ -238,6 +239,7 @@ export class Renderer {
     this.fogLayer.clear();
     this.shadowLayer.clear();
     this.effects.reset();
+    this.app.render();
   }
 
   setNav(nav: NavGrid): void {
@@ -704,6 +706,7 @@ export class Renderer {
       this.debugStatsLabel.visible = false;
     }
     this.effects.update();
+    this.app.render();
   }
 
   private drawPowerOffline(x: number, y: number, radius: number): void {
