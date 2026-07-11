@@ -450,6 +450,8 @@ export class Game {
       this.hud.update();
       if (this.sandboxMode && this.state.sandbox) {
         this.renderSandboxFrame(1);
+      } else {
+        this.renderPausedFrame();
       }
       return;
     }
@@ -498,6 +500,15 @@ export class Game {
       this.frameMs,
     );
     return { ...base, ...debug } as SandboxDebugOverlay;
+  }
+
+  private renderPausedFrame(): void {
+    const lastPointer = this.pointerBinder?.getLastPointer() ?? { x: 0, y: 0 };
+    const overlay = this.buildFrameOverlay(lastPointer);
+    const revealAll = shouldRevealAllForViewer(this.state, this.humanId, this.deadSpectatorReveal);
+    this.renderer.render(this.state, 1, this.controller.session.selection, overlay, this.frameMs, revealAll);
+    this.minimap.render(this.state, this.humanId, this.services.nav, this.registry, revealAll);
+    this.zoomSlider.syncFromCamera();
   }
 
   private renderSandboxFrame(alpha: number): void {
