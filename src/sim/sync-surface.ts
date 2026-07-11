@@ -221,21 +221,27 @@ export function hashAuthoritativeState(state: GameState): string {
 }
 
 export function packAuthoritativeState(state: GameState): TransferState {
-  const entities = [...state.entities.values()].sort((a, b) => a.id - b.id);
+  // Deep-clone mutable fields so retained snapshots (e.g. SimHost.lastTransfer) are not
+  // aliased to live sim objects. Without this, packDelta compares two views of the same
+  // in-place-mutated entities and emits empty `changed` arrays — fog/players still sync
+  // while unit positions on the main-thread mirror stay frozen.
+  const entities = [...state.entities.values()]
+    .sort((a, b) => a.id - b.id)
+    .map((e) => structuredClone(e));
   return {
     syncVersion: SYNC_SURFACE_VERSION,
     tick: state.tick,
     rngState: state.rngState,
-    players: state.players,
-    relations: state.relations,
+    players: structuredClone(state.players),
+    relations: structuredClone(state.relations),
     entities,
     nextEntityId: state.nextEntityId,
     mapId: state.mapId,
     winnerTeam: state.winnerTeam,
     ended: state.ended,
-    beams: state.beams,
+    beams: structuredClone(state.beams),
     oneSuperweaponPerPlayer: state.oneSuperweaponPerPlayer,
-    sandbox: state.sandbox,
+    sandbox: state.sandbox ? structuredClone(state.sandbox) : undefined,
   };
 }
 
