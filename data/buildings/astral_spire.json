@@ -15,5 +15,10 @@
   "unlocksSpells": ["astral_lance", "meteor_storm", "aegis_ward", "blink_gate"],
   "isSuperweapon": true,
   "powerUsed": 100,
-  "art": { "shape": "building", "size": 80, "accent": "#9fdcff" }
+  "art": {
+    "shape": "building",
+    "size": 80,
+    "accent": "#9fdcff",
+    "sprite": "astral_spire"
+  }
 }
