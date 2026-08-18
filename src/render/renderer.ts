@@ -20,6 +20,7 @@ import { renderCelestialCannons } from './celestial-cannon-vfx';
 import { renderStormConductors } from './storm-conductor-vfx';
 import { renderSanctuarySpires } from './sanctuary-spire-vfx';
 import { renderArcaneSentries } from './arcane-sentry-vfx';
+import { renderAstralSpires } from './astral-spire-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogRun } from './terrain-draw';
 import { entityVisualHeight, flyerHoverLevels, visualHeightAt, visualHeightAtTile } from './visual-height';
@@ -694,6 +695,17 @@ export class Renderer {
       this.overlayStrokePool,
       state.tick + alpha,
       dtMs / 1000,
+    );
+    renderAstralSpires(
+      state,
+      this.registry,
+      this.viewerId,
+      this.nav,
+      revealAll,
+      (wx, wy) => this.drawPos(wx, wy),
+      this.overlayFillPool,
+      this.overlayStrokePool,
+      state.tick + alpha,
     );
     if (overlay?.debugCircles?.length) {
       for (const c of overlay.debugCircles) {

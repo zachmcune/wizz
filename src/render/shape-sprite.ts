@@ -54,6 +54,26 @@ function strokeArc(
   g.stroke(style);
 }
 
+/** Regular star polygon (outer, inner, outer, …). `squashY` flattens it onto the ground plane. */
+function starPolyPoints(
+  cx: number,
+  cy: number,
+  outer: number,
+  inner: number,
+  points: number,
+  squashY = 1,
+  rotation = -Math.PI / 2,
+): number[] {
+  const pts: number[] = [];
+  const verts = points * 2;
+  for (let i = 0; i < verts; i++) {
+    const a = rotation + (i / verts) * Math.PI * 2;
+    const rad = i % 2 === 0 ? outer : inner;
+    pts.push(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * squashY);
+  }
+  return pts;
+}
+
 // --- Glyphs (accent signatures, reused on oblique rooftops) ---
 
 const GLYPHS: Record<string, GlyphFn> = {
@@ -217,6 +237,16 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.ellipse(0, -r * 0.38, r * 0.34, r * 0.1).stroke({ width: 1.2, color: accent, alpha: 0.7 });
     g.ellipse(0, -r * 0.52, r * 0.26, r * 0.08).stroke({ width: 1.2, color: accent, alpha: 0.55 });
     g.moveTo(0, -r * 0.72).lineTo(0, r * 0.42).stroke({ width: 2, color: accent, alpha: 0.85 });
+  },
+  astral_spire: (g, r, accent) => {
+    // Eight-pointed star-cross: the Astral Lance sigil, readable even as a HUD chip.
+    g.poly(starPolyPoints(0, -r * 0.08, r * 0.78, r * 0.28, 8))
+      .fill(accent)
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.85 });
+    g.poly(starPolyPoints(0, -r * 0.08, r * 0.42, r * 0.14, 4, 1, 0))
+      .fill({ color: 0xffffff, alpha: 0.9 });
+    g.circle(0, -r * 0.08, r * 0.12).fill(accent);
+    g.circle(0, -r * 0.08, r * 0.52).stroke({ width: 1.4, color: accent, alpha: 0.55 });
   },
   frost_bolt: (g, r, accent) => {
     g.poly([0, -r * 0.8, r * 0.22, 0, 0, r * 0.8, -r * 0.22, 0]).fill(accent);
@@ -471,6 +501,39 @@ const ICON_DESIGNS: Record<string, DesignFn> = {
       .fill(accent)
       .stroke({ width: 1, color: OUTLINE, alpha: 0.85 });
   },
+  astral_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    // Star-plaza keep: octagonal base, four satellite pylons, needle shaft, captured star.
+    g.poly(starPolyPoints(0, r * 0.42, r * 0.92, r * 0.52, 8, 0.55))
+      .fill(shade(fillN, 0.55))
+      .stroke({ width: 2.5, color: OUTLINE });
+    g.poly(starPolyPoints(0, r * 0.28, r * 0.58, r * 0.32, 8, 0.5))
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    for (const [x, y] of [[-0.72, 0.22], [0.72, 0.22], [-0.42, -0.08], [0.42, -0.08]] as const) {
+      g.poly([
+        r * x, r * y + r * 0.18,
+        r * x + r * 0.1, r * y - r * 0.42,
+        r * x - r * 0.1, r * y - r * 0.42,
+      ])
+        .fill(shade(fillN, 0.82))
+        .stroke({ width: 1.5, color: OUTLINE });
+      g.circle(r * x, r * y - r * 0.5, r * 0.07).fill(accent);
+    }
+    g.poly([-r * 0.22, r * 0.18, r * 0.22, r * 0.18, r * 0.1, -r * 0.72, -r * 0.1, -r * 0.72])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    g.poly([-r * 0.1, -r * 0.68, r * 0.1, -r * 0.68, r * 0.04, -r * 1.02, -r * 0.04, -r * 1.02])
+      .fill(shade(fillN, 1.05))
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.ellipse(0, -r * 0.82, r * 0.38, r * 0.1).stroke({ width: 1.5, color: accent, alpha: 0.7 });
+    g.ellipse(0, -r * 0.98, r * 0.26, r * 0.07).stroke({ width: 1.2, color: 0xffffff, alpha: 0.55 });
+    g.poly(starPolyPoints(0, -r * 1.12, r * 0.24, r * 0.08, 8))
+      .fill(accent)
+      .stroke({ width: 1, color: OUTLINE });
+    g.circle(0, -r * 1.12, r * 0.06).fill({ color: 0xffffff, alpha: 0.95 });
+  },
 };
 
 /** Per-entity oblique box proportions for extra silhouette variety. */
@@ -492,6 +555,7 @@ const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
   storm_conductor: { wMul: 0.85, hMul: 0.78 },
   celestial_cannon: { wMul: 0.82, hMul: 0.78 },
   sanctuary_spire: { wMul: 0.82, hMul: 0.82 },
+  astral_spire: { wMul: 1.02, hMul: 0.92 },
   stone_golem: { wMul: 0.95, hMul: 0.55 },
   siege_behemoth: { wMul: 1.1, hMul: 0.5 },
   waystone_wagon: { wMul: 1.15, hMul: 0.42 },
@@ -537,6 +601,7 @@ const BUILDING_GROUND_Y: Record<string, number> = {
   storm_conductor: 0.44,
   celestial_cannon: 0.42,
   sanctuary_spire: 0.44,
+  astral_spire: 0.5,
 };
 
 export function isBuildingWorldArt(art: Pick<ArtDef, 'shape' | 'sprite'>): boolean {
@@ -946,6 +1011,82 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     g.poly([0, -r * 1.08, r * 0.1, -r * 0.86, 0, -r * 0.68, -r * 0.1, -r * 0.86])
       .fill(shade(accentN, 0.88))
       .stroke({ width: 1, color: OUTLINE, alpha: 0.85 });
+  },
+  astral_spire: (g, size, fill, accent) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    const accentN = parseHex(accent);
+    const gold = 0xffe08a;
+    // Ceremonial star-plaza — wider than a typical tower, still inside the 3x3 envelope.
+    g.poly(starPolyPoints(0, r * 0.5, r * 1.08, r * 0.62, 8, 0.38))
+      .fill(shade(fillN, 0.32))
+      .stroke({ width: 2, color: OUTLINE });
+    drawIsoPlate(g, 0, r * 0.38, r * 0.78, r * 0.3, shade(fillN, 0.48));
+    drawIsoPrism(g, 0, r * 0.26, r * 0.62, r * 0.26, r * 0.28, fillN);
+
+    // Far satellite pylons (drawn before the shaft so they tuck behind it).
+    for (const [x, y] of [[-0.7, 0.08], [0.7, 0.08]] as const) {
+      drawIsoPrism(g, r * x, r * y, r * 0.12, r * 0.08, r * 0.62, fillN);
+      drawIsoPyramid(g, r * x, r * (y - 0.62), r * 0.11, r * 0.07, r * 0.22, fillN);
+      g.circle(r * x, r * (y - 0.82), r * 0.055).fill(accentN).stroke({ width: 1, color: OUTLINE });
+    }
+
+    // Stepped ziggurat → needle shaft. This is the tallest silhouette in the faction.
+    drawIsoPrism(g, 0, r * 0.02, r * 0.42, r * 0.18, r * 0.42, shade(fillN, 0.92));
+    drawIsoPrism(g, 0, -r * 0.38, r * 0.24, r * 0.12, r * 0.62, fillN);
+    drawIsoPrism(g, 0, -r * 0.98, r * 0.14, r * 0.08, r * 0.55, shade(fillN, 1.04));
+    drawIsoPyramid(g, 0, -r * 1.52, r * 0.11, r * 0.06, r * 0.42, fillN);
+
+    // Rune bands on the shaft — reads as a charged superweapon, not a plain tower.
+    for (const y of [-0.18, -0.52, -0.86, -1.18] as const) {
+      g.moveTo(-r * 0.2, r * y).lineTo(r * 0.2, r * y).stroke({ width: 1.3, color: gold, alpha: 0.7 });
+    }
+
+    // Near satellite pylons (in front of the shaft).
+    for (const [x, y] of [[-0.52, 0.42], [0.52, 0.42]] as const) {
+      drawIsoPrism(g, r * x, r * y, r * 0.13, r * 0.09, r * 0.48, fillN);
+      drawIsoPyramid(g, r * x, r * (y - 0.48), r * 0.12, r * 0.07, r * 0.2, fillN);
+      g.circle(r * x, r * (y - 0.66), r * 0.06).fill(accentN).stroke({ width: 1, color: OUTLINE });
+    }
+
+    // Twin gyro rings — the orbital array that fires the Astral Lance.
+    g.ellipse(0, -r * 1.42, r * 0.42, r * 0.12)
+      .stroke({ width: 2.2, color: accent, alpha: 0.78 });
+    g.ellipse(0, -r * 1.42, r * 0.42, r * 0.12)
+      .stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
+    g.ellipse(0, -r * 1.72, r * 0.3, r * 0.09)
+      .stroke({ width: 1.8, color: accent, alpha: 0.62 });
+    g.ellipse(0, -r * 1.96, r * 0.52, r * 0.14)
+      .stroke({ width: 1.6, color: accent, alpha: 0.48 });
+
+    const starY = -r * 2.22;
+    // Pylon tethers — the four anchors feeding the captured star.
+    for (const [x, y, tip] of [
+      [-0.7, 0.08, 0.82],
+      [0.7, 0.08, 0.82],
+      [-0.52, 0.42, 0.66],
+      [0.52, 0.42, 0.66],
+    ] as const) {
+      g.moveTo(r * x, r * (y - tip)).lineTo(0, starY).stroke({ width: 1.1, color: accent, alpha: 0.4 });
+    }
+
+    // Captured star at the apex — the weapon's heart.
+    g.circle(0, starY, r * 0.22).fill({ color: accentN, alpha: 0.28 });
+    g.poly(starPolyPoints(0, starY, r * 0.28, r * 0.1, 8))
+      .fill(accentN)
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.poly(starPolyPoints(0, starY, r * 0.16, r * 0.055, 4, 1, 0))
+      .fill({ color: 0xffffff, alpha: 0.95 });
+    g.circle(0, starY, r * 0.055).fill({ color: 0xffffff, alpha: 1 });
+    g.moveTo(0, starY - r * 0.38).lineTo(0, starY + r * 0.22)
+      .stroke({ width: 1.6, color: 0xffffff, alpha: 0.85 });
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI / 4 + (i / 4) * Math.PI * 2;
+      g.circle(Math.cos(a) * r * 0.42, starY + Math.sin(a) * r * 0.16, r * 0.035).fill({
+        color: 0xffffff,
+        alpha: 0.8,
+      });
+    }
   },
 };
 

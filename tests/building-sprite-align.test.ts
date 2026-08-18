@@ -91,6 +91,14 @@ describe('building sprite alignment', () => {
     expect(center.y).toBeCloseTo(world.y, 6);
   });
 
+  it('keeps the Astral Spire on its authored size with a dedicated world sprite', () => {
+    const def = reg.building('astral_spire');
+    expect(def.art.size).toBe(80);
+    expect(def.footprint).toBe(3);
+    expect(def.art.sprite).toBe('astral_spire');
+    expect(buildingGroundYMul('astral_spire')).toBe(0.5);
+  });
+
   it('sits a 3x3 building on the center of its middle footprint tile', () => {
     const tx = 6;
     const ty = 9;
