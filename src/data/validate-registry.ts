@@ -133,12 +133,15 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
       issues.push({ path: prefix, message: `superweapon.spellId is not a known spell` });
     }
     const prod = strategy.production;
-    for (const key of ['harvesterBuilding', 'armyBuilding', 'siegeBuilding'] as const) {
+    for (const key of ['harvesterBuilding', 'weaverBuilding', 'armyBuilding', 'siegeBuilding'] as const) {
       if (!buildingIds.has(prod[key])) issues.push({ path: prefix, message: `production.${key} is not a known building` });
     }
     if (!unitIds.has(prod.harvesterUnit)) issues.push({ path: prefix, message: `production.harvesterUnit is not a known unit` });
-    for (const uid of [...prod.armyRotation, ...prod.siegeUnits, prod.nexusUnit]) {
+    for (const uid of [...prod.armyRotation, ...prod.siegeUnits, prod.nexusUnit, prod.weaverUnit, prod.airUnit, prod.scoutUnit]) {
       if (!unitIds.has(uid)) issues.push({ path: prefix, message: `production references unknown unit "${uid}"` });
+    }
+    for (const [key, spellId] of Object.entries(strategy.spells)) {
+      if (!spellIds.has(spellId)) issues.push({ path: prefix, message: `spells.${key} is not a known spell` });
     }
     if (!unitIds.has(strategy.combat.garrisonUnit)) {
       issues.push({ path: prefix, message: `combat.garrisonUnit is not a known unit` });

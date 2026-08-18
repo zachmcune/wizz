@@ -32,12 +32,21 @@
     "spellId": "astral_lance",
     "requiresBuilding": "astral_spire"
   },
+  "spells": {
+    "meteor": "meteor_storm",
+    "aegis": "aegis_ward",
+    "blink": "blink_gate"
+  },
   "production": {
     "harvesterBuilding": "attunement_spire",
     "harvesterUnit": "wisp",
+    "weaverBuilding": "resonance_vault",
+    "weaverUnit": "mana_weaver",
     "armyBuilding": "summoning_circle",
     "siegeBuilding": "golem_forge",
     "nexusUnit": "storm_caster",
+    "airUnit": "rift_skimmer",
+    "scoutUnit": "rift_familiar",
     "armyRotation": ["imp_swarmling", "arcane_archer", "rift_familiar"],
     "siegeUnits": ["siege_behemoth", "stone_golem"],
     "siegeArmyThresholdFactor": 0.35,

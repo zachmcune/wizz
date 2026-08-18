@@ -2,6 +2,7 @@
 import type { SimServices } from '../../sim/context';
 import type { Command, GameState, Player } from '../../sim/types';
 import type { AiParams } from '../../data/defs';
+import type { AiDifficultyProfile } from '../difficulty';
 
 export interface AiStrategyConfig {
   id: string;
@@ -21,12 +22,21 @@ export interface AiStrategyConfig {
     spellId: string;
     requiresBuilding: string;
   };
+  spells: {
+    meteor: string;
+    aegis: string;
+    blink: string;
+  };
   production: {
     harvesterBuilding: string;
     harvesterUnit: string;
+    weaverBuilding: string;
+    weaverUnit: string;
     armyBuilding: string;
     siegeBuilding: string;
     nexusUnit: string;
+    airUnit: string;
+    scoutUnit: string;
     armyRotation: string[];
     siegeUnits: string[];
     siegeArmyThresholdFactor: number;
@@ -47,6 +57,7 @@ export interface AiDecisionContext {
   services: SimServices;
   player: Player;
   difficulty: AiParams;
+  profile: AiDifficultyProfile;
   cmds: Command[];
   skipCombat: boolean;
 }

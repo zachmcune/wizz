@@ -1,8 +1,10 @@
 // Shared deterministic AI utilities used by all strategies.
 import { TILE } from '../core/constants';
 import { buildingPlacementSpacing } from '../core/placement-spacing';
+import type { Registry } from '../data/registry';
 import type { SimServices } from '../sim/context';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
+import { isCombatUnit, isHarvester } from '../sim/types';
 import type { BuildingEntity, ResourceNodeEntity, UnitEntity } from '../sim/entity-types';
 import { ownedBy, buildingsOf, isEnemy, isAlive } from '../sim/queries';
 import { canBuildNearBase } from '../sim/build-zone';
@@ -64,6 +66,32 @@ export function findPlacement(
 
 export function idleCombat(combat: UnitEntity[]): EntityId[] {
   return combat.filter((e) => isAlive(e) && e.orders.length === 0 && e.state === 'idle').map((e) => e.id);
+}
+
+/** Armed troops only — excludes harvesters, weavers, and packable wagons. */
+export function isArmyUnit(registry: Registry, e: Entity): e is UnitEntity {
+  if (!isCombatUnit(e) || !isAlive(e)) return false;
+  const def = registry.units.get(e.defId);
+  if (!def?.weapon) return false;
+  if (def.canConjureMana) return false;
+  if (def.deploysAs) return false;
+  return true;
+}
+
+export function idleArmy(units: UnitEntity[]): UnitEntity[] {
+  return units.filter((e) => isAlive(e) && e.orders.length === 0 && e.state === 'idle');
+}
+
+export function assignedHarvestersPerNode(state: GameState, owner: PlayerId): Map<EntityId, number> {
+  const counts = new Map<EntityId, number>();
+  for (const e of ownedBy(state, owner)) {
+    if (!isHarvester(e) || !isAlive(e)) continue;
+    const harvest = e.orders.find((o) => o.type === 'harvest');
+    const nodeId = harvest?.type === 'harvest' ? harvest.nodeId : undefined;
+    if (nodeId === undefined) continue;
+    counts.set(nodeId, (counts.get(nodeId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 export function enemiesNear(state: GameState, owner: PlayerId, x: number, y: number, radius: number): Entity[] {

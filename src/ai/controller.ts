@@ -2,6 +2,7 @@
 // It ONLY emits Commands (same as a human) - never mutates sim state directly.
 import type { SimServices } from '../sim/context';
 import type { GameState, Command } from '../sim/types';
+import { difficultyProfile } from './difficulty';
 import { strategyForPlayer } from './strategies/registry';
 
 export function aiStep(state: GameState, services: SimServices): Command[] {
@@ -31,6 +32,7 @@ function runAiPlayers(
       services,
       player: p,
       difficulty: diff,
+      profile: difficultyProfile(p.aiDifficulty),
       cmds,
       skipCombat: opts.skipCombat,
     });
