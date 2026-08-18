@@ -24,6 +24,7 @@ import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogRun } from './terrain-draw';
 import { entityVisualHeight, flyerHoverLevels, visualHeightAt, visualHeightAtTile } from './visual-height';
 import { drawBuildZoneTiles, drawPlacementCells } from './placement-draw';
+import { tileHeightLift } from './tile-project';
 import type { BuildZoneTile, PlacementCell } from '../sim/placement-preview';
 import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 import {
@@ -898,7 +899,7 @@ export class Renderer {
     if (overlay?.wallGhosts?.length) ghosts.push(...overlay.wallGhosts);
     if (!tiles?.length && !ghosts.some((g) => g.cells?.length)) return;
 
-    const liftAt = (tx: number, ty: number) => visualHeightAtTile(this.map, tx, ty) * 6;
+    const liftAt = (tx: number, ty: number) => tileHeightLift(visualHeightAtTile(this.map, tx, ty));
     const inView = (tx: number, ty: number) => {
       const cx = tx * TILE + TILE / 2;
       const cy = ty * TILE + TILE / 2;

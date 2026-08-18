@@ -1,8 +1,8 @@
 // Ground-aligned placement overlay (projected quads). Render-only.
 import { Graphics } from 'pixi.js';
 import { TILE } from '../core/constants';
-import { projectGround } from '../core/coords';
 import type { BuildZoneTile, PlacementCell, PlacementCellKind } from '../sim/placement-preview';
+import { projectLiftedGround, projectedTileCorners } from './tile-project';
 
 const OPEN_FILL = 0x5dff8f;
 const NODE_FILL = 0xffd166;
@@ -24,21 +24,8 @@ const CELL_STROKE: Record<PlacementCellKind, number> = {
   cliff: 0xffd8a8,
 };
 
-function projectPoint(worldX: number, worldY: number, lift: number): { x: number; y: number } {
-  // Same world-Y lift as fog/terrain (visualHeight * 6), so tiles sit on the ground.
-  return projectGround({ x: worldX, y: worldY - lift });
-}
-
 function appendTileQuad(g: Graphics, tx: number, ty: number, inset: number, lift: number): void {
-  const x0 = tx * TILE + inset;
-  const y0 = ty * TILE + inset;
-  const x1 = (tx + 1) * TILE - inset;
-  const y1 = (ty + 1) * TILE - inset;
-  const tl = projectPoint(x0, y0, lift);
-  const tr = projectPoint(x1, y0, lift);
-  const br = projectPoint(x1, y1, lift);
-  const bl = projectPoint(x0, y1, lift);
-  g.poly([tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+  g.poly(projectedTileCorners(tx, ty, 1, inset, lift));
 }
 
 function strokeEdge(
@@ -52,8 +39,8 @@ function strokeEdge(
   alpha: number,
   width: number,
 ): void {
-  const a = projectPoint(x1, y1, lift);
-  const b = projectPoint(x2, y2, lift);
+  const a = projectLiftedGround(x1, y1, lift);
+  const b = projectLiftedGround(x2, y2, lift);
   g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width, color, alpha, cap: 'round' });
 }
 

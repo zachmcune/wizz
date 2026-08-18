@@ -1,59 +1,47 @@
 // Oblique terrain drawing helpers (render-only). Used by Renderer.buildTerrain.
 import { Graphics } from 'pixi.js';
-import { TILE, TILE_BLOCKED, TILE_RAMP } from '../core/constants';
-import { projectGround } from '../core/coords';
+import { TILE_BLOCKED, TILE_RAMP } from '../core/constants';
 import type { MapData } from '../data/defs';
-import { tileToWorld, worldToTileX, worldToTileY } from '../core/coords';
+import { worldToTileX, worldToTileY } from '../core/coords';
 import { visualHeightAtTile } from './visual-height';
 import { fogRunProjectedCorners, type FogRun } from './fog-draw';
+import { projectedTileCorners, tileHeightLift } from './tile-project';
 
 const CLIFF_LIFT = 14;
-
-function tileCenter(tx: number, ty: number): { x: number; y: number } {
-  return tileToWorld(tx, ty);
-}
 
 function groundColor(tx: number, ty: number, blocked: boolean): number {
   if (blocked) return 0x342e44;
   return (tx + ty) % 2 === 0 ? 0x1a1826 : 0x1d1b2a;
 }
 
-function drawGroundDiamond(g: Graphics, tx: number, ty: number, map: MapData, fill: number): void {
-  const c = tileCenter(tx, ty);
-  const h = visualHeightAtTile(map, tx, ty);
-  const lift = h * 6;
-  const hw = TILE * 0.48;
-  const hh = TILE * 0.24;
-  const top = projectGround({ x: c.x, y: c.y - hh - lift });
-  const right = projectGround({ x: c.x + hw, y: c.y - lift });
-  const bottom = projectGround({ x: c.x, y: c.y + hh - lift });
-  const left = projectGround({ x: c.x - hw, y: c.y - lift });
-  g.poly([top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y]).fill(fill);
+function drawGroundTile(g: Graphics, tx: number, ty: number, map: MapData, fill: number): void {
+  const lift = tileHeightLift(visualHeightAtTile(map, tx, ty));
+  g.poly(projectedTileCorners(tx, ty, 1, 0.5, lift)).fill(fill);
 }
 
 function drawCliffBlock(g: Graphics, tx: number, ty: number): void {
-  const c = tileCenter(tx, ty);
-  const hw = TILE * 0.48;
-  const hh = TILE * 0.24;
   const topFill = 0x24202f;
   const wallFill = 0x1a1624;
   const wallDark = 0x12101c;
+  const top = projectedTileCorners(tx, ty, 1, 0, CLIFF_LIFT);
+  const base = projectedTileCorners(tx, ty, 1, 0, 0);
+  const trx = top[2]!;
+  const try_ = top[3]!;
+  const brx = top[4]!;
+  const bry = top[5]!;
+  const blx = top[6]!;
+  const bly = top[7]!;
+  const btrx = base[2]!;
+  const btry = base[3]!;
+  const bbrx = base[4]!;
+  const bbry = base[5]!;
+  const bblx = base[6]!;
+  const bbly = base[7]!;
 
-  const top = projectGround({ x: c.x, y: c.y - hh - CLIFF_LIFT });
-  const right = projectGround({ x: c.x + hw, y: c.y - CLIFF_LIFT });
-  const bottom = projectGround({ x: c.x, y: c.y + hh - CLIFF_LIFT });
-  const left = projectGround({ x: c.x - hw, y: c.y - CLIFF_LIFT });
-  g.poly([top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y]).fill(topFill);
-
-  const base = projectGround({ x: c.x, y: c.y });
-  const baseR = projectGround({ x: c.x + hw, y: c.y });
-  const baseB = projectGround({ x: c.x, y: c.y + hh });
-  const baseL = projectGround({ x: c.x - hw, y: c.y });
-
-  // South-east facing walls (toward +screen Y in oblique)
-  g.poly([right.x, right.y, bottom.x, bottom.y, baseB.x, baseB.y, baseR.x, baseR.y]).fill(wallFill);
-  g.poly([bottom.x, bottom.y, left.x, left.y, baseL.x, baseL.y, baseB.x, baseB.y]).fill(wallDark);
-  g.poly([left.x, left.y, baseL.x, baseL.y, base.x, base.y, bottom.x, bottom.y]).fill(wallFill);
+  g.poly(top).fill(topFill);
+  // South-east / south-west faces (toward +screen Y in oblique).
+  g.poly([trx, try_, brx, bry, bbrx, bbry, btrx, btry]).fill(wallFill);
+  g.poly([brx, bry, blx, bly, bblx, bbly, bbrx, bbry]).fill(wallDark);
 }
 
 function isPassable(map: MapData, tx: number, ty: number): boolean {
@@ -63,13 +51,13 @@ function isPassable(map: MapData, tx: number, ty: number): boolean {
 }
 
 function drawObliqueTerrain(g: Graphics, map: MapData): void {
-  // Ground layer (back to front for overlapping diamonds)
+  // Ground layer (back to front so raised tiles overlap correctly)
   for (let ty = 0; ty < map.tileH; ty++) {
     for (let tx = 0; tx < map.tileW; tx++) {
       const code = map.tiles[ty * map.tileW + tx] ?? 0;
       if (code === TILE_BLOCKED) continue;
       const fill = code === TILE_RAMP ? 0x4a3e2c : groundColor(tx, ty, false);
-      drawGroundDiamond(g, tx, ty, map, fill);
+      drawGroundTile(g, tx, ty, map, fill);
     }
   }
   // Cliff blocks on impassable tiles adjacent to passable (or all blocked for borders)
@@ -84,7 +72,7 @@ function drawObliqueTerrain(g: Graphics, map: MapData): void {
       if (nearOpen || tx === 0 || ty === 0 || tx === map.tileW - 1 || ty === map.tileH - 1) {
         drawCliffBlock(g, tx, ty);
       } else {
-        drawGroundDiamond(g, tx, ty, map, 0x24202f);
+        drawGroundTile(g, tx, ty, map, 0x24202f);
       }
     }
   }
@@ -101,7 +89,7 @@ function fogRunLift(map: MapData, run: FogRun, cheap: boolean): number {
   let lift = 0;
   for (let i = 0; i < run.tw; i++) {
     const h = visualHeightAtTile(map, run.tx + i, run.ty);
-    if (h * 6 > lift) lift = h * 6;
+    if (tileHeightLift(h) > lift) lift = tileHeightLift(h);
   }
   return lift;
 }

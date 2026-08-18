@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { TILE } from '../src/core/constants';
 import { projectGround } from '../src/core/coords';
 import { ghostWorldPos } from '../src/sim/placement-preview';
+import { projectedTileCenter, projectedTileCorners } from '../src/render/tile-project';
+import { fogRunProjectedCorners } from '../src/render/fog-draw';
 import {
   buildingGroundShiftY,
   buildingGroundYMul,
@@ -55,5 +57,24 @@ describe('building sprite alignment', () => {
       expect(screen.x).toBeCloseTo(cellCenter.x, 6);
       expect(screen.y).toBeCloseTo(cellCenter.y, 6);
     }
+  });
+
+  it('draws build-zone tiles on the same projected quads as terrain and fog', () => {
+    const corners = projectedTileCorners(4, 7, 1, 0, 0);
+    expect(fogRunProjectedCorners(4, 7, 1)).toEqual(corners);
+    const center = projectedTileCenter(4, 7);
+    const world = projectGround({ x: 4 * TILE + TILE / 2, y: 7 * TILE + TILE / 2 });
+    expect(center.x).toBeCloseTo(world.x, 6);
+    expect(center.y).toBeCloseTo(world.y, 6);
+  });
+
+  it('sits a 3x3 building on the center of its middle footprint tile', () => {
+    const tx = 6;
+    const ty = 9;
+    const world = ghostWorldPos(tx, ty, 3);
+    const building = projectGround(world);
+    const middle = projectedTileCenter(tx + 1, ty + 1);
+    expect(building.x).toBeCloseTo(middle.x, 6);
+    expect(building.y).toBeCloseTo(middle.y, 6);
   });
 });
