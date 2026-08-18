@@ -21,6 +21,7 @@ import {
 import { entitiesSorted, isAlive, isEnemy } from '../queries';
 import { isInBeamCone, rotateToward } from '../beam-util';
 import { acquireTarget, inWeaponBand, sightOf } from './combat';
+import { weaponHitsEntity } from '../mobility';
 
 function weaponOf(ctx: StepContext, e: BuildingEntity): WeaponDef | null {
   return ctx.services.registry.buildings.get(e.defId)?.weapon ?? null;
@@ -66,6 +67,7 @@ function collectBeamHits(
     if (target.kind === 'unit' && garrisonedInId(target) !== undefined) continue;
     if (!isEnemy(state, tower.owner, target.owner)) continue;
     if (!isVisibleTo(state, tower.owner, target, ctx.services.nav)) continue;
+    if (!weaponHitsEntity(ctx.services.registry, w, target)) continue;
     if (
       !isInBeamCone(
         tower.pos.x,

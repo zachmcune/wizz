@@ -69,8 +69,10 @@ export function computeFlowField(
         const nx = cx + dx;
         const ny = cy + dy;
         if (isTileBlocked(nx, ny)) continue;
+        if (!nav.canStep(cx, cy, nx, ny)) continue;
         if (dx !== 0 && dy !== 0) {
           if (isTileBlocked(cx + dx, cy) || isTileBlocked(cx, cy + dy)) continue;
+          if (!nav.canStep(cx, cy, cx + dx, cy) || !nav.canStep(cx, cy, cx, cy + dy)) continue;
         }
         const step = dx !== 0 && dy !== 0 ? 14 : 10;
         const ni = ny * nav.w + nx;

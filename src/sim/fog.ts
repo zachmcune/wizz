@@ -11,6 +11,7 @@ import type { GameState, Entity, Player, PlayerId, KnownBuilding } from './types
 import { entitiesSorted, getPlayer, isAlly, isAlive } from './queries';
 import { buildingHasPower, isPowerShort } from './power';
 import { sandboxFogEnabled, sandboxRevealIntel } from './sandbox-flags';
+import { isAirEntity } from './mobility';
 
 export function createFogTiles(tileCount: number): number[] {
   return new Array(tileCount).fill(0);
@@ -60,6 +61,8 @@ function revealSight(
   x: number,
   y: number,
   sight: number,
+  viewerHeight: number,
+  flying: boolean,
 ): void {
   if (sight <= 0) return;
   const minTx = Math.max(0, Math.floor((x - sight) / TILE));
@@ -75,6 +78,7 @@ function revealSight(
       const dx = cx - x;
       const dy = cy - y;
       if (dx * dx + dy * dy > sightSq) continue;
+      if (!flying && nav.heightAt(tx, ty) > viewerHeight) continue;
       const i = ty * nav.w + tx;
       explored[i] = 1;
       visible[i] = 1;
@@ -101,7 +105,9 @@ export function visibilitySystem(state: GameState, registry: Registry, nav: NavG
     for (const e of entitiesSorted(state)) {
       if (!partners.includes(e.owner)) continue;
       if (!isSightSource(state, registry, e)) continue;
-      revealSight(nav, player.explored, player.visible, e.pos.x, e.pos.y, sightOfEntity(registry, e));
+      const flying = isAirEntity(registry, e);
+      const viewerHeight = nav.heightAtWorld(e.pos.x, e.pos.y);
+      revealSight(nav, player.explored, player.visible, e.pos.x, e.pos.y, sightOfEntity(registry, e), viewerHeight, flying);
     }
 
     updateKnownBuildings(state, registry, nav, player);

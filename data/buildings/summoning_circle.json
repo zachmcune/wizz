@@ -2,7 +2,7 @@
   "id": "summoning_circle",
   "name": "Summoning Circle",
   "shortLabel": "SUM",
-  "description": "Trains infantry and, after the Arcane Nexus, advanced storm casters.",
+  "description": "Trains infantry and, after the Arcane Nexus, storm casters and flying Rift Skimmers.",
   "kind": "building",
   "cost": 550,
   "buildTime": 8,
@@ -18,7 +18,8 @@
     "imp_swarmling",
     "arcane_archer",
     "rift_familiar",
-    "storm_caster"
+    "storm_caster",
+    "rift_skimmer"
   ],
   "powerUsed": 20,
   "art": {

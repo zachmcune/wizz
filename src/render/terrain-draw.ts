@@ -1,6 +1,6 @@
 // Oblique terrain drawing helpers (render-only). Used by Renderer.buildTerrain.
 import { Graphics } from 'pixi.js';
-import { TILE } from '../core/constants';
+import { TILE, TILE_BLOCKED, TILE_RAMP } from '../core/constants';
 import { projectGround } from '../core/coords';
 import { getProjectionMode } from '../core/projection';
 import type { MapData } from '../data/defs';
@@ -22,10 +22,13 @@ function groundColor(tx: number, ty: number, blocked: boolean): number {
 function drawOrthoTerrain(g: Graphics, map: MapData): void {
   for (let ty = 0; ty < map.tileH; ty++) {
     for (let tx = 0; tx < map.tileW; tx++) {
-      const blocked = map.tiles[ty * map.tileW + tx] === 1;
-      const base = blocked ? 0x24202f : groundColor(tx, ty, false);
+      const code = map.tiles[ty * map.tileW + tx] ?? 0;
+      const blocked = code === TILE_BLOCKED;
+      const ramp = code === TILE_RAMP;
+      const base = blocked ? 0x24202f : ramp ? 0x3a3428 : groundColor(tx, ty, false);
       g.rect(tx * TILE, ty * TILE, TILE, TILE).fill(base);
       if (blocked) g.rect(tx * TILE + 3, ty * TILE + 3, TILE - 6, TILE - 6).fill(0x342e44);
+      if (ramp) g.rect(tx * TILE + 6, ty * TILE + 6, TILE - 12, TILE - 12).fill(0x5a4a32);
     }
   }
 }
@@ -70,21 +73,24 @@ function drawCliffBlock(g: Graphics, tx: number, ty: number): void {
 
 function isPassable(map: MapData, tx: number, ty: number): boolean {
   if (tx < 0 || ty < 0 || tx >= map.tileW || ty >= map.tileH) return false;
-  return map.tiles[ty * map.tileW + tx] === 0;
+  const code = map.tiles[ty * map.tileW + tx] ?? 0;
+  return code !== TILE_BLOCKED;
 }
 
 function drawObliqueTerrain(g: Graphics, map: MapData): void {
   // Ground layer (back to front for overlapping diamonds)
   for (let ty = 0; ty < map.tileH; ty++) {
     for (let tx = 0; tx < map.tileW; tx++) {
-      if (map.tiles[ty * map.tileW + tx] !== 0) continue;
-      drawGroundDiamond(g, tx, ty, map, groundColor(tx, ty, false));
+      const code = map.tiles[ty * map.tileW + tx] ?? 0;
+      if (code === TILE_BLOCKED) continue;
+      const fill = code === TILE_RAMP ? 0x4a3e2c : groundColor(tx, ty, false);
+      drawGroundDiamond(g, tx, ty, map, fill);
     }
   }
   // Cliff blocks on impassable tiles adjacent to passable (or all blocked for borders)
   for (let ty = 0; ty < map.tileH; ty++) {
     for (let tx = 0; tx < map.tileW; tx++) {
-      if (map.tiles[ty * map.tileW + tx] !== 1) continue;
+      if (map.tiles[ty * map.tileW + tx] !== TILE_BLOCKED) continue;
       const nearOpen =
         isPassable(map, tx - 1, ty) ||
         isPassable(map, tx + 1, ty) ||

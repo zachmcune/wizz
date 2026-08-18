@@ -6,6 +6,9 @@ export type ProjectionMode = 'ortho' | 'oblique';
 /** Screen lift per visual height level in oblique mode (world units before zoom). */
 export const VISUAL_HEIGHT_STEP = 8;
 
+/** Extra visual height levels applied to flying units (render + picking only). */
+export const FLYER_HOVER_LEVELS = 2;
+
 /** Dimetric scale factors (2:1-style oblique). */
 export const OBLIQUE_SCALE_X = 0.5;
 export const OBLIQUE_SCALE_Y = 0.25;

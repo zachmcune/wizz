@@ -18,6 +18,7 @@
     "range": 195,
     "cooldownTicks": 2,
     "projectile": null,
+    "targetsAir": true,
     "beam": {
       "kind": "frost",
       "startWidth": 10,

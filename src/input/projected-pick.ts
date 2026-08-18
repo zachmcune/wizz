@@ -1,11 +1,18 @@
 // Screen-space picking for oblique view. World-space circles misalign with projected sprites.
 import { worldToScreen } from '../core/coords';
 import type { CameraView, Vec2 } from '../core/coords';
-import { getProjectionMode } from '../core/projection';
+import { FLYER_HOVER_LEVELS, getProjectionMode } from '../core/projection';
+import type { Registry } from '../data/registry';
 import type { NavGrid } from '../sim/nav-grid';
 import { pickEntity, pickResourceNode, isVisibleTo } from '../sim/views';
 import { garrisonedInId } from '../sim/capabilities';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
+
+function entityPickHeight(e: Entity, nav: NavGrid | null, registry?: Registry): number {
+  const base = nav ? nav.heightAtWorld(e.pos.x, e.pos.y) : 0;
+  const flying = e.kind === 'unit' && registry?.units.get(e.defId)?.mobility === 'air';
+  return base + (flying ? FLYER_HOVER_LEVELS : 0);
+}
 
 export function useScreenPicking(): boolean {
   return getProjectionMode() === 'oblique';
@@ -23,13 +30,14 @@ export function pickResourceNodeScreen(
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
+  registry?: Registry,
 ): Entity | null {
   let best: Entity | null = null;
   let bestD = Infinity;
   for (const e of state.entities.values()) {
     if (e.kind !== 'resource_node' || (e.amount ?? 0) <= 0) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
-    const s = worldToScreen(e.pos, cam);
+    const s = worldToScreen(e.pos, cam, entityPickHeight(e, nav, registry));
     const dx = screen.x - s.x;
     const dy = screen.y - s.y;
     const r = screenPickRadius(e, cam);
@@ -48,6 +56,7 @@ export function pickEntityScreen(
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
+  registry?: Registry,
 ): Entity | null {
   let best: Entity | null = null;
   let bestScore = -Infinity;
@@ -55,7 +64,7 @@ export function pickEntityScreen(
     if (e.kind === 'projectile') continue;
     if (e.kind === 'unit' && garrisonedInId(e) !== undefined) continue;
     if (nav && !isVisibleTo(state, viewerId, e, nav)) continue;
-    const s = worldToScreen(e.pos, cam);
+    const s = worldToScreen(e.pos, cam, entityPickHeight(e, nav, registry));
     const dx = screen.x - s.x;
     const dy = screen.y - s.y;
     const r = screenPickRadius(e, cam);
@@ -77,8 +86,9 @@ export function pickResourceNodeForInput(
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
+  registry?: Registry,
 ): Entity | null {
-  if (useScreenPicking()) return pickResourceNodeScreen(state, viewerId, screen, cam, nav);
+  if (useScreenPicking()) return pickResourceNodeScreen(state, viewerId, screen, cam, nav, registry);
   return pickResourceNode(state, viewerId, world.x, world.y, nav);
 }
 
@@ -89,8 +99,9 @@ export function pickEntityForInput(
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
+  registry?: Registry,
 ): Entity | null {
-  if (useScreenPicking()) return pickEntityScreen(state, viewerId, screen, cam, nav);
+  if (useScreenPicking()) return pickEntityScreen(state, viewerId, screen, cam, nav, registry);
   return pickEntity(state, viewerId, world.x, world.y, nav);
 }
 
@@ -101,6 +112,8 @@ export function unitsInScreenBox(
   a: Vec2,
   b: Vec2,
   cam: CameraView,
+  nav?: NavGrid | null,
+  registry?: Registry,
 ): EntityId[] {
   const minSX = Math.min(a.x, b.x);
   const maxSX = Math.max(a.x, b.x);
@@ -110,7 +123,7 @@ export function unitsInScreenBox(
   for (const e of state.entities.values()) {
     if (e.owner !== ownerId || e.kind !== 'unit') continue;
     if (garrisonedInId(e) !== undefined) continue;
-    const s = worldToScreen(e.pos, cam);
+    const s = worldToScreen(e.pos, cam, entityPickHeight(e, nav ?? null, registry));
     if (s.x >= minSX && s.x <= maxSX && s.y >= minSY && s.y <= maxSY) units.push(e.id);
   }
   return units;

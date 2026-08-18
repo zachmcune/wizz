@@ -3,6 +3,11 @@
 /** World units per tile. The sim works in world units; tiles are a grid overlay. */
 export const TILE = 32;
 
+/** Map tile codes: passable ground, impassable, walkable ramp. */
+export const TILE_GROUND = 0;
+export const TILE_BLOCKED = 1;
+export const TILE_RAMP = 2;
+
 /** Simulation runs at a fixed rate. Rendering interpolates between ticks. */
 export const TICK_HZ = 20;
 export const TICK_MS = 1000 / TICK_HZ;

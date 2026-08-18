@@ -24,9 +24,11 @@ export interface PathContext {
   flow: FlowFieldCache;
   relations: Record<PlayerId, Record<PlayerId, Relation>>;
   unitOwner: PlayerId;
+  air?: boolean;
 }
 
 function tileBlocked(ctx: PathContext): TileBlocked {
+  if (ctx.air) return (tx, ty) => ctx.nav.isBlockedForAir(tx, ty);
   return (tx, ty) => ctx.nav.isBlockedFor(ctx.unitOwner, tx, ty, ctx.relations);
 }
 
@@ -49,6 +51,7 @@ export function bestNeighborSteer(
     const nx = tx + dx;
     const ny = ty + dy;
     if (!nav.inBounds(nx, ny)) continue;
+    if (!nav.canStep(tx, ty, nx, ny)) continue;
     if (dx !== 0 && dy !== 0) {
       if (isTileBlocked(tx + dx, ty) || isTileBlocked(tx, ty + dy)) continue;
     }
@@ -71,11 +74,13 @@ export function steerToGoal(
   goal: { x: number; y: number },
 ): { x: number; y: number } {
   const { nav, flow } = ctx;
-  const block = tileBlocked(ctx);
   const dx = goal.x - pos.x;
   const dy = goal.y - pos.y;
   const d = len(dx, dy);
   if (d < TILE * 0.4) return { x: 0, y: 0 };
+  if (ctx.air) return normalize(dx, dy);
+
+  const block = tileBlocked(ctx);
 
   const goalTx = Math.floor(goal.x / TILE);
   const goalTy = Math.floor(goal.y / TILE);
@@ -105,10 +110,17 @@ export function slidePosition(
   radius = 0,
 ): { x: number; y: number } | null {
   const { nav, relations, unitOwner } = ctx;
-  const blocked =
-    radius > 0
-      ? (px: number, py: number) => nav.isBlockedDiscFor(px, py, radius, unitOwner, relations)
-      : (px: number, py: number) => nav.isBlockedWorldFor(unitOwner, px, py, relations);
+  const blocked = ctx.air
+    ? (px: number, py: number) =>
+        radius > 0 ? nav.isBlockedDiscForAir(px, py, radius) : nav.isBlockedWorldForAir(px, py)
+    : radius > 0
+      ? (px: number, py: number) => nav.isBlockedDiscFor(px, py, radius, unitOwner, relations, x, y)
+      : (px: number, py: number) => {
+          if (!nav.canStep(Math.floor(x / TILE), Math.floor(y / TILE), Math.floor(px / TILE), Math.floor(py / TILE))) {
+            return true;
+          }
+          return nav.isBlockedWorldFor(unitOwner, px, py, relations);
+        };
 
   if (!blocked(nx, ny)) return { x: nx, y: ny };
   if (!blocked(nx, y)) return { x: nx, y };
@@ -136,6 +148,7 @@ function tryEscapeMove(
     const nx = tx + dx;
     const ny = ty + dy;
     if (!nav.inBounds(nx, ny)) continue;
+    if (!ctx.air && !nav.canStep(tx, ty, nx, ny)) continue;
     if (dx !== 0 && dy !== 0) {
       if (block(tx + dx, ty) || block(tx, ty + dy)) continue;
     }
@@ -160,6 +173,7 @@ function tryEscapeMove(
 
 function tryUnstuckNudge(e: Entity, ctx: PathContext, radius: number): boolean {
   const nudgeR = radius > 0 ? radius : 4;
+  if (ctx.air) return false;
   const nudge = ctx.nav.nearestPassableFor(e.pos.x, e.pos.y, nudgeR, TILE * 2, ctx.unitOwner, ctx.relations);
   if (!nudge) return false;
   e.pos.x = nudge.x;
@@ -223,12 +237,17 @@ export function moveTowardGoal(
   dt: number,
 ): number {
   const { nav, flow } = ctx;
-  const block = tileBlocked(ctx);
   const dx = goal.x - e.pos.x;
   const dy = goal.y - e.pos.y;
   const d = len(dx, dy);
   if (d < 1) return d;
 
+  if (ctx.air) {
+    applySteeredMove(e, normalize(dx, dy), speed, ctx, dt);
+    return d;
+  }
+
+  const block = tileBlocked(ctx);
   const goalTx = Math.floor(goal.x / TILE);
   const goalTy = Math.floor(goal.y / TILE);
   const field = flow.getFor(nav, goalTx, goalTy, ctx.unitOwner, block);
@@ -242,6 +261,7 @@ export function makePathContext(
   flow: FlowFieldCache,
   relations: Record<PlayerId, Record<PlayerId, Relation>>,
   unitOwner: PlayerId,
+  air = false,
 ): PathContext {
-  return { nav, flow, relations, unitOwner };
+  return { nav, flow, relations, unitOwner, air };
 }

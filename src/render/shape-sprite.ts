@@ -84,6 +84,10 @@ const GLYPHS: Record<string, GlyphFn> = {
   rift_familiar: (g, r, accent) => {
     g.poly([-r * 0.8, r * 0.1, 0, -r * 0.5, r * 0.8, r * 0.1, 0, r * 0.35]).fill(accent);
   },
+  rift_skimmer: (g, r, accent) => {
+    g.ellipse(0, r * 0.15, r * 0.85, r * 0.28).stroke({ width: 2, color: accent });
+    g.poly([-r * 0.45, 0, 0, -r * 0.55, r * 0.45, 0]).fill(accent);
+  },
   stone_golem: (g, r, accent) => {
     g.moveTo(-r * 0.4, -r * 0.2).lineTo(r * 0.1, r * 0.35).stroke({ width: 2, color: accent });
     g.moveTo(r * 0.35, -r * 0.35).lineTo(-r * 0.15, r * 0.15).stroke({ width: 2, color: accent });
@@ -251,6 +255,13 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
     const r = size / 2;
     g.poly([-r, r * 0.2, 0, -r * 0.7, r, r * 0.2, 0, r * 0.55]).fill(fill).stroke({ width: 2, color: OUTLINE });
     GLYPHS.rift_familiar!(g, r, accent);
+    drawFacingLine(g, r, dir);
+  },
+  rift_skimmer: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    g.ellipse(0, r * 0.2, r * 0.95, r * 0.35).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.ellipse(0, -r * 0.05, r * 0.45, r * 0.22).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    GLYPHS.rift_skimmer!(g, r, accent);
     drawFacingLine(g, r, dir);
   },
   stone_golem: (g, size, fill, accent, dir) => {
@@ -465,6 +476,7 @@ const UNIT_SPRITES = new Set([
   'imp_swarmling',
   'arcane_archer',
   'rift_familiar',
+  'rift_skimmer',
   'stone_golem',
   'siege_behemoth',
   'waystone_wagon',
@@ -594,6 +606,13 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
       .stroke({ width: 1.5, color: OUTLINE });
     drawIsoPyramid(g, 0, r * 0.1, r * 0.32, r * 0.14, r * 0.7, fillN);
     drawAccentGlyph(g, 'rift_familiar', 0, -r * 0.35, r * 0.45, accent, dir);
+  },
+  rift_skimmer: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const fillN = parseHex(fill);
+    drawIsoPlate(g, 0, r * 0.28, r * 0.85, r * 0.22, shade(fillN, 0.45));
+    drawIsoPrism(g, 0, -r * 0.05, r * 0.42, r * 0.16, r * 0.35, fillN);
+    drawAccentGlyph(g, 'rift_skimmer', 0, -r * 0.15, r * 0.5, accent, dir);
   },
   stone_golem: (g, size, fill, accent, dir) => {
     const r = size / 2;

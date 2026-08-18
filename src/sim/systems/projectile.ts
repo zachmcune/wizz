@@ -44,6 +44,7 @@ export function projectileSystem(state: GameState, ctx: StepContext): void {
           vs,
           cap.sourceId,
           cap.onHitStatus,
+          { targetsAir: cap.targetsAir, targetsGround: cap.targetsGround },
         );
       } else {
         applyDamage(state, ctx, target, cap.damage, vs, cap.sourceId);

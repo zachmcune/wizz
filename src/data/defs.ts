@@ -65,7 +65,10 @@ export interface WeaponDef {
   onHitStatus?: { kind: 'slow'; durationTicks: number; moveFactor: number; attackCooldownFactor: number };
   chain?: { jumps: number; range: number; falloff: number };
   vs: Record<ArmorClass, number>; // damage multiplier by target armor class
+  /** When true, weapon can hit air-mobility units. Default false. */
   targetsAir?: boolean;
+  /** When false, weapon cannot hit ground units/buildings. Default true. */
+  targetsGround?: boolean;
 }
 
 export interface GarrisonDef {
@@ -107,6 +110,8 @@ export interface UnitDef {
   deploysAs?: string; // building defId when deployed (mobile HQ)
   deployTime?: number; // seconds to deploy
   canConjureMana?: boolean;
+  /** Ground units use nav/ramps; air units ignore ground blockers. Default ground. */
+  mobility?: 'ground' | 'air';
   art: ArtDef;
   sfx?: SfxDef;
 }
@@ -244,9 +249,11 @@ export interface MapData {
   maxPlayers: number;
   tileW: number;
   tileH: number;
-  // Row-major tile codes. 0 = passable ground, 1 = blocked (impassable).
+  // Row-major tile codes. 0 = passable ground, 1 = blocked, 2 = ramp.
   tiles: number[];
-  /** Render-only height levels (row-major, same length as tiles). Sim ignores this in Phase 1. */
+  /** Sim + render height levels (row-major, same length as tiles). */
+  heights?: number[];
+  /** @deprecated Prefer `heights`. Kept so older maps still load. */
   visualHeights?: number[];
   startLocations: { x: number; y: number }[]; // world coords
   manaNodes: { x: number; y: number; amount: number }[];

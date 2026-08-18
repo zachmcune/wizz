@@ -22,7 +22,7 @@ import { renderSanctuarySpires } from './sanctuary-spire-vfx';
 import { renderArcaneSentries } from './arcane-sentry-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogRun } from './terrain-draw';
-import { visualHeightAt } from './visual-height';
+import { entityVisualHeight, flyerHoverLevels, visualHeightAt } from './visual-height';
 import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 import {
   canvasResolution,
@@ -320,9 +320,13 @@ export class Renderer {
     }
   }
 
-  private sortKeyAt(worldX: number, worldY: number): number {
-    const h = visualHeightAt(this.map, worldX, worldY);
+  private sortKeyAt(worldX: number, worldY: number, extraHeight = 0): number {
+    const h = visualHeightAt(this.map, worldX, worldY) + extraHeight;
     return projectionSortKey({ x: worldX, y: worldY }, this.camera.view(), h);
+  }
+
+  private isFlyingEntity(e: Entity): boolean {
+    return e.kind === 'unit' && this.registry.units.get(e.defId)?.mobility === 'air';
   }
 
   private artOf(e: Entity): { art: ArtDef; color: string } {
@@ -442,9 +446,9 @@ export class Renderer {
     this.shadowLayer.ellipse(p.x, p.y + 2, radius * 0.55, radius * 0.28).fill({ color: 0x000000, alpha: 0.28 });
   }
 
-  private positionOverlayAt(worldX: number, worldY: number, offsetY: number): { x: number; y: number } {
+  private positionOverlayAt(worldX: number, worldY: number, offsetY: number, visualHeight?: number): { x: number; y: number } {
     if (!this.isOblique()) return { x: worldX, y: worldY + offsetY };
-    const p = this.groundPos(worldX, worldY);
+    const p = this.groundPos(worldX, worldY, visualHeight);
     return { x: p.x, y: p.y + offsetY * 0.5 };
   }
 
@@ -523,8 +527,10 @@ export class Renderer {
         continue;
       }
 
-      const pos = this.drawPos(x, y);
-      const depth = oblique ? this.sortKeyAt(x, y) : 0;
+      const flying = this.isFlyingEntity(e);
+      const hoverH = entityVisualHeight(this.map, x, y, flying);
+      const pos = this.isOblique() ? this.groundPos(x, y, hoverH) : this.drawPos(x, y);
+      const depth = oblique ? this.sortKeyAt(x, y, flying ? flyerHoverLevels() : 0) : 0;
       n.sprite.position.set(pos.x, pos.y);
       if (oblique) n.sprite.zIndex = depth;
 
@@ -560,7 +566,7 @@ export class Renderer {
       const labelOff = e.radius + 4;
       if (n.label) {
         if (this.isOblique()) {
-          const lp = this.positionOverlayAt(x, y, labelOff);
+          const lp = this.positionOverlayAt(x, y, labelOff, hoverH);
           n.label.position.set(lp.x, lp.y);
           n.label.zIndex = n.sprite.zIndex + 0.01;
         } else {
@@ -598,10 +604,10 @@ export class Renderer {
         }
       }
 
-      if (selected.has(id)) this.strokeSelectionRing(x, y, e.radius + 6, 2, 0xffffff, 0.9, depth);
+      if (selected.has(id)) this.strokeSelectionRing(x, y, e.radius + 6, 2, 0xffffff, 0.9, depth, hoverH);
 
       if ((e.kind === 'unit' || e.kind === 'building') && (e.hp < e.maxHp || selected.has(id))) {
-        const hp = this.positionOverlayAt(x, y, -e.radius - 8);
+        const hp = this.positionOverlayAt(x, y, -e.radius - 8, hoverH);
         this.drawHpBar(hp.x, hp.y, e);
       }
       if (e.kind === 'building' && e.buildProgress !== undefined) {
@@ -618,7 +624,7 @@ export class Renderer {
         this.fillDot(dot.x, dot.y, 3, 0x7fe3ff);
       }
       if (e.kind === 'unit' && hasBuff(e, 'slow', state.tick)) {
-        const icon = this.positionOverlayAt(x, y, -e.radius - 16);
+        const icon = this.positionOverlayAt(x, y, -e.radius - 16, hoverH);
         this.drawSlowIcon(icon.x, icon.y);
       }
     }
@@ -986,8 +992,9 @@ export class Renderer {
     color: number,
     alpha: number,
     depth: number,
+    visualHeight?: number,
   ): void {
-    const pos = this.drawPos(worldX, worldY);
+    const pos = this.isOblique() ? this.groundPos(worldX, worldY, visualHeight) : this.drawPos(worldX, worldY);
     const g = this.selectionRingPool.acquire();
     // Slightly above the entity so the ring isn't clipped by its own sprite, but still
     // behind anything drawn in front (higher depth).
