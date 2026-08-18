@@ -1,4 +1,5 @@
 // View-only session state (selection, current mode, placement/targeting). NOT part of the sim.
+import type { PlacementGhost } from '../sim/placement-preview';
 import type { EntityId } from '../sim/types';
 
 export type InputMode =
@@ -16,9 +17,9 @@ export interface SessionState {
   selection: Set<EntityId>;
   mode: InputMode;
   buildDefId: string | null;
-  buildGhost: { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } | null;
+  buildGhost: PlacementGhost | null;
   /** Preview tiles while drag-placing walls. */
-  wallDragTiles: { x: number; y: number; valid: boolean }[] | null;
+  wallDragTiles: PlacementGhost[] | null;
   wallDragStart: { tx: number; ty: number } | null;
   deployEntityId: EntityId | null;
   rallyBuildingId: EntityId | null;

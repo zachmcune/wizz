@@ -2,6 +2,8 @@ import { TILE } from '../core/constants';
 import { buildingPlacementSpacing } from '../core/placement-spacing';
 import type { BuildingDef } from '../data/defs';
 import type { Vec2 } from '../core/coords';
+import type { PlacementGhost, PlacementIssue } from '../sim/placement-preview';
+import { classifyPlacementCells, ghostWorldPos, placementIssueFromChecks } from '../sim/placement-preview';
 import type { InputContext } from './input-context';
 
 export function placementSpacing(def: Pick<BuildingDef, 'isWall' | 'menuCategory'> | undefined): number {
@@ -11,8 +13,7 @@ export function placementSpacing(def: Pick<BuildingDef, 'isWall' | 'menuCategory
 export function tileAt(world: Vec2, footprint: number): { tx: number; ty: number; cx: number; cy: number } {
   const tx = Math.floor((world.x - (footprint * TILE) / 2) / TILE);
   const ty = Math.floor((world.y - (footprint * TILE) / 2) / TILE);
-  const cx = (tx + footprint / 2) * TILE;
-  const cy = (ty + footprint / 2) * TILE;
+  const { x: cx, y: cy } = ghostWorldPos(tx, ty, footprint);
   return { tx, ty, cx, cy };
 }
 
@@ -36,17 +37,45 @@ export function ghostAtTile(
   ty: number,
   footprint: number,
   defId: string,
-): { x: number; y: number; valid: boolean; issue?: 'blocked' | 'range' | 'node' } {
+  opts?: { requireZone?: boolean },
+): PlacementGhost {
+  const requireZone = opts?.requireZone !== false;
   const def = ctx.registry.buildings.get(defId);
   const spacing = placementSpacing(def);
-  const cx = (tx + footprint / 2) * TILE;
-  const cy = (ty + footprint / 2) * TILE;
+  const { x, y } = ghostWorldPos(tx, ty, footprint);
   const navOk = ctx.canPlace(tx, ty, footprint, spacing);
   const nodeBlocked = ctx.onNode(tx, ty, footprint);
-  const zoneOk = ctx.canBuildNear(tx, ty, footprint);
+  const zoneOk = requireZone ? ctx.canBuildNear(tx, ty, footprint) : true;
+  const heightOk = ctx.nav.footprintHeightOk(tx, ty, footprint);
+  const cells = classifyPlacementCells({
+    tx,
+    ty,
+    footprint,
+    requireZone,
+    tileInZone: (cx, cy) => ctx.canBuildNear(cx, cy, 1),
+    tileOnNode: (cx, cy) => ctx.onNode(cx, cy, 1),
+    tileOccupied: (cx, cy) => ctx.nav.isOccupied(cx, cy),
+    heightOk,
+  });
+  const occupied = cells.some((c) => c.kind === 'blocked');
   const valid = navOk && !nodeBlocked && zoneOk;
-  const issue = !navOk ? 'blocked' : nodeBlocked ? 'node' : !zoneOk ? 'range' : undefined;
-  return { x: cx, y: cy, valid, issue };
+  const issue = placementIssueFromChecks({ occupied, heightOk, nodeBlocked, zoneOk, navOk });
+  return { x, y, valid, issue, cells };
+}
+
+export function placementConfirmHint(issue?: PlacementIssue): string {
+  switch (issue) {
+    case 'node':
+      return '· on a mana pool';
+    case 'range':
+      return '· too far from your buildings';
+    case 'cliff':
+      return '· needs level ground';
+    case 'blocked':
+      return '· blocked by terrain or a structure';
+    default:
+      return '· click map or Place';
+  }
 }
 
 export function isWallBuild(ctx: InputContext): boolean {

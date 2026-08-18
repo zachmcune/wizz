@@ -22,7 +22,9 @@ import { renderSanctuarySpires } from './sanctuary-spire-vfx';
 import { renderArcaneSentries } from './arcane-sentry-vfx';
 import { GraphicsPool } from './graphics-pool';
 import { buildTerrainGraphics, drawFogRun } from './terrain-draw';
-import { entityVisualHeight, flyerHoverLevels, visualHeightAt } from './visual-height';
+import { entityVisualHeight, flyerHoverLevels, visualHeightAt, visualHeightAtTile } from './visual-height';
+import { drawBuildZoneTiles, drawPlacementCells } from './placement-draw';
+import type { BuildZoneTile, PlacementCell } from '../sim/placement-preview';
 import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
 import {
   canvasResolution,
@@ -51,6 +53,7 @@ export interface BuildPlacementGhost {
   valid: boolean;
   defId: string;
   color: string;
+  cells?: PlacementCell[];
 }
 
 export interface RenderOverlay {
@@ -58,7 +61,7 @@ export interface RenderOverlay {
   wallGhosts?: BuildPlacementGhost[];
   spell?: { x: number; y: number; radius: number };
   confirm?: { x: number; y: number } | null;
-  buildZones?: { x: number; y: number; r: number }[];
+  buildTiles?: BuildZoneTile[];
   rallyMarker?: { fromX: number; fromY: number; toX: number; toY: number };
   debugCircles?: { x: number; y: number; r: number; color: number; alpha?: number }[];
   debugLines?: { x1: number; y1: number; x2: number; y2: number; color: number }[];
@@ -106,6 +109,7 @@ export class Renderer {
   private world = new Container();
   private terrainLayer = new Container();
   private fogLayer = new Graphics();
+  private placementLayer = new Graphics();
   private shadowLayer = new Graphics();
   private entityLayer = new Container();
   private selectionRingLayer = new Container();
@@ -205,6 +209,7 @@ export class Renderer {
     this.world.addChild(
       this.terrainLayer,
       this.fogLayer,
+      this.placementLayer,
       this.shadowLayer,
       this.entityLayer,
       this.selectionRingLayer,
@@ -289,6 +294,7 @@ export class Renderer {
     this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
     this.fogKey = '';
+    this.placementLayer.clear();
     this.shadowLayer.clear();
     this.effects.reset();
     this.app.render();
@@ -645,12 +651,7 @@ export class Renderer {
 
     if (viewer && nav && !revealAll) this.renderBuildingGhosts(state, viewer, nav);
 
-    if (overlay?.buildZones?.length) {
-      for (const z of overlay.buildZones) {
-        const p = this.drawPos(z.x, z.y);
-        this.strokeSquare(p.x, p.y, z.r, 1.5, 0x5dff8f, 0.22);
-      }
-    }
+    this.renderPlacementOverlay(overlay);
     const placementGhosts: BuildPlacementGhost[] = [];
     if (overlay?.ghost) placementGhosts.push(overlay.ghost);
     if (overlay?.wallGhosts?.length) placementGhosts.push(...overlay.wallGhosts);
@@ -958,6 +959,27 @@ export class Renderer {
     }
   }
 
+  private renderPlacementOverlay(overlay?: RenderOverlay): void {
+    this.placementLayer.clear();
+    const tiles = overlay?.buildTiles;
+    const ghosts: BuildPlacementGhost[] = [];
+    if (overlay?.ghost) ghosts.push(overlay.ghost);
+    if (overlay?.wallGhosts?.length) ghosts.push(...overlay.wallGhosts);
+    if (!tiles?.length && !ghosts.some((g) => g.cells?.length)) return;
+
+    const oblique = this.isOblique();
+    const liftAt = (tx: number, ty: number) => visualHeightAtTile(this.map, tx, ty) * 6;
+    const inView = (tx: number, ty: number) => {
+      const cx = tx * TILE + TILE / 2;
+      const cy = ty * TILE + TILE / 2;
+      return this.worldInView(cx, cy, TILE);
+    };
+    if (tiles?.length) drawBuildZoneTiles(this.placementLayer, tiles, inView, liftAt, oblique);
+    for (const ghost of ghosts) {
+      if (ghost.cells?.length) drawPlacementCells(this.placementLayer, ghost.cells, liftAt, oblique);
+    }
+  }
+
   private renderPlacementGhosts(ghosts: BuildPlacementGhost[]): void {
     while (this.placementGhosts.length < ghosts.length) {
       const sprite = new Sprite();
@@ -1008,11 +1030,6 @@ export class Renderer {
     // behind anything drawn in front (higher depth).
     g.zIndex = depth + 0.001;
     g.circle(pos.x, pos.y, radius).stroke({ width, color, alpha });
-  }
-
-  private strokeSquare(cx: number, cy: number, half: number, width: number, color: number, alpha: number): void {
-    const g = this.overlayStrokePool.acquire();
-    g.rect(cx - half, cy - half, half * 2, half * 2).stroke({ width, color, alpha });
   }
 
   private strokeRing(cx: number, cy: number, r: number, width: number, color: number, alpha: number, start = 0, end = Math.PI * 2): void {

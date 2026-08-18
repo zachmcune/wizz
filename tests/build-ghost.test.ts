@@ -20,7 +20,7 @@ function makeController(): InputController {
       visibleWorldRect: () => ({ x: 0, y: 0, w: 800, h: 600 }),
     } as unknown as Camera,
     registry,
-    {} as unknown as NavGrid,
+    { isOccupied: () => false, footprintHeightOk: () => true } as unknown as NavGrid,
     'p1',
     vi.fn(),
     vi.fn(),
@@ -43,6 +43,8 @@ describe('build ghost under the pointer', () => {
       y: (Math.floor((260 - TILE) / TILE) + 1) * TILE,
       valid: true,
     });
+    expect(controller.session.buildGhost?.cells).toHaveLength(4);
+    expect(controller.session.buildGhost?.cells.every((c) => c.kind === 'ok')).toBe(true);
   });
 
   it('falls back to a camera-relative anchor when the pointer has not moved yet', () => {
