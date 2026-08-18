@@ -304,7 +304,7 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
       outer.push(Math.cos(a) * r * 0.96, Math.sin(a) * r * 0.96);
     }
     g.poly(outer).fill(shade(fillN, 0.58)).stroke({ width: 3, color: OUTLINE });
-    for (const [x, y] of [[-0.66, -0.66], [0.66, -0.66], [-0.66, 0.66], [0.66, 0.66]]) {
+    for (const [x, y] of [[-0.66, -0.66], [0.66, -0.66], [-0.66, 0.66], [0.66, 0.66]] as const) {
       g.circle(r * x, r * y, r * 0.24).fill(fill).stroke({ width: 2, color: OUTLINE });
       g.circle(r * x, r * y, r * 0.11).fill({ color: accent, alpha: 0.72 });
     }
@@ -663,7 +663,7 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     drawIsoPrism(g, 0, r * 0.03, r * 0.76, r * 0.32, r * 0.38, fillN);
 
     // Four turreted buttresses frame the taller central command spire.
-    for (const [x, y] of [[-0.72, 0.18], [0.72, 0.18], [-0.5, -0.25], [0.5, -0.25]]) {
+    for (const [x, y] of [[-0.72, 0.18], [0.72, 0.18], [-0.5, -0.25], [0.5, -0.25]] as const) {
       drawIsoPrism(g, r * x, r * y, r * 0.2, r * 0.11, r * 0.48, fillN);
       drawIsoPyramid(g, r * x, r * (y - 0.49), r * 0.23, r * 0.12, r * 0.28, fillN);
       g.circle(r * x, r * (y - 0.7), r * 0.055).fill(accent);
