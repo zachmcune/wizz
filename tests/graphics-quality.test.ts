@@ -127,8 +127,8 @@ describe('fog runs', () => {
   it('covers screen corners that the camera origin rectangle misses', () => {
     const cam = new Camera(1280, 720, 4096, 2816);
     cam.centerOn(800, 600);
-    const naive = cam.visibleWorldRect();
-    const naiveBounds = visibleTileBounds(naive.x, naive.y, naive.w, naive.h, 0, 128, 88);
+    const originRect = { x: cam.x, y: cam.y, w: 1280 / cam.zoom, h: 720 / cam.zoom };
+    const originBounds = visibleTileBounds(originRect.x, originRect.y, originRect.w, originRect.h, 0, 128, 88);
     const aabb = visibleWorldAabb(cam.view(), 1280, 720);
     const bounds = visibleTileBounds(aabb.x, aabb.y, aabb.w, aabb.h, 0, 128, 88);
     const corner = screenToWorld({ x: 1279, y: 719 }, cam.view());
@@ -138,9 +138,10 @@ describe('fog runs', () => {
     expect(bounds.maxTx).toBeGreaterThanOrEqual(ctx);
     expect(bounds.minTy).toBeLessThanOrEqual(cty);
     expect(bounds.maxTy).toBeGreaterThanOrEqual(cty);
-    const naiveCoversCorner =
-      ctx >= naiveBounds.minTx && ctx <= naiveBounds.maxTx && cty >= naiveBounds.minTy && cty <= naiveBounds.maxTy;
-    expect(naiveCoversCorner).toBe(false);
+    const originCoversCorner =
+      ctx >= originBounds.minTx && ctx <= originBounds.maxTx && cty >= originBounds.minTy && cty <= originBounds.maxTy;
+    expect(originCoversCorner).toBe(false);
+    expect(cam.visibleWorldRect()).toEqual(aabb);
   });
 
   it('joins adjacent fog runs on a shared edge', () => {

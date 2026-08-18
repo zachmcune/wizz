@@ -7,8 +7,8 @@ import {
   MAX_ZOOM,
 } from '../core/constants';
 import { clamp } from '../sim/math';
-import type { CameraView, Vec2 } from '../core/coords';
-import { projectGround, screenPanToCameraDelta, screenToWorld } from '../core/coords';
+import type { CameraView, Vec2, WorldRect } from '../core/coords';
+import { projectGround, screenPanToCameraDelta, screenToWorld, visibleWorldAabb } from '../core/coords';
 import { OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
 
 export class Camera implements CameraView {
@@ -123,8 +123,11 @@ export class Camera implements CameraView {
     return { x: this.x, y: this.y, zoom: this.zoom };
   }
 
-  /** The world-space rectangle currently visible. */
-  visibleWorldRect(): { x: number; y: number; w: number; h: number } {
-    return { x: this.x, y: this.y, w: this.viewW / this.zoom, h: this.viewH / this.zoom };
+  /**
+   * World-space AABB covering every pixel currently on screen.
+   * In 2.5D the visible region is a parallelogram; this is its bounding box.
+   */
+  visibleWorldRect(): WorldRect {
+    return visibleWorldAabb(this, this.viewW, this.viewH);
   }
 }
