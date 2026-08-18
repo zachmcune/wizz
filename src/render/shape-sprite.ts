@@ -1,7 +1,7 @@
 // Placeholder art drawn from data `art.shape` / `art.sprite`. Cached as textures for batched Sprite draws.
 // The SpriteProvider seam lets a real AtlasSpriteProvider replace this later with zero
 // gameplay-code changes.
-import { Graphics, Texture, type Renderer } from 'pixi.js';
+import { Container, Graphics, Rectangle, Texture, type Renderer } from 'pixi.js';
 import type { ArtDef, ShapeKind } from '../data/defs';
 import { appendOpenArc } from './open-arc';
 
@@ -514,6 +514,63 @@ function isUnitSprite(sprite: string): boolean {
   return UNIT_SPRITES.has(sprite);
 }
 
+/**
+ * Foundation center Y as a fraction of art radius (`size / 2`). Custom building
+ * designs draw their ground diamond below the origin; this shift puts that
+ * diamond on (0, 0) so the sprite pivot matches the placement-tile center.
+ */
+const BUILDING_GROUND_Y: Record<string, number> = {
+  sanctum: 0.56,
+  waystone_camp: 0.42,
+  attunement_spire: 0.45,
+  ley_conduit: 0.45,
+  summoning_circle: 0.22,
+  golem_forge: 0.42,
+  stone_wall: 0.22,
+  arcane_sentry: 0.38,
+  arcane_gate: 0.26,
+  scrying_obelisk: 0.45,
+  arcane_nexus: 0.36,
+  arcane_bunker: 0.3,
+  frost_spire: 0.34,
+  inferno_beacon: 0.38,
+  storm_conductor: 0.44,
+  celestial_cannon: 0.42,
+  sanctuary_spire: 0.44,
+};
+
+export function isBuildingWorldArt(art: Pick<ArtDef, 'shape' | 'sprite'>): boolean {
+  const sprite = art.sprite ?? '';
+  return art.shape === 'building' || (!!sprite && !!ICON_DESIGNS[sprite] && !isUnitSprite(sprite));
+}
+
+/** Screen-Y translation that places a building's foundation diamond on the origin. */
+export function buildingGroundShiftY(sprite: string, size: number): number {
+  const mul = BUILDING_GROUND_Y[sprite];
+  if (mul === undefined) return 0;
+  return -(size / 2) * mul;
+}
+
+/** Sprite ids that have a custom world design and must sit on a tile. */
+export function buildingObliqueSpriteIds(): string[] {
+  return Object.keys(OBLIQUE_DESIGNS).filter((id) => !isUnitSprite(id));
+}
+
+export function buildingGroundYMul(sprite: string): number | undefined {
+  return BUILDING_GROUND_Y[sprite];
+}
+
+/** Texture defaultAnchor that keeps graphics origin (0, 0) on the sprite position. */
+export function textureAnchorFromLocalBounds(bounds: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): { x: number; y: number } {
+  if (bounds.width <= 0 || bounds.height <= 0) return { x: 0.5, y: 0.5 };
+  return { x: -bounds.x / bounds.width, y: -bounds.y / bounds.height };
+}
+
 function drawIsoPrism(
   g: Graphics,
   cx: number,
@@ -1016,10 +1073,22 @@ export class ShapeSpriteProvider implements SpriteProvider {
     const key = `${this.textureResolution}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
     let tex = this.cache.get(key);
     if (!tex) {
+      const isBuilding = isBuildingWorldArt(art);
+      const root = new Container();
       const g = new Graphics();
       drawObliqueBox(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
-      tex = this.renderer.generateTexture({ target: g, resolution: this.textureResolution });
-      g.destroy();
+      if (isBuilding) g.position.set(0, buildingGroundShiftY(sprite, art.size));
+      root.addChild(g);
+      const bounds = root.getLocalBounds();
+      const frame = new Rectangle(bounds.x, bounds.y, Math.max(bounds.width, 1), Math.max(bounds.height, 1));
+      const anchor = art.anchor ?? (isBuilding ? textureAnchorFromLocalBounds(frame) : { x: 0.5, y: 0.5 });
+      tex = this.renderer.generateTexture({
+        target: root,
+        resolution: this.textureResolution,
+        frame,
+        defaultAnchor: anchor,
+      });
+      root.destroy({ children: true });
       this.cache.set(key, tex);
     }
     return tex;

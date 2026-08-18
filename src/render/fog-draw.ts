@@ -1,7 +1,8 @@
 // Fog geometry helpers (no Pixi). Viewport-cull and merge consecutive fogged tiles
 // so the renderer is not rebuilding 10k+ polygons every frame.
 import { TILE } from '../core/constants';
-import { projectGround, screenToWorld, type CameraView } from '../core/coords';
+import { screenToWorld, type CameraView } from '../core/coords';
+import { projectedTileCorners } from './tile-project';
 
 export interface FogRun {
   tx: number;
@@ -105,15 +106,7 @@ export function collectFogRuns(
  * Matches the linear oblique projection of the sim tile square (no diamond gaps).
  */
 export function fogRunProjectedCorners(tx: number, ty: number, tw: number, lift = 0): number[] {
-  const x0 = tx * TILE;
-  const y0 = ty * TILE - lift;
-  const x1 = (tx + tw) * TILE;
-  const y1 = (ty + 1) * TILE - lift;
-  const tl = projectGround({ x: x0, y: y0 });
-  const tr = projectGround({ x: x1, y: y0 });
-  const br = projectGround({ x: x1, y: y1 });
-  const bl = projectGround({ x: x0, y: y1 });
-  return [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y];
+  return projectedTileCorners(tx, ty, tw, 0, lift);
 }
 
 /** Cheap checksum so fog geometry can be cached until vision or the view changes. */
