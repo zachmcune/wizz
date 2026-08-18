@@ -78,7 +78,7 @@ describe('height-field navigation', () => {
       for (let tx = 8; tx < 15; tx++) map.heights![ty * 16 + tx] = 1;
     }
     const nav = new NavGrid(map);
-    expect(nav.canPlace(6, 4, 2, 0)).toBe(false);
+    expect(nav.canPlace(7, 4, 2, 0)).toBe(false);
     expect(nav.canPlace(9, 4, 2, 0)).toBe(true);
   });
 
