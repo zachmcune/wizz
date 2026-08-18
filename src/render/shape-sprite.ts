@@ -4,6 +4,7 @@
 import { Graphics, Texture, type Renderer } from 'pixi.js';
 import type { ArtDef, ShapeKind } from '../data/defs';
 import { getProjectionMode } from '../core/projection';
+import { appendOpenArc } from './open-arc';
 
 export interface SpriteProvider {
   texture(art: ArtDef, teamColor: string, direction?: number): Texture;
@@ -41,6 +42,19 @@ function drawFacingLine(g: Graphics, r: number, dir: number, inner = 0.35, outer
     .stroke({ width: 2, color: OUTLINE });
 }
 
+function strokeArc(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  radius: number,
+  start: number,
+  end: number,
+  style: { width: number; color: number; alpha?: number },
+): void {
+  appendOpenArc(g, cx, cy, radius, start, end);
+  g.stroke(style);
+}
+
 // --- Glyphs (accent signatures, reused on oblique rooftops) ---
 
 const GLYPHS: Record<string, GlyphFn> = {
@@ -62,7 +76,7 @@ const GLYPHS: Record<string, GlyphFn> = {
   },
   arcane_archer: (g, r, accent, dir = 0) => {
     const ang = facingAngle(dir) - Math.PI / 2;
-    g.arc(0, 0, r * 0.55, ang - 0.9, ang + 0.9).stroke({ width: 2, color: accent });
+    strokeArc(g, 0, 0, r * 0.55, ang - 0.9, ang + 0.9, { width: 2, color: accent });
     const tx = Math.cos(facingAngle(dir)) * r * 0.75;
     const ty = Math.sin(facingAngle(dir)) * r * 0.75;
     g.moveTo(0, 0).lineTo(tx, ty).stroke({ width: 2, color: accent });
@@ -141,12 +155,12 @@ const GLYPHS: Record<string, GlyphFn> = {
     }
   },
   arcane_gate: (g, r, accent) => {
-    g.arc(0, r * 0.15, r * 0.45, Math.PI, 0).stroke({ width: 2.5, color: accent });
+    strokeArc(g, 0, r * 0.15, r * 0.45, Math.PI, 0, { width: 2.5, color: accent });
   },
   scrying_obelisk: (g, r, accent) => {
     g.circle(0, -r * 0.35, r * 0.18).fill(accent).stroke({ width: 1, color: OUTLINE });
-    g.arc(0, -r * 0.35, r * 0.32, -Math.PI * 0.75, -Math.PI * 0.25).stroke({ width: 1.5, color: accent, alpha: 0.8 });
-    g.arc(0, -r * 0.35, r * 0.45, Math.PI * 0.25, Math.PI * 0.75).stroke({ width: 1.5, color: accent, alpha: 0.8 });
+    strokeArc(g, 0, -r * 0.35, r * 0.32, -Math.PI * 0.75, -Math.PI * 0.25, { width: 1.5, color: accent, alpha: 0.8 });
+    strokeArc(g, 0, -r * 0.35, r * 0.45, Math.PI * 0.25, Math.PI * 0.75, { width: 1.5, color: accent, alpha: 0.8 });
   },
   arcane_nexus: (g, r, accent) => {
     g.circle(0, 0, r * 0.28).fill(accent);
@@ -167,8 +181,8 @@ const GLYPHS: Record<string, GlyphFn> = {
   },
   inferno_beacon: (g, r, accent) => {
     g.circle(0, 0, r * 0.28).fill(accent);
-    g.arc(0, 0, r * 0.55, -Math.PI * 0.8, Math.PI * 0.15).stroke({ width: 2, color: accent });
-    g.arc(0, 0, r * 0.72, Math.PI * 0.2, Math.PI * 0.95).stroke({ width: 1.5, color: accent });
+    strokeArc(g, 0, 0, r * 0.55, -Math.PI * 0.8, Math.PI * 0.15, { width: 2, color: accent });
+    strokeArc(g, 0, 0, r * 0.72, Math.PI * 0.2, Math.PI * 0.95, { width: 1.5, color: accent });
   },
   storm_conductor: (g, r, accent) => {
     g.circle(0, -r * 0.15, r * 0.12).fill(accent);
@@ -197,7 +211,7 @@ const GLYPHS: Record<string, GlyphFn> = {
   },
   inferno_orb: (g, r, accent) => {
     g.circle(0, 0, r * 0.45).fill(accent);
-    g.arc(0, 0, r * 0.72, -0.6, 2.2).stroke({ width: 1.5, color: accent });
+    strokeArc(g, 0, 0, r * 0.72, -0.6, 2.2, { width: 1.5, color: accent });
   },
   celestial_shot: (g, r, accent) => {
     g.poly([0, -r * 0.95, r * 0.35, -r * 0.15, r * 0.55, r * 0.2, 0, r * 0.85, -r * 0.55, r * 0.2, -r * 0.35, -r * 0.15])
@@ -378,8 +392,8 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
     g.rect(-r * 0.14, -r * 0.52, r * 0.28, r * 0.72).fill(fill).stroke({ width: 1.5, color: OUTLINE });
     g.circle(0, -r * 0.72, r * 0.26).fill(fill).stroke({ width: 2, color: OUTLINE });
     g.circle(0, -r * 0.72, r * 0.14).fill(accent);
-    g.arc(0, -r * 0.72, r * 0.42, -Math.PI * 0.85, Math.PI * 0.12).stroke({ width: 2, color: accent });
-    g.arc(0, -r * 0.72, r * 0.55, Math.PI * 0.18, Math.PI * 0.92).stroke({ width: 1.5, color: accent, alpha: 0.75 });
+    strokeArc(g, 0, -r * 0.72, r * 0.42, -Math.PI * 0.85, Math.PI * 0.12, { width: 2, color: accent });
+    strokeArc(g, 0, -r * 0.72, r * 0.55, Math.PI * 0.18, Math.PI * 0.92, { width: 1.5, color: accent, alpha: 0.75 });
   },
   storm_conductor: (g, size, fill, accent) => {
     const r = size / 2;
@@ -565,7 +579,7 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   arcane_archer: (g, size, fill, accent, dir) => {
     const r = size / 2;
     drawIsoPrism(g, 0, r * 0.22, r * 0.28, r * 0.16, r * 0.8, parseHex(fill));
-    g.arc(0, -r * 0.45, r * 0.62, -2.35, -0.8).stroke({ width: 2.5, color: accent });
+    strokeArc(g, 0, -r * 0.45, r * 0.62, -2.35, -0.8, { width: 2.5, color: accent });
     g.moveTo(-r * 0.42, -r * 0.18).lineTo(r * 0.52, -r * 0.52).stroke({ width: 2, color: accent });
     drawObliqueFacing(g, 0, -r * 0.3, r * 0.5, dir);
   },
@@ -726,8 +740,8 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     drawIsoPrism(g, 0, r * 0.38, r * 0.52, r * 0.26, r * 0.28, fillN);
     drawIsoPrism(g, 0, -r * 0.06, r * 0.2, r * 0.1, r * 0.52, fillN);
     g.circle(0, -r * 0.78, r * 0.2).fill(accent).stroke({ width: 1.5, color: OUTLINE });
-    g.arc(0, -r * 0.78, r * 0.35, -Math.PI * 0.8, Math.PI * 0.15).stroke({ width: 2, color: accent });
-    g.arc(0, -r * 0.78, r * 0.46, Math.PI * 0.22, Math.PI * 0.95).stroke({ width: 1.5, color: accent, alpha: 0.7 });
+    strokeArc(g, 0, -r * 0.78, r * 0.35, -Math.PI * 0.8, Math.PI * 0.15, { width: 2, color: accent });
+    strokeArc(g, 0, -r * 0.78, r * 0.46, Math.PI * 0.22, Math.PI * 0.95, { width: 1.5, color: accent, alpha: 0.7 });
   },
   storm_conductor: (g, size, fill, accent) => {
     const r = size / 2;
