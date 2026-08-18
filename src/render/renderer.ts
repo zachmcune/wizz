@@ -29,7 +29,15 @@ import {
   graphicsProfile,
   type GraphicsProfile,
 } from './graphics-quality';
-import { collectFogRuns, fogGeometryKey, visibleTileBounds, visibilityFingerprint } from './fog-draw';
+import {
+  collectFogRuns,
+  FOG_FILL_ALPHA,
+  FOG_FILL_COLOR,
+  fogGeometryKey,
+  visibleTileBounds,
+  visibleWorldAabb,
+  visibilityFingerprint,
+} from './fog-draw';
 import { appendOpenArc } from './open-arc';
 import { setVfxDensity } from './vfx-quality';
 
@@ -1024,7 +1032,7 @@ export class Renderer {
   }
 
   private drawFog(player: Player, nav: NavGrid): void {
-    const view = this.camera.visibleWorldRect();
+    const view = visibleWorldAabb(this.camera.view(), this.app.screen.width, this.app.screen.height);
     const bounds = visibleTileBounds(view.x, view.y, view.w, view.h, this.profile.fogPadTiles, nav.w, nav.h);
     const key = fogGeometryKey(
       visibilityFingerprint(player.visible),
@@ -1037,8 +1045,11 @@ export class Renderer {
     this.fogLayer.clear();
     const runs = collectFogRuns((i) => isTileFogged(player, i), nav.w, nav.h, bounds);
     if (runs.length === 0) return;
-    for (const run of runs) drawFogRun(this.fogLayer, this.map, run, this.profile.cheapFog);
-    this.fogLayer.fill({ color: 0xb8b8c8, alpha: 0.42 });
+    for (const run of runs) {
+      drawFogRun(this.fogLayer, this.map, run, this.profile.cheapFog);
+      // Fill per run so Pixi v8 does not even-odd the whole fog mesh into a grid.
+      this.fogLayer.fill({ color: FOG_FILL_COLOR, alpha: FOG_FILL_ALPHA });
+    }
   }
 
   private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {

@@ -1,6 +1,7 @@
 // Minimap: a small 2D-canvas overview. Requires a powered Scrying Obelisk (radar) to use.
 // Tap/drag to move the camera. Independent of the Pixi renderer for simplicity.
 import { TILE } from '../core/constants';
+import { FOG_FILL_ALPHA, FOG_FILL_COLOR } from '../render/fog-draw';
 import type { GameState, Player, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
@@ -125,6 +126,10 @@ export class Minimap {
 
     const c = this.terrainFogCtx;
     const s = this.scale;
+    const fogR = (FOG_FILL_COLOR >> 16) & 0xff;
+    const fogG = (FOG_FILL_COLOR >> 8) & 0xff;
+    const fogB = FOG_FILL_COLOR & 0xff;
+    const fogFill = `rgba(${fogR}, ${fogG}, ${fogB}, ${FOG_FILL_ALPHA})`;
     c.clearRect(0, 0, this.terrainFog.width, this.terrainFog.height);
     for (let ty = 0; ty < this.map.tileH; ty++) {
       for (let tx = 0; tx < this.map.tileW; tx++) {
@@ -133,7 +138,7 @@ export class Minimap {
         c.fillStyle = blocked ? '#2a2540' : '#1a1826';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
         if (isMinimapTileFogged(viewer, i, radarOn) && !revealAll) {
-          c.fillStyle = 'rgba(184, 184, 200, 0.42)';
+          c.fillStyle = fogFill;
           c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
         }
       }

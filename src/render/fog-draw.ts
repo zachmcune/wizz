@@ -1,6 +1,7 @@
 // Fog geometry helpers (no Pixi). Viewport-cull and merge consecutive fogged tiles
 // so the renderer is not rebuilding 10k+ polygons every frame.
 import { TILE } from '../core/constants';
+import { projectGround, screenToWorld, type CameraView } from '../core/coords';
 
 export interface FogRun {
   tx: number;
@@ -14,6 +15,10 @@ export interface TileBounds {
   minTy: number;
   maxTy: number;
 }
+
+/** Dark veil — light silver washed the dark map into a bright diamond grid. */
+export const FOG_FILL_COLOR = 0x0a0812;
+export const FOG_FILL_ALPHA = 0.62;
 
 /** Inclusive tile range covering a world-space rectangle, padded by `padTiles`. */
 export function visibleTileBounds(
@@ -32,6 +37,36 @@ export function visibleTileBounds(
     minTy: Math.max(0, Math.floor((worldY - pad) / TILE)),
     maxTy: Math.min(tileH - 1, Math.floor((worldY + worldH + pad) / TILE)),
   };
+}
+
+/**
+ * World-space AABB of the pixels currently on screen.
+ * `Camera.visibleWorldRect()` is the camera-origin rectangle and misses most of
+ * an oblique viewport (the visible region is a parallelogram).
+ */
+export function visibleWorldAabb(
+  cam: CameraView,
+  viewW: number,
+  viewH: number,
+): { x: number; y: number; w: number; h: number } {
+  const corners = [
+    screenToWorld({ x: 0, y: 0 }, cam),
+    screenToWorld({ x: viewW, y: 0 }, cam),
+    screenToWorld({ x: 0, y: viewH }, cam),
+    screenToWorld({ x: viewW, y: viewH }, cam),
+  ];
+  let minX = corners[0]!.x;
+  let maxX = minX;
+  let minY = corners[0]!.y;
+  let maxY = minY;
+  for (let i = 1; i < corners.length; i++) {
+    const c = corners[i]!;
+    if (c.x < minX) minX = c.x;
+    if (c.x > maxX) maxX = c.x;
+    if (c.y < minY) minY = c.y;
+    if (c.y > maxY) maxY = c.y;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
 /** Horizontal runs of fogged tiles inside `bounds` (inclusive). */
@@ -63,6 +98,22 @@ export function collectFogRuns(
     }
   }
   return runs;
+}
+
+/**
+ * Projected parallelogram covering the tile-AABB for `tw` tiles on one row.
+ * Matches the linear oblique projection of the sim tile square (no diamond gaps).
+ */
+export function fogRunProjectedCorners(tx: number, ty: number, tw: number, lift = 0): number[] {
+  const x0 = tx * TILE;
+  const y0 = ty * TILE - lift;
+  const x1 = (tx + tw) * TILE;
+  const y1 = (ty + 1) * TILE - lift;
+  const tl = projectGround({ x: x0, y: y0 });
+  const tr = projectGround({ x: x1, y: y0 });
+  const br = projectGround({ x: x1, y: y1 });
+  const bl = projectGround({ x: x0, y: y1 });
+  return [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y];
 }
 
 /** Cheap checksum so fog geometry can be cached until vision or the view changes. */
