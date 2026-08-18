@@ -48,7 +48,7 @@ describe('placement cell classification', () => {
       ty: 4,
       footprint: 2,
       requireZone: true,
-      tileInZone: (tx) => tx === 10,
+      tileInZone: (tx, ty) => !(tx === 11 && ty === 5),
       tileOnNode: (tx, ty) => tx === 11 && ty === 4,
       tileOccupied: (tx, ty) => tx === 10 && ty === 5,
       heightOk: true,

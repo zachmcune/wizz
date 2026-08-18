@@ -26,7 +26,8 @@ const CELL_STROKE: Record<PlacementCellKind, number> = {
 
 function projectPoint(worldX: number, worldY: number, lift: number, oblique: boolean): { x: number; y: number } {
   if (!oblique) return { x: worldX, y: worldY };
-  return projectGround({ x: worldX, y: worldY }, lift);
+  // Same world-Y lift as fog/terrain (visualHeight * 6), so tiles sit on the ground.
+  return projectGround({ x: worldX, y: worldY - lift });
 }
 
 function appendTileQuad(g: Graphics, tx: number, ty: number, inset: number, lift: number, oblique: boolean): void {

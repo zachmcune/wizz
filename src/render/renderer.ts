@@ -968,7 +968,7 @@ export class Renderer {
     if (!tiles?.length && !ghosts.some((g) => g.cells?.length)) return;
 
     const oblique = this.isOblique();
-    const liftAt = (tx: number, ty: number) => visualHeightAtTile(this.map, tx, ty);
+    const liftAt = (tx: number, ty: number) => visualHeightAtTile(this.map, tx, ty) * 6;
     const inView = (tx: number, ty: number) => {
       const cx = tx * TILE + TILE / 2;
       const cy = ty * TILE + TILE / 2;
