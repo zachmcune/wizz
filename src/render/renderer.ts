@@ -30,6 +30,7 @@ import {
   type GraphicsProfile,
 } from './graphics-quality';
 import { collectFogRuns, fogGeometryKey, visibleTileBounds, visibilityFingerprint } from './fog-draw';
+import { appendOpenArc } from './open-arc';
 import { setVfxDensity } from './vfx-quality';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
@@ -1006,9 +1007,9 @@ export class Renderer {
       g.circle(cx, cy, r).stroke({ width, color, alpha });
       return;
     }
-    const sx = cx + Math.cos(start) * r;
-    const sy = cy + Math.sin(start) * r;
-    g.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
+    // Polyline instead of Graphics.arc() — the latter spikes through (0,0) on non-iOS WebGL/WebGPU.
+    appendOpenArc(g, cx, cy, r, start, end);
+    g.stroke({ width, color, alpha, cap: 'round', join: 'round' });
   }
 
   private worldInView(worldX: number, worldY: number, radius: number): boolean {
