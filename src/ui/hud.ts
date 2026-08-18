@@ -405,14 +405,14 @@ export class Hud {
       const campDef = this.registry.buildings.get('waystone_camp')!;
       this.selName.textContent = 'Deploy: Waystone Camp';
       this.selDesc.textContent = campDef.description;
-      this.selMeta.textContent = 'Deploys in place if clear · tap map to reposition';
+      this.selMeta.textContent = 'Deploys in place if clear · click/tap map or Place';
       this.commandMenu.panel.setOpen(false);
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (inBuildMode && session.buildDefId) {
       const placing = this.registry.buildings.get(session.buildDefId)!;
       this.selName.textContent = `Placing: ${placing.name}`;
       this.selDesc.textContent = placing.description;
-      this.selMeta.textContent = `${placing.cost} mana · tap Place to confirm`;
+      this.selMeta.textContent = `${placing.cost} mana · click map or Place`;
       this.commandMenu.panel.setOpen(false);
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (single) {
@@ -466,7 +466,7 @@ export class Hud {
       this.selDesc.textContent = 'Tap your HQ (purple) to build and train. Tap production buildings to train from there.';
       this.selMeta.textContent = short
         ? `Low power (−${deficit}) — build Ley Conduit or destroy structures`
-        : 'Drag to select · two fingers to pan the map.';
+        : 'Drag to select · two fingers, middle-mouse, or WASD to pan.';
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     }
 
@@ -511,7 +511,7 @@ export class Hud {
       const ok = wallPreview ? this.controller.wallPlacementValid() : session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
       const hint =         ok
-          ? '· tap Place to confirm'
+          ? '· click map or Place'
           : session.mode === 'deploy'
             ? session.buildGhost?.issue === 'node'
               ? '· on mana pool'

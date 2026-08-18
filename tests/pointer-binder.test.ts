@@ -40,12 +40,17 @@ class FakeCanvas {
 function pointerEvent(init: {
   pointerId?: number;
   button?: number;
+  buttons?: number;
+  pointerType?: string;
   clientX: number;
   clientY: number;
 }): PointerEvent & { prevented: boolean } {
+  const button = init.button ?? 0;
   return {
     pointerId: init.pointerId ?? 1,
-    button: init.button ?? 0,
+    button,
+    buttons: init.buttons ?? (button === 0 ? 1 : button === 1 ? 4 : button === 2 ? 2 : 0),
+    pointerType: init.pointerType ?? 'mouse',
     clientX: init.clientX,
     clientY: init.clientY,
     prevented: false,
@@ -88,6 +93,8 @@ function createBinder(mode: InputMode = 'normal') {
     updateDeployGhost: vi.fn(),
     updateRallyCursor: vi.fn(),
     confirmRally: vi.fn(),
+    confirmPlacement: vi.fn(),
+    setMode: vi.fn(),
   };
   const binder = new PointerBinder(canvas as unknown as HTMLCanvasElement, {
     getEnded: () => false,
@@ -134,5 +141,115 @@ describe('PointerBinder desktop controls', () => {
 
     expect(gesture.pointerUp).toHaveBeenCalled();
     expect(controller.tap).toHaveBeenCalledWith({ x: 190, y: 200 });
+  });
+
+  it('does not move the build ghost on mouse hover', () => {
+    const { canvas, controller } = createBinder('build');
+
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
+    );
+
+    expect(controller.updateGhost).not.toHaveBeenCalled();
+  });
+
+  it('does not move the deploy ghost on mouse hover', () => {
+    const { canvas, controller } = createBinder('deploy');
+
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
+    );
+
+    expect(controller.updateDeployGhost).not.toHaveBeenCalled();
+  });
+
+  it('moves the build ghost while the mouse button is held', () => {
+    const { canvas, controller } = createBinder('build');
+
+    canvas.dispatch('pointerdown', pointerEvent({ pointerType: 'mouse', clientX: 200, clientY: 220 }));
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'mouse', buttons: 1, clientX: 260, clientY: 280 }),
+    );
+
+    expect(controller.updateGhost).toHaveBeenCalledWith({ x: 250, y: 260 });
+  });
+
+  it('places immediately on a desktop click in build mode', () => {
+    const { canvas, controller } = createBinder('build');
+
+    canvas.dispatch('pointerdown', pointerEvent({ pointerType: 'mouse', clientX: 200, clientY: 220 }));
+    canvas.dispatch('pointerup', pointerEvent({ pointerType: 'mouse', buttons: 0, clientX: 200, clientY: 220 }));
+
+    expect(controller.tap).toHaveBeenCalledWith({ x: 190, y: 200 });
+    expect(controller.confirmPlacement).toHaveBeenCalledTimes(1);
+  });
+
+  it('deploys immediately on a desktop click', () => {
+    const { canvas, controller } = createBinder('deploy');
+
+    canvas.dispatch('pointerdown', pointerEvent({ pointerType: 'mouse', clientX: 200, clientY: 220 }));
+    canvas.dispatch('pointerup', pointerEvent({ pointerType: 'mouse', buttons: 0, clientX: 200, clientY: 220 }));
+
+    expect(controller.tap).toHaveBeenCalledWith({ x: 190, y: 200 });
+    expect(controller.confirmPlacement).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-place on a touch tap in build mode', () => {
+    const { canvas, controller } = createBinder('build');
+
+    canvas.dispatch('pointerdown', pointerEvent({ pointerType: 'touch', clientX: 200, clientY: 220 }));
+    canvas.dispatch('pointerup', pointerEvent({ pointerType: 'touch', buttons: 0, clientX: 200, clientY: 220 }));
+
+    expect(controller.tap).toHaveBeenCalledWith({ x: 190, y: 200 });
+    expect(controller.confirmPlacement).not.toHaveBeenCalled();
+  });
+
+  it('places a wall on desktop release after drag', () => {
+    const { canvas, controller } = createBinder('build');
+    controller.isWallBuild = vi.fn(() => true);
+
+    canvas.dispatch('pointerdown', pointerEvent({ pointerType: 'mouse', clientX: 200, clientY: 220 }));
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'mouse', buttons: 1, clientX: 280, clientY: 220 }),
+    );
+    canvas.dispatch('pointerup', pointerEvent({ pointerType: 'mouse', buttons: 0, clientX: 280, clientY: 220 }));
+
+    expect(controller.startWallDrag).toHaveBeenCalled();
+    expect(controller.updateWallDrag).toHaveBeenCalled();
+    expect(controller.finishWallDrag).toHaveBeenCalled();
+    expect(controller.confirmPlacement).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels targeting with right-click', () => {
+    const { canvas, controller, gesture } = createBinder('build');
+    const down = pointerEvent({ pointerType: 'mouse', button: 2, clientX: 200, clientY: 220 });
+
+    canvas.dispatch('pointerdown', down);
+    canvas.dispatch('pointerup', pointerEvent({ pointerType: 'mouse', button: 2, buttons: 0, clientX: 200, clientY: 220 }));
+
+    expect(down.prevented).toBe(true);
+    expect(controller.setMode).toHaveBeenCalledWith('normal');
+    expect(gesture.pointerDown).not.toHaveBeenCalled();
+    expect(controller.tap).not.toHaveBeenCalled();
+    expect(controller.confirmPlacement).not.toHaveBeenCalled();
+    expect(canvas.captured).toEqual([]);
+  });
+
+  it('suppresses the canvas context menu so right-click can cancel', () => {
+    const { canvas } = createBinder();
+    const event = {
+      prevented: false,
+      preventDefault() {
+        this.prevented = true;
+      },
+    };
+
+    canvas.dispatch('contextmenu', event as unknown as Event);
+
+    expect(event.prevented).toBe(true);
   });
 });
