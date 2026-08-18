@@ -9,6 +9,7 @@ export interface SpriteProvider {
   texture(art: ArtDef, teamColor: string, direction?: number): Texture;
   iconTexture(art: ArtDef, teamColor: string): Texture;
   clearCache(): void;
+  setTextureResolution?(resolution: number): void;
 }
 
 function parseHex(hex: string): number {

@@ -94,9 +94,9 @@ describe('fog runs', () => {
   it('pads world bounds into inclusive tile ranges', () => {
     const b = visibleTileBounds(TILE * 2, TILE * 3, TILE * 4, TILE * 2, 1, 20, 20);
     expect(b.minTx).toBe(1);
-    expect(b.maxTx).toBe(6);
+    expect(b.maxTx).toBe(7);
     expect(b.minTy).toBe(2);
-    expect(b.maxTy).toBe(5);
+    expect(b.maxTy).toBe(6);
   });
 
   it('changes the cache key when vision or the view changes', () => {

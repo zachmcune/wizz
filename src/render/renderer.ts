@@ -150,7 +150,7 @@ export class Renderer {
     setVfxDensity(profile.vfxDensity);
     this.effects.setMaxActive(profile.maxEffects);
     if (!this.inited) return;
-    this.provider.setTextureResolution(profile.textureResolution);
+    this.provider.setTextureResolution?.(profile.textureResolution);
     this.applyCanvasResolution();
   }
 
@@ -185,7 +185,7 @@ export class Renderer {
     });
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
-    this.provider.setTextureResolution(this.profile.textureResolution);
+    this.provider.setTextureResolution?.(this.profile.textureResolution);
     this.effects.setMaxActive(this.profile.maxEffects);
     setVfxDensity(this.profile.vfxDensity);
     this.inited = true;
