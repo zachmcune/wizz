@@ -1,7 +1,7 @@
 // Minimap: a small 2D-canvas overview. Requires a powered Scrying Obelisk (radar) to use.
 // Tap/drag to move the camera. Independent of the Pixi renderer for simplicity.
 import { TILE } from '../core/constants';
-import type { GameState, PlayerId } from '../sim/types';
+import type { GameState, Player, PlayerId } from '../sim/types';
 import type { MapData } from '../data/defs';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
@@ -15,6 +15,9 @@ export class Minimap {
   private worldH: number;
   private scale: number;
   private enabled = false;
+  private terrainFog: HTMLCanvasElement;
+  private terrainFogCtx: CanvasRenderingContext2D;
+  private terrainKey = '';
 
   constructor(
     private map: MapData,
@@ -30,6 +33,10 @@ export class Minimap {
     this.worldW = map.tileW * TILE;
     this.worldH = map.tileH * TILE;
     this.scale = size / Math.max(this.worldW, this.worldH);
+    this.terrainFog = document.createElement('canvas');
+    this.terrainFog.width = size;
+    this.terrainFog.height = size;
+    this.terrainFogCtx = this.terrainFog.getContext('2d')!;
 
     const jump = (ev: PointerEvent) => {
       if (!this.enabled) return;
@@ -74,18 +81,8 @@ export class Minimap {
       return;
     }
 
-    for (let ty = 0; ty < this.map.tileH; ty++) {
-      for (let tx = 0; tx < this.map.tileW; tx++) {
-        const i = ty * this.map.tileW + tx;
-        const blocked = this.map.tiles[i] === 1;
-        c.fillStyle = blocked ? '#2a2540' : '#1a1826';
-        c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
-        if (isMinimapTileFogged(viewer, i, radarOn) && !revealAll) {
-          c.fillStyle = 'rgba(184, 184, 200, 0.42)';
-          c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
-        }
-      }
-    }
+    this.syncTerrainFog(viewer, radarOn, revealAll);
+    c.drawImage(this.terrainFog, 0, 0);
 
     for (const e of state.entities.values()) {
       if (!revealAll && !isVisibleOnMinimap(state, registry, viewerId, e, nav)) continue;
@@ -115,5 +112,31 @@ export class Minimap {
     c.strokeStyle = '#ffffff';
     c.lineWidth = 1;
     c.strokeRect(v.x * s, v.y * s, v.w * s, v.h * s);
+  }
+
+  private syncTerrainFog(viewer: Player, radarOn: boolean, revealAll: boolean): void {
+    let hash = viewer.visible.length | 0;
+    for (let i = 0; i < viewer.visible.length; i++) {
+      hash = (Math.imul(hash, 33) + (viewer.visible[i] ?? 0)) | 0;
+    }
+    const key = `${hash}:${radarOn ? 1 : 0}:${revealAll ? 1 : 0}`;
+    if (key === this.terrainKey) return;
+    this.terrainKey = key;
+
+    const c = this.terrainFogCtx;
+    const s = this.scale;
+    c.clearRect(0, 0, this.terrainFog.width, this.terrainFog.height);
+    for (let ty = 0; ty < this.map.tileH; ty++) {
+      for (let tx = 0; tx < this.map.tileW; tx++) {
+        const i = ty * this.map.tileW + tx;
+        const blocked = this.map.tiles[i] === 1;
+        c.fillStyle = blocked ? '#2a2540' : '#1a1826';
+        c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
+        if (isMinimapTileFogged(viewer, i, radarOn) && !revealAll) {
+          c.fillStyle = 'rgba(184, 184, 200, 0.42)';
+          c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 1, TILE * s + 1);
+        }
+      }
+    }
   }
 }

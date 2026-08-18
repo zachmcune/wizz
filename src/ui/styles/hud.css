@@ -784,6 +784,22 @@
   min-width: 0;
   accent-color: var(--accent);
 }
+.settings-select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(20, 18, 32, 0.95);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.settings-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.55;
+}
 .settings-actions {
   display: flex;
   flex-direction: column;

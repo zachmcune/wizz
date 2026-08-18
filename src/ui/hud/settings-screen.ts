@@ -51,7 +51,33 @@ export class MatchSettingsScreen {
     namesRow.append(namesCheck, el('span', 'settings-label', 'Show building names'));
     namesCheck.addEventListener('change', () => this.applyShowBuildingNames(namesCheck.checked));
 
-    displaySection.append(namesRow);
+    const qualityRow = el('label', 'settings-row');
+    qualityRow.append(el('span', 'settings-label', 'Graphics'));
+    const qualitySelect = el('select', 'settings-select') as HTMLSelectElement;
+    const qualityOptions: { value: Settings['graphicsQuality']; label: string }[] = [
+      { value: 'auto', label: 'Auto' },
+      { value: 'low', label: 'Low' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' },
+    ];
+    for (const opt of qualityOptions) {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      if (opt.value === deps.settings.graphicsQuality) option.selected = true;
+      qualitySelect.appendChild(option);
+    }
+    qualitySelect.addEventListener('change', () => {
+      this.applyGraphicsQuality(qualitySelect.value as Settings['graphicsQuality']);
+    });
+    qualityRow.append(qualitySelect);
+    const qualityHint = el(
+      'p',
+      'settings-hint',
+      'Auto picks Low on Chromebooks and most phones. Low cuts resolution, antialias, and extra VFX.',
+    );
+
+    displaySection.append(namesRow, qualityRow, qualityHint);
 
     const actions = el('div', 'settings-actions');
     const resumeBtn = el('button', 'btn big', 'Resume');
@@ -102,6 +128,11 @@ export class MatchSettingsScreen {
 
   private applyShowBuildingNames(show: boolean): void {
     this.deps.settings.showBuildingNames = show;
+    this.persist();
+  }
+
+  private applyGraphicsQuality(quality: Settings['graphicsQuality']): void {
+    this.deps.settings.graphicsQuality = quality;
     this.persist();
   }
 }

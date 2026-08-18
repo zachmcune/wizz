@@ -6,6 +6,7 @@ import { getProjectionMode } from '../core/projection';
 import type { MapData } from '../data/defs';
 import { tileToWorld, worldToTileX, worldToTileY } from '../core/coords';
 import { visualHeightAtTile } from './visual-height';
+import type { FogRun } from './fog-draw';
 
 const CLIFF_LIFT = 14;
 
@@ -105,12 +106,7 @@ export function buildTerrainGraphics(map: MapData): Graphics {
   return g;
 }
 
-/** Diamond fog tile in oblique mode; axis rect in ortho. */
-export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): void {
-  if (getProjectionMode() === 'ortho') {
-    g.rect(tx * TILE, ty * TILE, TILE, TILE);
-    return;
-  }
+function fogDiamondCorners(map: MapData, tx: number, ty: number): number[] {
   const c = tileCenter(tx, ty);
   const h = visualHeightAtTile(map, tx, ty);
   const lift = h * 6;
@@ -120,7 +116,39 @@ export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): 
   const right = projectGround({ x: c.x + hw, y: c.y - lift });
   const bottom = projectGround({ x: c.x, y: c.y + hh - lift });
   const left = projectGround({ x: c.x - hw, y: c.y - lift });
-  g.poly([top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y]);
+  return [top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y];
+}
+
+/** Diamond fog tile in oblique mode; axis rect in ortho. */
+export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): void {
+  if (getProjectionMode() === 'ortho') {
+    g.rect(tx * TILE, ty * TILE, TILE, TILE);
+    return;
+  }
+  g.poly(fogDiamondCorners(map, tx, ty));
+}
+
+/** One merged fog span (several tiles on a row). Cheap oblique uses a single poly. */
+export function drawFogRun(g: Graphics, map: MapData, run: FogRun, cheap: boolean): void {
+  if (getProjectionMode() === 'ortho') {
+    g.rect(run.tx * TILE, run.ty * TILE, run.tw * TILE, TILE);
+    return;
+  }
+  if (!cheap || run.tw <= 1) {
+    for (let i = 0; i < run.tw; i++) drawFogTile(g, map, run.tx + i, run.ty);
+    return;
+  }
+  const first = fogDiamondCorners(map, run.tx, run.ty);
+  const last = fogDiamondCorners(map, run.tx + run.tw - 1, run.ty);
+  // first: top, right, bottom, left — last: top, right, bottom, left
+  g.poly([
+    first[0]!, first[1]!,
+    last[0]!, last[1]!,
+    last[2]!, last[3]!,
+    last[4]!, last[5]!,
+    first[4]!, first[5]!,
+    first[6]!, first[7]!,
+  ]);
 }
 
 export function tileAtWorld(worldX: number, worldY: number): { tx: number; ty: number } {

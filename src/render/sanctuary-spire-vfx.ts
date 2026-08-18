@@ -23,6 +23,7 @@ import {
   lerpColor,
   tierBlend,
 } from './support-aura-vfx';
+import { vfxCount, vfxDecorEnabled } from './vfx-quality';
 
 export type SanctuaryDrawPosFn = (worldX: number, worldY: number) => { x: number; y: number };
 
@@ -508,16 +509,18 @@ export function renderSanctuarySpires(
 
     const tier = Math.round(displayTier) as 1 | 2 | 3;
     const fieldAlpha = 0.12 + (tier - 1) * 0.06;
-    const moteCount = tier === 1 ? 4 : tier === 2 ? 6 : 5;
-    const mistDensity = tier === 1 ? 4 : tier === 2 ? 7 : 6;
+    const moteCount = vfxCount(tier === 1 ? 4 : tier === 2 ? 6 : 5);
+    const mistDensity = vfxCount(tier === 1 ? 4 : tier === 2 ? 7 : 6);
     const runeRotation = (phase / RUNE_ROTATION_PERIOD) * Math.PI * 2;
 
     const sp = drawPos(e.pos.x, e.pos.y);
-    drawGroundRuneCircle(strokePool, fillPool, sp.x, sp.y, radius, runeRotation, TEAL_SOFT, fieldAlpha);
-    drawInwardMist(strokePool, sp.x, sp.y, radius, mistDensity, phase, e.id * 0.31, TEAL_FIELD, fieldAlpha * 1.8);
-    drawFloatingMotes(fillPool, sp.x, sp.y, radius, moteCount, phase, e.id * 0.47, TEAL_FIELD, fieldAlpha * 2.2);
+    if (vfxDecorEnabled()) {
+      drawGroundRuneCircle(strokePool, fillPool, sp.x, sp.y, radius, runeRotation, TEAL_SOFT, fieldAlpha);
+      drawInwardMist(strokePool, sp.x, sp.y, radius, mistDensity, phase, e.id * 0.31, TEAL_FIELD, fieldAlpha * 1.8);
+      drawFloatingMotes(fillPool, sp.x, sp.y, radius, moteCount, phase, e.id * 0.47, TEAL_FIELD, fieldAlpha * 2.2);
+    }
 
-    if (pulsePhase === 'anticipation') {
+    if (pulsePhase === 'anticipation' && moteCount > 0) {
       drawFeedingParticles(fillPool, drawPos, e.pos.x, e.pos.y, moteCount, phase, e.id, anticipationT);
     }
 

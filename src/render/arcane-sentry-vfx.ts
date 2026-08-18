@@ -9,6 +9,7 @@ import { getProjectileCapability } from '../sim/capabilities';
 import type { GraphicsPool } from './graphics-pool';
 import type { AudioManager } from '../audio/audio';
 import { detRand, drawFloatingMotes, easeOut, lerpColor } from './support-aura-vfx';
+import { vfxCount, vfxDecorEnabled } from './vfx-quality';
 
 export type SentryDrawPosFn = (worldX: number, worldY: number) => { x: number; y: number };
 
@@ -402,7 +403,10 @@ export function renderArcaneSentries(
     const glow = prevGlow + (targetGlow - prevGlow) * Math.min(1, dtSec * 30);
     sentryCombatGlow.set(e.id, glow);
 
-    drawFloatingMotes(fillPool, p.x, p.y + 6, 16, IDLE_MOTE_COUNT, phaseSec, e.id * 0.13, SOFT_CYAN, 0.35);
+    const motes = vfxCount(IDLE_MOTE_COUNT);
+    if (motes > 0) {
+      drawFloatingMotes(fillPool, p.x, p.y + 6, 16, motes, phaseSec, e.id * 0.13, SOFT_CYAN, 0.35);
+    }
 
     for (let ci = 0; ci < 3; ci++) {
       const orbitAng = crystalOrbitAngle(state.tick, e.id, ci, phaseSec);
@@ -420,7 +424,7 @@ export function renderArcaneSentries(
       const idleSpark = !hasTarget ? Math.max(0, Math.sin(phaseSec * 2.1 + ci * 2.4) * 0.5 + 0.5) * 0.4 : 0;
       drawFocusingCrystal(fillPool, strokePool, fcx, fcy, 3.5, flash, idleSpark);
 
-      if (!hasTarget) {
+      if (!hasTarget && vfxDecorEnabled()) {
         drawIdleSparkExchange(strokePool, cx, cy, facing, orbitR, orbitAng, phaseSec, e.id + ci * 7);
       }
     }

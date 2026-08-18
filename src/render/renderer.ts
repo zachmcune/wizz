@@ -21,9 +21,16 @@ import { renderStormConductors } from './storm-conductor-vfx';
 import { renderSanctuarySpires } from './sanctuary-spire-vfx';
 import { renderArcaneSentries } from './arcane-sentry-vfx';
 import { GraphicsPool } from './graphics-pool';
-import { buildTerrainGraphics, drawFogTile } from './terrain-draw';
+import { buildTerrainGraphics, drawFogRun } from './terrain-draw';
 import { visualHeightAt } from './visual-height';
 import { filterOccludedUnits, parseOwnerColor, type OcclusionBounds } from './unit-occlusion';
+import {
+  canvasResolution,
+  graphicsProfile,
+  type GraphicsProfile,
+} from './graphics-quality';
+import { collectFogRuns, fogGeometryKey, visibleTileBounds, visibilityFingerprint } from './fog-draw';
+import { setVfxDensity } from './vfx-quality';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -109,6 +116,9 @@ export class Renderer {
   private showBuildingNames = false;
   private debugLabelPool: Text[] = [];
   private debugStatsLabel: Text | null = null;
+  private profile: GraphicsProfile = graphicsProfile('high');
+  private fogKey = '';
+  private inited = false;
 
   constructor(
     private registry: Registry,
@@ -128,9 +138,34 @@ export class Renderer {
   }
 
   private updateLayerSort(): void {
-    this.entityLayer.sortableChildren = true;
-    this.selectionRingLayer.sortableChildren = true;
-    this.labelLayer.sortableChildren = this.isOblique();
+    const oblique = this.isOblique();
+    this.entityLayer.sortableChildren = oblique;
+    this.selectionRingLayer.sortableChildren = oblique;
+    this.labelLayer.sortableChildren = oblique;
+  }
+
+  setQuality(profile: GraphicsProfile): void {
+    this.profile = profile;
+    this.fogKey = '';
+    setVfxDensity(profile.vfxDensity);
+    this.effects.setMaxActive(profile.maxEffects);
+    if (!this.inited) return;
+    this.provider.setTextureResolution(profile.textureResolution);
+    this.applyCanvasResolution();
+  }
+
+  getQuality(): GraphicsProfile {
+    return this.profile;
+  }
+
+  private applyCanvasResolution(): void {
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    this.app.renderer.resolution = canvasResolution(this.profile, dpr);
+    const parent = this.app.canvas.parentElement;
+    if (parent && parent.clientWidth > 0 && parent.clientHeight > 0) {
+      this.app.renderer.resize(parent.clientWidth, parent.clientHeight);
+    }
+    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
   }
 
   private updateEffectsPositionFn(): void {
@@ -138,16 +173,22 @@ export class Renderer {
   }
 
   async init(canvasParent: HTMLElement): Promise<void> {
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
     await this.app.init({
       background: '#12101c',
       resizeTo: canvasParent,
-      antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      antialias: this.profile.antialias,
+      resolution: canvasResolution(this.profile, dpr),
       autoDensity: true,
       autoStart: false,
+      ...(this.profile.preferWebGL ? { preference: 'webgl' as const } : {}),
     });
     canvasParent.appendChild(this.app.canvas);
     this.provider = new ShapeSpriteProvider(this.app.renderer);
+    this.provider.setTextureResolution(this.profile.textureResolution);
+    this.effects.setMaxActive(this.profile.maxEffects);
+    setVfxDensity(this.profile.vfxDensity);
+    this.inited = true;
 
     this.overlayFillPool = new GraphicsPool(this.overlayLayer);
     this.overlayStrokePool = new GraphicsPool(this.overlayLayer);
@@ -183,6 +224,7 @@ export class Renderer {
     this.updateLayerSort();
     this.updateEffectsPositionFn();
     this.applySpriteAnchors();
+    this.fogKey = '';
     this.camera.setViewport(this.app.screen.width, this.app.screen.height);
   }
 
@@ -237,6 +279,7 @@ export class Renderer {
     this.overlayStrokePool.releaseAll();
     this.selectionRingPool.releaseAll();
     this.fogLayer.clear();
+    this.fogKey = '';
     this.shadowLayer.clear();
     this.effects.reset();
     this.app.render();
@@ -414,11 +457,18 @@ export class Renderer {
     this.overlayFillPool.releaseAll();
     this.overlayStrokePool.releaseAll();
     this.selectionRingPool.releaseAll();
-    this.fogLayer.clear();
     this.shadowLayer.clear();
-    if (viewer && nav && !revealAll) this.drawFog(state, viewer, nav);
+    if (revealAll) {
+      if (this.fogKey !== '') {
+        this.fogLayer.clear();
+        this.fogKey = '';
+      }
+    } else if (viewer && nav) {
+      this.drawFog(viewer, nav);
+    }
 
     const oblique = this.isOblique();
+    const trackOcclusion = oblique && this.profile.occlusionMarkers;
     const buildingBounds: OcclusionBounds[] = [];
     const ownUnits: OwnUnitBounds[] = [];
 
@@ -466,12 +516,18 @@ export class Renderer {
         n.dispY = targetY;
       }
 
-      const pos = this.drawPos(x, y);
-      const depth = this.sortKeyAt(x, y);
-      n.sprite.position.set(pos.x, pos.y);
-      n.sprite.zIndex = depth;
+      if (!this.worldInView(x, y, e.radius)) {
+        n.sprite.visible = false;
+        if (n.label) n.label.visible = false;
+        continue;
+      }
 
-      if (oblique) {
+      const pos = this.drawPos(x, y);
+      const depth = oblique ? this.sortKeyAt(x, y) : 0;
+      n.sprite.position.set(pos.x, pos.y);
+      if (oblique) n.sprite.zIndex = depth;
+
+      if (trackOcclusion) {
         if (e.kind === 'building') {
           const size = this.artOf(e).art.size;
           buildingBounds.push({
@@ -498,7 +554,7 @@ export class Renderer {
         n.sprite.rotation = 0;
       }
 
-      if (e.kind === 'unit' || e.kind === 'building') this.drawShadow(x, y, e.radius);
+      if (this.profile.shadows && (e.kind === 'unit' || e.kind === 'building')) this.drawShadow(x, y, e.radius);
 
       const labelOff = e.radius + 4;
       if (n.label) {
@@ -566,7 +622,7 @@ export class Renderer {
       }
     }
 
-    if (oblique) {
+    if (trackOcclusion) {
       for (const u of filterOccludedUnits(ownUnits, buildingBounds)) {
         this.drawOccludedUnitMarker(u.x, u.y, u.color);
       }
@@ -955,17 +1011,33 @@ export class Renderer {
     g.moveTo(sx, sy).arc(cx, cy, r, start, end).stroke({ width, color, alpha });
   }
 
-  private drawFog(_state: GameState, player: Player, nav: NavGrid): void {
-    let hasFog = false;
-    for (let ty = 0; ty < nav.h; ty++) {
-      for (let tx = 0; tx < nav.w; tx++) {
-        const i = ty * nav.w + tx;
-        if (!isTileFogged(player, i)) continue;
-        hasFog = true;
-        drawFogTile(this.fogLayer, this.map, tx, ty);
-      }
-    }
-    if (hasFog) this.fogLayer.fill({ color: 0xb8b8c8, alpha: 0.42 });
+  private worldInView(worldX: number, worldY: number, radius: number): boolean {
+    const r = this.camera.visibleWorldRect();
+    const pad = this.isOblique() ? TILE * 10 : Math.max(radius + TILE, TILE * 2);
+    return (
+      worldX + pad >= r.x &&
+      worldX - pad <= r.x + r.w &&
+      worldY + pad >= r.y &&
+      worldY - pad <= r.y + r.h
+    );
+  }
+
+  private drawFog(player: Player, nav: NavGrid): void {
+    const view = this.camera.visibleWorldRect();
+    const bounds = visibleTileBounds(view.x, view.y, view.w, view.h, this.profile.fogPadTiles, nav.w, nav.h);
+    const key = fogGeometryKey(
+      visibilityFingerprint(player.visible),
+      bounds,
+      this.profile.cheapFog,
+      this.projectionMode,
+    );
+    if (key === this.fogKey) return;
+    this.fogKey = key;
+    this.fogLayer.clear();
+    const runs = collectFogRuns((i) => isTileFogged(player, i), nav.w, nav.h, bounds);
+    if (runs.length === 0) return;
+    for (const run of runs) drawFogRun(this.fogLayer, this.map, run, this.profile.cheapFog);
+    this.fogLayer.fill({ color: 0xb8b8c8, alpha: 0.42 });
   }
 
   private fillRect(x: number, y: number, w: number, h: number, color: number, alpha = 1): void {

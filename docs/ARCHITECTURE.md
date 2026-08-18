@@ -36,6 +36,8 @@ See `docs/MULTIPLAYER_PREP.md` for the lockstep roadmap.
   `nav-grid.ts`, `spatial-hash.ts`, `factory.ts` (spawning + match init), `hash.ts`, `headless.ts`.
 - `src/data/` loaders + Zod schemas + registries. All content is data-driven JSON in `/data`.
 - `src/render/` PixiJS renderer + camera + shape sprites (placeholder art in code).
+  Graphics quality (`auto` / `low` / `medium` / `high`) lives here: Auto maps Chromebooks
+  and other constrained devices onto Low (resolution cap, no antialias, cheaper fog/VFX).
 - `src/input/` gesture recognizer (FSM) + input controller (gestures -> commands).
 - `src/ui/` DOM HUD overlay, menus, minimap.
 - `src/ai/` layered AI controller (emits standard commands).

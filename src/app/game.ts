@@ -17,6 +17,12 @@ import type { ProjectionMode } from '../core/projection';
 import { setProjectionMode } from '../core/projection';
 import { defaultSaveMeta, saveGame, type SaveMeta } from '../storage/save';
 import type { Settings } from '../storage/settings';
+import {
+  graphicsProfile,
+  readDeviceHints,
+  resolveGraphicsLevel,
+  type GraphicsLevel,
+} from '../render/graphics-quality';
 import { canBuildNearBase, footprintOverlapsNode, shouldRevealAllForViewer } from '../sim/views';
 import type { Replay } from '../sim/replay';
 import type { LockstepClient } from '../net/lockstep';
@@ -71,6 +77,10 @@ export class Game {
   private disposed = false;
   private fps = 60;
   private lastFrameTime = 0;
+  private resolvedGraphics: GraphicsLevel = 'high';
+  private appliedGraphicsPref: Settings['graphicsQuality'] = 'auto';
+  private adaptiveLow = false;
+  private lowFpsStreak = 0;
   private postGameCameraReady = false;
   private readonly lockstep: LockstepClient | null;
   private readonly matchId: string;
@@ -213,6 +223,7 @@ export class Game {
     this.boxEl.style.position = 'absolute';
     this.boxEl.style.pointerEvents = 'none';
     canvasHost.appendChild(this.boxEl);
+    this.applyGraphicsQuality();
     await this.renderer.init(canvasHost);
     setProjectionMode(this.matchProjectionMode);
     this.renderer.setProjectionMode(this.matchProjectionMode);
@@ -254,6 +265,11 @@ export class Game {
         onSettingsChange: (s) => {
           this.renderer.setShowBuildingNames(s.showBuildingNames);
           this.renderer.refreshBuildingLabels(this.state);
+          if (s.graphicsQuality !== this.appliedGraphicsPref || this.adaptiveLow) {
+            this.adaptiveLow = false;
+            this.lowFpsStreak = 0;
+            this.applyGraphicsQuality();
+          }
         },
         soloPause: this.lockstep
           ? null
@@ -427,6 +443,29 @@ export class Game {
     this.hud.showHint(`Now controlling ${playerId}`);
   }
 
+  private applyGraphicsQuality(): void {
+    const hints = readDeviceHints();
+    let level = resolveGraphicsLevel(this.settings.graphicsQuality, hints);
+    if (this.adaptiveLow) level = 'low';
+    this.appliedGraphicsPref = this.settings.graphicsQuality;
+    this.resolvedGraphics = level;
+    this.renderer.setQuality(graphicsProfile(level));
+  }
+
+  private maybeAdaptGraphicsQuality(): void {
+    if (this.settings.graphicsQuality !== 'auto' || this.resolvedGraphics === 'low') {
+      this.lowFpsStreak = 0;
+      return;
+    }
+    if (this.fps < 24 && this.frameMs < 250) this.lowFpsStreak++;
+    else this.lowFpsStreak = Math.max(0, this.lowFpsStreak - 2);
+    if (this.lowFpsStreak < 90) return;
+    this.adaptiveLow = true;
+    this.lowFpsStreak = 0;
+    this.applyGraphicsQuality();
+    this.hud?.showHint('Graphics dropped to Low to keep the match playable');
+  }
+
   private setPaused(paused: boolean): void {
     this.saveMeta = { ...this.saveMeta, paused };
     this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
@@ -445,6 +484,7 @@ export class Game {
     this.lastFrameTime = now;
 
     this.frameMs = dt;
+    this.maybeAdaptGraphicsQuality();
 
     if (this.simCtrl.isPaused) {
       this.hud.update();
