@@ -8,6 +8,7 @@ import { getProductionQueue, isChanneling } from '../sim/capabilities';
 import { isAirEntity } from '../sim/mobility';
 import { len } from '../sim/math';
 import { roll } from './chance';
+import { LATE_GAME_TICK } from './difficulty';
 import {
   densestEnemyCluster,
   omniscientEnemyHq,
@@ -26,8 +27,8 @@ import {
 import type { AiDecisionContext, AiStrategyConfig } from './strategies/types';
 
 const HOME_NODE_RADIUS = 460;
+const EXPAND_NODE_RADIUS = 780;
 const WORKER_THREAT_RADIUS = 110;
-const RETREAT_ENEMY_RANGE = 520;
 const BLINK_MIN_RANGE = 280;
 const BLINK_STEP = 220;
 const MANA_RESERVE_REPAIR = 180;
@@ -49,7 +50,7 @@ export function assignHarvesters(ctx: AiDecisionContext, sanctum: BuildingEntity
     if (!isHarvester(w) || !isAlive(w)) continue;
     if (w.orders.length > 0 || w.state !== 'idle') continue;
     const node = profile.expandNodes
-      ? pickSpreadNode(ctx, w, sanctum, assignments)
+      ? (pickSpreadNode(ctx, w, sanctum, assignments) ?? nearestHomeNode(state, w, sanctum) ?? nearestNode(state, w))
       : (nearestHomeNode(state, w, sanctum) ?? nearestNode(state, w));
     if (!node) continue;
     assignments.set(node.id, (assignments.get(node.id) ?? 0) + 1);
@@ -84,6 +85,7 @@ function pickSpreadNode(
   for (const n of [...state.entities.values()].sort((a, b) => a.id - b.id)) {
     if (n.kind !== 'resource_node' || n.amount <= 0) continue;
     const home = len(n.pos.x - sanctum.pos.x, n.pos.y - sanctum.pos.y);
+    if (home > EXPAND_NODE_RADIUS) continue;
     const travel = len(n.pos.x - unit.pos.x, n.pos.y - unit.pos.y);
     const assigned = assignments.get(n.id) ?? 0;
     const score = travel + assigned * 140 + home * 0.15;
@@ -124,9 +126,10 @@ export function repairOwnBuildings(ctx: AiDecisionContext): void {
   if (target) cmds.push({ type: 'setRepair', playerId: p.id, buildingId: target.id, enabled: true });
 }
 
-export function trainWeavers(ctx: AiDecisionContext, config: AiStrategyConfig): void {
+export function trainWeavers(ctx: AiDecisionContext, config: AiStrategyConfig, armySize: number): void {
   const { state, services, player: p, profile, cmds } = ctx;
   if (profile.weaverTarget <= 0) return;
+  if (armySize < 5) return;
   if (roll(state.tick, p.id, 'weaver', profile.missChance)) return;
   const weavers = ownedBy(state, p.id).filter((e) => e.kind === 'unit' && e.defId === config.production.weaverUnit);
   if (weavers.length >= profile.weaverTarget) return;
@@ -179,8 +182,15 @@ export function produceArmy(ctx: AiDecisionContext, config: AiStrategyConfig, co
 
   if (circle) {
     const airCount = ownedBy(state, p.id).filter((e) => e.kind === 'unit' && e.defId === prod.airUnit).length;
-    if (profile.airTarget > 0 && airCount < profile.airTarget && tryProduce(circle, prod.airUnit)) return;
-    if (p.unlockedTech.includes('arcane_nexus') && tryProduce(circle, prod.nexusUnit)) return;
+    if (
+      profile.airTarget > 0 &&
+      combatCount >= 5 &&
+      airCount < profile.airTarget &&
+      tryProduce(circle, prod.airUnit)
+    ) {
+      return;
+    }
+    if (p.unlockedTech.includes('arcane_nexus') && combatCount >= 6 && tryProduce(circle, prod.nexusUnit)) return;
     const phase = Math.floor(state.tick / 40) % prod.armyRotation.length;
     const rotated = [...prod.armyRotation.slice(phase), ...prod.armyRotation.slice(0, phase)];
     for (const uid of rotated) {
@@ -276,8 +286,9 @@ export function decideSpells(ctx: AiDecisionContext, config: AiStrategyConfig, a
 
 export function decideScout(ctx: AiDecisionContext, config: AiStrategyConfig, army: UnitEntity[]): void {
   const { state, player: p, profile, cmds } = ctx;
-  if (!profile.scout) return;
-  const scouts = idleArmy(army).filter((u) => u.defId === config.production.scoutUnit || isAirEntity(ctx.services.registry, u));
+  if (!profile.scout || state.tick >= LATE_GAME_TICK) return;
+  if (army.some((u) => u.orders.some((o) => o.type === 'attackMove' || o.type === 'move'))) return;
+  const scouts = idleArmy(army).filter((u) => u.defId === config.production.scoutUnit);
   const scout = scouts[0];
   if (!scout) return;
   const waypoints = probePoints(ctx, scout.pos);
@@ -304,15 +315,16 @@ export function decideCombat(
     }
   }
 
+  const late = state.tick >= LATE_GAME_TICK;
   const idle = idleArmy(army);
   const busy = army.filter((u) => !idle.includes(u));
   let defendPool = [...idle];
-  if (profile.redirectDefense && threats.length >= 2) {
+  if (!late && profile.redirectDefense && threats.length >= 2) {
     defendPool = [...idle, ...busy];
   }
 
   if (threats.length > 0 && defendPool.length >= (profile.id === 'easy' ? 2 : 3)) {
-    const fraction = Math.min(1, config.combat.defendFraction * profile.defendFractionScale);
+    const fraction = late ? 0.25 : Math.min(1, config.combat.defendFraction * profile.defendFractionScale);
     const defendCount = Math.min(Math.floor(defendPool.length * fraction), Math.max(2, threats.length + 1));
     const defenders = defendPool.slice(0, defendCount);
     const target = profile.focusFire ? pickFocusTarget(threats) : threats[0]!;
@@ -321,11 +333,11 @@ export function decideCombat(
     army = army.filter((u) => !defendIds.has(u.id));
   }
 
-  if (maybeRetreat(ctx, config, sanctum, army)) return;
+  pullWoundedHome(ctx, sanctum, army, late);
 
   const remainingIdle = idleArmy(army);
   const air = remainingIdle.filter((u) => u.defId === config.production.airUnit || isAirEntity(services.registry, u));
-  if (profile.harass && air.length) {
+  if (!late && profile.harass && air.length) {
     const workers = visibleEnemyWorkers(ctx);
     const prey = workers[0] ?? visibleEnemies(ctx).find((e) => e.defId === 'attunement_spire');
     if (prey) {
@@ -335,13 +347,15 @@ export function decideCombat(
     }
   }
 
-  const attackIdle = idleArmy(army);
-  const minPush = Math.max(3, Math.floor(diff.armyThreshold * config.combat.minPushFactor * profile.minPushScale));
-  if (army.length < minPush && attackIdle.length < 3) return;
-  if (attackIdle.length < Math.max(2, Math.floor(minPush / 2))) return;
+  const healthyIdle = idleArmy(army).filter((u) => fitForPush(u, profile.retreatHp, late));
+  const pushScale = late ? 0.45 : profile.minPushScale;
+  const minPush = Math.max(3, Math.floor(diff.armyThreshold * config.combat.minPushFactor * pushScale));
+  if (!late && army.length < minPush && healthyIdle.length < 3) return;
+  if (healthyIdle.length < (late ? 1 : Math.max(2, Math.floor(minPush / 2)))) return;
 
-  const waveSize = Math.max(2, Math.floor(attackIdle.length * profile.waveFraction));
-  let wave = attackIdle.slice(0, waveSize);
+  const waveFrac = late ? 1 : profile.waveFraction;
+  const waveSize = Math.max(late ? 1 : 2, Math.floor(healthyIdle.length * waveFrac));
+  let wave = healthyIdle.slice(0, waveSize);
 
   const objective = pickAttackObjective(ctx, sanctum.pos, config.combat.attackBias);
   const siegeReady = wave.filter((u) => u.defId === config.combat.siegeUnit);
@@ -363,30 +377,28 @@ export function decideCombat(
   }
 }
 
-function maybeRetreat(
+function fitForPush(unit: UnitEntity, retreatHp: number, late: boolean): boolean {
+  if (late || retreatHp <= 0) return true;
+  return unit.hp / Math.max(1, unit.maxHp) > retreatHp;
+}
+
+function pullWoundedHome(
   ctx: AiDecisionContext,
-  config: AiStrategyConfig,
   sanctum: BuildingEntity,
   army: UnitEntity[],
-): boolean {
+  late: boolean,
+): void {
   const { player: p, profile, cmds } = ctx;
-  if (profile.retreatHp <= 0 || army.length < 3) return false;
-  const hq = omniscientEnemyHq(ctx);
-  const objective = pickAttackObjective(ctx, sanctum.pos, config.combat.attackBias);
-  const front = hq?.pos ?? (objective ? { x: objective.x, y: objective.y } : null);
-  if (!front) return false;
-  const inField = army.filter((u) => len(u.pos.x - front.x, u.pos.y - front.y) < RETREAT_ENEMY_RANGE);
-  if (inField.length < 3) return false;
-  const avg = inField.reduce((s, u) => s + u.hp / Math.max(1, u.maxHp), 0) / inField.length;
-  if (avg > profile.retreatHp) return false;
+  if (late || profile.retreatHp <= 0) return;
+  const wounded = army.filter((u) => !fitForPush(u, profile.retreatHp, late) && u.orders.length === 0);
+  if (!wounded.length) return;
   cmds.push({
     type: 'move',
     playerId: p.id,
-    entityIds: inField.map((u) => u.id),
+    entityIds: wounded.map((u) => u.id),
     x: sanctum.pos.x,
     y: sanctum.pos.y,
   });
-  return true;
 }
 
 function mergeEntities(a: ReturnType<typeof enemiesNear>, b: ReturnType<typeof enemiesNear>) {

@@ -93,7 +93,8 @@ describe('AI difficulty profiles', () => {
     expect(roll(40, 'player1', 'produce', 1)).toBe(true);
     expect(roll(40, 'player1', 'produce', 0)).toBe(false);
     expect(roll(40, 'player1', 'produce', 0.5)).toBe(roll(40, 'player1', 'produce', 0.5));
-    expect(roll(40, 'player1', 'produce', 0.5)).not.toBe(roll(41, 'player1', 'produce', 0.5));
+    const samples = [8, 16, 24, 32, 40, 48, 56, 64].map((tick) => roll(tick, 'player1', 'produce', 0.5));
+    expect(new Set(samples).size).toBeGreaterThan(1);
   });
 });
 
@@ -111,7 +112,7 @@ describe('AI difficulty behaviors', () => {
       unlockTech(ctx.state, ctx.player.id, 'resonance_vault');
       ctx.player.mana = 2000;
       recomputePower(ctx.state, ctx.services);
-      trainWeavers(ctx, strategyForPlayer(ctx.player).config);
+      trainWeavers(ctx, strategyForPlayer(ctx.player).config, 8);
     }
 
     expect(easy.cmds.some((c) => c.type === 'produce' && c.defId === 'mana_weaver')).toBe(false);

@@ -136,6 +136,9 @@ export function difficultyProfile(id: AiDifficultyId | undefined): AiDifficultyP
   return PROFILES[id ?? 'normal'];
 }
 
+/** After this tick, every difficulty commits to a finish (no more wandering or wounded holds). */
+export const LATE_GAME_TICK = 20 * 60 * 10;
+
 export function resolveDifficulty(
   params: Record<AiDifficultyId, AiParams>,
   id: AiDifficultyId | undefined,

@@ -6,6 +6,7 @@ import { isAlive, isEnemy, entitiesSorted } from '../sim/queries';
 import { isVisibleTo } from '../sim/fog';
 import { distSq, len } from '../sim/math';
 import { isCombatUnit } from '../sim/types';
+import { LATE_GAME_TICK } from './difficulty';
 import { findEnemySanctum, pickAttackTarget } from './shared';
 import type { AiDecisionContext } from './strategies/types';
 
@@ -80,7 +81,9 @@ export function pickAttackObjective(
 ): AttackObjective | null {
   const { state, player, profile } = ctx;
 
-  if (profile.intel === 'omniscient') {
+  const late = state.tick >= LATE_GAME_TICK;
+  // Easy wanders until late-game; Normal/Hard go for a real base so matches resolve.
+  if (profile.intel !== 'probe' || late) {
     const live = pickAttackTarget(state, player.id, from, attackBias);
     if (live) return { x: live.pos.x, y: live.pos.y, source: 'live', entityId: live.id };
   }
@@ -90,7 +93,7 @@ export function pickAttackObjective(
     return { x: visibleBuilding.pos.x, y: visibleBuilding.pos.y, source: 'live', entityId: visibleBuilding.id };
   }
 
-  if (profile.intel !== 'probe') {
+  if (profile.intel === 'memory') {
     const remembered = pickKnownBuilding(ctx, from, attackBias);
     if (remembered) return { x: remembered.x, y: remembered.y, source: 'memory', entityId: remembered.id };
   }

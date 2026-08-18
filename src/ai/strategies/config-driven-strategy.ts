@@ -34,13 +34,13 @@ export class ConfigDrivenStrategy implements AiStrategy {
     fleeThreatenedWorkers(ctx, sanctum);
 
     if (isPowerShort(state, p.id)) {
+      const pendingLey = own.some(
+        (e) => e.kind === 'building' && e.defId === 'ley_conduit' && e.buildProgress !== undefined,
+      );
       const leyDef = reg.buildings.get('ley_conduit');
-      if (leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
+      if (!pendingLey && leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
         const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, 'ley_conduit');
-        if (spot) {
-          cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
-          return;
-        }
+        if (spot) cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
       }
     }
 
@@ -49,12 +49,13 @@ export class ConfigDrivenStrategy implements AiStrategy {
       const bdef = reg.buildings.get(defId);
       if (!bdef) continue;
       if (!bdef.requires.every((r) => p.unlockedTech.includes(r))) break;
-      if (p.mana < bdef.cost) return;
+      if (p.mana < bdef.cost) break;
       const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, defId);
       if (spot) {
         cmds.push({ type: 'build', playerId: p.id, defId, x: spot.x, y: spot.y });
         return;
       }
+      break;
     }
 
     const spire = own.find(
@@ -71,7 +72,7 @@ export class ConfigDrivenStrategy implements AiStrategy {
       }
     }
 
-    trainWeavers(ctx, cfg);
+    trainWeavers(ctx, cfg, army.length);
     channelWeavers(ctx, cfg, sanctum);
     produceArmy(ctx, cfg, army.length);
     garrisonNearbyUnits(state, services, p.id, cfg.combat.garrisonUnit, cfg.garrisonRadius, cmds);
