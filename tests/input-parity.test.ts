@@ -10,7 +10,7 @@ describe('input control parity', () => {
   });
 
   it('wires a keyboard shortcut for every control marked keyboard', () => {
-    const keyed = new Set(Object.values(KEYBOARD_CONTROL_KEYS).map((binding) => binding.action));
+    const keyed = new Set<string>(Object.values(KEYBOARD_CONTROL_KEYS).map((binding) => binding.action));
     for (const [action, binding] of Object.entries(CONTROL_BINDINGS)) {
       if (!binding.keyboard) continue;
       expect(keyed.has(action), `${action} must have a KEYBOARD_CONTROL_KEYS entry`).toBe(true);
