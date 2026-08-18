@@ -4,21 +4,24 @@ import type { Registry } from '../../data/registry';
 import type { Camera } from '../../render/camera';
 import type { BuildPlacementGhost, RenderOverlay } from '../../render/renderer';
 import type { SimServices } from '../../sim/context';
-import { buildZoneCircles } from '../../sim/build-zone';
+import { collectBuildZoneTiles } from '../../sim/build-zone';
+import { classifyBuildZoneTiles } from '../../sim/placement-preview';
+import type { PlacementGhost } from '../../sim/placement-preview';
+import { resourceNodeTiles } from '../../sim/resource-nodes';
 import type { GameState, PlayerId } from '../../sim/types';
 import type { SessionState } from '../../input/session';
 import { getRally } from '../../sim/capabilities';
 
-function placementGhost(
-  state: GameState,
-  humanId: PlayerId,
-  defId: string,
-  x: number,
-  y: number,
-  valid: boolean,
-): BuildPlacementGhost {
+function placementGhost(state: GameState, humanId: PlayerId, defId: string, preview: PlacementGhost): BuildPlacementGhost {
   const color = state.players.find((p) => p.id === humanId)?.color ?? '#ffffff';
-  return { x, y, valid, defId, color };
+  return {
+    x: preview.x,
+    y: preview.y,
+    valid: preview.valid,
+    defId,
+    color,
+    cells: preview.cells,
+  };
 }
 
 export function buildMatchOverlay(
@@ -36,17 +39,15 @@ export function buildMatchOverlay(
     const def = registry.buildings.get(session.buildDefId);
     if (def) {
       if (session.wallDragTiles?.length) {
-        wallGhosts = session.wallDragTiles.map((t) =>
-          placementGhost(state, humanId, def.id, t.x, t.y, t.valid),
-        );
+        wallGhosts = session.wallDragTiles.map((t) => placementGhost(state, humanId, def.id, t));
       } else if (session.buildGhost) {
-        ghost = placementGhost(state, humanId, def.id, session.buildGhost.x, session.buildGhost.y, session.buildGhost.valid);
+        ghost = placementGhost(state, humanId, def.id, session.buildGhost);
       }
     }
   } else if (session.mode === 'deploy' && session.buildGhost) {
     const def = registry.buildings.get('waystone_camp');
     if (def) {
-      ghost = placementGhost(state, humanId, def.id, session.buildGhost.x, session.buildGhost.y, session.buildGhost.valid);
+      ghost = placementGhost(state, humanId, def.id, session.buildGhost);
     }
   }
   let spell: { x: number; y: number; radius: number } | undefined;
@@ -70,6 +71,12 @@ export function buildMatchOverlay(
       rallyMarker = { fromX: b.pos.x, fromY: b.pos.y, toX: rally.x, toY: rally.y };
     }
   }
-  const buildZones = session.mode === 'build' ? buildZoneCircles(state, services, humanId) : undefined;
-  return { ghost, wallGhosts, spell, confirm, buildZones, rallyMarker };
+  let buildTiles: RenderOverlay['buildTiles'];
+  if (session.mode === 'build') {
+    const nodeSet = new Set(resourceNodeTiles(state).map((n) => `${n.tx},${n.ty}`));
+    buildTiles = classifyBuildZoneTiles(collectBuildZoneTiles(state, services, humanId), services.nav, (tx, ty) =>
+      nodeSet.has(`${tx},${ty}`),
+    );
+  }
+  return { ghost, wallGhosts, spell, confirm, buildTiles, rallyMarker };
 }

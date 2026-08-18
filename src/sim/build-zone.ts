@@ -14,13 +14,31 @@ function footprintOrigin(pos: { x: number; y: number }, footprint: number): { tx
   };
 }
 
+/** Chebyshev distance from (tx, ty) to the closest tile of a rectangular footprint. */
+function chebyshevToFootprint(atx: number, aty: number, footprint: number, tx: number, ty: number): number {
+  const dx = tx < atx ? atx - tx : tx >= atx + footprint ? tx - (atx + footprint - 1) : 0;
+  const dy = ty < aty ? aty - ty : ty >= aty + footprint ? ty - (aty + footprint - 1) : 0;
+  return Math.max(dx, dy);
+}
+
 function tileNearAnchor(anchor: Entity, anchorFootprint: number, tx: number, ty: number): boolean {
   const { tx: atx, ty: aty } = footprintOrigin(anchor.pos, anchorFootprint);
-  for (let ady = 0; ady < anchorFootprint; ady++) {
-    for (let adx = 0; adx < anchorFootprint; adx++) {
-      const dist = Math.max(Math.abs(tx - (atx + adx)), Math.abs(ty - (aty + ady)));
-      if (dist <= BUILD_ZONE_TILES) return true;
-    }
+  return chebyshevToFootprint(atx, aty, anchorFootprint, tx, ty) <= BUILD_ZONE_TILES;
+}
+
+/** True when this tile is within build range of any living friendly structure. */
+export function tileInBuildZone(
+  state: GameState,
+  services: SimServices,
+  owner: PlayerId,
+  tx: number,
+  ty: number,
+): boolean {
+  const anchors = buildingsOf(state, owner);
+  for (const anchor of anchors) {
+    const adef = services.registry.buildings.get(anchor.defId);
+    if (!adef) continue;
+    if (tileNearAnchor(anchor, adef.footprint, tx, ty)) return true;
   }
   return false;
 }
@@ -39,33 +57,41 @@ export function canBuildNearBase(
 
   for (let dy = 0; dy < footprint; dy++) {
     for (let dx = 0; dx < footprint; dx++) {
-      const tileX = tx + dx;
-      const tileY = ty + dy;
-      let covered = false;
-      for (const anchor of anchors) {
-        const adef = services.registry.buildings.get(anchor.defId);
-        if (!adef) continue;
-        if (tileNearAnchor(anchor, adef.footprint, tileX, tileY)) {
-          covered = true;
-          break;
-        }
-      }
-      if (!covered) return false;
+      if (!tileInBuildZone(state, services, owner, tx + dx, ty + dy)) return false;
     }
   }
   return true;
 }
 
-export function buildZoneCircles(state: GameState, services: SimServices, owner: PlayerId): { x: number; y: number; r: number }[] {
-  const out: { x: number; y: number; r: number }[] = [];
-  for (const b of buildingsOf(state, owner)) {
-    const def = services.registry.buildings.get(b.defId);
+/**
+ * Union of tiles inside the Chebyshev build zone. The zone around a rectangular
+ * footprint is itself a rectangle, so this is exact (not a circular approximation).
+ */
+export function collectBuildZoneTiles(
+  state: GameState,
+  services: SimServices,
+  owner: PlayerId,
+): { tx: number; ty: number }[] {
+  const nav = services.nav;
+  const seen = new Set<number>();
+  const out: { tx: number; ty: number }[] = [];
+  for (const anchor of buildingsOf(state, owner)) {
+    const def = services.registry.buildings.get(anchor.defId);
     if (!def) continue;
-    out.push({
-      x: b.pos.x,
-      y: b.pos.y,
-      r: (def.footprint / 2 + BUILD_ZONE_TILES) * TILE,
-    });
+    const { tx: atx, ty: aty } = footprintOrigin(anchor.pos, def.footprint);
+    const minX = atx - BUILD_ZONE_TILES;
+    const maxX = atx + def.footprint - 1 + BUILD_ZONE_TILES;
+    const minY = aty - BUILD_ZONE_TILES;
+    const maxY = aty + def.footprint - 1 + BUILD_ZONE_TILES;
+    for (let ty = minY; ty <= maxY; ty++) {
+      for (let tx = minX; tx <= maxX; tx++) {
+        if (!nav.inBounds(tx, ty)) continue;
+        const key = nav.idx(tx, ty);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ tx, ty });
+      }
+    }
   }
   return out;
 }

@@ -17,6 +17,7 @@ import { SuperweaponStatus } from './hud/superweapon-status';
 import { MatchSettingsScreen } from './hud/settings-screen';
 import type { Settings } from '../storage/settings';
 import type { AudioManager } from '../audio/audio';
+import { placementConfirmHint } from '../input/placement';
 
 export interface HudOptions {
   settings: Settings;
@@ -510,17 +511,7 @@ export class Hud {
       const wallPreview = session.wallDragTiles?.length;
       const ok = wallPreview ? this.controller.wallPlacementValid() : session.buildGhost!.valid;
       this.buildConfirm.style.display = 'flex';
-      const hint =         ok
-          ? '· click map or Place'
-          : session.mode === 'deploy'
-            ? session.buildGhost?.issue === 'node'
-              ? '· on mana pool'
-              : '· blocked'
-            : session.buildGhost?.issue === 'node'
-              ? '· on mana pool'
-              : session.buildGhost?.issue === 'range'
-                ? '· too far from base'
-                : '· blocked';
+      const hint = ok ? placementConfirmHint() : placementConfirmHint(session.buildGhost?.issue);
       const prefix = session.mode === 'deploy' ? 'Deploy' : def.name;
       const costLabel =
         session.mode === 'deploy'

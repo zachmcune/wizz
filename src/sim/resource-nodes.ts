@@ -2,6 +2,16 @@
 import { TILE } from '../core/constants';
 import type { GameState, Entity } from './types';
 
+/** Tile coordinates of every mana pool. */
+export function resourceNodeTiles(state: GameState): { tx: number; ty: number }[] {
+  const out: { tx: number; ty: number }[] = [];
+  for (const e of state.entities.values()) {
+    if (e.kind !== 'resource_node') continue;
+    out.push({ tx: Math.floor(e.pos.x / TILE), ty: Math.floor(e.pos.y / TILE) });
+  }
+  return out;
+}
+
 /** True when any mana node tile lies inside the building footprint. */
 export function footprintOverlapsNode(state: GameState, tx: number, ty: number, footprint: number): boolean {
   for (const e of state.entities.values()) {
