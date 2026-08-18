@@ -3,7 +3,6 @@
 // gameplay-code changes.
 import { Graphics, Texture, type Renderer } from 'pixi.js';
 import type { ArtDef, ShapeKind } from '../data/defs';
-import { getProjectionMode } from '../core/projection';
 import { appendOpenArc } from './open-arc';
 
 export interface SpriteProvider {
@@ -234,9 +233,10 @@ const GLYPHS: Record<string, GlyphFn> = {
   },
 };
 
-// --- Ortho full silhouettes ---
+// --- HUD / icon silhouettes (not the world view) ---
 
-const ORTHO_DESIGNS: Record<string, DesignFn> = {
+/** HUD / icon silhouettes. World sprites use drawObliqueBox. */
+const ICON_DESIGNS: Record<string, DesignFn> = {
   wisp: (g, size, fill, accent, dir) => {
     const r = size / 2;
     g.circle(0, 0, r).fill(fill).stroke({ width: 2, color: OUTLINE });
@@ -868,8 +868,8 @@ function drawShape(
   direction = 0,
   sprite = '',
 ): void {
-  if (sprite && ORTHO_DESIGNS[sprite]) {
-    ORTHO_DESIGNS[sprite](g, size, fill, accent, direction);
+  if (sprite && ICON_DESIGNS[sprite]) {
+    ICON_DESIGNS[sprite](g, size, fill, accent, direction);
     return;
   }
 
@@ -922,7 +922,7 @@ function drawObliqueBox(
     return;
   }
 
-  const isBuilding = shape === 'building' || (sprite && ORTHO_DESIGNS[sprite] && !isUnitSprite(sprite));
+  const isBuilding = shape === 'building' || (sprite && ICON_DESIGNS[sprite] && !isUnitSprite(sprite));
   const isWide = isBuilding || shape === 'hexagon';
   const props = sprite ? OBLIQUE_PROPS[sprite] : undefined;
   const w = size * (props?.wMul ?? (isWide ? 1.05 : 0.82));
@@ -1005,24 +1005,19 @@ export class ShapeSpriteProvider implements SpriteProvider {
   }
 
   texture(art: ArtDef, teamColor: string, direction = 0): Texture {
-    const mode = getProjectionMode();
     const sprite = art.sprite ?? '';
-    const isBuildingDesign = sprite && ORTHO_DESIGNS[sprite] && !isUnitSprite(sprite);
+    const isBuildingDesign = sprite && ICON_DESIGNS[sprite] && !isUnitSprite(sprite);
     const rotatableBuilding = isRotatableBuildingSprite(sprite);
     const dir = rotatableBuilding
       ? direction % 8
       : art.shape === 'building' || isBuildingDesign
         ? 0
         : direction % 8;
-    const key = `${mode}:${this.textureResolution}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
+    const key = `${this.textureResolution}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
     let tex = this.cache.get(key);
     if (!tex) {
       const g = new Graphics();
-      if (mode === 'oblique') {
-        drawObliqueBox(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
-      } else {
-        drawShape(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
-      }
+      drawObliqueBox(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
       tex = this.renderer.generateTexture({ target: g, resolution: this.textureResolution });
       g.destroy();
       this.cache.set(key, tex);

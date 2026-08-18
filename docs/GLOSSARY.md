@@ -12,6 +12,9 @@
 - **Golem Forge** — vehicle-tier producer. **Arcane Nexus** — tech + spell hub.
 - **Arcane Sentry** — sustained-fire static defense (rapid arcane bolts).
 - **Spell** — global archmage power on cooldown (Meteor Storm, Aegis Ward, Blink Gate).
+- **2.5D / Oblique** — the only camera. Dimetric (RA2-style) world↔screen projection
+  in `src/core/projection.ts`. The sim stays in 2D world units; there is no Classic 2D,
+  top-down, or ortho view.
 - **Tick** — one fixed simulation step (20/sec). **Command** — a serializable intent.
   **Event** — a fact the sim emits after a change (for UI/audio).
 - **Relation** — ally / enemy / neutral between two players; drives targeting, vision, win checks.

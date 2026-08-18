@@ -1,7 +1,6 @@
 // View camera over the world. Position is the world coord at the viewport's top-left.
 // Smoothly clamped to map bounds and zoom limits. Lives outside the sim (view concern).
 import {
-  CAMERA_OVERSCROLL_RATIO,
   CAMERA_OVERSCROLL_RATIO_X,
   CAMERA_OVERSCROLL_RATIO_Y,
   MIN_ZOOM,
@@ -10,7 +9,7 @@ import {
 import { clamp } from '../sim/math';
 import type { CameraView, Vec2 } from '../core/coords';
 import { projectGround, screenPanToCameraDelta, screenToWorld } from '../core/coords';
-import { getProjectionMode, OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
+import { OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
 
 export class Camera implements CameraView {
   x = 0;
@@ -41,22 +40,17 @@ export class Camera implements CameraView {
   }
 
   centerOn(x: number, y: number): void {
-    if (getProjectionMode() === 'oblique') {
-      const p = projectGround({ x, y });
-      const cX = p.x - this.viewW / (2 * this.zoom);
-      const cY = p.y - this.viewH / (2 * this.zoom);
-      const a = cX / OBLIQUE_SCALE_X;
-      const b = cY / OBLIQUE_SCALE_Y;
-      this.x = (a + b) / 2;
-      this.y = (b - a) / 2;
-    } else {
-      this.x = x - this.viewW / this.zoom / 2;
-      this.y = y - this.viewH / this.zoom / 2;
-    }
+    const p = projectGround({ x, y });
+    const cX = p.x - this.viewW / (2 * this.zoom);
+    const cY = p.y - this.viewH / (2 * this.zoom);
+    const a = cX / OBLIQUE_SCALE_X;
+    const b = cY / OBLIQUE_SCALE_Y;
+    this.x = (a + b) / 2;
+    this.y = (b - a) / 2;
     this.clampToBounds();
   }
 
-  /** Pan so world content follows the finger/mouse (projection-aware). */
+  /** Pan so world content follows the finger/mouse. */
   panByScreen(dxScreen: number, dyScreen: number): void {
     const delta = screenPanToCameraDelta(dxScreen, dyScreen, this.zoom);
     this.x += delta.x;
@@ -88,29 +82,15 @@ export class Camera implements CameraView {
   private overscrollPad(): { x: number; y: number } {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
-    if (getProjectionMode() === 'oblique') {
-      return {
-        x: viewWorldW * CAMERA_OVERSCROLL_RATIO_X,
-        y: viewWorldH * CAMERA_OVERSCROLL_RATIO_Y,
-      };
-    }
     return {
-      x: viewWorldW * CAMERA_OVERSCROLL_RATIO,
-      y: viewWorldH * CAMERA_OVERSCROLL_RATIO,
+      x: viewWorldW * CAMERA_OVERSCROLL_RATIO_X,
+      y: viewWorldH * CAMERA_OVERSCROLL_RATIO_Y,
     };
   }
 
   private clampToBounds(): void {
     const viewWorldW = this.viewW / this.zoom;
     const viewWorldH = this.viewH / this.zoom;
-    if (getProjectionMode() === 'ortho') {
-      // Legacy Classic 2D: tight map bounds, no overscroll.
-      if (viewWorldW >= this.worldW) this.x = (this.worldW - viewWorldW) / 2;
-      else this.x = clamp(this.x, 0, this.worldW - viewWorldW);
-      if (viewWorldH >= this.worldH) this.y = (this.worldH - viewWorldH) / 2;
-      else this.y = clamp(this.y, 0, this.worldH - viewWorldH);
-      return;
-    }
     const pad = this.overscrollPad();
     if (viewWorldW >= this.worldW) this.x = (this.worldW - viewWorldW) / 2;
     else this.x = clamp(this.x, -pad.x, this.worldW - viewWorldW + pad.x);

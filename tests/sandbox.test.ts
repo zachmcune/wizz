@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { initMatch } from '../src/sim/factory';
 import { createSimulation } from '../src/app/create-simulation';
-import { buildSandboxMatchConfig, getSandboxProjectionMode } from '../src/sandbox/sandbox-config';
+import { buildSandboxMatchConfig } from '../src/sandbox/sandbox-config';
 import { createSandboxAiHook } from '../src/sandbox/ai-director';
 import { defaultSandboxSettings } from '../src/sim/sandbox-types';
 import { applyDevCommand } from '../src/sim/systems/commands/dev';
@@ -20,10 +20,6 @@ describe('sandbox mode', () => {
     const { state } = initMatch(registry, config);
     expect(state.sandbox?.enabled).toBe(true);
     expect(sandboxDisableWinCheck(state)).toBe(true);
-  });
-
-  it('uses oblique 2.5D projection', () => {
-    expect(getSandboxProjectionMode()).toBe('oblique');
   });
 
   it('devSpawnUnit increases entity count', () => {

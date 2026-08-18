@@ -1,4 +1,4 @@
-// Minimap: a small 2D-canvas overview. Requires a powered Scrying Obelisk (radar) to use.
+// Minimap: a small canvas overview. Requires a powered Scrying Obelisk (radar) to use.
 // Tap/drag to move the camera. Independent of the Pixi renderer for simplicity.
 import { TILE } from '../core/constants';
 import { FOG_FILL_ALPHA, FOG_FILL_COLOR } from '../render/fog-draw';

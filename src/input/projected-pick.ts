@@ -1,10 +1,10 @@
-// Screen-space picking for oblique view. World-space circles misalign with projected sprites.
+// Screen-space picking. World-space circles misalign with projected 2.5D sprites.
 import { worldToScreen } from '../core/coords';
 import type { CameraView, Vec2 } from '../core/coords';
-import { FLYER_HOVER_LEVELS, getProjectionMode } from '../core/projection';
+import { FLYER_HOVER_LEVELS } from '../core/projection';
 import type { Registry } from '../data/registry';
 import type { NavGrid } from '../sim/nav-grid';
-import { pickEntity, pickResourceNode, isVisibleTo } from '../sim/views';
+import { isVisibleTo } from '../sim/views';
 import { garrisonedInId } from '../sim/capabilities';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 
@@ -12,10 +12,6 @@ function entityPickHeight(e: Entity, nav: NavGrid | null, registry?: Registry): 
   const base = nav ? nav.heightAtWorld(e.pos.x, e.pos.y) : 0;
   const flying = e.kind === 'unit' && registry?.units.get(e.defId)?.mobility === 'air';
   return base + (flying ? FLYER_HOVER_LEVELS : 0);
-}
-
-export function useScreenPicking(): boolean {
-  return getProjectionMode() === 'oblique';
 }
 
 function screenPickRadius(e: Entity, cam: CameraView): number {
@@ -82,27 +78,25 @@ export function pickEntityScreen(
 export function pickResourceNodeForInput(
   state: GameState,
   viewerId: PlayerId,
-  world: Vec2,
+  _world: Vec2,
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
   registry?: Registry,
 ): Entity | null {
-  if (useScreenPicking()) return pickResourceNodeScreen(state, viewerId, screen, cam, nav, registry);
-  return pickResourceNode(state, viewerId, world.x, world.y, nav);
+  return pickResourceNodeScreen(state, viewerId, screen, cam, nav, registry);
 }
 
 export function pickEntityForInput(
   state: GameState,
   viewerId: PlayerId,
-  world: Vec2,
+  _world: Vec2,
   screen: Vec2,
   cam: CameraView,
   nav: NavGrid | null,
   registry?: Registry,
 ): Entity | null {
-  if (useScreenPicking()) return pickEntityScreen(state, viewerId, screen, cam, nav, registry);
-  return pickEntity(state, viewerId, world.x, world.y, nav);
+  return pickEntityScreen(state, viewerId, screen, cam, nav, registry);
 }
 
 /** Units whose projected screen position falls inside a screen-space drag rectangle. */

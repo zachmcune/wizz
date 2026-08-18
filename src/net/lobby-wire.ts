@@ -1,12 +1,6 @@
 import type { LobbyState } from '../lobby/types';
 import type { LobbyStateWire } from './protocol';
 
-import type { ProjectionMode } from '../core/projection';
-
-function wireProjectionMode(mode: LobbyStateWire['projectionMode']): ProjectionMode {
-  return mode === 'oblique' ? 'oblique' : 'ortho';
-}
-
 export function lobbyStateToWire(state: LobbyState): LobbyStateWire {
   return {
     mapId: state.mapId,
@@ -14,7 +8,6 @@ export function lobbyStateToWire(state: LobbyState): LobbyStateWire {
     deadSpectatorReveal: state.deadSpectatorReveal ?? false,
     oneSuperweaponPerPlayer: state.oneSuperweaponPerPlayer ?? true,
     economyPacing: state.economyPacing ?? 'standard',
-    projectionMode: state.projectionMode ?? 'ortho',
     slots: state.slots.map((s) => ({
       id: s.id,
       kind: s.kind,
@@ -36,7 +29,6 @@ export function lobbyStateFromWire(wire: LobbyStateWire): LobbyState {
     deadSpectatorReveal: wire.deadSpectatorReveal ?? false,
     oneSuperweaponPerPlayer: wire.oneSuperweaponPerPlayer ?? true,
     economyPacing: wire.economyPacing ?? 'standard',
-    projectionMode: wireProjectionMode(wire.projectionMode),
     slots: wire.slots.map((s) => ({
       id: s.id as LobbyState['slots'][number]['id'],
       kind: s.kind,

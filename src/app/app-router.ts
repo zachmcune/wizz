@@ -13,7 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
-import { buildSandboxMatchConfig, getSandboxProjectionMode, scenarioIdFromUrl, shouldOpenSandbox } from '../sandbox/sandbox-config';
+import { buildSandboxMatchConfig, scenarioIdFromUrl, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -73,7 +73,6 @@ export class AppRouter {
       matchId: 'sandbox',
       startPaused: false,
       sandbox: true,
-      matchProjectionMode: getSandboxProjectionMode(),
       matchConfig: config,
       sandboxScenarioId: scenarioId ?? undefined,
     });
@@ -107,7 +106,6 @@ export class AppRouter {
       connId: session.connId,
       slotId,
       seed,
-      projectionMode: lobbyState.projectionMode ?? 'ortho',
       relayUrl: relayWsUrl(),
     };
     void saveOnlineSession(stored);
@@ -130,7 +128,6 @@ export class AppRouter {
       matchId: 'custom',
       localPlayerId: opts?.localPlayerId,
       deadSpectatorReveal: config.deadSpectatorReveal ?? false,
-      matchProjectionMode: state.projectionMode ?? 'ortho',
       startPaused: opts?.startPaused,
       lockstep: opts?.session?.lockstep,
       onDesync: (tick, peers, replay) => {
@@ -348,7 +345,6 @@ export class AppRouter {
                 void this.showMenu();
               },
               {
-                matchProjectionMode: loaded.meta.projectionMode,
                 saveMeta: loaded.meta,
                 startPaused: loaded.meta.paused,
                 localPlayerId: loaded.meta.localPlayerId,

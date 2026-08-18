@@ -3,7 +3,6 @@
 import { get, set, del } from 'idb-keyval';
 import type { GameState, Entity, Player } from '../sim/types';
 import type { Registry } from '../data/registry';
-import type { ProjectionMode } from '../core/projection';
 import { NavGrid } from '../sim/nav-grid';
 import { createServices, type SimServices, type StepContext } from '../sim/context';
 import { recomputePower } from '../sim/factory';
@@ -15,7 +14,6 @@ const SAVE_VERSION = 4;
 const SAVE_KEY = 'arcane:save';
 
 export interface SaveMeta {
-  projectionMode: ProjectionMode;
   paused: boolean;
   localPlayerId: string;
   /** Solo skirmish saves only — online matches use arcane:online-session. */
@@ -45,14 +43,20 @@ function ensureFogFields(state: GameState, registry: Registry): void {
   }
 }
 
-export function defaultSaveMeta(localPlayerId: string, projectionMode: ProjectionMode = 'ortho'): SaveMeta {
-  return { projectionMode, paused: false, localPlayerId, isOnline: false };
+export function defaultSaveMeta(localPlayerId: string): SaveMeta {
+  return { paused: false, localPlayerId, isOnline: false };
 }
 
 function resolveMeta(saved: SavedGame, state: GameState): SaveMeta {
-  if (saved.meta && saved.meta.isOnline === false) return saved.meta;
+  if (saved.meta && saved.meta.isOnline === false) {
+    return {
+      paused: saved.meta.paused,
+      localPlayerId: saved.meta.localPlayerId,
+      isOnline: false,
+    };
+  }
   const human = state.players.find((p) => p.controller === 'human');
-  return defaultSaveMeta(human?.id ?? state.players[0]!.id, 'ortho');
+  return defaultSaveMeta(human?.id ?? state.players[0]!.id);
 }
 
 export function serializeState(state: GameState, meta: SaveMeta): SavedGame {

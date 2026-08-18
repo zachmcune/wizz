@@ -25,7 +25,8 @@ node scripts/gen-map.mjs     # data/maps/duel_glade.json
 ## What it is
 
 - Deterministic, command-driven simulation core (headless-testable, replay/multiplayer-ready).
-- PixiJS WebGL rendering, separated from game logic. Placeholder art drawn from data (`shape`),
+- PixiJS WebGL rendering, separated from game logic. Always 2.5D (dimetric/oblique) —
+  there is no Classic 2D / top-down view. Placeholder art drawn from data (`shape`),
   with a clean upgrade path to real sprites.
 - Data-driven content in `/data` (units, buildings, spells, projectiles, maps, match configs),
   validated by Zod.

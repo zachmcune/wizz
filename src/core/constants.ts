@@ -39,7 +39,5 @@ export const KEYBOARD_PAN_SPEED = 900;
 export const WHEEL_PAN_SCALE = 1;
 
 /** How far past the map edge the camera may scroll (fraction of viewport world size). */
-export const CAMERA_OVERSCROLL_RATIO = 0.45;
-/** Extra horizontal overscroll in oblique mode (screen left/right needs more world slack). */
 export const CAMERA_OVERSCROLL_RATIO_X = 1.05;
 export const CAMERA_OVERSCROLL_RATIO_Y = 0.55;
