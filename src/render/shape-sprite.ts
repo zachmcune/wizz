@@ -9,6 +9,7 @@ export interface SpriteProvider {
   texture(art: ArtDef, teamColor: string, direction?: number): Texture;
   iconTexture(art: ArtDef, teamColor: string): Texture;
   clearCache(): void;
+  setTextureResolution?(resolution: number): void;
 }
 
 function parseHex(hex: string): number {
@@ -909,8 +910,13 @@ function isRotatableBuildingSprite(sprite: string): boolean {
 
 export class ShapeSpriteProvider implements SpriteProvider {
   private cache = new Map<string, Texture>();
+  private textureResolution = 2;
 
   constructor(private renderer: Renderer) {}
+
+  setTextureResolution(resolution: number): void {
+    this.textureResolution = resolution > 0 ? resolution : 1;
+  }
 
   clearCache(): void {
     for (const tex of this.cache.values()) tex.destroy(true);
@@ -927,7 +933,7 @@ export class ShapeSpriteProvider implements SpriteProvider {
       : art.shape === 'building' || isBuildingDesign
         ? 0
         : direction % 8;
-    const key = `${mode}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
+    const key = `${mode}:${this.textureResolution}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}:${dir}`;
     let tex = this.cache.get(key);
     if (!tex) {
       const g = new Graphics();
@@ -936,7 +942,7 @@ export class ShapeSpriteProvider implements SpriteProvider {
       } else {
         drawShape(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
       }
-      tex = this.renderer.generateTexture({ target: g, resolution: 2 });
+      tex = this.renderer.generateTexture({ target: g, resolution: this.textureResolution });
       g.destroy();
       this.cache.set(key, tex);
     }
@@ -945,12 +951,12 @@ export class ShapeSpriteProvider implements SpriteProvider {
 
   iconTexture(art: ArtDef, teamColor: string): Texture {
     const sprite = art.sprite ?? '';
-    const key = `icon:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}`;
+    const key = `icon:${this.textureResolution}:${sprite}:${art.shape}:${art.size}:${teamColor}:${art.accent}`;
     let tex = this.cache.get(key);
     if (!tex) {
       const g = new Graphics();
       drawShape(g, art.shape, art.size, teamColor, art.accent, 0, sprite);
-      tex = this.renderer.generateTexture({ target: g, resolution: 2 });
+      tex = this.renderer.generateTexture({ target: g, resolution: this.textureResolution });
       g.destroy();
       this.cache.set(key, tex);
     }

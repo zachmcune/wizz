@@ -1,7 +1,9 @@
 // Persisted user settings (IndexedDB). Small and forgiving; defaults on any read failure.
 import { get, set } from 'idb-keyval';
+import { parseGraphicsQualityPref, type GraphicsQualityPref } from '../render/graphics-quality';
 
 export type ProjectionModeSetting = 'ortho' | 'oblique';
+export type { GraphicsQualityPref };
 
 export interface Settings {
   volume: number;
@@ -11,6 +13,8 @@ export interface Settings {
   showBuildingNames: boolean;
   /** @deprecated View mode is chosen in the match lobby; kept for URL dev override only. */
   projectionMode: ProjectionModeSetting;
+  /** Auto picks Low on Chromebooks / constrained devices. */
+  graphicsQuality: GraphicsQualityPref;
 }
 
 const KEY = 'arcane:settings';
@@ -20,12 +24,15 @@ const DEFAULTS: Settings = {
   dragMode: 'select',
   showBuildingNames: false,
   projectionMode: 'ortho',
+  graphicsQuality: 'auto',
 };
 
 export async function loadSettings(): Promise<Settings> {
   try {
     const s = (await get(KEY)) as Partial<Settings> | undefined;
-    return { ...DEFAULTS, ...(s ?? {}) };
+    const merged = { ...DEFAULTS, ...(s ?? {}) };
+    merged.graphicsQuality = parseGraphicsQualityPref(merged.graphicsQuality);
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }

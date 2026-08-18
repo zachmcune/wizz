@@ -13,6 +13,7 @@ import {
   drawLightningBolt,
   lerpColor,
 } from './lightning-vfx';
+import { vfxDecorEnabled } from './vfx-quality';
 
 export type StormDrawPosFn = (worldX: number, worldY: number) => { x: number; y: number };
 
@@ -301,7 +302,7 @@ function drawStormSequences(
     }
 
     // Phase 7 — dissipation (last 4 frames)
-    if (seq.age >= seq.life - 4) {
+    if (seq.age >= seq.life - 4 && vfxDecorEnabled()) {
       const dissT = (seq.age - (seq.life - 4)) / 4;
       for (let i = 0; i < hits.length; i++) {
         const p = drawPos(hits[i]!.x, hits[i]!.y);

@@ -20,9 +20,14 @@ export class EffectsLayer {
   private active: Effect[] = [];
   private pool: Graphics[] = [];
   private positionFn: EffectPositionFn = (x, y) => ({ x, y });
+  private maxActive = 400;
 
   setPositionFn(fn: EffectPositionFn): void {
     this.positionFn = fn;
+  }
+
+  setMaxActive(n: number): void {
+    this.maxActive = Math.max(8, n);
   }
 
   private take(): Graphics {
@@ -47,7 +52,7 @@ export class EffectsLayer {
   }
 
   spawn(kind: Effect['kind'], x: number, y: number, color: number, radius: number): void {
-    if (this.active.length > 400) return;
+    if (this.active.length > this.maxActive) return;
     const life =
       kind === 'ring' ? 30
         : kind === 'shockwave' ? 24

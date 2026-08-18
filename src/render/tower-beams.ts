@@ -5,6 +5,7 @@ import { isVisibleTo } from '../sim/views';
 import { getBeamWeapon } from '../sim/capabilities';
 import type { NavGrid } from '../sim/nav-grid';
 import type { GraphicsPool } from './graphics-pool';
+import { vfxCount, vfxDensity } from './vfx-quality';
 
 export type BeamDrawPosFn = (worldX: number, worldY: number) => { x: number; y: number };
 
@@ -46,8 +47,9 @@ function drawFlameBeam(
   const nx = -dy / len;
   const ny = dx / len;
 
-  const segments = 10;
-  for (let layer = 0; layer < 4; layer++) {
+  const segments = vfxDensity() < 0.4 ? 5 : 10;
+  const layerCount = Math.max(1, vfxCount(4));
+  for (let layer = 0; layer < layerCount; layer++) {
     const g = strokePool.acquire();
     const colors = [0xfff4e8, 0xffc04a, 0xff6a1a, 0xc42a10];
     const widths = [startW * 0.22, startW * 0.55, startW * 0.85, endW * 0.95];
@@ -85,7 +87,7 @@ function drawFlameBeam(
   core.stroke({ width: Math.max(1.5, startW * 0.18), color: 0xffffff, alpha: 0.92 });
 
   // Embers along the stream
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < vfxCount(5); i++) {
     const t = detRand(seed + i * 3.7) * 0.85 + 0.05;
     const drift = Math.sin(phase * 3 + i * 1.7) * 6 * BEAM_VISUAL_SCALE;
     const px = sx + dx * t + nx * drift;
