@@ -157,8 +157,7 @@
   max-height: 100%;
   object-fit: contain;
 }
-.art-gallery-frame-ortho,
-.art-gallery-frame-oblique {
+.art-gallery-frame-world {
   height: 72px;
 }
 .art-gallery-frame-icon {
@@ -239,8 +238,7 @@
 .compact-ui .art-gallery-card {
   padding: 8px 10px;
 }
-.compact-ui .art-gallery-frame-ortho,
-.compact-ui .art-gallery-frame-oblique {
+.compact-ui .art-gallery-frame-world {
   height: 56px;
 }
 .compact-ui .art-gallery-frame-icon {

@@ -27,6 +27,8 @@ Files `kebab-case.ts`; types `PascalCase`; funcs/vars `camelCase`; data ids `sna
 
 `TILE = 32` world units. Convert only through `src/core/coords.ts`
 (`worldToTile`, `tileToWorld`, `worldToScreen`, `screenToWorld`). The sim uses world units only.
+The renderer always projects those world units through the 2.5D dimetric camera in
+`src/core/projection.ts`. There is no Classic 2D / ortho view.
 
 ## Rules of thumb
 

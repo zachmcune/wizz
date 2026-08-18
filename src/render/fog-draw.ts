@@ -42,7 +42,7 @@ export function visibleTileBounds(
 /**
  * World-space AABB of the pixels currently on screen.
  * `Camera.visibleWorldRect()` is the camera-origin rectangle and misses most of
- * an oblique viewport (the visible region is a parallelogram).
+ * the 2.5D viewport (the visible region is a parallelogram).
  */
 export function visibleWorldAabb(
   cam: CameraView,
@@ -129,7 +129,6 @@ export function fogGeometryKey(
   fingerprint: number,
   bounds: TileBounds,
   cheapFog: boolean,
-  projectionMode: string,
 ): string {
-  return `${fingerprint}:${bounds.minTx}:${bounds.maxTx}:${bounds.minTy}:${bounds.maxTy}:${cheapFog ? 1 : 0}:${projectionMode}`;
+  return `${fingerprint}:${bounds.minTx}:${bounds.maxTx}:${bounds.minTy}:${bounds.maxTy}:${cheapFog ? 1 : 0}`;
 }

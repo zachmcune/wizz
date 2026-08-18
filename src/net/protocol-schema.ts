@@ -21,7 +21,6 @@ export const lobbyStateWireSchema = z.object({
   deadSpectatorReveal: z.boolean().optional(),
   oneSuperweaponPerPlayer: z.boolean().optional(),
   economyPacing: z.enum(['standard', 'tight']).optional(),
-  projectionMode: z.enum(['ortho', 'oblique']).optional(),
 });
 
 const playerIdSchema = z.string();

@@ -1,9 +1,8 @@
-// World ↔ screen projection strategies. Ortho preserves legacy top-down; oblique is RA2-style 2.5D.
+// World ↔ screen projection. The game is 2.5D only (dimetric / RA2-style oblique).
+// Simulation stays in 2D world units; this module is the only world↔screen mapping.
 import type { CameraView, Vec2 } from './coords';
 
-export type ProjectionMode = 'ortho' | 'oblique';
-
-/** Screen lift per visual height level in oblique mode (world units before zoom). */
+/** Screen lift per visual height level (world units before zoom). */
 export const VISUAL_HEIGHT_STEP = 8;
 
 /** Extra visual height levels applied to flying units (render + picking only). */
@@ -14,7 +13,6 @@ export const OBLIQUE_SCALE_X = 0.5;
 export const OBLIQUE_SCALE_Y = 0.25;
 
 export interface Projection {
-  readonly mode: ProjectionMode;
   projectGround(world: Vec2, visualHeight?: number): Vec2;
   worldToScreen(world: Vec2, cam: CameraView, visualHeight?: number): Vec2;
   screenToWorld(screen: Vec2, cam: CameraView): Vec2;
@@ -34,27 +32,7 @@ function camProjectGround(cam: CameraView): Vec2 {
   return projectObliqueGround({ x: cam.x, y: cam.y });
 }
 
-export const OrthoProjection: Projection = {
-  mode: 'ortho',
-  projectGround(world: Vec2, _visualHeight = 0): Vec2 {
-    return { x: world.x, y: world.y };
-  },
-  worldToScreen(world: Vec2, cam: CameraView, _visualHeight = 0): Vec2 {
-    return { x: (world.x - cam.x) * cam.zoom, y: (world.y - cam.y) * cam.zoom };
-  },
-  screenToWorld(screen: Vec2, cam: CameraView): Vec2 {
-    return { x: screen.x / cam.zoom + cam.x, y: screen.y / cam.zoom + cam.y };
-  },
-  sortKey(world: Vec2, _cam: CameraView, _visualHeight = 0): number {
-    return world.y;
-  },
-  screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2 {
-    return { x: -dxScreen / zoom, y: -dyScreen / zoom };
-  },
-};
-
 export const ObliqueProjection: Projection = {
-  mode: 'oblique',
   projectGround(world: Vec2, visualHeight = 0): Vec2 {
     return projectObliqueGround(world, visualHeight);
   },
@@ -84,32 +62,8 @@ export const ObliqueProjection: Projection = {
   },
 };
 
-const PROJECTIONS: Record<ProjectionMode, Projection> = {
-  ortho: OrthoProjection,
-  oblique: ObliqueProjection,
-};
-
-let activeMode: ProjectionMode = 'ortho';
-
-export function getProjectionMode(): ProjectionMode {
-  return activeMode;
-}
-
 export function getProjection(): Projection {
-  return PROJECTIONS[activeMode];
-}
-
-export function setProjectionMode(mode: ProjectionMode): void {
-  activeMode = mode;
-}
-
-/** URL param ?view=2d|oblique overrides stored settings when valid. */
-export function resolveProjectionMode(stored: ProjectionMode | undefined): ProjectionMode {
-  if (typeof window === 'undefined') return stored ?? 'ortho';
-  const param = new URLSearchParams(window.location.search).get('view');
-  if (param === '2d' || param === 'ortho') return 'ortho';
-  if (param === 'oblique') return 'oblique';
-  return stored ?? 'ortho';
+  return ObliqueProjection;
 }
 
 /** Map sim facing (radians) to 8-direction sprite index (0 = east, counter-clockwise). */

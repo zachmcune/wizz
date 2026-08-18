@@ -81,7 +81,6 @@ function finish(
 ): SavedScenario {
   state.sandbox = { enabled: true, settings: structuredClone(sandbox) };
   const scenario = serializeScenario(name, state, matchConfig, {
-    projectionMode: 'oblique',
     paused: false,
     localPlayerId: 'player0',
     isOnline: false,

@@ -1,5 +1,4 @@
 // Lobby state types for pre-match setup (solo and online).
-import type { ProjectionMode } from '../core/projection';
 import type { EconomyPacing } from '../data/economy-pacing';
 
 export type TeamLabel = 'a' | 'b' | 'c' | 'd';
@@ -33,8 +32,6 @@ export interface LobbyState {
   oneSuperweaponPerPlayer?: boolean;
   /** Economy pacing preset: Standard (default) or Tight. */
   economyPacing?: EconomyPacing;
-  /** Locked render view for this match: Classic 2D or oblique 2.5D. Host chooses in lobby. */
-  projectionMode?: ProjectionMode;
 }
 
 export type LobbyMode = 'solo' | 'host' | 'guest';

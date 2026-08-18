@@ -1,9 +1,8 @@
-// Dev gallery: preview every troop/building design in ortho, oblique, and HUD-icon sizes.
+// Dev gallery: preview every troop/building design in 2.5D and HUD-icon sizes.
 import { Application } from 'pixi.js';
 import type { Registry } from '../data/registry';
 import type { ArtDef } from '../data/defs';
 import { ShapeSpriteProvider } from '../render/shape-sprite';
-import { setProjectionMode } from '../core/projection';
 import { DefenseCombatPreview, isDefenseBuilding } from './defense-combat-preview';
 import { el } from './dom';
 
@@ -38,7 +37,7 @@ export class ArtGallery {
     const back = el('button', 'btn', '← Back');
     back.addEventListener('click', () => this.onBack());
     const title = el('h1', 'art-gallery-title', 'Entity Designs');
-    const sub = el('p', 'art-gallery-sub', 'Ortho · Oblique · HUD icon — click defenses for live 2.5D combat preview');
+    const sub = el('p', 'art-gallery-sub', '2.5D · HUD icon — click defenses for live combat preview');
 
     const controls = el('div', 'art-gallery-controls');
     const colorLabel = el('span', 'art-gallery-control-label', 'Team color');
@@ -116,13 +115,12 @@ export class ArtGallery {
     await preview.open();
   }
 
-  private canvasFor(mode: 'ortho' | 'oblique' | 'icon', art: ArtDef): HTMLCanvasElement {
+  private canvasFor(mode: 'world' | 'icon', art: ArtDef): HTMLCanvasElement {
     const provider = this.provider!;
     const app = this.app!;
     if (mode === 'icon') {
       return app.renderer.extract.canvas(provider.iconTexture(art, this.teamColor)) as unknown as HTMLCanvasElement;
     }
-    setProjectionMode(mode);
     const tex = provider.texture(art, this.teamColor);
     return app.renderer.extract.canvas(tex) as unknown as HTMLCanvasElement;
   }
@@ -146,7 +144,7 @@ export class ArtGallery {
       if (isDefense) {
         card.setAttribute('role', 'button');
         card.tabIndex = 0;
-        card.title = 'Preview this defense fighting troops in oblique 2.5D';
+        card.title = 'Preview this defense fighting troops in 2.5D';
         const openPreview = () => void this.openCombatPreview(entry.id, entry.name);
         card.addEventListener('click', openPreview);
         card.addEventListener('keydown', (e) => {
@@ -171,8 +169,7 @@ export class ArtGallery {
 
       const previews = el('div', 'art-gallery-previews');
       for (const [label, mode] of [
-        ['Ortho', 'ortho'],
-        ['Oblique', 'oblique'],
+        ['2.5D', 'world'],
         ['HUD', 'icon'],
       ] as const) {
         const col = el('div', 'art-gallery-preview');

@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WHEEL_PAN_SCALE } from '../src/core/constants';
+import { screenToWorld } from '../src/core/coords';
 import { PointerBinder, isOverHudChrome, shouldTrackPlacementGhost } from '../src/app/match/pointer-binder';
 import type { InputMode } from '../src/input/session';
+
+const CAM = { x: 0, y: 0, zoom: 1 };
+
+function worldFromClient(clientX: number, clientY: number): { x: number; y: number } {
+  return screenToWorld({ x: clientX - 10, y: clientY - 20 }, CAM);
+}
 
 type Listener = (e: Event) => void;
 
@@ -166,7 +173,7 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
     );
 
-    expect(controller.updateGhost).toHaveBeenCalledWith({ x: 230, y: 240 });
+    expect(controller.updateGhost).toHaveBeenCalledWith(worldFromClient(240, 260));
   });
 
   it('moves the deploy ghost on mouse hover', () => {
@@ -177,7 +184,7 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
     );
 
-    expect(controller.updateDeployGhost).toHaveBeenCalledWith({ x: 230, y: 240 });
+    expect(controller.updateDeployGhost).toHaveBeenCalledWith(worldFromClient(240, 260));
   });
 
   it('does not move the build ghost when hovering HUD chrome such as Place', () => {
@@ -209,7 +216,7 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
     );
 
-    expect(controller.previewWallAt).toHaveBeenCalledWith({ x: 230, y: 240 });
+    expect(controller.previewWallAt).toHaveBeenCalledWith(worldFromClient(240, 260));
     expect(controller.updateGhost).not.toHaveBeenCalled();
   });
 
@@ -233,7 +240,7 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 1, clientX: 260, clientY: 280 }),
     );
 
-    expect(controller.updateGhost).toHaveBeenCalledWith({ x: 250, y: 260 });
+    expect(controller.updateGhost).toHaveBeenCalledWith(worldFromClient(260, 280));
   });
 
   it('places immediately on a desktop click in build mode', () => {

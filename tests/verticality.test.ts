@@ -11,7 +11,7 @@ import { visibilitySystem } from '../src/sim/systems/visibility';
 import { isTileVisible } from '../src/sim/fog';
 import { dist } from '../src/sim/math';
 import { worldToScreen } from '../src/core/coords';
-import { FLYER_HOVER_LEVELS, setProjectionMode } from '../src/core/projection';
+import { FLYER_HOVER_LEVELS } from '../src/core/projection';
 import { pickEntityForInput } from '../src/input/projected-pick';
 
 const reg = getRegistry();
@@ -211,8 +211,7 @@ describe('flying troops', () => {
     expect(golem.hp).toBeLessThan(golemHp);
   });
 
-  it('projects pick height with hover lift in oblique view', () => {
-    setProjectionMode('oblique');
+  it('projects pick height with hover lift', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const flyer = spawnEntity(state, services, null, 'rift_skimmer', 'player0', 640, 640);
     const cam = { x: flyer.pos.x - 200, y: flyer.pos.y - 150, zoom: 1 };
@@ -222,6 +221,5 @@ describe('flying troops', () => {
       services.nav.heightAtWorld(flyer.pos.x, flyer.pos.y) + FLYER_HOVER_LEVELS,
     );
     expect(pickEntityForInput(state, 'player0', { x: 0, y: 0 }, hoverScreen, cam, services.nav, reg)?.id).toBe(flyer.id);
-    setProjectionMode('ortho');
   });
 });

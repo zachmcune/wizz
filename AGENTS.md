@@ -22,3 +22,6 @@ database to run.
   simulation core pure/headless or `npm run lint` will fail.
 - The game is landscape/touch-first but works with mouse: from the main menu click
   "Skirmish (1v1)", then click a unit to select and click elsewhere to issue a move command.
+- The game is **2.5D only** (dimetric / RA2-style oblique). There is no Classic 2D,
+  top-down, or ortho view. Simulation stays in 2D world units; `src/core/projection.ts`
+  is the only world↔screen mapping. Do not add a 2D mode, lobby toggle, or `?view=` override.

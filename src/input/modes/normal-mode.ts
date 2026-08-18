@@ -1,12 +1,10 @@
 import type { Vec2 } from '../../core/coords';
 import type { EntityId } from '../../sim/types';
 import { isHarvester, isEnemy, canUnitGarrison, garrisonFreeCapacity } from '../../sim/views';
-import { garrisonedInId } from '../../sim/capabilities';
 import {
   pickEntityForInput,
   pickResourceNodeForInput,
   unitsInScreenBox,
-  useScreenPicking,
 } from '../projected-pick';
 import type { InputContext, ModeTapHandler } from '../input-context';
 
@@ -115,26 +113,7 @@ export function doubleTapSelectType(ctx: InputContext, screen: Vec2, world: Vec2
 export function boxSelect(ctx: InputContext, a: Vec2, b: Vec2): void {
   const st = ctx.getState();
   const cam = ctx.camera.view();
-  const units = useScreenPicking()
-    ? unitsInScreenBox(st, ctx.playerId, a, b, cam, ctx.nav, ctx.registry)
-    : unitsInWorldBox(ctx, ctx.playerId, a, b);
+  const units = unitsInScreenBox(st, ctx.playerId, a, b, cam, ctx.nav, ctx.registry);
   ctx.setSelection(units);
   ctx.session.boxRect = null;
-}
-
-function unitsInWorldBox(ctx: InputContext, ownerId: string, a: Vec2, b: Vec2): EntityId[] {
-  const wa = ctx.toWorld(a);
-  const wb = ctx.toWorld(b);
-  const minX = Math.min(wa.x, wb.x);
-  const maxX = Math.max(wa.x, wb.x);
-  const minY = Math.min(wa.y, wb.y);
-  const maxY = Math.max(wa.y, wb.y);
-  const st = ctx.getState();
-  const units: EntityId[] = [];
-  for (const e of st.entities.values()) {
-    if (e.owner !== ownerId || e.kind !== 'unit') continue;
-    if (garrisonedInId(e) !== undefined) continue;
-    if (e.pos.x >= minX && e.pos.x <= maxX && e.pos.y >= minY && e.pos.y <= maxY) units.push(e.id);
-  }
-  return units;
 }

@@ -13,7 +13,7 @@ import {
 } from '../storage/online-session';
 import { Game } from './game';
 import { ArtGallery, shouldOpenArtGallery } from '../ui/art-gallery';
-import { buildSandboxMatchConfig, getSandboxProjectionMode, scenarioIdFromUrl, shouldOpenSandbox } from '../sandbox/sandbox-config';
+import { buildSandboxMatchConfig, scenarioIdFromUrl, shouldOpenSandbox } from '../sandbox/sandbox-config';
 import { MainMenu } from '../ui/screens';
 import { JoinOnlineForm } from '../ui/lobby';
 import { MatchLobby } from '../ui/match-lobby';
@@ -73,7 +73,6 @@ export class AppRouter {
       matchId: 'sandbox',
       startPaused: false,
       sandbox: true,
-      matchProjectionMode: getSandboxProjectionMode(),
       matchConfig: config,
       sandboxScenarioId: scenarioId ?? undefined,
     });
@@ -101,13 +100,12 @@ export class AppRouter {
     });
   }
 
-  private persistOnlineSession(session: MultiplayerSession, seed: number, lobbyState: LobbyState, slotId: string): void {
+  private persistOnlineSession(session: MultiplayerSession, seed: number, slotId: string): void {
     const stored: Omit<StoredOnlineSession, 'savedAt'> = {
       room: session.room,
       connId: session.connId,
       slotId,
       seed,
-      projectionMode: lobbyState.projectionMode ?? 'ortho',
       relayUrl: relayWsUrl(),
     };
     void saveOnlineSession(stored);
@@ -130,7 +128,6 @@ export class AppRouter {
       matchId: 'custom',
       localPlayerId: opts?.localPlayerId,
       deadSpectatorReveal: config.deadSpectatorReveal ?? false,
-      matchProjectionMode: state.projectionMode ?? 'ortho',
       startPaused: opts?.startPaused,
       lockstep: opts?.session?.lockstep,
       onDesync: (tick, peers, replay) => {
@@ -154,7 +151,7 @@ export class AppRouter {
       const mine = state.slots.find((s) => s.claimedBy === session.connId);
       lobby.destroy();
       void clearSave();
-      this.persistOnlineSession(session, seed, state, mine?.id ?? session.localPlayerId);
+      this.persistOnlineSession(session, seed, mine?.id ?? session.localPlayerId);
       this.startFromLobby({ ...state, seed }, { session, localPlayerId: mine?.id ?? session.localPlayerId });
     };
 
@@ -302,7 +299,7 @@ export class AppRouter {
     this.clearHost();
     try {
       this.session = await rejoinMultiplayerRoom(stored.room, stored.connId, stored.relayUrl);
-      this.persistOnlineSession(this.session, stored.seed, this.session.lobbyState, stored.slotId);
+      this.persistOnlineSession(this.session, stored.seed, stored.slotId);
       this.startFromLobby(
         { ...this.session.lobbyState, seed: stored.seed },
         { session: this.session, localPlayerId: stored.slotId },
@@ -348,7 +345,6 @@ export class AppRouter {
                 void this.showMenu();
               },
               {
-                matchProjectionMode: loaded.meta.projectionMode,
                 saveMeta: loaded.meta,
                 startPaused: loaded.meta.paused,
                 localPlayerId: loaded.meta.localPlayerId,

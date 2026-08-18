@@ -1,16 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getRegistry } from './helpers';
 import { initMatch } from '../src/sim/factory';
-import { setProjectionMode } from '../src/core/projection';
 import { worldToScreen } from '../src/core/coords';
 import { pickEntityForInput, unitsInScreenBox } from '../src/input/projected-pick';
 
 const reg = getRegistry();
 
-describe('oblique screen picking', () => {
-  beforeEach(() => {
-    setProjectionMode('oblique');
-  });
+describe('2.5D screen picking', () => {
 
   it('selects a unit when tapping its projected screen position', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));

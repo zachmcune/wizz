@@ -2,7 +2,6 @@
 import { get, set } from 'idb-keyval';
 import { parseGraphicsQualityPref, type GraphicsQualityPref } from '../render/graphics-quality';
 
-export type ProjectionModeSetting = 'ortho' | 'oblique';
 export type { GraphicsQualityPref };
 
 export interface Settings {
@@ -11,8 +10,6 @@ export interface Settings {
   dragMode: 'pan' | 'select';
   /** Show full building names on the map (off by default). */
   showBuildingNames: boolean;
-  /** @deprecated View mode is chosen in the match lobby; kept for URL dev override only. */
-  projectionMode: ProjectionModeSetting;
   /** Auto picks Low on Chromebooks / constrained devices. */
   graphicsQuality: GraphicsQualityPref;
 }
@@ -23,7 +20,6 @@ const DEFAULTS: Settings = {
   muted: false,
   dragMode: 'select',
   showBuildingNames: false,
-  projectionMode: 'ortho',
   graphicsQuality: 'auto',
 };
 

@@ -1,7 +1,6 @@
 // Live oblique combat vignette for a single defense — uses the real renderer + sim.
 import { GameLoop } from '../core/game-loop';
 import { TICK_MS } from '../core/constants';
-import { setProjectionMode } from '../core/projection';
 import type { Registry } from '../data/registry';
 import type { BuildingEntity, UnitEntity } from '../sim/entity-types';
 import { initMatch, recomputePower, spawnEntity, unlockTech } from '../sim/factory';
@@ -294,8 +293,6 @@ export class DefenseCombatPreview {
     const map = this.registry.map('duel_glade');
     this.renderer = new Renderer(this.registry, map);
     await this.renderer.init(this.canvasHost);
-    setProjectionMode('oblique');
-    this.renderer.setProjectionMode('oblique');
     this.renderer.setNav(this.sim!.services.nav);
     this.renderer.setOwnerColors(this.sim!.state, DEFENDER);
     this.frameCamera();

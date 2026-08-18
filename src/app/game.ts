@@ -13,8 +13,6 @@ import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/minimap';
 import { ZoomSlider } from '../ui/zoom-slider';
 import type { AudioManager } from '../audio/audio';
-import type { ProjectionMode } from '../core/projection';
-import { setProjectionMode } from '../core/projection';
 import { defaultSaveMeta, saveGame, type SaveMeta } from '../storage/save';
 import type { Settings } from '../storage/settings';
 import {
@@ -88,7 +86,6 @@ export class Game {
   private readonly relayTransport: WebSocketTransport | null;
   private readonly useWorker: boolean;
   private readonly deadSpectatorReveal: boolean;
-  private readonly matchProjectionMode: ProjectionMode;
   private saveMeta: SaveMeta;
   private startPaused: boolean;
   private readonly sandboxMode: boolean;
@@ -124,7 +121,6 @@ export class Game {
       matchId?: string;
       localPlayerId?: PlayerId;
       deadSpectatorReveal?: boolean;
-      matchProjectionMode?: ProjectionMode;
       onDesync?: (tick: number, peers: string[], replay: Replay) => void;
       relayTransport?: WebSocketTransport;
       saveMeta?: SaveMeta;
@@ -145,7 +141,6 @@ export class Game {
     this.onDesync = opts?.onDesync ?? null;
     this.relayTransport = opts?.relayTransport ?? null;
     this.deadSpectatorReveal = opts?.deadSpectatorReveal ?? false;
-    this.matchProjectionMode = opts?.matchProjectionMode ?? 'ortho';
     this.startPaused = opts?.startPaused ?? false;
     this.saveMeta =
       opts?.saveMeta ??
@@ -153,7 +148,6 @@ export class Game {
         opts?.localPlayerId ??
           state.players.find((p) => p.controller === 'human')?.id ??
           state.players[0]!.id,
-        this.matchProjectionMode,
       );
     const wantWorker = opts?.useWorker ?? workerSupported();
     this.useWorker = this.sandboxMode ? false : wantWorker && workerSupported();
@@ -225,8 +219,6 @@ export class Game {
     canvasHost.appendChild(this.boxEl);
     this.applyGraphicsQuality();
     await this.renderer.init(canvasHost);
-    setProjectionMode(this.matchProjectionMode);
-    this.renderer.setProjectionMode(this.matchProjectionMode);
     this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state, this.humanId);
 

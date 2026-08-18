@@ -1,6 +1,5 @@
 // Persisted online match session so a player can rejoin after disconnect or app reload.
 import { del, get, set } from 'idb-keyval';
-import type { ProjectionMode } from '../core/projection';
 
 const SESSION_KEY = 'arcane:online-session';
 /** Drop stale sessions after this window (matches relay rejoin grace). */
@@ -11,7 +10,6 @@ export interface StoredOnlineSession {
   connId: string;
   slotId: string;
   seed: number;
-  projectionMode: ProjectionMode;
   relayUrl: string;
   savedAt: number;
 }

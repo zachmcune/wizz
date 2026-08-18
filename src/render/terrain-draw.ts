@@ -2,7 +2,6 @@
 import { Graphics } from 'pixi.js';
 import { TILE, TILE_BLOCKED, TILE_RAMP } from '../core/constants';
 import { projectGround } from '../core/coords';
-import { getProjectionMode } from '../core/projection';
 import type { MapData } from '../data/defs';
 import { tileToWorld, worldToTileX, worldToTileY } from '../core/coords';
 import { visualHeightAtTile } from './visual-height';
@@ -17,20 +16,6 @@ function tileCenter(tx: number, ty: number): { x: number; y: number } {
 function groundColor(tx: number, ty: number, blocked: boolean): number {
   if (blocked) return 0x342e44;
   return (tx + ty) % 2 === 0 ? 0x1a1826 : 0x1d1b2a;
-}
-
-function drawOrthoTerrain(g: Graphics, map: MapData): void {
-  for (let ty = 0; ty < map.tileH; ty++) {
-    for (let tx = 0; tx < map.tileW; tx++) {
-      const code = map.tiles[ty * map.tileW + tx] ?? 0;
-      const blocked = code === TILE_BLOCKED;
-      const ramp = code === TILE_RAMP;
-      const base = blocked ? 0x24202f : ramp ? 0x3a3428 : groundColor(tx, ty, false);
-      g.rect(tx * TILE, ty * TILE, TILE, TILE).fill(base);
-      if (blocked) g.rect(tx * TILE + 3, ty * TILE + 3, TILE - 6, TILE - 6).fill(0x342e44);
-      if (ramp) g.rect(tx * TILE + 6, ty * TILE + 6, TILE - 12, TILE - 12).fill(0x5a4a32);
-    }
-  }
 }
 
 function drawGroundDiamond(g: Graphics, tx: number, ty: number, map: MapData, fill: number): void {
@@ -107,8 +92,7 @@ function drawObliqueTerrain(g: Graphics, map: MapData): void {
 
 export function buildTerrainGraphics(map: MapData): Graphics {
   const g = new Graphics();
-  if (getProjectionMode() === 'ortho') drawOrthoTerrain(g, map);
-  else drawObliqueTerrain(g, map);
+  drawObliqueTerrain(g, map);
   return g;
 }
 
@@ -122,17 +106,13 @@ function fogRunLift(map: MapData, run: FogRun, cheap: boolean): number {
   return lift;
 }
 
-/** Tile-AABB fog in both projections (ortho rect / oblique parallelogram). */
+/** Tile-AABB fog as a projected parallelogram. */
 export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): void {
   drawFogRun(g, map, { tx, ty, tw: 1 }, false);
 }
 
-/** One merged fog span. Oblique uses the projected tile rectangle so rows share edges. */
+/** One merged fog span. Uses the projected tile rectangle so rows share edges. */
 export function drawFogRun(g: Graphics, map: MapData, run: FogRun, cheap: boolean): void {
-  if (getProjectionMode() === 'ortho') {
-    g.rect(run.tx * TILE, run.ty * TILE, run.tw * TILE, TILE);
-    return;
-  }
   g.poly(fogRunProjectedCorners(run.tx, run.ty, run.tw, fogRunLift(map, run, cheap)));
 }
 

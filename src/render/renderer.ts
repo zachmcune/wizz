@@ -2,7 +2,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
 import { projectGround, projectionSortKey } from '../core/coords';
-import { facingToDirection, getProjectionMode, setProjectionMode as setGlobalProjectionMode, type ProjectionMode } from '../core/projection';
+import { facingToDirection } from '../core/projection';
 import { lerp } from '../sim/math';
 import type { ResourceNodeEntity } from '../sim/entity-types';
 import type { GameState, Entity, EntityId, PlayerId, KnownBuilding } from '../sim/types';
@@ -125,7 +125,6 @@ export class Renderer {
   private colorByOwner = new Map<PlayerId, string>();
   private viewerId: PlayerId = '';
   private nav: NavGrid | null = null;
-  private projectionMode: ProjectionMode = getProjectionMode();
   private showBuildingNames = false;
   private debugLabelPool: Text[] = [];
   private debugStatsLabel: Text | null = null;
@@ -140,21 +139,15 @@ export class Renderer {
     this.app = new Application();
   }
 
-  private isOblique(): boolean {
-    return this.projectionMode === 'oblique';
-  }
-
-  /** Screen draw position: world coords in Classic 2D, projected coords in oblique. */
+  /** Screen draw position in 2.5D projected coordinates. */
   private drawPos(worldX: number, worldY: number): { x: number; y: number } {
-    if (!this.isOblique()) return { x: worldX, y: worldY };
     return this.groundPos(worldX, worldY);
   }
 
   private updateLayerSort(): void {
-    const oblique = this.isOblique();
-    this.entityLayer.sortableChildren = oblique;
-    this.selectionRingLayer.sortableChildren = oblique;
-    this.labelLayer.sortableChildren = oblique;
+    this.entityLayer.sortableChildren = true;
+    this.selectionRingLayer.sortableChildren = true;
+    this.labelLayer.sortableChildren = true;
   }
 
   setQuality(profile: GraphicsProfile): void {
@@ -229,23 +222,6 @@ export class Renderer {
     this.app.renderer.on('resize', () => this.camera.setViewport(this.app.screen.width, this.app.screen.height));
   }
 
-  setProjectionMode(mode: ProjectionMode): void {
-    if (this.projectionMode === mode) return;
-    setGlobalProjectionMode(mode);
-    this.projectionMode = mode;
-    this.provider.clearCache();
-    this.buildTerrain();
-    this.updateLayerSort();
-    this.updateEffectsPositionFn();
-    this.applySpriteAnchors();
-    this.fogKey = '';
-    this.camera.setViewport(this.app.screen.width, this.app.screen.height);
-  }
-
-  getProjectionMode(): ProjectionMode {
-    return this.projectionMode;
-  }
-
   setShowBuildingNames(show: boolean): void {
     this.showBuildingNames = show;
   }
@@ -266,18 +242,6 @@ export class Renderer {
 
   private buildingLabelText(defId: string): string {
     return this.registry.building(defId).name;
-  }
-
-  private applySpriteAnchors(): void {
-    const oblique = this.isOblique();
-    for (const n of this.nodes.values()) {
-      n.sprite.anchor.set(0.5, 0.5);
-      if (oblique) n.sprite.rotation = 0;
-    }
-    for (const n of this.ghostNodes.values()) {
-      n.sprite.anchor.set(0.5, 0.5);
-      if (oblique) n.sprite.rotation = 0;
-    }
   }
 
   /** Re-sync canvas size and clear stale vector paths after app background/resume. */
@@ -326,12 +290,8 @@ export class Renderer {
     this.world.scale.set(cam.zoom);
     const shakeX = this.camera.shakeX;
     const shakeY = this.camera.shakeY;
-    if (this.isOblique()) {
-      const camProj = projectGround({ x: cam.x, y: cam.y });
-      this.world.position.set(-camProj.x * cam.zoom + shakeX, -camProj.y * cam.zoom + shakeY);
-    } else {
-      this.world.position.set(-cam.x * cam.zoom + shakeX, -cam.y * cam.zoom + shakeY);
-    }
+    const camProj = projectGround({ x: cam.x, y: cam.y });
+    this.world.position.set(-camProj.x * cam.zoom + shakeX, -camProj.y * cam.zoom + shakeY);
   }
 
   private sortKeyAt(worldX: number, worldY: number, extraHeight = 0): number {
@@ -359,14 +319,8 @@ export class Renderer {
   }
 
   private textureFor(e: Entity, art: ArtDef, color: string): Texture {
-    if (this.projectionMode === 'oblique' && (e.kind === 'unit' || e.kind === 'projectile')) {
+    if (e.kind === 'unit' || e.kind === 'projectile') {
       return this.provider.texture(art, color, facingToDirection(e.facing));
-    }
-    if (e.kind === 'building' && this.projectionMode !== 'oblique') {
-      const bdef = this.registry.building(e.defId);
-      if (bdef.weapon?.turret) {
-        return this.provider.texture(art, color, facingToDirection(e.facing));
-      }
     }
     return this.provider.texture(art, color);
   }
@@ -455,13 +409,11 @@ export class Renderer {
   }
 
   private drawShadow(worldX: number, worldY: number, radius: number): void {
-    if (this.projectionMode !== 'oblique') return;
     const p = this.groundPos(worldX, worldY);
     this.shadowLayer.ellipse(p.x, p.y + 2, radius * 0.55, radius * 0.28).fill({ color: 0x000000, alpha: 0.28 });
   }
 
   private positionOverlayAt(worldX: number, worldY: number, offsetY: number, visualHeight?: number): { x: number; y: number } {
-    if (!this.isOblique()) return { x: worldX, y: worldY + offsetY };
     const p = this.groundPos(worldX, worldY, visualHeight);
     return { x: p.x, y: p.y + offsetY * 0.5 };
   }
@@ -486,8 +438,7 @@ export class Renderer {
       this.drawFog(viewer, nav);
     }
 
-    const oblique = this.isOblique();
-    const trackOcclusion = oblique && this.profile.occlusionMarkers;
+    const trackOcclusion = this.profile.occlusionMarkers;
     const buildingBounds: OcclusionBounds[] = [];
     const ownUnits: OwnUnitBounds[] = [];
 
@@ -543,10 +494,10 @@ export class Renderer {
 
       const flying = this.isFlyingEntity(e);
       const hoverH = entityVisualHeight(this.map, x, y, flying);
-      const pos = this.isOblique() ? this.groundPos(x, y, hoverH) : this.drawPos(x, y);
-      const depth = oblique ? this.sortKeyAt(x, y, flying ? flyerHoverLevels() : 0) : 0;
+      const pos = this.groundPos(x, y, hoverH);
+      const depth = this.sortKeyAt(x, y, flying ? flyerHoverLevels() : 0);
       n.sprite.position.set(pos.x, pos.y);
-      if (oblique) n.sprite.zIndex = depth;
+      n.sprite.zIndex = depth;
 
       if (trackOcclusion) {
         if (e.kind === 'building') {
@@ -569,23 +520,15 @@ export class Renderer {
         }
       }
 
-      if (!this.isOblique() && (e.kind === 'unit' || e.kind === 'projectile')) {
-        n.sprite.rotation = n.facing + Math.PI / 2;
-      } else if (this.isOblique()) {
-        n.sprite.rotation = 0;
-      }
+      n.sprite.rotation = 0;
 
       if (this.profile.shadows && (e.kind === 'unit' || e.kind === 'building')) this.drawShadow(x, y, e.radius);
 
       const labelOff = e.radius + 4;
       if (n.label) {
-        if (this.isOblique()) {
-          const lp = this.positionOverlayAt(x, y, labelOff, hoverH);
-          n.label.position.set(lp.x, lp.y);
-          n.label.zIndex = n.sprite.zIndex + 0.01;
-        } else {
-          n.label.position.set(x, y + labelOff);
-        }
+        const lp = this.positionOverlayAt(x, y, labelOff, hoverH);
+        n.label.position.set(lp.x, lp.y);
+        n.label.zIndex = n.sprite.zIndex + 0.01;
         if (e.kind === 'resource_node') {
           const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
           n.label.visible = !!intel;
@@ -911,43 +854,24 @@ export class Renderer {
 
       const pos = this.drawPos(known.x, known.y);
       n.sprite.position.set(pos.x, pos.y);
-      if (this.isOblique()) n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
+      n.sprite.zIndex = this.sortKeyAt(known.x, known.y);
       n.sprite.alpha = 0.48;
       n.sprite.visible = true;
       if (n.label) {
-        if (this.isOblique()) {
-          const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
-          n.label.position.set(lp.x, lp.y);
-          n.label.zIndex = n.sprite.zIndex + 0.01;
-        } else {
-          n.label.position.set(known.x, known.y + known.radius + 4);
-        }
+        const lp = this.positionOverlayAt(known.x, known.y, known.radius + 4);
+        n.label.position.set(lp.x, lp.y);
+        n.label.zIndex = n.sprite.zIndex + 0.01;
         n.label.alpha = 0.55;
         n.label.visible = true;
       }
 
       if (known.hp < known.maxHp) {
-        if (this.isOblique()) {
-          const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
-          this.drawHpBar(hp.x, hp.y, known);
-        } else {
-          this.drawHpBar(known.x, known.y - known.radius - 8, known);
-        }
+        const hp = this.positionOverlayAt(known.x, known.y, -known.radius - 8);
+        this.drawHpBar(hp.x, hp.y, known);
       }
       if (known.buildProgress !== undefined) {
-        if (this.isOblique()) {
-          const bar = this.positionOverlayAt(known.x, known.y, known.radius + 3);
-          this.fillRect(bar.x - known.radius, bar.y, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
-        } else {
-          this.fillRect(
-            known.x - known.radius,
-            known.y + known.radius + 3,
-            known.radius * 2 * known.buildProgress,
-            3,
-            0x7fe3ff,
-            0.45,
-          );
-        }
+        const bar = this.positionOverlayAt(known.x, known.y, known.radius + 3);
+        this.fillRect(bar.x - known.radius, bar.y, known.radius * 2 * known.buildProgress, 3, 0x7fe3ff, 0.45);
       }
     }
 
@@ -967,16 +891,15 @@ export class Renderer {
     if (overlay?.wallGhosts?.length) ghosts.push(...overlay.wallGhosts);
     if (!tiles?.length && !ghosts.some((g) => g.cells?.length)) return;
 
-    const oblique = this.isOblique();
     const liftAt = (tx: number, ty: number) => visualHeightAtTile(this.map, tx, ty) * 6;
     const inView = (tx: number, ty: number) => {
       const cx = tx * TILE + TILE / 2;
       const cy = ty * TILE + TILE / 2;
       return this.worldInView(cx, cy, TILE);
     };
-    if (tiles?.length) drawBuildZoneTiles(this.placementLayer, tiles, inView, liftAt, oblique);
+    if (tiles?.length) drawBuildZoneTiles(this.placementLayer, tiles, inView, liftAt);
     for (const ghost of ghosts) {
-      if (ghost.cells?.length) drawPlacementCells(this.placementLayer, ghost.cells, liftAt, oblique);
+      if (ghost.cells?.length) drawPlacementCells(this.placementLayer, ghost.cells, liftAt);
     }
   }
 
@@ -1002,7 +925,7 @@ export class Renderer {
       sprite.alpha = ghost.valid ? 0.72 : 0.48;
       sprite.tint = ghost.valid ? 0xafffbf : 0xffa0a0;
       sprite.visible = true;
-      if (this.isOblique()) sprite.zIndex = this.sortKeyAt(ghost.x, ghost.y) + 0.5;
+      sprite.zIndex = this.sortKeyAt(ghost.x, ghost.y) + 0.5;
     }
   }
 
@@ -1024,7 +947,7 @@ export class Renderer {
     depth: number,
     visualHeight?: number,
   ): void {
-    const pos = this.isOblique() ? this.groundPos(worldX, worldY, visualHeight) : this.drawPos(worldX, worldY);
+    const pos = this.groundPos(worldX, worldY, visualHeight);
     const g = this.selectionRingPool.acquire();
     // Slightly above the entity so the ring isn't clipped by its own sprite, but still
     // behind anything drawn in front (higher depth).
@@ -1044,9 +967,9 @@ export class Renderer {
     g.stroke({ width, color, alpha, cap: 'round', join: 'round' });
   }
 
-  private worldInView(worldX: number, worldY: number, radius: number): boolean {
+  private worldInView(worldX: number, worldY: number, _radius: number): boolean {
     const r = this.camera.visibleWorldRect();
-    const pad = this.isOblique() ? TILE * 10 : Math.max(radius + TILE, TILE * 2);
+    const pad = TILE * 10;
     return (
       worldX + pad >= r.x &&
       worldX - pad <= r.x + r.w &&
@@ -1062,7 +985,6 @@ export class Renderer {
       visibilityFingerprint(player.visible),
       bounds,
       this.profile.cheapFog,
-      this.projectionMode,
     );
     if (key === this.fogKey) return;
     this.fogKey = key;
@@ -1108,9 +1030,7 @@ export class Renderer {
   }
 
   iconCanvas(art: ArtDef, color: string): HTMLCanvasElement {
-    // Build/train menu previews mirror the match's projection: the flat shape in Classic 2D,
-    // the voxel box in oblique 2.5D. Using the in-world texture keeps the preview identical to
-    // how the unit/building will actually look once placed.
+    // Build/train menu previews use the same 2.5D voxel texture as the world sprite.
     const tex = this.provider.texture(art, color);
     return this.app.renderer.extract.canvas(tex) as unknown as HTMLCanvasElement;
   }

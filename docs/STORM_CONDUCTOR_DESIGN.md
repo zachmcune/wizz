@@ -18,8 +18,8 @@ units on screen at once.
 
 ## Viewing Angle: Designed for the 2.5D Oblique View
 
-This redesign targets the game's oblique, dimetric "2.5D" camera (the angled view), not
-the flat top-down mode. Every beat below is meant to exploit that verticality:
+This redesign targets the game's only camera: the oblique, dimetric 2.5D view.
+Every beat below is meant to exploit that verticality:
 - The tower's crystal and rods sit visibly above the base plane; the primary bolt should
   read as striking down at an angle from that elevated point onto the ground-level
   target, giving it real weight and scale instead of feeling like a flat line drawn
@@ -31,13 +31,8 @@ the flat top-down mode. Every beat below is meant to exploit that verticality:
   ring (matching the dimetric ground plane's ellipse, not a perfect circle) so it sits
   correctly on the terrain instead of looking pasted on top of it.
 - Sparks and debris get a touch of arc/gravity so they visibly pop up off the ground and
-  fall back — a freebie in 2.5D that would be wasted in flat 2D.
-- Screen flash and camera micro-shake are camera-space effects and are unaffected by the
-  projection choice, so they carry over untouched.
-
-If a match is ever viewed in the classic flat 2D mode instead, the same beats still work
-with bolts simply flattened onto the ground plane — but the oblique view above is the
-primary target and where every visual choice should be judged.
+  fall back.
+- Screen flash and camera micro-shake are camera-space effects.
 
 ## The Attack Sequence
 

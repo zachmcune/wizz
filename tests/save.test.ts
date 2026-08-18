@@ -44,11 +44,10 @@ describe('save/load', () => {
     expect(() => deserializeState(saved, reg)).toThrow();
   });
 
-  it('restores projection mode and paused metadata', () => {
+  it('restores paused metadata', () => {
     const { state } = initMatch(reg, reg.match('skirmish_1v1'));
-    const meta = { ...defaultSaveMeta('player0', 'oblique'), paused: true };
+    const meta = { ...defaultSaveMeta('player0'), paused: true };
     const restored = deserializeState(serializeState(state, meta), reg);
-    expect(restored.meta.projectionMode).toBe('oblique');
     expect(restored.meta.paused).toBe(true);
     expect(restored.meta.localPlayerId).toBe('player0');
   });
