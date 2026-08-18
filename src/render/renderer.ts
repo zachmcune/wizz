@@ -47,6 +47,13 @@ const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
 const NODE_DEPLETED_COLOR = '#4a4a5a';
 
+/** Keep the sprite pivot on the texture's authored ground point (tile center). */
+function applyWorldTexture(sprite: Sprite, texture: Texture): void {
+  sprite.texture = texture;
+  const anchor = texture.defaultAnchor;
+  sprite.anchor.set(anchor?.x ?? 0.5, anchor?.y ?? 0.5);
+}
+
 export interface BuildPlacementGhost {
   x: number;
   y: number;
@@ -376,8 +383,8 @@ export class Renderer {
       let n = this.nodes.get(id);
       if (!n) {
         const { art, color } = this.artOf(e);
-        const sprite = new Sprite(this.textureFor(e, art, color));
-        sprite.anchor.set(0.5, 0.5);
+        const sprite = new Sprite();
+        applyWorldTexture(sprite, this.textureFor(e, art, color));
         this.entityLayer.addChild(sprite);
         n = { sprite, prevX: e.pos.x, prevY: e.pos.y, curX: e.pos.x, curY: e.pos.y, dispX: e.pos.x, dispY: e.pos.y, facing: e.facing };
         this.nodes.set(id, n);
@@ -388,7 +395,7 @@ export class Renderer {
         n.curY = e.pos.y;
         n.facing = e.facing;
         const { art, color } = this.artOf(e);
-        n.sprite.texture = this.textureFor(e, art, color);
+        applyWorldTexture(n.sprite, this.textureFor(e, art, color));
       }
       this.ensureBuildingLabel(n, e);
     }
@@ -541,11 +548,11 @@ export class Renderer {
         const intel = revealAll || (viewer && nav && isNodeIntelVisible(state, this.viewerId, e, nav));
         if (intel) {
           const { art, color } = this.artOf(e);
-          n.sprite.texture = this.provider.texture(art, color);
+          applyWorldTexture(n.sprite, this.provider.texture(art, color));
           this.drawNodeReserve(pos.x, pos.y, e);
           n.sprite.alpha = (e.amount ?? 0) <= 0 ? 0.35 : 1;
         } else {
-          n.sprite.texture = this.provider.texture(NODE_ART, NEUTRAL_COLOR);
+          applyWorldTexture(n.sprite, this.provider.texture(NODE_ART, NEUTRAL_COLOR));
           n.sprite.alpha = 1;
         }
       } else if (e.kind === 'building' && buildingPowerUse(this.registry, e.defId) > 0 && !buildingHasPower(state, this.registry, e)) {
@@ -817,8 +824,8 @@ export class Renderer {
       const b = this.registry.building(known.defId);
       const color = this.colorByOwner.get(known.owner) ?? '#888888';
       if (!n) {
-        const sprite = new Sprite(this.provider.texture(b.art, color));
-        sprite.anchor.set(0.5, 0.5);
+        const sprite = new Sprite();
+        applyWorldTexture(sprite, this.provider.texture(b.art, color));
         sprite.tint = 0xaaaaaa;
         this.entityLayer.addChild(sprite);
         let label: Text | undefined;
@@ -833,7 +840,7 @@ export class Renderer {
         n = { sprite, label, prevX: known.x, prevY: known.y, curX: known.x, curY: known.y, dispX: known.x, dispY: known.y, facing: 0 };
         this.ghostNodes.set(known.id, n);
       } else {
-        n.sprite.texture = this.provider.texture(b.art, color);
+        applyWorldTexture(n.sprite, this.provider.texture(b.art, color));
         if (this.showBuildingNames) {
           const labelText = this.buildingLabelText(known.defId);
           if (!n.label) {
@@ -906,7 +913,6 @@ export class Renderer {
   private renderPlacementGhosts(ghosts: BuildPlacementGhost[]): void {
     while (this.placementGhosts.length < ghosts.length) {
       const sprite = new Sprite();
-      sprite.anchor.set(0.5, 0.5);
       this.entityLayer.addChild(sprite);
       this.placementGhosts.push(sprite);
     }
@@ -918,7 +924,7 @@ export class Renderer {
         continue;
       }
       const def = this.registry.building(ghost.defId);
-      sprite.texture = this.provider.texture(def.art, ghost.color);
+      applyWorldTexture(sprite, this.provider.texture(def.art, ghost.color));
       const pos = this.drawPos(ghost.x, ghost.y);
       sprite.position.set(pos.x, pos.y);
       sprite.rotation = 0;
