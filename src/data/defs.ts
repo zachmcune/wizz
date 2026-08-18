@@ -19,7 +19,7 @@ export interface ArtDef {
   frameWidth?: number;
   frameHeight?: number;
   directions?: number;
-  /** World-sprite pivot as a fraction of the generated texture. Omit to pin buildings to the ground origin. */
+  /** World-sprite pivot as a fraction of the generated texture. Omit to pin buildings to the foundation. */
   anchor?: { x: number; y: number };
 }
 

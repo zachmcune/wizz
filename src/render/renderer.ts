@@ -13,7 +13,7 @@ import { garrisonedInId, getHarvester, getFrostExposure, hasMorph, getMorph, get
 import type { NavGrid } from '../sim/nav-grid';
 import type { Player } from '../sim/types';
 import { Camera } from './camera';
-import { ShapeSpriteProvider, type SpriteProvider } from './shape-sprite';
+import { ShapeSpriteProvider, worldTextureAnchor, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
 import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { renderCelestialCannons } from './celestial-cannon-vfx';
@@ -51,8 +51,8 @@ const NODE_DEPLETED_COLOR = '#4a4a5a';
 /** Keep the sprite pivot on the texture's authored ground point (tile center). */
 function applyWorldTexture(sprite: Sprite, texture: Texture): void {
   sprite.texture = texture;
-  const anchor = texture.defaultAnchor;
-  sprite.anchor.set(anchor?.x ?? 0.5, anchor?.y ?? 0.5);
+  const anchor = worldTextureAnchor(texture);
+  sprite.anchor.set(anchor.x, anchor.y);
 }
 
 export interface BuildPlacementGhost {

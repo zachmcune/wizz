@@ -5,11 +5,13 @@ import { ghostWorldPos } from '../src/sim/placement-preview';
 import { projectedTileCenter, projectedTileCorners } from '../src/render/tile-project';
 import { fogRunProjectedCorners } from '../src/render/fog-draw';
 import {
+  buildingGroundPoint,
   buildingGroundShiftY,
   buildingGroundYMul,
   buildingObliqueSpriteIds,
   isBuildingWorldArt,
   textureAnchorFromLocalBounds,
+  textureAnchorFromLocalPoint,
 } from '../src/render/shape-sprite';
 import { getRegistry } from './helpers';
 
@@ -19,6 +21,27 @@ describe('building sprite alignment', () => {
   it('pins the texture pivot to the graphics origin so the ground diamond sits on the tile', () => {
     const bounds = { x: -40, y: -120, width: 80, height: 160 };
     expect(textureAnchorFromLocalBounds(bounds)).toEqual({ x: 0.5, y: 0.75 });
+  });
+
+  it('pins the texture pivot to the authored foundation, not the bounding-box center', () => {
+    const bounds = { x: -50, y: -100, width: 100, height: 160 };
+    const ground = buildingGroundPoint('sanctum', 90);
+    expect(ground).toEqual({ x: 0, y: 45 * 0.56 });
+    expect(textureAnchorFromLocalPoint(bounds, ground)).toEqual({
+      x: 0.5,
+      y: (ground.y - bounds.y) / bounds.height,
+    });
+    expect(textureAnchorFromLocalPoint(bounds, ground).y).toBeCloseTo(0.7825, 5);
+    expect(textureAnchorFromLocalPoint(bounds, ground).y).not.toBeCloseTo(0.5, 1);
+  });
+
+  it('does not treat a graphics shift plus center-anchor as a real alignment', () => {
+    const unshifted = { x: -40, y: -90, width: 80, height: 160 };
+    const shifted = { x: unshifted.x, y: unshifted.y + buildingGroundShiftY('sanctum', 90), width: 80, height: 160 };
+    expect(textureAnchorFromLocalBounds(shifted).y).not.toBeCloseTo(0.5, 1);
+    expect(textureAnchorFromLocalPoint(unshifted, buildingGroundPoint('sanctum', 90))).toEqual(
+      textureAnchorFromLocalBounds(shifted),
+    );
   });
 
   it('falls back to center when bounds are empty', () => {

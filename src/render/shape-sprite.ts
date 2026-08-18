@@ -1,7 +1,7 @@
 // Placeholder art drawn from data `art.shape` / `art.sprite`. Cached as textures for batched Sprite draws.
 // The SpriteProvider seam lets a real AtlasSpriteProvider replace this later with zero
 // gameplay-code changes.
-import { Container, Graphics, Rectangle, Texture, type Renderer } from 'pixi.js';
+import { Graphics, Rectangle, Texture, type Renderer } from 'pixi.js';
 import type { ArtDef, ShapeKind } from '../data/defs';
 import { appendOpenArc } from './open-arc';
 
@@ -544,11 +544,16 @@ export function isBuildingWorldArt(art: Pick<ArtDef, 'shape' | 'sprite'>): boole
   return art.shape === 'building' || (!!sprite && !!ICON_DESIGNS[sprite] && !isUnitSprite(sprite));
 }
 
+/** Authored foundation point in local (already-projected) art space. */
+export function buildingGroundPoint(sprite: string, size: number): { x: number; y: number } {
+  const mul = BUILDING_GROUND_Y[sprite];
+  return { x: 0, y: mul === undefined ? 0 : (size / 2) * mul };
+}
+
 /** Screen-Y translation that places a building's foundation diamond on the origin. */
 export function buildingGroundShiftY(sprite: string, size: number): number {
-  const mul = BUILDING_GROUND_Y[sprite];
-  if (mul === undefined) return 0;
-  return -(size / 2) * mul;
+  const y = buildingGroundPoint(sprite, size).y;
+  return y === 0 ? 0 : -y;
 }
 
 /** Sprite ids that have a custom world design and must sit on a tile. */
@@ -567,8 +572,36 @@ export function textureAnchorFromLocalBounds(bounds: {
   width: number;
   height: number;
 }): { x: number; y: number } {
+  return textureAnchorFromLocalPoint(bounds, { x: 0, y: 0 });
+}
+
+/** Texture fraction that keeps `point` (in local graphics space) on the sprite position. */
+export function textureAnchorFromLocalPoint(
+  bounds: { x: number; y: number; width: number; height: number },
+  point: { x: number; y: number },
+): { x: number; y: number } {
   if (bounds.width <= 0 || bounds.height <= 0) return { x: 0.5, y: 0.5 };
-  return { x: -bounds.x / bounds.width, y: -bounds.y / bounds.height };
+  return { x: (point.x - bounds.x) / bounds.width, y: (point.y - bounds.y) / bounds.height };
+}
+
+const WORLD_TEXTURE_ANCHORS = new WeakMap<Texture, { x: number; y: number }>();
+
+/** Pivot stored when the texture was generated — do not read Texture.defaultAnchor. */
+export function worldTextureAnchor(texture: Texture): { x: number; y: number } {
+  return WORLD_TEXTURE_ANCHORS.get(texture) ?? { x: 0.5, y: 0.5 };
+}
+
+function rememberWorldTextureAnchor(texture: Texture, anchor: { x: number; y: number }): Texture {
+  WORLD_TEXTURE_ANCHORS.set(texture, anchor);
+  return texture;
+}
+
+function integerTextureFrame(bounds: { x: number; y: number; width: number; height: number }): Rectangle {
+  const x0 = Math.floor(bounds.x);
+  const y0 = Math.floor(bounds.y);
+  const x1 = Math.ceil(bounds.x + bounds.width);
+  const y1 = Math.ceil(bounds.y + bounds.height);
+  return new Rectangle(x0, y0, Math.max(x1 - x0, 1), Math.max(y1 - y0, 1));
 }
 
 function drawIsoPrism(
@@ -1074,21 +1107,22 @@ export class ShapeSpriteProvider implements SpriteProvider {
     let tex = this.cache.get(key);
     if (!tex) {
       const isBuilding = isBuildingWorldArt(art);
-      const root = new Container();
       const g = new Graphics();
       drawObliqueBox(g, art.shape, art.size, teamColor, art.accent, dir, sprite);
-      if (isBuilding) g.position.set(0, buildingGroundShiftY(sprite, art.size));
-      root.addChild(g);
-      const bounds = root.getLocalBounds();
-      const frame = new Rectangle(bounds.x, bounds.y, Math.max(bounds.width, 1), Math.max(bounds.height, 1));
-      const anchor = art.anchor ?? (isBuilding ? textureAnchorFromLocalBounds(frame) : { x: 0.5, y: 0.5 });
-      tex = this.renderer.generateTexture({
-        target: root,
-        resolution: this.textureResolution,
-        frame,
-        defaultAnchor: anchor,
-      });
-      root.destroy({ children: true });
+      const bounds = g.getLocalBounds();
+      const frame = integerTextureFrame(bounds);
+      const ground = isBuilding ? buildingGroundPoint(sprite, art.size) : { x: 0, y: 0 };
+      const anchor = art.anchor ?? (isBuilding ? textureAnchorFromLocalPoint(frame, ground) : { x: 0.5, y: 0.5 });
+      tex = rememberWorldTextureAnchor(
+        this.renderer.generateTexture({
+          target: g,
+          resolution: this.textureResolution,
+          frame,
+          defaultAnchor: anchor,
+        }),
+        anchor,
+      );
+      g.destroy();
       this.cache.set(key, tex);
     }
     return tex;
