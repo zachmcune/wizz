@@ -72,7 +72,7 @@ export const CONTROL_BINDINGS = {
     mouse: true,
     keyboard: true,
     description:
-      'Tap the map to preview, then Place. On desktop, click the map to place immediately, press Enter, or use Place — the ghost does not follow hover.',
+      'Tap the map to preview, then Place. On desktop, the ghost follows the mouse to show valid placement; click the map to place, or press Enter / Place.',
   },
   [CONTROL_ACTIONS.deployUnit]: {
     touch: true,

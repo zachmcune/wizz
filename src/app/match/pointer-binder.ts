@@ -38,6 +38,22 @@ export function isFinePointer(e: Pick<PointerEvent, 'pointerType'>): boolean {
   return e.pointerType === 'mouse' || e.pointerType === 'pen';
 }
 
+/** HUD chrome that must not steal the placement ghost (Place, command card, etc.). */
+export const HUD_CHROME_SELECTOR =
+  '.build-confirm, .spell-confirm, .cmd-card, .topbar, .minimap-panel, .zoom-slider, .pause-overlay, .result-card, .menu-screen, .settings-card';
+
+/** True when the pointer is over a HUD control rather than the map. */
+export function isOverHudChrome(clientX: number, clientY: number): boolean {
+  if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return false;
+  const el = document.elementFromPoint(clientX, clientY);
+  return !!el?.closest?.(HUD_CHROME_SELECTOR);
+}
+
+/** Mouse/pen hover previews placement; any drag also tracks the ghost. */
+export function shouldTrackPlacementGhost(e: Pick<PointerEvent, 'buttons' | 'pointerType'>): boolean {
+  return isFinePointer(e) || isPointerHeld(e);
+}
+
 export interface PointerBinderDeps {
   getEnded: () => boolean;
   camera: Camera;
@@ -69,6 +85,9 @@ export class PointerBinder {
     this.canvas.addEventListener('pointercancel', this.onUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.canvas.addEventListener('contextmenu', this.onContextMenu);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pointermove', this.onWindowMove);
+    }
   }
 
   detach(): void {
@@ -78,18 +97,30 @@ export class PointerBinder {
     this.canvas.removeEventListener('pointercancel', this.onUp);
     this.canvas.removeEventListener('wheel', this.onWheel);
     this.canvas.removeEventListener('contextmenu', this.onContextMenu);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', this.onWindowMove);
+    }
   }
 
-  private rel = (e: PointerEvent): { x: number; y: number } => {
+  private rel = (e: Pick<PointerEvent, 'clientX' | 'clientY'>): { x: number; y: number } => {
     const r = this.canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  private notePointer(p: { x: number; y: number }): void {
+    this.lastPointer = p;
+    this.deps.controller.notePointerWorld(screenToWorld(p, this.deps.camera.view()));
+  }
+
+  private onWindowMove = (e: PointerEvent): void => {
+    this.notePointer(this.rel(e));
   };
 
   private onDown = (e: PointerEvent): void => {
     this.deps.audio.unlock();
     void lockLandscape();
     const p = this.rel(e);
-    this.lastPointer = p;
+    this.notePointer(p);
     this.pointerStart = p;
     if (e.button === 2) {
       e.preventDefault();
@@ -121,10 +152,10 @@ export class PointerBinder {
     if (this.middlePanPointerId === e.pointerId) {
       e.preventDefault();
       this.deps.controller.panByScreen(p.x - this.lastPointer.x, p.y - this.lastPointer.y);
-      this.lastPointer = p;
+      this.notePointer(p);
       return;
     }
-    this.lastPointer = p;
+    this.notePointer(p);
     if (this.deps.getEnded()) {
       this.deps.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
       return;
@@ -135,12 +166,21 @@ export class PointerBinder {
       this.deps.controller.updateWallDrag(w);
       return;
     }
-    // Follow an active drag only. Mouse hover must not move the ghost onto HUD
-    // buttons such as Place — that is what made desktop building unusable.
-    if ((mode === 'build' || mode === 'deploy') && isPointerHeld(e)) {
+    // Follow the cursor on the map so the ghost shows valid/invalid placement.
+    // Skip HUD chrome (Place, command card) so moving to those buttons does not
+    // drag the building under the panel.
+    if (
+      (mode === 'build' || mode === 'deploy') &&
+      shouldTrackPlacementGhost(e) &&
+      !isOverHudChrome(e.clientX, e.clientY)
+    ) {
       const w = screenToWorld(p, this.deps.camera.view());
-      if (mode === 'build') this.deps.controller.updateGhost(w);
-      else this.deps.controller.updateDeployGhost(w);
+      if (mode === 'build') {
+        if (this.deps.controller.isWallBuild()) this.deps.controller.previewWallAt(w);
+        else this.deps.controller.updateGhost(w);
+      } else {
+        this.deps.controller.updateDeployGhost(w);
+      }
     }
     if (mode === 'rally') {
       if (this.deps.gesture.activePointers >= 2) {
@@ -159,13 +199,13 @@ export class PointerBinder {
   private onUp = (e: PointerEvent): void => {
     const p = this.rel(e);
     if (e.button === 2) {
-      this.lastPointer = p;
+      this.notePointer(p);
       return;
     }
     if (this.middlePanPointerId === e.pointerId) {
       e.preventDefault();
       this.middlePanPointerId = null;
-      this.lastPointer = p;
+      this.notePointer(p);
       try {
         this.canvas.releasePointerCapture(e.pointerId);
       } catch {

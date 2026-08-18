@@ -412,7 +412,7 @@ export class Hud {
       const placing = this.registry.buildings.get(session.buildDefId)!;
       this.selName.textContent = `Placing: ${placing.name}`;
       this.selDesc.textContent = placing.description;
-      this.selMeta.textContent = `${placing.cost} mana · click map or Place`;
+      this.selMeta.textContent = `${placing.cost} mana · ghost follows mouse · click map or Place`;
       this.commandMenu.panel.setOpen(false);
       this.commandMenu.updateTrainQueue(this.registry, this.controller, null);
     } else if (single) {

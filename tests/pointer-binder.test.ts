@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WHEEL_PAN_SCALE } from '../src/core/constants';
-import { PointerBinder } from '../src/app/match/pointer-binder';
+import { PointerBinder, isOverHudChrome, shouldTrackPlacementGhost } from '../src/app/match/pointer-binder';
 import type { InputMode } from '../src/input/session';
 
 type Listener = (e: Event) => void;
@@ -95,6 +95,8 @@ function createBinder(mode: InputMode = 'normal') {
     confirmRally: vi.fn(),
     confirmPlacement: vi.fn(),
     setMode: vi.fn(),
+    notePointerWorld: vi.fn(),
+    previewWallAt: vi.fn(),
   };
   const binder = new PointerBinder(canvas as unknown as HTMLCanvasElement, {
     getEnded: () => false,
@@ -106,6 +108,19 @@ function createBinder(mode: InputMode = 'normal') {
   binder.attach();
   return { binder, canvas, controller, gesture };
 }
+
+describe('placement ghost tracking helpers', () => {
+  it('follows mouse hover and any held drag, but not touch hover', () => {
+    expect(shouldTrackPlacementGhost({ pointerType: 'mouse', buttons: 0 })).toBe(true);
+    expect(shouldTrackPlacementGhost({ pointerType: 'pen', buttons: 0 })).toBe(true);
+    expect(shouldTrackPlacementGhost({ pointerType: 'touch', buttons: 0 })).toBe(false);
+    expect(shouldTrackPlacementGhost({ pointerType: 'touch', buttons: 1 })).toBe(true);
+  });
+
+  it('treats missing document as not over HUD chrome', () => {
+    expect(isOverHudChrome(0, 0)).toBe(false);
+  });
+});
 
 describe('PointerBinder desktop controls', () => {
   it('pans with middle-mouse drag without entering gesture selection', () => {
@@ -143,7 +158,7 @@ describe('PointerBinder desktop controls', () => {
     expect(controller.tap).toHaveBeenCalledWith({ x: 190, y: 200 });
   });
 
-  it('does not move the build ghost on mouse hover', () => {
+  it('moves the build ghost on mouse hover so placement validity is visible', () => {
     const { canvas, controller } = createBinder('build');
 
     canvas.dispatch(
@@ -151,10 +166,10 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
     );
 
-    expect(controller.updateGhost).not.toHaveBeenCalled();
+    expect(controller.updateGhost).toHaveBeenCalledWith({ x: 230, y: 240 });
   });
 
-  it('does not move the deploy ghost on mouse hover', () => {
+  it('moves the deploy ghost on mouse hover', () => {
     const { canvas, controller } = createBinder('deploy');
 
     canvas.dispatch(
@@ -162,7 +177,51 @@ describe('PointerBinder desktop controls', () => {
       pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
     );
 
-    expect(controller.updateDeployGhost).not.toHaveBeenCalled();
+    expect(controller.updateDeployGhost).toHaveBeenCalledWith({ x: 230, y: 240 });
+  });
+
+  it('does not move the build ghost when hovering HUD chrome such as Place', () => {
+    const { canvas, controller } = createBinder('build');
+    const hud = { closest: (sel: string) => (sel.includes('.build-confirm') ? hud : null) };
+    const previous = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: { elementFromPoint: (x: number, y: number) => unknown } }).document = {
+      elementFromPoint: () => hud,
+    };
+
+    try {
+      canvas.dispatch(
+        'pointermove',
+        pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
+      );
+      expect(controller.updateGhost).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document: unknown }).document = previous;
+    }
+  });
+
+  it('previews a wall ghost on mouse hover before dragging', () => {
+    const { canvas, controller } = createBinder('build');
+    controller.isWallBuild = vi.fn(() => true);
+
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'mouse', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
+    );
+
+    expect(controller.previewWallAt).toHaveBeenCalledWith({ x: 230, y: 240 });
+    expect(controller.updateGhost).not.toHaveBeenCalled();
+  });
+
+  it('does not move the build ghost on touch hover without a press', () => {
+    const { canvas, controller } = createBinder('build');
+
+    canvas.dispatch(
+      'pointermove',
+      pointerEvent({ pointerType: 'touch', buttons: 0, button: -1, clientX: 240, clientY: 260 }),
+    );
+
+    expect(controller.updateGhost).not.toHaveBeenCalled();
   });
 
   it('moves the build ghost while the mouse button is held', () => {

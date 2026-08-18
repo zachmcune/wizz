@@ -36,6 +36,8 @@ import {
 export class InputController {
   session: SessionState = createSession();
   onHarvestNoRefinery: (() => void) | null = null;
+  /** Last pointer position in world space, including when the cursor is over the HUD. */
+  private lastPointerWorld: Vec2 | null = null;
 
   constructor(
     private getState: () => GameState,
@@ -180,14 +182,20 @@ export class InputController {
     if (mode !== 'garrison') this.session.garrisonUnitIds = [];
   }
 
+  notePointerWorld(world: Vec2): void {
+    this.lastPointerWorld = { x: world.x, y: world.y };
+  }
+
   startBuild(defId: string): void {
     this.session.mode = 'build';
     this.session.buildDefId = defId;
     this.session.wallDragTiles = null;
     this.session.wallDragStart = null;
     const sel = this.selectionEntities()[0];
-    const anchor = sel?.pos ?? { x: this.camera.visibleWorldRect().x + 100, y: this.camera.visibleWorldRect().y + 100 };
-    updateBuildGhost(this.ctx(), anchor);
+    const fallback = { x: this.camera.visibleWorldRect().x + 100, y: this.camera.visibleWorldRect().y + 100 };
+    const anchor = this.lastPointerWorld ?? sel?.pos ?? fallback;
+    if (isWallBuild(this.ctx())) previewWallAt(this.ctx(), anchor);
+    else updateBuildGhost(this.ctx(), anchor);
   }
 
   isWallBuild(): boolean {
@@ -240,6 +248,9 @@ export class InputController {
 
   startDeploy(entityId: EntityId): void {
     startDeploy(this.ctx(), entityId);
+    if (this.session.mode === 'deploy' && this.lastPointerWorld) {
+      updateDeployGhost(this.ctx(), this.lastPointerWorld);
+    }
   }
 
   updateDeployGhost(world: Vec2): void {
