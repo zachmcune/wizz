@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   canvasResolution,
   detectConstrainedDevice,
@@ -7,8 +7,19 @@ import {
   resolveGraphicsLevel,
   type DeviceHints,
 } from '../src/render/graphics-quality';
-import { collectFogRuns, fogGeometryKey, visibilityFingerprint, visibleTileBounds } from '../src/render/fog-draw';
+import {
+  collectFogRuns,
+  FOG_FILL_COLOR,
+  fogGeometryKey,
+  fogRunProjectedCorners,
+  visibilityFingerprint,
+  visibleTileBounds,
+  visibleWorldAabb,
+} from '../src/render/fog-draw';
 import { TILE } from '../src/core/constants';
+import { screenToWorld } from '../src/core/coords';
+import { setProjectionMode } from '../src/core/projection';
+import { Camera } from '../src/render/camera';
 import { setVfxDensity, vfxCount, vfxDecorEnabled, vfxDensity } from '../src/render/vfx-quality';
 
 const desktop: DeviceHints = {
@@ -73,6 +84,10 @@ describe('graphics quality', () => {
 });
 
 describe('fog runs', () => {
+  afterEach(() => {
+    setProjectionMode('ortho');
+  });
+
   it('merges consecutive fogged tiles on a row', () => {
     const fog = [1, 1, 1, 0, 1, 1];
     const runs = collectFogRuns((i) => fog[i] === 1, 6, 1, { minTx: 0, maxTx: 5, minTy: 0, maxTy: 0 });
@@ -108,6 +123,52 @@ describe('fog runs', () => {
     expect(a).not.toBe(b);
     const c = fogGeometryKey(visibilityFingerprint(vis), { ...bounds, minTx: 1 }, true, 'ortho');
     expect(b).not.toBe(c);
+  });
+
+  it('uses a dark veil instead of a light silver wash', () => {
+    expect(FOG_FILL_COLOR).toBeLessThan(0x202028);
+  });
+
+  it('matches the camera rectangle in ortho and covers screen corners in oblique', () => {
+    setProjectionMode('ortho');
+    const orthoCam = new Camera(1280, 720, 4096, 2816);
+    orthoCam.centerOn(800, 600);
+    const orthoView = orthoCam.visibleWorldRect();
+    const orthoAabb = visibleWorldAabb(orthoCam.view(), 1280, 720);
+    expect(orthoAabb.x).toBeCloseTo(orthoView.x, 5);
+    expect(orthoAabb.y).toBeCloseTo(orthoView.y, 5);
+    expect(orthoAabb.w).toBeCloseTo(orthoView.w, 5);
+    expect(orthoAabb.h).toBeCloseTo(orthoView.h, 5);
+
+    setProjectionMode('oblique');
+    const cam = new Camera(1280, 720, 4096, 2816);
+    cam.centerOn(800, 600);
+    const naive = cam.visibleWorldRect();
+    const naiveBounds = visibleTileBounds(naive.x, naive.y, naive.w, naive.h, 0, 128, 88);
+    const aabb = visibleWorldAabb(cam.view(), 1280, 720);
+    const bounds = visibleTileBounds(aabb.x, aabb.y, aabb.w, aabb.h, 0, 128, 88);
+    const corner = screenToWorld({ x: 1279, y: 719 }, cam.view());
+    const ctx = Math.floor(corner.x / TILE);
+    const cty = Math.floor(corner.y / TILE);
+    expect(bounds.minTx).toBeLessThanOrEqual(ctx);
+    expect(bounds.maxTx).toBeGreaterThanOrEqual(ctx);
+    expect(bounds.minTy).toBeLessThanOrEqual(cty);
+    expect(bounds.maxTy).toBeGreaterThanOrEqual(cty);
+    const naiveCoversCorner =
+      ctx >= naiveBounds.minTx && ctx <= naiveBounds.maxTx && cty >= naiveBounds.minTy && cty <= naiveBounds.maxTy;
+    expect(naiveCoversCorner).toBe(false);
+    setProjectionMode('ortho');
+  });
+
+  it('joins adjacent oblique fog runs on a shared edge', () => {
+    setProjectionMode('oblique');
+    const left = fogRunProjectedCorners(2, 5, 3);
+    const right = fogRunProjectedCorners(5, 5, 2);
+    expect(left[2]).toBeCloseTo(right[0]!, 5);
+    expect(left[3]).toBeCloseTo(right[1]!, 5);
+    expect(left[4]).toBeCloseTo(right[6]!, 5);
+    expect(left[5]).toBeCloseTo(right[7]!, 5);
+    setProjectionMode('ortho');
   });
 });
 

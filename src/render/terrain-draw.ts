@@ -6,7 +6,7 @@ import { getProjectionMode } from '../core/projection';
 import type { MapData } from '../data/defs';
 import { tileToWorld, worldToTileX, worldToTileY } from '../core/coords';
 import { visualHeightAtTile } from './visual-height';
-import type { FogRun } from './fog-draw';
+import { fogRunProjectedCorners, type FogRun } from './fog-draw';
 
 const CLIFF_LIFT = 14;
 
@@ -106,49 +106,28 @@ export function buildTerrainGraphics(map: MapData): Graphics {
   return g;
 }
 
-function fogDiamondCorners(map: MapData, tx: number, ty: number): number[] {
-  const c = tileCenter(tx, ty);
-  const h = visualHeightAtTile(map, tx, ty);
-  const lift = h * 6;
-  const hw = TILE * 0.48;
-  const hh = TILE * 0.24;
-  const top = projectGround({ x: c.x, y: c.y - hh - lift });
-  const right = projectGround({ x: c.x + hw, y: c.y - lift });
-  const bottom = projectGround({ x: c.x, y: c.y + hh - lift });
-  const left = projectGround({ x: c.x - hw, y: c.y - lift });
-  return [top.x, top.y, right.x, right.y, bottom.x, bottom.y, left.x, left.y];
-}
-
-/** Diamond fog tile in oblique mode; axis rect in ortho. */
-export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): void {
-  if (getProjectionMode() === 'ortho') {
-    g.rect(tx * TILE, ty * TILE, TILE, TILE);
-    return;
+function fogRunLift(map: MapData, run: FogRun, cheap: boolean): number {
+  if (cheap) return 0;
+  let lift = 0;
+  for (let i = 0; i < run.tw; i++) {
+    const h = visualHeightAtTile(map, run.tx + i, run.ty);
+    if (h * 6 > lift) lift = h * 6;
   }
-  g.poly(fogDiamondCorners(map, tx, ty));
+  return lift;
 }
 
-/** One merged fog span (several tiles on a row). Cheap oblique uses a single poly. */
+/** Tile-AABB fog in both projections (ortho rect / oblique parallelogram). */
+export function drawFogTile(g: Graphics, map: MapData, tx: number, ty: number): void {
+  drawFogRun(g, map, { tx, ty, tw: 1 }, false);
+}
+
+/** One merged fog span. Oblique uses the projected tile rectangle so rows share edges. */
 export function drawFogRun(g: Graphics, map: MapData, run: FogRun, cheap: boolean): void {
   if (getProjectionMode() === 'ortho') {
     g.rect(run.tx * TILE, run.ty * TILE, run.tw * TILE, TILE);
     return;
   }
-  if (!cheap || run.tw <= 1) {
-    for (let i = 0; i < run.tw; i++) drawFogTile(g, map, run.tx + i, run.ty);
-    return;
-  }
-  const first = fogDiamondCorners(map, run.tx, run.ty);
-  const last = fogDiamondCorners(map, run.tx + run.tw - 1, run.ty);
-  // first: top, right, bottom, left — last: top, right, bottom, left
-  g.poly([
-    first[0]!, first[1]!,
-    last[0]!, last[1]!,
-    last[2]!, last[3]!,
-    last[4]!, last[5]!,
-    first[4]!, first[5]!,
-    first[6]!, first[7]!,
-  ]);
+  g.poly(fogRunProjectedCorners(run.tx, run.ty, run.tw, fogRunLift(map, run, cheap)));
 }
 
 export function tileAtWorld(worldX: number, worldY: number): { tx: number; ty: number } {
