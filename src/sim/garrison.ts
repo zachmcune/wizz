@@ -18,6 +18,7 @@ export function canUnitGarrison(registry: Registry, unit: UnitEntity, building: 
   if (!garrison || building.buildProgress !== undefined || hasMorph(building)) return false;
   const udef = registry.units.get(unit.defId);
   if (!udef?.canGarrison) return false;
+  if (udef.mobility === 'air') return false;
   if (garrisonedInId(unit) !== undefined || hasMorph(unit) || isChanneling(unit)) return false;
   if (garrison.requireWeapon && !udef.weapon) return false;
   if (garrison.allowedUnitIds?.length && !garrison.allowedUnitIds.includes(unit.defId)) return false;

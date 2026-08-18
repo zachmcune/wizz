@@ -5,6 +5,7 @@ import type { ArmorClass, WeaponDef } from '../data/defs';
 import { garrisonedInId } from './capabilities';
 import { distSq } from './math';
 import { entitiesSorted, hasBuff, isAlive, isEnemy } from './queries';
+import { weaponHitsLayer, weaponHitsEntity, isAirEntity } from './mobility';
 
 export function armorClassOf(ctx: StepContext, e: Entity): ArmorClass {
   if (e.kind === 'building') return 'building';
@@ -88,10 +89,12 @@ export function applySplashDamage(
   vs: Record<ArmorClass, number>,
   killerId?: EntityId,
   onHitStatus?: WeaponDef['onHitStatus'],
+  targeting?: { targetsAir?: boolean; targetsGround?: boolean },
 ): void {
   const r2 = radius * radius;
   const targets = entitiesSorted(state)
     .filter((e) => e.kind !== 'resource_node' && e.kind !== 'projectile' && isAlive(e) && isEnemy(state, owner, e.owner))
+    .filter((e) => !targeting || weaponHitsLayer(targeting, isAirEntity(ctx.services.registry, e)))
     .filter((e) => distSq(x, y, e.pos.x, e.pos.y) <= r2)
     .sort((a, b) => {
       const da = distSq(x, y, a.pos.x, a.pos.y);
@@ -128,6 +131,7 @@ export function applyChainDamage(
     const rangeSq = chain.range * chain.range;
     const candidates = entitiesSorted(state)
       .filter((e) => e.kind !== 'resource_node' && e.kind !== 'projectile' && isAlive(e) && isEnemy(state, owner, e.owner))
+      .filter((e) => weaponHitsEntity(ctx.services.registry, weapon, e))
       .filter((e) => !hit.has(e.id) && current !== null && distSq(current.pos.x, current.pos.y, e.pos.x, e.pos.y) <= rangeSq)
       .sort((a, b) => {
         if (!current) return a.id - b.id;

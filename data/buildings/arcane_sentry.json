@@ -20,6 +20,7 @@
     "range": 165,
     "cooldownTicks": 2,
     "projectile": "arcane_bolt",
+    "targetsAir": true,
     "turret": {
       "rotationSpeed": 8.98,
       "fireArcRadians": 1.047

@@ -15,6 +15,8 @@ export interface ProjectileCapability {
   splashRadius?: number;
   impactRadius?: number;
   onHitStatus?: WeaponDef['onHitStatus'];
+  targetsAir?: boolean;
+  targetsGround?: boolean;
 }
 
 /** Wisp-style harvester: carry mana from nodes to a refinery. */

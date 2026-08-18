@@ -5,7 +5,7 @@ import type { ModeTapHandler } from '../input-context';
 export const garrisonMode: ModeTapHandler = {
   onTap(ctx, screen, world): void {
     const st = ctx.getState();
-    const picked = pickEntityForInput(st, ctx.playerId, world, screen, ctx.camera.view(), ctx.nav);
+    const picked = pickEntityForInput(st, ctx.playerId, world, screen, ctx.camera.view(), ctx.nav, ctx.registry);
     if (!picked || picked.owner !== ctx.playerId || picked.kind !== 'building') {
       ctx.setMode('normal');
       return;

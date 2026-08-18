@@ -1,0 +1,44 @@
+{
+  "id": "rift_skimmer",
+  "name": "Rift Skimmer",
+  "kind": "unit",
+  "role": "flying_harass",
+  "cost": 360,
+  "buildTime": 8,
+  "hp": 85,
+  "armor": "light",
+  "speed": 108,
+  "sight": 200,
+  "radius": 8,
+  "mobility": "air",
+  "weapon": {
+    "damage": 12,
+    "range": 86,
+    "cooldownTicks": 14,
+    "projectile": "arcane_bolt",
+    "targetsAir": true,
+    "targetsGround": true,
+    "vs": {
+      "light": 1.25,
+      "heavy": 0.55,
+      "building": 0.25
+    }
+  },
+  "producedBy": "summoning_circle",
+  "menuCategory": "small_troops",
+  "requires": [
+    "arcane_nexus"
+  ],
+  "art": {
+    "shape": "diamond",
+    "size": 16,
+    "accent": "#7fe3ff",
+    "sprite": "rift_skimmer"
+  },
+  "sfx": {
+    "select": "familiar_select",
+    "move": "familiar_move",
+    "attack": "bolt_fire",
+    "die": "unit_die"
+  }
+}

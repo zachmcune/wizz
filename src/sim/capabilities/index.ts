@@ -66,6 +66,8 @@ export function makeProjectileCapability(opts: {
   splashRadius?: number;
   impactRadius?: number;
   onHitStatus?: ProjectileCapability['onHitStatus'];
+  targetsAir?: boolean;
+  targetsGround?: boolean;
 }): ProjectileCapability {
   return {
     targetId: opts.targetId,
@@ -77,6 +79,8 @@ export function makeProjectileCapability(opts: {
     splashRadius: opts.splashRadius,
     impactRadius: opts.impactRadius,
     onHitStatus: opts.onHitStatus,
+    targetsAir: opts.targetsAir,
+    targetsGround: opts.targetsGround,
   };
 }
 
@@ -84,7 +88,9 @@ export function hashProjectileCapability(cap: ProjectileCapability): string {
   const splash = cap.splashRadius ?? 0;
   const impact = cap.impactRadius ?? 0;
   const status = cap.onHitStatus ? `${cap.onHitStatus.kind}:${cap.onHitStatus.durationTicks}` : '';
-  return `PC${cap.targetId}:${cap.damage}:${cap.speed}:${cap.sourceOwner}:${cap.sourceId}:${splash}:${impact}:${status}`;
+  const air = cap.targetsAir ? 1 : 0;
+  const ground = cap.targetsGround === false ? 0 : 1;
+  return `PC${cap.targetId}:${cap.damage}:${cap.speed}:${cap.sourceOwner}:${cap.sourceId}:${splash}:${impact}:${status}:${air}:${ground}`;
 }
 
 // --- Harvester ---

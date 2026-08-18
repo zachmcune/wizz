@@ -15,6 +15,7 @@
     "range": 132,
     "cooldownTicks": 18,
     "projectile": "arcane_bolt",
+    "targetsAir": true,
     "vs": {
       "light": 1.2,
       "heavy": 0.7,

@@ -14,8 +14,8 @@ export const normalMode: ModeTapHandler = {
   onTap(ctx, screen, world): void {
     const st = ctx.getState();
     const cam = ctx.camera.view();
-    const node = pickResourceNodeForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
-    const picked = node ?? pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
+    const node = pickResourceNodeForInput(st, ctx.playerId, world, screen, cam, ctx.nav, ctx.registry);
+    const picked = node ?? pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav, ctx.registry);
     const combatUnits = ctx.ownCombatSelected();
     const wisps = ctx.ownWispsSelected();
     const harvesters = wisps.length ? wisps : ctx.allOwnWisps();
@@ -98,7 +98,7 @@ export const normalMode: ModeTapHandler = {
 export function doubleTapSelectType(ctx: InputContext, screen: Vec2, world: Vec2): void {
   const st = ctx.getState();
   const cam = ctx.camera.view();
-  const picked = pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav);
+  const picked = pickEntityForInput(st, ctx.playerId, world, screen, cam, ctx.nav, ctx.registry);
   if (!picked || picked.owner !== ctx.playerId || picked.kind !== 'unit') {
     normalMode.onTap(ctx, screen, world);
     return;
@@ -116,7 +116,7 @@ export function boxSelect(ctx: InputContext, a: Vec2, b: Vec2): void {
   const st = ctx.getState();
   const cam = ctx.camera.view();
   const units = useScreenPicking()
-    ? unitsInScreenBox(st, ctx.playerId, a, b, cam)
+    ? unitsInScreenBox(st, ctx.playerId, a, b, cam, ctx.nav, ctx.registry)
     : unitsInWorldBox(ctx, ctx.playerId, a, b);
   ctx.setSelection(units);
   ctx.session.boxRect = null;

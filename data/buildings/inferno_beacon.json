@@ -18,6 +18,7 @@
     "range": 155,
     "cooldownTicks": 2,
     "projectile": null,
+    "targetsAir": true,
     "preferSwarms": true,
     "splashRadius": 52,
     "beam": {

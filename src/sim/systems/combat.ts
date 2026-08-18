@@ -12,6 +12,7 @@ import { moveTowardGoal, makePathContext } from '../pathing';
 import type { WeaponDef } from '../../data/defs';
 import { resolveWeaponStat } from '../modifiers';
 import { makeProjectileCapability, hasHarvester, isChanneling, garrisonedInId, ensureTurretWeapon } from '../capabilities';
+import { isAirEntity, weaponHitsEntity } from '../mobility';
 import { makeProjectile } from '../factory';
 import { angleDelta, rotateToward } from '../beam-util';
 
@@ -59,6 +60,7 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
     if (o.kind === 'unit' && garrisonedInId(o) !== undefined) continue;
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
+    if (weapon && !weaponHitsEntity(ctx.services.registry, weapon, o)) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
     if (weapon) {
       const minReach = (weapon.minRange ?? 0) + e.radius + o.radius;
@@ -119,6 +121,8 @@ export function fire(
         splashRadius: w.splashRadius,
         impactRadius: w.impactRadius,
         onHitStatus: w.onHitStatus,
+        targetsAir: w.targetsAir,
+        targetsGround: w.targetsGround,
       }),
     );
     state.entities.set(proj.id, proj);
@@ -126,7 +130,7 @@ export function fire(
     applyChainDamage(state, ctx, e.owner, target, w, e.id);
   } else if (w.splashRadius !== undefined || w.impactRadius !== undefined) {
     const radius = w.splashRadius ?? w.impactRadius ?? 0;
-    applySplashDamage(state, ctx, e.owner, target.pos.x, target.pos.y, radius, w.damage, w.vs, e.id, w.onHitStatus);
+    applySplashDamage(state, ctx, e.owner, target.pos.x, target.pos.y, radius, w.damage, w.vs, e.id, w.onHitStatus, w);
     if (w.impactRadius !== undefined) {
       ctx.events.push({
         type: 'artilleryImpact',
@@ -228,6 +232,7 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     const reach = w.range + e.radius + target.radius;
     const minReach = (w.minRange ?? 0) + e.radius + target.radius;
     if (d <= reach && d >= minReach) {
+      if (!weaponHitsEntity(ctx.services.registry, w, target)) continue;
       const aim = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);
       const turretReady = !w.turret || (e.kind === 'building' && canTurretFire(e, w, aim));
       if ((e.cooldowns.attack ?? 0) <= 0 && turretReady) {
@@ -245,11 +250,11 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
       }
     } else if (order && order.type === 'attack' && e.kind === 'unit') {
       const udef = ctx.services.registry.unit(e.defId);
-      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
+      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner, isAirEntity(ctx.services.registry, e));
       moveTowardGoal(pathCtx, e, target.pos, udef.speed, dt);
     } else if (!order && canRoam && d <= sightOf(ctx, e)) {
       const udef = ctx.services.registry.unit(e.defId);
-      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner);
+      const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner, isAirEntity(ctx.services.registry, e));
       moveTowardGoal(pathCtx, e, target.pos, udef.speed, dt);
     }
   }

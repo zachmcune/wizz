@@ -17,6 +17,7 @@ import {
 } from '../capabilities';
 import { sandboxFreezeUnits } from '../sandbox-flags';
 import { resolveUnitStat } from '../modifiers';
+import { isAirEntity } from '../mobility';
 
 const scratch: EntityId[] = [];
 const SEP_BLEND = 0.55;
@@ -96,7 +97,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
         e.targetId = undefined;
         continue;
       }
-      const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
+      const pathCtx = makePathContext(nav, flow, state.relations, e.owner, isAirEntity(ctx.services.registry, e));
       moveTowardGoal(pathCtx, e, building.pos, speed, dt);
       continue;
     }
@@ -107,7 +108,8 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
-    const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
+    const flying = isAirEntity(ctx.services.registry, e);
+    const pathCtx = makePathContext(nav, flow, state.relations, e.owner, flying);
     const dx = goal.x - e.pos.x;
     const dy = goal.y - e.pos.y;
     const d = Math.hypot(dx, dy);
@@ -120,8 +122,10 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
     const goalTx = Math.floor(goal.x / TILE);
     const goalTy = Math.floor(goal.y / TILE);
-    const block = (tx: number, ty: number) => nav.isBlockedFor(e.owner, tx, ty, state.relations);
-    const field = flow.getFor(nav, goalTx, goalTy, e.owner, block);
+    const block = flying
+      ? (tx: number, ty: number) => nav.isBlockedForAir(tx, ty)
+      : (tx: number, ty: number) => nav.isBlockedFor(e.owner, tx, ty, state.relations);
+    const field = flying ? undefined : flow.getFor(nav, goalTx, goalTy, e.owner, block);
     const steer = steerToGoal(pathCtx, e.pos, goal);
 
     let moveX = steer.x * speed;
@@ -134,6 +138,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       if (nid === e.id) continue;
       const other = state.entities.get(nid);
       if (!other || other.kind === 'resource_node') continue;
+      if (flying !== isAirEntity(ctx.services.registry, other)) continue;
       const sep = separationForPair(e, other);
       sepX += sep.x;
       sepY += sep.y;
@@ -153,7 +158,8 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
 
   for (const e of entitiesSorted(state)) {
     if (e.kind !== 'unit' || !isAlive(e) || e.orders.length > 0 || isChanneling(e) || e.state === 'garrisoned') continue;
-    const pathCtx = makePathContext(nav, flow, state.relations, e.owner);
+    const flying = isAirEntity(ctx.services.registry, e);
+    const pathCtx = makePathContext(nav, flow, state.relations, e.owner, flying);
     const neighbors = ctx.services.spatial.queryRadius(e.pos.x, e.pos.y, e.radius * 2.5, scratch);
     let sepX = 0;
     let sepY = 0;
@@ -161,6 +167,7 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       if (nid === e.id) continue;
       const other = state.entities.get(nid);
       if (!other || other.kind !== 'unit') continue;
+      if (flying !== isAirEntity(ctx.services.registry, other)) continue;
       const sep = separationForPair(e, other);
       sepX += sep.x;
       sepY += sep.y;

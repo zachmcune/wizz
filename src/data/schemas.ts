@@ -73,6 +73,7 @@ const weaponSchema = z.object({
     .optional(),
   vs: vsSchema,
   targetsAir: z.boolean().optional(),
+  targetsGround: z.boolean().optional(),
 });
 
 const garrisonSchema = z.object({
@@ -114,6 +115,7 @@ export const unitSchema = z.object({
   deploysAs: z.string().optional(),
   deployTime: z.number().positive().optional(),
   canConjureMana: z.boolean().optional(),
+  mobility: z.enum(['ground', 'air']).optional(),
   art: artSchema,
   sfx: sfxSchema,
 });
@@ -242,10 +244,15 @@ export const mapSchema = z
     tileW: z.number().int().positive(),
     tileH: z.number().int().positive(),
     tiles: z.array(z.number().int()),
+    heights: z.array(z.number().int().nonnegative()).optional(),
     visualHeights: z.array(z.number().int().nonnegative()).optional(),
     startLocations: z.array(z.object({ x: z.number(), y: z.number() })),
     manaNodes: z.array(z.object({ x: z.number(), y: z.number(), amount: z.number().positive() })),
   })
+  .refine(
+    (m) => !m.heights || m.heights.length === m.tiles.length,
+    { message: 'heights must match tiles length' },
+  )
   .refine(
     (m) => !m.visualHeights || m.visualHeights.length === m.tiles.length,
     { message: 'visualHeights must match tiles length' },
