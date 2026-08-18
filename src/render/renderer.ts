@@ -53,6 +53,7 @@ function applyWorldTexture(sprite: Sprite, texture: Texture): void {
   sprite.texture = texture;
   const anchor = worldTextureAnchor(texture);
   sprite.anchor.set(anchor.x, anchor.y);
+  sprite.pivot.set(0, 0);
 }
 
 export interface BuildPlacementGhost {
