@@ -8,6 +8,7 @@ import { getLobbyTemplates } from '../lobby/templates';
 import { TEAM_LABELS, teamLabelDisplay } from '../lobby/teams';
 import type { AiDifficulty, LobbyMode, LobbySlot, LobbyState, SlotId, SlotKind } from '../lobby/types';
 import { DEFAULT_COLORS } from '../lobby/types';
+import { AI_DIFFICULTY_HINTS } from '../ai/difficulty';
 import { LobbyMapPreview } from './lobby-map-preview';
 
 function lobbyMapSize(): number {
@@ -356,16 +357,18 @@ export class MatchLobby {
 
     if (slot.kind === 'ai') {
       const diffSelect = el('select', 'lobby-select lobby-ai-select') as HTMLSelectElement;
-      diffSelect.title = 'AI difficulty';
+      diffSelect.title = AI_DIFFICULTY_HINTS[slot.aiDifficulty ?? 'normal'];
       for (const d of ['easy', 'normal', 'hard'] as AiDifficulty[]) {
         const opt = el('option', undefined, d.charAt(0).toUpperCase() + d.slice(1)) as HTMLOptionElement;
         opt.value = d;
+        opt.title = AI_DIFFICULTY_HINTS[d];
         diffSelect.appendChild(opt);
       }
       diffSelect.value = slot.aiDifficulty ?? 'normal';
       diffSelect.disabled = !canEdit;
       diffSelect.addEventListener('change', () => {
         slot.aiDifficulty = diffSelect.value as AiDifficulty;
+        diffSelect.title = AI_DIFFICULTY_HINTS[slot.aiDifficulty];
         this.pushUpdate();
       });
       panel.appendChild(diffSelect);
