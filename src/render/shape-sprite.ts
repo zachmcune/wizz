@@ -49,7 +49,7 @@ function strokeArc(
   radius: number,
   start: number,
   end: number,
-  style: { width: number; color: number; alpha?: number },
+  style: { width: number; color: number | string; alpha?: number },
 ): void {
   appendOpenArc(g, cx, cy, radius, start, end);
   g.stroke(style);
