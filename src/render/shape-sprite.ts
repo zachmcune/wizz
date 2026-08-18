@@ -107,8 +107,17 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.circle(r * 0.35, -r * 0.35, r * 0.08).fill(accent);
   },
   sanctum: (g, r, accent) => {
-    g.poly([0, -r * 0.75, r * 0.12, -r * 0.45, -r * 0.12, -r * 0.45]).fill(accent);
-    g.rect(-r * 0.08, -r * 0.5, r * 0.16, r * 0.35).fill(accent);
+    // Crown-and-eye sigil: broad enough to remain legible in the HUD icon,
+    // while the central crystal reads as the heart of the player's base.
+    g.poly([0, -r * 0.82, r * 0.2, -r * 0.3, 0, r * 0.05, -r * 0.2, -r * 0.3])
+      .fill(accent)
+      .stroke({ width: 1, color: OUTLINE, alpha: 0.9 });
+    g.circle(0, -r * 0.28, r * 0.12).fill({ color: 0xffffff, alpha: 0.9 });
+    strokeArc(g, 0, -r * 0.18, r * 0.48, Math.PI * 0.12, Math.PI * 0.88, {
+      width: 2,
+      color: accent,
+      alpha: 0.85,
+    });
   },
   waystone_camp: (g, r, accent) => {
     g.poly([-r * 0.5, -r * 0.1, r * 0.5, -r * 0.1, 0, -r * 0.65]).fill(accent).stroke({ width: 1, color: OUTLINE });
@@ -286,9 +295,27 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
   },
   sanctum: (g, size, fill, accent) => {
     const r = size / 2;
-    g.roundRect(-r * 0.9, -r * 0.35, r * 1.8, r * 1.1, r * 0.15).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.roundRect(-r * 0.18, -r * 0.95, r * 0.36, r * 0.75, r * 0.06).fill(fill).stroke({ width: 2, color: OUTLINE });
-    GLYPHS.sanctum!(g, r, accent);
+    const fillN = parseHex(fill);
+    // A wide octagonal keep with four corner bastions makes the HQ instantly
+    // recognizable among the game's mostly rectangular utility buildings.
+    const outer: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const a = Math.PI / 8 + (i / 8) * Math.PI * 2;
+      outer.push(Math.cos(a) * r * 0.96, Math.sin(a) * r * 0.96);
+    }
+    g.poly(outer).fill(shade(fillN, 0.58)).stroke({ width: 3, color: OUTLINE });
+    for (const [x, y] of [[-0.66, -0.66], [0.66, -0.66], [-0.66, 0.66], [0.66, 0.66]]) {
+      g.circle(r * x, r * y, r * 0.24).fill(fill).stroke({ width: 2, color: OUTLINE });
+      g.circle(r * x, r * y, r * 0.11).fill({ color: accent, alpha: 0.72 });
+    }
+    g.circle(0, 0, r * 0.62).fill(fill).stroke({ width: 2.5, color: OUTLINE });
+    g.circle(0, 0, r * 0.47).stroke({ width: 2, color: accent, alpha: 0.75 });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      g.circle(Math.cos(a) * r * 0.46, Math.sin(a) * r * 0.46, r * 0.045)
+        .fill({ color: accent, alpha: 0.9 });
+    }
+    GLYPHS.sanctum!(g, r * 0.62, accent);
   },
   waystone_camp: (g, size, fill, accent) => {
     const r = size / 2;
@@ -437,7 +464,7 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
 
 /** Per-entity oblique box proportions for extra silhouette variety. */
 const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
-  sanctum: { wMul: 1.15, hMul: 0.75 },
+  sanctum: { wMul: 1.28, hMul: 1.05 },
   waystone_camp: { wMul: 1.05, hMul: 0.55 },
   attunement_spire: { wMul: 0.75, hMul: 0.85 },
   ley_conduit: { wMul: 0.9, hMul: 0.55 },
@@ -630,10 +657,31 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   sanctum: (g, size, fill, accent, dir) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPrism(g, 0, r * 0.38, r * 0.95, r * 0.42, r * 0.5, fillN);
-    drawIsoPrism(g, 0, -r * 0.15, r * 0.35, r * 0.2, r * 0.9, fillN);
-    drawIsoPyramid(g, 0, -r * 1.05, r * 0.28, r * 0.14, r * 0.45, fillN);
-    drawAccentGlyph(g, 'sanctum', 0, -r * 0.78, r * 0.45, accent, dir);
+    // Tiered fortress foundation.
+    drawIsoPlate(g, 0, r * 0.56, r * 1.18, r * 0.48, shade(fillN, 0.3));
+    drawIsoPrism(g, 0, r * 0.42, r * 1.04, r * 0.43, r * 0.34, fillN);
+    drawIsoPrism(g, 0, r * 0.03, r * 0.76, r * 0.32, r * 0.38, fillN);
+
+    // Four turreted buttresses frame the taller central command spire.
+    for (const [x, y] of [[-0.72, 0.18], [0.72, 0.18], [-0.5, -0.25], [0.5, -0.25]]) {
+      drawIsoPrism(g, r * x, r * y, r * 0.2, r * 0.11, r * 0.48, fillN);
+      drawIsoPyramid(g, r * x, r * (y - 0.49), r * 0.23, r * 0.12, r * 0.28, fillN);
+      g.circle(r * x, r * (y - 0.7), r * 0.055).fill(accent);
+    }
+
+    drawIsoPrism(g, 0, -r * 0.32, r * 0.38, r * 0.2, r * 0.75, fillN);
+    drawIsoPyramid(g, 0, -r * 1.18, r * 0.34, r * 0.17, r * 0.62, fillN);
+
+    // Floating arcane heart and halo sell the Sanctum as the strategic centerpiece.
+    g.ellipse(0, -r * 1.77, r * 0.52, r * 0.15)
+      .stroke({ width: 2.5, color: accent, alpha: 0.72 });
+    g.ellipse(0, -r * 1.77, r * 0.34, r * 0.1)
+      .stroke({ width: 1.5, color: 0xffffff, alpha: 0.52 });
+    g.poly([0, -r * 2.18, r * 0.16, -r * 1.78, 0, -r * 1.48, -r * 0.16, -r * 1.78])
+      .fill(accent)
+      .stroke({ width: 1.5, color: OUTLINE });
+    g.circle(0, -r * 1.78, r * 0.07).fill({ color: 0xffffff, alpha: 0.95 });
+    drawAccentGlyph(g, 'sanctum', 0, -r * 0.82, r * 0.42, accent, dir);
   },
   waystone_camp: (g, size, fill, accent, dir) => {
     const r = size / 2;
