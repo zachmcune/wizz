@@ -196,6 +196,21 @@ describe('flying troops', () => {
     expect(flyer.hp).toBeLessThan(flyerHp);
   });
 
+  it('is ignored by Storm Conductor chain lightning', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+
+    spawnEntity(state, services, null, 'storm_conductor', 'player0', 640, 640);
+    const flyer = spawnEntity(state, services, null, 'rift_skimmer', 'player1', 760, 640);
+    const golem = spawnEntity(state, services, null, 'stone_golem', 'player1', 800, 640);
+    const flyerHp = flyer.hp;
+    const golemHp = golem.hp;
+    for (let i = 0; i < 80; i++) sim.step();
+    expect(flyer.hp).toBe(flyerHp);
+    expect(golem.hp).toBeLessThan(golemHp);
+  });
+
   it('projects pick height with hover lift in oblique view', () => {
     setProjectionMode('oblique');
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
