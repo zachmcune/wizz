@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Camera } from '../src/render/camera';
-import { worldToScreen, screenToWorld, tileToWorld, worldToTileX } from '../src/core/coords';
+import { worldToScreen, screenToWorld, tileToWorld, worldToTileX, worldPointInView } from '../src/core/coords';
 import { MIN_ZOOM, MAX_ZOOM, TILE } from '../src/core/constants';
 
 describe('camera & coordinate math', () => {
@@ -41,6 +41,26 @@ describe('camera & coordinate math', () => {
     const screen = worldToScreen({ x: 2064, y: 1424 }, cam.view());
     expect(screen.x).toBeCloseTo(400, 0);
     expect(screen.y).toBeCloseTo(300, 0);
+  });
+
+  it('visibleWorldRect covers every screen corner after 2.5D projection', () => {
+    const cam = new Camera(1280, 720, 4096, 2816);
+    cam.centerOn(800, 600);
+    const rect = cam.visibleWorldRect();
+    const samples = [
+      { x: 0, y: 0 },
+      { x: 1279, y: 0 },
+      { x: 0, y: 719 },
+      { x: 1279, y: 719 },
+      { x: 640, y: 360 },
+    ];
+    for (const screen of samples) {
+      const world = screenToWorld(screen, cam.view());
+      expect(worldPointInView(world.x, world.y, rect)).toBe(true);
+    }
+    const originRect = { x: cam.x, y: cam.y, w: 1280 / cam.zoom, h: 720 / cam.zoom };
+    const farCorner = screenToWorld({ x: 1279, y: 719 }, cam.view());
+    expect(worldPointInView(farCorner.x, farCorner.y, originRect)).toBe(false);
   });
 
   it('pan moves world content with the finger', () => {

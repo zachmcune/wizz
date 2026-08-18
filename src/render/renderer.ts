@@ -1,7 +1,7 @@
 // PixiJS renderer. Reads interpolated sim state and draws it. NEVER mutates the sim.
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { TILE } from '../core/constants';
-import { projectGround, projectionSortKey } from '../core/coords';
+import { projectGround, projectionSortKey, worldPointInView } from '../core/coords';
 import { facingToDirection } from '../core/projection';
 import { lerp } from '../sim/math';
 import type { ResourceNodeEntity } from '../sim/entity-types';
@@ -975,15 +975,9 @@ export class Renderer {
     g.stroke({ width, color, alpha, cap: 'round', join: 'round' });
   }
 
-  private worldInView(worldX: number, worldY: number, _radius: number): boolean {
+  private worldInView(worldX: number, worldY: number, radius: number): boolean {
     const r = this.camera.visibleWorldRect();
-    const pad = TILE * 10;
-    return (
-      worldX + pad >= r.x &&
-      worldX - pad <= r.x + r.w &&
-      worldY + pad >= r.y &&
-      worldY - pad <= r.y + r.h
-    );
+    return worldPointInView(worldX, worldY, r, TILE * 10 + radius);
   }
 
   private drawFog(player: Player, nav: NavGrid): void {
