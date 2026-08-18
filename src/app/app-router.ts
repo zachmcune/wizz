@@ -100,7 +100,7 @@ export class AppRouter {
     });
   }
 
-  private persistOnlineSession(session: MultiplayerSession, seed: number, lobbyState: LobbyState, slotId: string): void {
+  private persistOnlineSession(session: MultiplayerSession, seed: number, slotId: string): void {
     const stored: Omit<StoredOnlineSession, 'savedAt'> = {
       room: session.room,
       connId: session.connId,
@@ -151,7 +151,7 @@ export class AppRouter {
       const mine = state.slots.find((s) => s.claimedBy === session.connId);
       lobby.destroy();
       void clearSave();
-      this.persistOnlineSession(session, seed, state, mine?.id ?? session.localPlayerId);
+      this.persistOnlineSession(session, seed, mine?.id ?? session.localPlayerId);
       this.startFromLobby({ ...state, seed }, { session, localPlayerId: mine?.id ?? session.localPlayerId });
     };
 
@@ -299,7 +299,7 @@ export class AppRouter {
     this.clearHost();
     try {
       this.session = await rejoinMultiplayerRoom(stored.room, stored.connId, stored.relayUrl);
-      this.persistOnlineSession(this.session, stored.seed, this.session.lobbyState, stored.slotId);
+      this.persistOnlineSession(this.session, stored.seed, stored.slotId);
       this.startFromLobby(
         { ...this.session.lobbyState, seed: stored.seed },
         { session: this.session, localPlayerId: stored.slotId },
