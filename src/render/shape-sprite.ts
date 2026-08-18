@@ -475,7 +475,7 @@ const ORTHO_DESIGNS: Record<string, DesignFn> = {
 
 /** Per-entity oblique box proportions for extra silhouette variety. */
 const OBLIQUE_PROPS: Record<string, { wMul: number; hMul: number }> = {
-  sanctum: { wMul: 1.28, hMul: 1.05 },
+  sanctum: { wMul: 1.12, hMul: 0.88 },
   waystone_camp: { wMul: 1.05, hMul: 0.55 },
   attunement_spire: { wMul: 0.75, hMul: 0.85 },
   ley_conduit: { wMul: 0.9, hMul: 0.55 },

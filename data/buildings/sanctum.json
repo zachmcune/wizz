@@ -15,7 +15,7 @@
   "powerProduced": 20,
   "art": {
     "shape": "building",
-    "size": 104,
+    "size": 90,
     "accent": "#9b8cff",
     "sprite": "sanctum"
   }
