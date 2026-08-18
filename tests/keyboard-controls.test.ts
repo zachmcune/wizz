@@ -34,7 +34,7 @@ class FakeKeyboardTarget {
 describe('KeyboardControls', () => {
   it('pans with held WASD and arrow keys', () => {
     const target = new FakeKeyboardTarget();
-    const keyboard = new KeyboardControls({ clearSelection: vi.fn() }, target);
+    const keyboard = new KeyboardControls({ clearSelection: vi.fn(), confirmPlacement: vi.fn() }, target);
     const camera = { panByScreen: vi.fn() };
 
     keyboard.attach();
@@ -47,7 +47,7 @@ describe('KeyboardControls', () => {
 
   it('stops panning after keyup', () => {
     const target = new FakeKeyboardTarget();
-    const keyboard = new KeyboardControls({ clearSelection: vi.fn() }, target);
+    const keyboard = new KeyboardControls({ clearSelection: vi.fn(), confirmPlacement: vi.fn() }, target);
     const camera = { panByScreen: vi.fn() };
 
     keyboard.attach();
@@ -61,7 +61,7 @@ describe('KeyboardControls', () => {
   it('clears selection with Escape', () => {
     const target = new FakeKeyboardTarget();
     const clearSelection = vi.fn();
-    const keyboard = new KeyboardControls({ clearSelection }, target);
+    const keyboard = new KeyboardControls({ clearSelection, confirmPlacement: vi.fn() }, target);
 
     keyboard.attach();
     const event = target.dispatch('keydown', 'Escape');
@@ -70,9 +70,21 @@ describe('KeyboardControls', () => {
     expect(event.prevented).toBe(true);
   });
 
+  it('confirms placement with Enter', () => {
+    const target = new FakeKeyboardTarget();
+    const confirmPlacement = vi.fn();
+    const keyboard = new KeyboardControls({ clearSelection: vi.fn(), confirmPlacement }, target);
+
+    keyboard.attach();
+    const event = target.dispatch('keydown', 'Enter');
+
+    expect(confirmPlacement).toHaveBeenCalledTimes(1);
+    expect(event.prevented).toBe(true);
+  });
+
   it('does not intercept typing in editable controls', () => {
     const target = new FakeKeyboardTarget();
-    const keyboard = new KeyboardControls({ clearSelection: vi.fn() }, target);
+    const keyboard = new KeyboardControls({ clearSelection: vi.fn(), confirmPlacement: vi.fn() }, target);
     const camera = { panByScreen: vi.fn() };
 
     keyboard.attach();

@@ -33,6 +33,7 @@ node scripts/gen-map.mjs     # data/maps/duel_glade.json
   pan/pinch-zoom, build placement, spell targeting, production/rally, minimap.
 - Desktop/touchpad controls: left-click select/order, left-drag box-select, middle-drag camera pan,
   two-finger touchpad scroll to pan, WASD/arrow-key pan, Escape to deselect, zoom slider/buttons.
+  Building/deploy: click the map to place (ghost does not follow hover), Enter to confirm, right-click to cancel.
 - Layered AI opponent(s); supports 2–8 players, FFA and teams.
 - Single resource (Mana), base building, harvesting, unit counters, 3 spells.
 

@@ -59,7 +59,7 @@ export const CONTROL_BINDINGS = {
     touch: true,
     mouse: true,
     keyboard: true,
-    description: 'Use the HUD deselect control or Escape.',
+    description: 'Use the HUD deselect/Cancel control, Escape, or right-click to cancel targeting.',
   },
   [CONTROL_ACTIONS.castSpellTarget]: {
     touch: true,
@@ -70,14 +70,16 @@ export const CONTROL_BINDINGS = {
   [CONTROL_ACTIONS.placeBuilding]: {
     touch: true,
     mouse: true,
-    keyboard: false,
-    description: 'Tap/click the map to place a building preview.',
+    keyboard: true,
+    description:
+      'Tap the map to preview, then Place. On desktop, click the map to place immediately, press Enter, or use Place — the ghost does not follow hover.',
   },
   [CONTROL_ACTIONS.deployUnit]: {
     touch: true,
     mouse: true,
-    keyboard: false,
-    description: 'Tap/click the map to deploy a packed unit or building.',
+    keyboard: true,
+    description:
+      'Tap the map to preview a deploy, then Place. On desktop, click the map or press Enter to deploy immediately.',
   },
   [CONTROL_ACTIONS.setRallyPoint]: {
     touch: true,
