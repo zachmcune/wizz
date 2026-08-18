@@ -9,6 +9,7 @@ interface KeyboardTarget {
 
 interface KeyboardController {
   clearSelection(): void;
+  confirmPlacement(): void;
 }
 
 export const KEYBOARD_CONTROL_KEYS = {
@@ -17,6 +18,8 @@ export const KEYBOARD_CONTROL_KEYS = {
   panUp: { action: CONTROL_ACTIONS.panCamera, keys: ['ArrowUp', 'w'] },
   panDown: { action: CONTROL_ACTIONS.panCamera, keys: ['ArrowDown', 's'] },
   deselect: { action: CONTROL_ACTIONS.deselect, keys: ['Escape'] },
+  placeBuilding: { action: CONTROL_ACTIONS.placeBuilding, keys: ['Enter'] },
+  deployUnit: { action: CONTROL_ACTIONS.deployUnit, keys: ['Enter'] },
 } as const satisfies Record<string, { action: ControlAction; keys: readonly string[] }>;
 
 const HANDLED_KEYS = new Set<string>(Object.values(KEYBOARD_CONTROL_KEYS).flatMap((binding) => binding.keys));
@@ -75,6 +78,10 @@ export class KeyboardControls {
     e.preventDefault();
     if (key === 'Escape') {
       this.controller.clearSelection();
+      return;
+    }
+    if (key === 'Enter') {
+      this.controller.confirmPlacement();
       return;
     }
     this.pressed.add(key);

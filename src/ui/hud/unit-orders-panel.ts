@@ -44,6 +44,7 @@ export class UnitOrdersPanel {
     this.deployBtn.addEventListener('click', () => {
       const id = [...this.controller.session.selection][0];
       if (id !== undefined) this.controller.startDeploy(id);
+      this.deployBtn.blur();
     });
     this.packBtn.addEventListener('click', () => {
       const id = [...this.controller.session.selection][0];

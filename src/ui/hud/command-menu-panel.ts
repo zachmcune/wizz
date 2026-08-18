@@ -288,7 +288,10 @@ export class CommandMenuPanel {
     if (def.powerProduced) costParts.push(`+${def.powerProduced} pwr`);
     wrap.append(el('span', 'btn-sub', costParts.join(' · ')));
     btn.append(this.makeIcon(def.art), wrap);
-    btn.addEventListener('click', () => this.controller.startBuild(def.id));
+    btn.addEventListener('click', () => {
+      this.controller.startBuild(def.id);
+      btn.blur();
+    });
     return btn;
   }
 
