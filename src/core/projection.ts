@@ -2,8 +2,8 @@
 // Simulation stays in 2D world units; this module is the only world↔screen mapping.
 import type { CameraView, Vec2 } from './coords';
 
-/** Screen lift per visual height level (world units before zoom). */
-export const VISUAL_HEIGHT_STEP = 8;
+/** Screen lift per visual height level (pre-zoom pixels). One level matches a tile's projected height. */
+export const VISUAL_HEIGHT_STEP = 16;
 
 /** Extra visual height levels applied to flying units (render + picking only). */
 export const FLYER_HOVER_LEVELS = 2;
