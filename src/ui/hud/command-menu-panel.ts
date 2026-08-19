@@ -22,6 +22,7 @@ import {
   trainCategoryForBuilding,
   type ProducerInfo,
 } from './producers';
+import { BuildingInspectCard, buildingInspectInfo } from './building-inspect';
 
 export type CommandMenuMode = 'hq' | 'producer';
 
@@ -38,6 +39,7 @@ export class CommandMenuPanel {
   readonly touchRoots: HTMLElement[] = [];
 
   private categoryChips: CategoryChips;
+  private inspectCard: BuildingInspectCard;
   private producerRow = el('div', 'producer-row');
   private contentRow = el('div', 'card-row command-row');
   private contextKey = '';
@@ -45,6 +47,7 @@ export class CommandMenuPanel {
   private activeProducerId: number | null = null;
   private context: CommandMenuContext | null = null;
   private layoutKey = '';
+  private inspectDefId: string | null = null;
 
   constructor(
     private registry: Registry,
@@ -55,8 +58,19 @@ export class CommandMenuPanel {
   ) {
     this.panel = new Collapsible('Command', startOpen, onHeadClick);
     this.categoryChips = new CategoryChips((id) => this.onCategorySelect(id));
-    this.panel.body.append(this.categoryChips.root, this.producerRow, this.contentRow);
-    this.touchRoots = [this.categoryChips.root, this.producerRow, this.contentRow];
+    this.inspectCard = new BuildingInspectCard(() => this.hideInspect());
+    this.panel.body.append(
+      this.categoryChips.root,
+      this.inspectCard.root,
+      this.producerRow,
+      this.contentRow,
+    );
+    this.touchRoots = [
+      this.categoryChips.root,
+      this.inspectCard.root,
+      this.producerRow,
+      this.contentRow,
+    ];
     this.producerRow.style.display = 'none';
   }
 
@@ -98,6 +112,7 @@ export class CommandMenuPanel {
     } else {
       this.activeProducerId = null;
     }
+    this.pruneInspect();
     this.renderContent();
     this.renderProducers();
     this.layoutKey = `${this.contextKey}|${this.activeCategory}`;
@@ -139,6 +154,7 @@ export class CommandMenuPanel {
 
     this.categoryChips.setCategories(categories);
     this.categoryChips.setActive(this.activeCategory);
+    this.pruneInspect();
 
     if (context.mode === 'hq') {
       this.panel.setTitle('Command');
@@ -158,6 +174,7 @@ export class CommandMenuPanel {
       this.refreshProducerLabels();
     }
     this.updateItemStates(player, session);
+    this.refreshInspect();
   }
 
   updateTrainQueue(registry: Registry, controller: InputController, building: BuildingEntity | null): void {
@@ -259,11 +276,12 @@ export class CommandMenuPanel {
     if (isBuildCategory(this.activeCategory)) {
       for (const [, def] of this.registry.buildings) {
         if (def.isConstructionYard || def.menuCategory !== this.activeCategory) continue;
-        this.contentRow.appendChild(this.makeBuildButton(def));
+        this.contentRow.appendChild(this.makeBuildItem(def));
       }
       return;
     }
     if (isTrainCategory(this.activeCategory)) {
+      this.hideInspect();
       for (const [, udef] of this.registry.units) {
         if (udef.menuCategory !== this.activeCategory) continue;
         this.contentRow.appendChild(this.makeTrainButton(udef));
@@ -277,8 +295,12 @@ export class CommandMenuPanel {
     return wrap;
   }
 
-  private makeBuildButton(def: BuildingDef): HTMLElement {
+  private makeBuildItem(def: BuildingDef): HTMLElement {
+    const item = el('div', 'build-item');
+    item.dataset.def = def.id;
+
     const btn = el('button', 'btn build-btn');
+    btn.type = 'button';
     btn.dataset.def = def.id;
     btn.style.borderLeftColor = def.art.accent;
     const wrap = el('div', 'btn-stack');
@@ -289,10 +311,35 @@ export class CommandMenuPanel {
     wrap.append(el('span', 'btn-sub', costParts.join(' · ')));
     btn.append(this.makeIcon(def.art), wrap);
     btn.addEventListener('click', () => {
-      this.controller.startBuild(def.id);
-      btn.blur();
+      const player = this.lastPlayer;
+      const info = player ? buildingInspectInfo(def, this.registry, player) : null;
+      if (info?.canPlace) {
+        this.showInspect(def.id);
+        this.controller.startBuild(def.id);
+        btn.blur();
+        return;
+      }
+      this.showInspect(def.id);
     });
-    return btn;
+
+    const infoBtn = el('button', 'btn build-info-btn', 'i');
+    infoBtn.type = 'button';
+    infoBtn.title = `What ${def.name} does`;
+    infoBtn.setAttribute('aria-label', `About ${def.name}`);
+    infoBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const pointerType = 'pointerType' in ev ? (ev as PointerEvent).pointerType : '';
+      if (pointerType === 'mouse') this.showInspect(def.id);
+      else this.toggleInspect(def.id);
+    });
+
+    item.addEventListener('pointerenter', (ev) => {
+      if (ev.pointerType !== 'mouse') return;
+      this.showInspect(def.id);
+    });
+
+    item.append(btn, infoBtn);
+    return item;
   }
 
   private makeTrainButton(udef: UnitDef): HTMLElement {
@@ -322,25 +369,69 @@ export class CommandMenuPanel {
     this.controller.produce(target.entity.id, unitDefId);
   }
 
+  private showInspect(defId: string): void {
+    this.inspectDefId = defId;
+    this.refreshInspect();
+    this.syncInspectingClass();
+  }
+
+  private hideInspect(): void {
+    this.inspectDefId = null;
+    this.inspectCard.hide();
+    this.syncInspectingClass();
+  }
+
+  private toggleInspect(defId: string): void {
+    if (this.inspectDefId === defId) this.hideInspect();
+    else this.showInspect(defId);
+  }
+
+  private pruneInspect(): void {
+    if (!this.inspectDefId) return;
+    if (!isBuildCategory(this.activeCategory)) {
+      this.hideInspect();
+      return;
+    }
+    const def = this.registry.buildings.get(this.inspectDefId);
+    if (!def || def.menuCategory !== this.activeCategory) this.hideInspect();
+  }
+
+  private refreshInspect(): void {
+    if (!this.inspectDefId || !this.lastPlayer) {
+      this.syncInspectingClass();
+      return;
+    }
+    const def = this.registry.buildings.get(this.inspectDefId);
+    if (!def) {
+      this.hideInspect();
+      return;
+    }
+    this.inspectCard.show(buildingInspectInfo(def, this.registry, this.lastPlayer));
+    this.syncInspectingClass();
+  }
+
+  private syncInspectingClass(): void {
+    for (const item of this.contentRow.querySelectorAll<HTMLElement>('.build-item')) {
+      const on = item.dataset.def === this.inspectDefId;
+      item.classList.toggle('inspecting', on);
+      const infoBtn = item.querySelector<HTMLButtonElement>('.build-info-btn');
+      if (infoBtn) {
+        infoBtn.classList.toggle('active', on);
+        infoBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+  }
+
   private updateItemStates(player: Player, session: InputController['session']): void {
     for (const btn of this.contentRow.querySelectorAll<HTMLButtonElement>('.build-btn')) {
       const def = this.registry.buildings.get(btn.dataset.def!)!;
-      const unlocked = def.requires.every((r) => player.unlockedTech.includes(r));
-      const affordable = player.mana >= def.cost;
-      btn.disabled = !unlocked || !affordable;
+      const info = buildingInspectInfo(def, this.registry, player);
       btn.classList.toggle('active', session.buildDefId === btn.dataset.def);
-      btn.classList.toggle('unaffordable', unlocked && !affordable);
-      btn.classList.toggle('locked-out', !unlocked);
+      btn.classList.toggle('unaffordable', info.unlocked && !info.affordable);
+      btn.classList.toggle('locked-out', !info.unlocked);
+      btn.setAttribute('aria-disabled', info.canPlace ? 'false' : 'true');
       const sub = btn.querySelector('.btn-sub');
-      if (sub) {
-        if (!unlocked) {
-          const missing = def.requires.find((r) => !player.unlockedTech.includes(r));
-          const missingName = missing ? this.registry.buildings.get(missing)?.name ?? missing : 'Locked';
-          sub.textContent = `Needs ${missingName}`;
-        } else {
-          sub.textContent = `${def.cost} mana`;
-        }
-      }
+      if (sub) sub.textContent = info.subtitle;
     }
 
     const st = this.state;
