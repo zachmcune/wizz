@@ -156,6 +156,10 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
       if (!buildingIds.has(prod[key])) issues.push({ path: prefix, message: `production.${key} is not a known building` });
     }
     if (!unitIds.has(prod.harvesterUnit)) issues.push({ path: prefix, message: `production.harvesterUnit is not a known unit` });
+    if (!unitIds.has(prod.expandUnit)) issues.push({ path: prefix, message: `production.expandUnit is not a known unit` });
+    if (!buildingIds.has(prod.expandBuilding)) {
+      issues.push({ path: prefix, message: `production.expandBuilding is not a known building` });
+    }
     for (const uid of [...prod.armyRotation, ...prod.siegeUnits, prod.nexusUnit, prod.weaverUnit, prod.airUnit, prod.scoutUnit]) {
       if (!unitIds.has(uid)) issues.push({ path: prefix, message: `production references unknown unit "${uid}"` });
     }

@@ -41,6 +41,8 @@ export interface AiStrategyConfig {
     siegeUnits: string[];
     siegeArmyThresholdFactor: number;
     forgeArmyThresholdFactor: number;
+    expandUnit: string;
+    expandBuilding: string;
   };
   combat: {
     garrisonUnit: string;

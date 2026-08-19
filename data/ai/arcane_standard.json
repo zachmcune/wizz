@@ -7,10 +7,10 @@
   "buildOrder": [
     "attunement_spire",
     "ley_conduit",
-    "resonance_vault",
-    "scrying_obelisk",
     "summoning_circle",
     "arcane_bunker",
+    "resonance_vault",
+    "scrying_obelisk",
     "golem_forge",
     "arcane_nexus",
     "astral_spire"
@@ -50,20 +50,30 @@
     "armyRotation": ["imp_swarmling", "arcane_archer", "rift_familiar"],
     "siegeUnits": ["siege_behemoth", "stone_golem"],
     "siegeArmyThresholdFactor": 0.35,
-    "forgeArmyThresholdFactor": 0.35
+    "forgeArmyThresholdFactor": 0.35,
+    "expandUnit": "waystone_wagon",
+    "expandBuilding": "waystone_camp"
   },
   "combat": {
     "garrisonUnit": "arcane_archer",
     "garrisonBuilding": "arcane_bunker",
     "siegeUnit": "siege_behemoth",
     "defendFraction": 0.35,
-    "minPushFactor": 0.5,
+    "minPushFactor": 0.7,
     "attackBias": {
-      "sanctum": -1200,
-      "waystone_camp": -1200,
-      "attunement_spire": -800,
+      "celestial_cannon": -1600,
+      "storm_conductor": -1300,
+      "sanctuary_spire": -1300,
+      "frost_spire": -1200,
+      "inferno_beacon": -1200,
+      "astral_spire": -1200,
+      "arcane_sentry": -1100,
+      "waystone_camp": -900,
+      "sanctum": -700,
+      "attunement_spire": -600,
       "summoning_circle": -400,
-      "golem_forge": -400
+      "golem_forge": -400,
+      "arcane_bunker": -300
     }
   }
 }

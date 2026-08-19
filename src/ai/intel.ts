@@ -7,7 +7,7 @@ import { isVisibleTo } from '../sim/fog';
 import { distSq, len } from '../sim/math';
 import { isCombatUnit } from '../sim/types';
 import { LATE_GAME_TICK } from './difficulty';
-import { findEnemySanctum, pickAttackTarget } from './shared';
+import { findEnemySanctum, isDefenseBuilding, pickAttackTarget } from './shared';
 import type { AiDecisionContext } from './strategies/types';
 
 export interface AttackObjective {
@@ -22,10 +22,17 @@ const THREAT_SCORE: Record<string, number> = {
   storm_caster: 90,
   mana_weaver: 80,
   rift_skimmer: 70,
-  celestial_cannon: 60,
+  celestial_cannon: 110,
+  storm_conductor: 100,
+  sanctuary_spire: 95,
+  frost_spire: 90,
+  inferno_beacon: 90,
+  astral_spire: 85,
+  arcane_sentry: 80,
   golem_forge: 50,
   summoning_circle: 45,
   attunement_spire: 40,
+  waystone_camp: 55,
   sanctum: 35,
 };
 
@@ -84,7 +91,7 @@ export function pickAttackObjective(
   const late = state.tick >= LATE_GAME_TICK;
   // Easy wanders until late-game; Normal/Hard go for a real base so matches resolve.
   if (profile.intel !== 'probe' || late) {
-    const live = pickAttackTarget(state, player.id, from, attackBias);
+    const live = pickAttackTarget(state, player.id, from, attackBias, ctx.services.registry);
     if (live) return { x: live.pos.x, y: live.pos.y, source: 'live', entityId: live.id };
   }
 
@@ -121,7 +128,8 @@ function nearestVisibleEnemyBuilding(
     if (e.kind !== 'building' || !isAlive(e) || !isEnemy(state, player.id, e.owner)) continue;
     if (!isVisibleTo(state, player.id, e, services.nav)) continue;
     const d = len(e.pos.x - from.x, e.pos.y - from.y);
-    const score = d + (attackBias[e.defId] ?? 0);
+    const fallback = isDefenseBuilding(ctx.services.registry, e.defId) ? -700 : 0;
+    const score = d + (attackBias[e.defId] ?? fallback);
     if (score < bestScore) {
       bestScore = score;
       best = e;
@@ -139,7 +147,8 @@ function pickKnownBuilding(
   let bestScore = Infinity;
   for (const k of knownEnemyBuildings(ctx)) {
     const d = len(k.x - from.x, k.y - from.y);
-    const score = d + (attackBias[k.defId] ?? 0);
+    const fallback = isDefenseBuilding(ctx.services.registry, k.defId) ? -700 : 0;
+    const score = d + (attackBias[k.defId] ?? fallback);
     if (score < bestScore) {
       bestScore = score;
       best = k;
