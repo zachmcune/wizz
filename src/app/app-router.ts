@@ -21,6 +21,7 @@ import type { AudioManager } from '../audio/audio';
 import type { Registry } from '../data/registry';
 import type { MultiplayerSession } from '../net/multiplayer';
 import type { Settings } from '../storage/settings';
+import { saveSettings } from '../storage/settings';
 import type { LobbyState } from '../lobby/types';
 import type { WebSocketTransport } from '../net/ws-transport';
 
@@ -158,12 +159,25 @@ export class AppRouter {
     session.transport.onError = (msg) => lobby.showError(msg);
   }
 
+  private skipTips(): void {
+    this.deps.settings.showTips = false;
+    void saveSettings(this.deps.settings);
+  }
+
+  private lobbyCoachOpts(): { showTips: boolean; onSkipTips: () => void } {
+    return {
+      showTips: this.deps.settings.showTips,
+      onSkipTips: () => this.skipTips(),
+    };
+  }
+
   showSoloLobby(): void {
     this.clearHost();
     const lobby = new MatchLobby({
       mode: 'solo',
       registry: this.deps.registry,
       initialState: defaultLobbyState(),
+      ...this.lobbyCoachOpts(),
       onStart: (state) => {
         lobby.destroy();
         void clearSave();
@@ -200,6 +214,7 @@ export class AppRouter {
         localSlotId,
         isHost: true,
         lobbyClient: this.session.lobby,
+        ...this.lobbyCoachOpts(),
         onStart: () => {},
         onBack: () => {
           this.disconnectSession();
@@ -217,6 +232,7 @@ export class AppRouter {
         registry: this.deps.registry,
         initialState: defaultLobbyState(),
         room,
+        ...this.lobbyCoachOpts(),
         onStart: () => {},
         onBack: () => {
           errLobby.destroy();
@@ -245,6 +261,7 @@ export class AppRouter {
         connId: this.session.connId,
         localSlotId,
         lobbyClient: this.session.lobby,
+        ...this.lobbyCoachOpts(),
         onStart: () => {},
         onBack: () => {
           this.disconnectSession();

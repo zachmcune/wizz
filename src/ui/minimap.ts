@@ -8,6 +8,7 @@ import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
 import { getPlayer, radarActive, isMinimapTileFogged, isVisibleOnMinimap, isNodeIntelVisible, listBuildingGhosts } from '../sim/views';
 import type { NavGrid } from '../sim/nav-grid';
+import { RADAR_OFFLINE_CANVAS_LINES } from './coach/progress';
 
 export class Minimap {
   readonly canvas: HTMLCanvasElement;
@@ -72,6 +73,13 @@ export class Minimap {
     if (!radarOn) {
       c.fillStyle = '#12101c';
       c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      c.fillStyle = '#666680';
+      c.font = 'bold 11px system-ui, sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(RADAR_OFFLINE_CANVAS_LINES[0], this.canvas.width / 2, this.canvas.height / 2 - 8);
+      c.font = '9px system-ui, sans-serif';
+      c.fillText(RADAR_OFFLINE_CANVAS_LINES[1], this.canvas.width / 2, this.canvas.height / 2 + 8);
       return;
     }
 

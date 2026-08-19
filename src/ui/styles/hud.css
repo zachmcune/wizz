@@ -19,7 +19,8 @@
 .hud .menu-screen,
 .hud .settings-card,
 .hud .cmd-card,
-.hud .pause-overlay {
+.hud .pause-overlay,
+.hud .coach-card {
   pointer-events: auto;
 }
 /* Panels still capture input; the card itself must too so it can be the
@@ -1085,5 +1086,76 @@
   font-variant-numeric: tabular-nums;
   color: var(--muted);
   font-size: 9px;
+}
+
+.coach-card {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  width: min(280px, 58vw);
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 18;
+  pointer-events: auto;
+}
+.hud .coach-card {
+  position: absolute;
+}
+.hud .coach-card--cmd {
+  left: calc(min(22vw, 100px) + var(--hud-gap) * 2);
+  right: calc(min(46vw, 272px) + var(--hud-gap) * 2);
+  width: auto;
+  max-width: 300px;
+  bottom: 8px;
+  margin-inline: auto;
+}
+.hud .coach-card--map {
+  top: calc(var(--topbar-h) + var(--hud-gap));
+  left: calc(min(22vw, 100px) + var(--hud-gap) * 2);
+  width: min(260px, 42vw);
+}
+.coach-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.coach-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  opacity: 0.88;
+}
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.coach-skip {
+  margin-right: auto;
+  min-height: 40px;
+  opacity: 0.85;
+}
+.coach-got-it {
+  min-width: 88px;
+  min-height: 40px;
+}
+.minimap-caption {
+  margin: 4px 2px 0;
+  font-size: 9px;
+  line-height: 1.25;
+  opacity: 0.72;
+  text-align: left;
+}
+.minimap-panel.minimap-offline .panel-title {
+  color: #c8c0e8;
+}
+.spell-btn.spell-locked {
+  cursor: help;
 }
 

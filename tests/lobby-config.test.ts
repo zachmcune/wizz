@@ -44,7 +44,9 @@ describe('lobby config', () => {
     expect(validateLobby(lobby, 'solo', map).valid).toBe(true);
 
     lobby.slots[0]!.startIndex = null;
-    expect(validateLobby(lobby, 'solo', map).valid).toBe(false);
+    const missingYou = validateLobby(lobby, 'solo', map);
+    expect(missingYou.valid).toBe(false);
+    expect(missingYou.errors[0]).toMatch(/start/i);
 
     lobby.slots[0]!.startIndex = 0;
     lobby.slots[0]!.kind = 'ai';
@@ -52,7 +54,9 @@ describe('lobby config', () => {
 
     lobby.slots[0]!.kind = 'human';
     lobby.slots[1]!.startIndex = lobby.slots[0]!.startIndex;
-    expect(validateLobby(lobby, 'solo', map).valid).toBe(false);
+    const dup = validateLobby(lobby, 'solo', map);
+    expect(dup.valid).toBe(false);
+    expect(dup.errors[0]).toMatch(/different corner/i);
   });
 
   it('validates online host lobby', () => {

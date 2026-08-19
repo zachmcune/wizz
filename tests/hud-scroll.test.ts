@@ -36,6 +36,12 @@ describe('HUD command card mobile scroll', () => {
     expect(hudCss).toMatch(/\.cmd-card \.category-chip,\s*\.cmd-card \.category-chips-scroll\s*\{\s*touch-action:\s*pan-x pan-y/);
   });
 
+  it('styles a first-match coach card as a small HUD overlay', () => {
+    expect(hudCss).toMatch(/\.hud \.coach-card(?:,|\s*\{)/);
+    expect(hudCss).toMatch(/^\.coach-card\s*\{[^}]*pointer-events:\s*auto/m);
+    expect(hudCss).toMatch(/^\.coach-got-it\s*\{[^}]*min-height:\s*40px/m);
+  });
+
   it('styles a build-tab inspect card for hover and tap details', () => {
     expect(hudCss).toMatch(/^\.build-inspect\s*\{/m);
     expect(hudCss).toMatch(/^\.build-req\.missing\s*\{/m);
