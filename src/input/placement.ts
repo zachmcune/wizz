@@ -78,6 +78,17 @@ export function placementConfirmHint(issue?: PlacementIssue): string {
   }
 }
 
+/**
+ * Footer cost for the current preview. Wall lines charge per valid segment;
+ * an invalid preview still shows the unit cost so it matches the build list.
+ */
+export function placementCostLabel(unitCost: number, wallTiles?: readonly { valid: boolean }[] | null): string {
+  if (!wallTiles?.length) return String(unitCost);
+  let validCount = 0;
+  for (const tile of wallTiles) if (tile.valid) validCount += 1;
+  return String(unitCost * Math.max(validCount, 1));
+}
+
 export function isWallBuild(ctx: InputContext): boolean {
   if (ctx.session.mode !== 'build' || !ctx.session.buildDefId) return false;
   return !!ctx.registry.buildings.get(ctx.session.buildDefId)?.isWall;

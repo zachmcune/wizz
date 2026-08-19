@@ -1,5 +1,6 @@
 // Translates gestures + HUD actions into Commands for the local human player.
 // Owns the view-only SessionState. Mode-specific tap logic lives in input/modes/.
+import { TILE } from '../core/constants';
 import { screenToWorld } from '../core/coords';
 import type { Vec2 } from '../core/coords';
 import type { Camera } from '../render/camera';
@@ -192,10 +193,19 @@ export class InputController {
     this.session.wallDragTiles = null;
     this.session.wallDragStart = null;
     const sel = this.selectionEntities()[0];
-    const fallback = { x: this.camera.visibleWorldRect().x + 100, y: this.camera.visibleWorldRect().y + 100 };
-    const anchor = this.lastPointerWorld ?? sel?.pos ?? fallback;
-    if (isWallBuild(this.ctx())) previewWallAt(this.ctx(), anchor);
-    else updateBuildGhost(this.ctx(), anchor);
+    const vis = this.camera.visibleWorldRect();
+    const nearSelection = sel
+      ? { x: sel.pos.x + TILE * 4, y: sel.pos.y }
+      : { x: vis.x + 100, y: vis.y + 100 };
+    const pointer = this.lastPointerWorld;
+    this.placeBuildGhost(pointer ?? nearSelection);
+    // HUD clicks map onto world tiles that are often outside the build zone.
+    if (this.session.buildGhost?.issue === 'range' && pointer) this.placeBuildGhost(nearSelection);
+  }
+
+  private placeBuildGhost(world: Vec2): void {
+    if (isWallBuild(this.ctx())) previewWallAt(this.ctx(), world);
+    else updateBuildGhost(this.ctx(), world);
   }
 
   isWallBuild(): boolean {

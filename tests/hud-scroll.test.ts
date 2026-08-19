@@ -57,4 +57,10 @@ describe('HUD command card mobile scroll', () => {
     expect(compact).toMatch(/min-height:\s*128px/);
     expect(compact).toMatch(/max-height:\s*128px/);
   });
+
+  it('styles a minimap hint so radar gating is readable when the canvas is offline', () => {
+    expect(hudCss).toMatch(/^\.minimap-hint\s*\{/m);
+    expect(hudCss).toMatch(/\.minimap-panel\.minimap-offline \.minimap-hint/);
+    expect(hudCss).toMatch(/\.minimap-panel\.minimap-offline \.minimap-canvas/);
+  });
 });

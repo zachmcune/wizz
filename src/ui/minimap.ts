@@ -72,13 +72,6 @@ export class Minimap {
     if (!radarOn) {
       c.fillStyle = '#12101c';
       c.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      c.fillStyle = '#666680';
-      c.font = 'bold 11px system-ui, sans-serif';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('RAD', this.canvas.width / 2, this.canvas.height / 2 - 8);
-      c.font = '9px system-ui, sans-serif';
-      c.fillText('offline', this.canvas.width / 2, this.canvas.height / 2 + 8);
       return;
     }
 

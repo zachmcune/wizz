@@ -86,7 +86,7 @@ export function classifyBuildZoneTiles(
   const out: BuildZoneTile[] = [];
   for (const { tx, ty } of tiles) {
     if (nodeAt(tx, ty)) out.push({ tx, ty, kind: 'node' });
-    else if (nav.isOccupied(tx, ty)) out.push({ tx, ty, kind: 'blocked' });
+    else if (nav.isOccupied(tx, ty) || !nav.footprintHeightOk(tx, ty, 1)) out.push({ tx, ty, kind: 'blocked' });
     else out.push({ tx, ty, kind: 'open' });
   }
   return out;
