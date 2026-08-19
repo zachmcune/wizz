@@ -8,6 +8,12 @@ import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../../render/cele
 import { spawnStormSequence } from '../../render/storm-conductor-vfx';
 import { isUnitInSanctuaryAura, spawnSanctuaryAttackTrail } from '../../render/sanctuary-spire-vfx';
 import { registerSentryBoltFired, isSentryDamageSource, spawnSentrySilhouetteFlash } from '../../render/arcane-sentry-vfx';
+import {
+  applyAttackFxBursts,
+  attackFiredBursts,
+  attackFxForEntity,
+  attackHitBursts,
+} from '../../render/attack-fx';
 import type { Camera } from '../../render/camera';
 
 export class EventBridge {
@@ -46,12 +52,21 @@ export class EventBridge {
           const crystalIndex = ev.crystalIndex ?? 0;
           this.audio.playSentryBolt(crystalIndex);
           registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing, ev.x, ev.y);
-        } else if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, this.getServices().registry, src)) {
-          this.audio.playSanctuaryBuffShimmer();
-          spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
         } else {
-          this.audio.play(ev);
-          this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+          const registry = this.getServices().registry;
+          const fx = attackFxForEntity(registry, src);
+          const inSanctuary = src?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, src);
+          if (inSanctuary && src) {
+            this.audio.playSanctuaryBuffShimmer();
+            spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
+          } else {
+            this.audio.play(ev);
+          }
+          if (fx && src) {
+            applyAttackFxBursts(this.effects, attackFiredBursts(fx, src.facing), ev.x, ev.y, src.facing);
+          } else if (!inSanctuary) {
+            this.effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+          }
         }
         break;
       }
@@ -68,7 +83,13 @@ export class EventBridge {
           if (isSentryDamageSource(state, ev.sourceId)) {
             spawnSentrySilhouetteFlash(ev.targetId, ev.x, ev.y);
           } else {
-            this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+            const src = ev.sourceId !== undefined ? state.entities.get(ev.sourceId) : undefined;
+            const fx = attackFxForEntity(this.getServices().registry, src);
+            if (fx && src) {
+              applyAttackFxBursts(this.effects, attackHitBursts(fx, src.facing), ev.x, ev.y, src.facing);
+            } else {
+              this.effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+            }
           }
         }
         break;

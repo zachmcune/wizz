@@ -1,6 +1,14 @@
 // View-only transient effects (hit flashes, death puffs, spell rings, mana sparkles).
 // Pooled Graphics to avoid GC churn. Driven by GameEvents; never affects the sim.
 import { Container, Graphics } from 'pixi.js';
+import { OBLIQUE_SCALE_X, OBLIQUE_SCALE_Y } from '../core/projection';
+
+export type EffectKind = 'flash' | 'puff' | 'ring' | 'spark' | 'shockwave' | 'strike';
+
+export interface EffectSpawnOpts {
+  /** World-space facing in radians (0 = east). Used by strike / directional sparks. */
+  angle?: number;
+}
 
 interface Effect {
   g: Graphics;
@@ -8,12 +16,23 @@ interface Effect {
   life: number;
   x: number;
   y: number;
-  kind: 'flash' | 'puff' | 'ring' | 'spark' | 'shockwave' | 'strike';
+  kind: EffectKind;
   color: number;
   radius: number;
+  angle: number;
 }
 
 export type EffectPositionFn = (worldX: number, worldY: number) => { x: number; y: number };
+
+/** Dimetric screen vector for a world-facing angle (matches projectGround of a unit vector). */
+export function worldFacingToScreen(angle: number): { x: number; y: number } {
+  const wx = Math.cos(angle);
+  const wy = Math.sin(angle);
+  const x = (wx - wy) * OBLIQUE_SCALE_X;
+  const y = (wx + wy) * OBLIQUE_SCALE_Y;
+  const len = Math.hypot(x, y) || 1;
+  return { x: x / len, y: y / len };
+}
 
 export class EffectsLayer {
   readonly container = new Container();
@@ -28,6 +47,10 @@ export class EffectsLayer {
 
   setMaxActive(n: number): void {
     this.maxActive = Math.max(8, n);
+  }
+
+  get activeCount(): number {
+    return this.active.length;
   }
 
   private take(): Graphics {
@@ -51,15 +74,25 @@ export class EffectsLayer {
     this.active = [];
   }
 
-  spawn(kind: Effect['kind'], x: number, y: number, color: number, radius: number): void {
+  spawn(kind: EffectKind, x: number, y: number, color: number, radius: number, opts?: EffectSpawnOpts): void {
     if (this.active.length > this.maxActive) return;
     const life =
       kind === 'ring' ? 30
         : kind === 'shockwave' ? 24
-          : kind === 'strike' ? 16
+          : kind === 'strike' ? 12
             : kind === 'puff' ? 18
               : 10;
-    this.active.push({ g: this.take(), age: 0, life, x, y, kind, color, radius });
+    this.active.push({
+      g: this.take(),
+      age: 0,
+      life,
+      x,
+      y,
+      kind,
+      color,
+      radius,
+      angle: opts?.angle ?? 0,
+    });
   }
 
   update(): void {
@@ -78,11 +111,21 @@ export class EffectsLayer {
       } else if (e.kind === 'ring') {
         g.circle(pos.x, pos.y, e.radius * (0.3 + t)).stroke({ width: 3, color: e.color, alpha });
       } else if (e.kind === 'shockwave') {
-        g.circle(pos.x, pos.y, e.radius * (0.2 + t * 0.95)).stroke({ width: 4 - t * 2, color: e.color, alpha: alpha * 0.85 });
+        // Ground-hugging ellipse so slams sit on the dimetric plane, not as floating circles.
+        const r = e.radius * (0.2 + t * 0.95);
+        g.ellipse(pos.x, pos.y, r, r * 0.45).stroke({ width: 4 - t * 2, color: e.color, alpha: alpha * 0.85 });
       } else if (e.kind === 'strike') {
-        g.rect(pos.x - e.radius * 0.08, pos.y - e.radius * (0.5 + t * 0.3), e.radius * 0.16, e.radius * (1 - t * 0.4))
-          .fill({ color: e.color, alpha: alpha * 0.7 });
-        g.circle(pos.x, pos.y, e.radius * (0.25 + t * 0.15)).fill({ color: 0xffffff, alpha: alpha * 0.5 });
+        const dir = worldFacingToScreen(e.angle);
+        const len = e.radius * (0.85 + t * 0.35);
+        const nx = -dir.y;
+        const ny = dir.x;
+        g.moveTo(pos.x - dir.x * len, pos.y - dir.y * len)
+          .lineTo(pos.x + dir.x * len * 0.25, pos.y + dir.y * len * 0.25)
+          .stroke({ width: 3.2 - t * 1.6, color: e.color, alpha: alpha * 0.95 });
+        g.moveTo(pos.x - nx * e.radius * 0.22, pos.y - ny * e.radius * 0.22)
+          .lineTo(pos.x + nx * e.radius * 0.22, pos.y + ny * e.radius * 0.22)
+          .stroke({ width: 1.6, color: 0xffffff, alpha: alpha * 0.7 });
+        g.circle(pos.x, pos.y, e.radius * (0.18 + t * 0.12)).fill({ color: 0xffffff, alpha: alpha * 0.55 });
       } else {
         g.circle(pos.x, pos.y - t * 20, e.radius * (1 - t)).fill({ color: e.color, alpha });
       }

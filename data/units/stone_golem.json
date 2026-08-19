@@ -31,7 +31,8 @@
     "shape": "square",
     "size": 24,
     "accent": "#8a8a8a",
-    "sprite": "stone_golem"
+    "sprite": "stone_golem",
+    "attackFx": "slam"
   },
   "sfx": {
     "select": "golem_select",

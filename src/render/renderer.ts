@@ -15,6 +15,7 @@ import type { Player } from '../sim/types';
 import { Camera } from './camera';
 import { ShapeSpriteProvider, worldTextureAnchor, type SpriteProvider } from './shape-sprite';
 import { EffectsLayer } from './effects';
+import { attackFxFromArt, attackPose, identityAttackPose, type AttackPose } from './attack-fx';
 import { frostExposureTint, renderTowerBeams } from './tower-beams';
 import { renderCelestialCannons } from './celestial-cannon-vfx';
 import { renderStormConductors } from './storm-conductor-vfx';
@@ -43,7 +44,7 @@ import {
   visibilityFingerprint,
 } from './fog-draw';
 import { appendOpenArc } from './open-arc';
-import { setVfxDensity } from './vfx-quality';
+import { setVfxDensity, vfxDensity } from './vfx-quality';
 
 const NODE_ART: ArtDef = { shape: 'hexagon', size: 40, accent: '#39d0c0' };
 const NEUTRAL_COLOR = '#39d0c0';
@@ -313,6 +314,14 @@ export class Renderer {
     return e.kind === 'unit' && this.registry.units.get(e.defId)?.mobility === 'air';
   }
 
+  private unitAttackPose(e: Entity): AttackPose {
+    if (e.kind !== 'unit') return identityAttackPose;
+    const def = this.registry.units.get(e.defId);
+    const kind = attackFxFromArt(def?.art);
+    if (!kind) return identityAttackPose;
+    return attackPose(kind, e.facing, e.cooldowns.attack ?? 0, def?.weapon?.cooldownTicks ?? 1);
+  }
+
   private artOf(e: Entity): { art: ArtDef; color: string } {
     if (e.kind === 'unit') return { art: this.registry.unit(e.defId).art, color: this.colorByOwner.get(e.owner) ?? '#ffffff' };
     if (e.kind === 'building') {
@@ -503,11 +512,15 @@ export class Renderer {
       }
 
       const flying = this.isFlyingEntity(e);
+      const pose = this.unitAttackPose(e);
+      const drawX = x + pose.dx;
+      const drawY = y + pose.dy;
       const hoverH = entityVisualHeight(this.map, x, y, flying);
-      const pos = this.groundPos(x, y, hoverH);
-      const depth = this.sortKeyAt(x, y, flying ? flyerHoverLevels() : 0);
+      const pos = this.groundPos(drawX, drawY, hoverH + pose.lift);
+      const depth = this.sortKeyAt(drawX, drawY, flying ? flyerHoverLevels() : 0);
       n.sprite.position.set(pos.x, pos.y);
       n.sprite.zIndex = depth;
+      n.sprite.scale.set(pose.scale);
 
       if (trackOcclusion) {
         if (e.kind === 'building') {
@@ -532,7 +545,14 @@ export class Renderer {
 
       n.sprite.rotation = 0;
 
-      if (this.profile.shadows && (e.kind === 'unit' || e.kind === 'building')) this.drawShadow(x, y, e.radius);
+      if (this.profile.shadows && (e.kind === 'unit' || e.kind === 'building')) this.drawShadow(drawX, drawY, e.radius);
+
+      if (e.kind === 'projectile' && n.sprite.visible) {
+        const { art } = this.artOf(e);
+        if (art.trail && vfxDensity() >= 0.4) {
+          this.drawProjectileTrail(drawX, drawY, e.facing, art.accent, hoverH);
+        }
+      }
 
       const labelOff = e.radius + 4;
       if (n.label) {
@@ -791,6 +811,33 @@ export class Renderer {
     this.fillDot(x, y, 4, 0x9fdcff, 0.9);
     this.overlayStrokePool.acquire().moveTo(x - 5, y).lineTo(x + 5, y).stroke({ width: 1.5, color: 0xd9f3ff, alpha: 0.95 });
     this.overlayStrokePool.acquire().moveTo(x, y - 5).lineTo(x, y + 5).stroke({ width: 1.5, color: 0xd9f3ff, alpha: 0.95 });
+  }
+
+  private drawProjectileTrail(
+    worldX: number,
+    worldY: number,
+    facing: number,
+    accent: string,
+    visualHeight: number,
+  ): void {
+    const len = 22;
+    const tailX = worldX - Math.cos(facing) * len;
+    const tailY = worldY - Math.sin(facing) * len;
+    const a = this.groundPos(tailX, tailY, visualHeight);
+    const b = this.groundPos(worldX, worldY, visualHeight);
+    const color = parseOwnerColor(accent) || 0xc9b8ff;
+    this.overlayStrokePool
+      .acquire()
+      .moveTo(a.x, a.y)
+      .lineTo(b.x, b.y)
+      .stroke({ width: 2.6, color, alpha: 0.72 });
+    if (vfxDensity() >= 0.5) {
+      this.overlayStrokePool
+        .acquire()
+        .moveTo(a.x, a.y)
+        .lineTo(b.x, b.y)
+        .stroke({ width: 1.1, color: 0xffffff, alpha: 0.5 });
+    }
   }
 
   /**

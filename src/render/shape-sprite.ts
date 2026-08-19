@@ -252,6 +252,20 @@ const GLYPHS: Record<string, GlyphFn> = {
   frost_bolt: (g, r, accent) => {
     g.poly([0, -r * 0.8, r * 0.22, 0, 0, r * 0.8, -r * 0.22, 0]).fill(accent);
   },
+  arcane_bolt: (g, r, accent, dir = 0) => {
+    const ang = facingAngle(dir);
+    const tx = Math.cos(ang);
+    const ty = Math.sin(ang);
+    const px = -ty;
+    const py = tx;
+    g.poly([
+      tx * r * 0.95, ty * r * 0.95,
+      -tx * r * 0.55 + px * r * 0.38, -ty * r * 0.55 + py * r * 0.38,
+      -tx * r * 0.2, -ty * r * 0.2,
+      -tx * r * 0.55 - px * r * 0.38, -ty * r * 0.55 - py * r * 0.38,
+    ]).fill(accent);
+    g.circle(tx * r * 0.15, ty * r * 0.15, r * 0.18).fill({ color: 0xffffff, alpha: 0.9 });
+  },
   inferno_orb: (g, r, accent) => {
     g.circle(0, 0, r * 0.45).fill(accent);
     strokeArc(g, 0, 0, r * 0.72, -0.6, 2.2, { width: 1.5, color: accent });
