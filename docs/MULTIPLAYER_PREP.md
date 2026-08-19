@@ -62,15 +62,16 @@ WebSocket relay in production.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Peer-paced relay clock | Done | Relay advances only within `LEAD_TICKS` of the slowest acked peer (`relay/relay-app.mjs`) |
+| Peer-paced relay clock | Done | Relay advances only within `LEAD_TICKS` (~3s) of the slowest acked peer (`relay/relay-app.mjs`) |
 | Client progress acks | Done | `{ t: 'ack', tick }`; `LockstepClient.ackProcessed` throttled by `ACK_EVERY_TICKS` |
-| Stalled-peer handling | Done | Peers silent > `STALL_DROP_MS` dropped from pacing (no whole-match freeze) |
+| Stalled-peer handling | Done | Peers silent > `STALL_DROP_MS` (15s) dropped from pacing; 5–8s wifi blips stay in lockstep |
 | Snapshot resync | Done | `snapshotRequest`/`snapshot` relay-forwarded; host packs `TransferState`, lagging peer jumps forward |
 | Sim in Worker for MP | Done | `Game` runs the worker in lockstep too; confirmed ticks sent as `lockstepBatch` |
 | Catch-up tuning | Done | `LOCKSTEP_DRAIN_BUDGET_MS` + `LOCKSTEP_MAX_BATCH_TICKS` bound per-frame work |
 | "Syncing…" HUD hint | Done | Shown while a client is catching up behind the relay head |
+| Stall HUD | Done | Banner after `LOCKSTEP_STALL_MS` (10s); hidden while the tab/PWA is backgrounded; cleared when ticks resume |
 
-The upshot: cross-client drift is bounded to ~`LEAD_TICKS / TICK_HZ` seconds instead of
+The upshot: cross-client drift is bounded to ~`LEAD_TICKS / TICK_HZ` seconds (~3s) instead of
 growing without limit. The old free-running relay could leave a slow phone minutes behind.
 
 ## What we are NOT doing (yet)

@@ -17,19 +17,26 @@ See [DEPLOY.md](DEPLOY.md) for Cloudflare Pages–only hosting (single-player, n
 The relay is **not** a free-running broadcaster. It is a peer-paced lockstep clock:
 
 - Every client acks the highest sim tick it has fully processed (`{ t: 'ack', tick }`).
-- The relay only advances its tick while it is within `LEAD_TICKS` (~1s at 20 Hz) of the
+- The relay only advances its tick while it is within `LEAD_TICKS` (~3s at 20 Hz) of the
   **slowest** acknowledged peer. If a phone falls behind, the relay pauses for everyone
-  instead of racing ahead — so cross-client drift is bounded to ~1 second, never minutes.
-- A peer that goes silent longer than `STALL_DROP_MS` (backgrounded tab, lost signal) is
-  dropped from pacing so it cannot freeze the match. When it returns it is far behind and
-  requests a **state snapshot** from the host (`snapshotRequest` → host `snapshot`), jumping
-  straight to the current state instead of replaying thousands of ticks.
+  instead of racing ahead — so cross-client drift is bounded to a few seconds, never minutes.
+  The lead is sized to absorb Chromebook / mobile timer throttling without pausing everyone
+  for a 1–2s hitch.
+- A peer that goes silent longer than `STALL_DROP_MS` (15s: long enough for a 5–8s school-wifi
+  blip, short enough that a true disconnect cannot freeze the match) is dropped from pacing.
+  When it returns it is far behind and requests a **state snapshot** from the host
+  (`snapshotRequest` → host `snapshot`), jumping straight to the current state instead of
+  replaying thousands of ticks. Brief hitches stay in the pacing set so the match waits
+  together instead of snapshot-resyncing.
+- Clients hide the stall banner while the document/PWA is backgrounded; a `Date.now()` jump
+  on resume is not treated as a disconnect. `resumeFromBackground` still requests a snapshot.
 - Clients run the deterministic sim in a **Web Worker** in multiplayer too, so heavy tick
   work and catch-up never fight the renderer — smooth on weaker phones.
 
-These constants live in `src/net/protocol.ts` (and mirrored in `relay/relay-app.mjs`):
-`LEAD_TICKS`, `ACK_EVERY_TICKS`, `STALL_DROP_MS`, `SNAPSHOT_RESYNC_TICKS`,
-`LOCKSTEP_MAX_BATCH_TICKS`.
+These constants live in `protocol-constants.json` (imported by `src/net/protocol.ts` and
+`relay/relay-app.mjs`): `LEAD_TICKS`, `ACK_EVERY_TICKS`, `STALL_DROP_MS`,
+`SNAPSHOT_RESYNC_TICKS`, `LOCKSTEP_MAX_BATCH_TICKS`, `LOCKSTEP_STALL_MS`,
+`LOCKSTEP_STALL_JUMP_MS`.
 
 ## Prerequisites
 

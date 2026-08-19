@@ -1,11 +1,10 @@
 import {
   CHECKSUM_INTERVAL_TICKS,
-  LEAD_TICKS,
   LOCKSTEP_DRAIN_BUDGET_MS,
   LOCKSTEP_MAX_BATCH_TICKS,
-  LOCKSTEP_STALL_MS,
   SNAPSHOT_RESYNC_TICKS,
 } from '../../net/protocol';
+import { evaluateLockstepStall, isDocumentHidden } from '../../net/lockstep-stall';
 import type { LockstepClient } from '../../net/lockstep';
 import type { WebSocketTransport } from '../../net/ws-transport';
 import { hashState } from '../../sim/hash';
@@ -77,7 +76,9 @@ export class SimController {
   /** After tab foregrounding in multiplayer, aggressively catch up. */
   resumeFromBackground(): void {
     if (!this.lockstep) return;
-    this.lockstepStallShown = false;
+    // Restart the stall timer so a Date.now() jump is not a false disconnect.
+    // Leave lockstepStallShown set so the next drain can clear/replace the HUD.
+    this.lockstep.resetStallClock();
     this.syncingShown = false;
     this.lastSnapshotRequestMs = 0;
     this.relayTransport?.requestSnapshot();
@@ -357,26 +358,20 @@ export class SimController {
   }
 
   private checkLockstepStall(hudHint: (msg: string) => void): void {
-    if (!this.lockstep?.hasReceivedTicks() || this.state.ended) return;
-    const gap = this.lockstep.msSinceLastTick();
-    if (gap >= LOCKSTEP_STALL_MS) {
-      if (!this.lockstepStallShown) {
-        this.lockstepStallShown = true;
-        hudHint('Connection stalled — check network or rejoin the match');
-      }
-      return;
-    }
-    this.lockstepStallShown = false;
-
-    // Ticks are flowing but we are catching up (e.g. after a hitch or backgrounding).
-    const backlog = this.lockstep.backlog(this.state.tick);
-    if (backlog > LEAD_TICKS * 2) {
-      if (!this.syncingShown) {
-        this.syncingShown = true;
-        hudHint('Syncing…');
-      }
-    } else {
-      this.syncingShown = false;
-    }
+    if (!this.lockstep) return;
+    const result = evaluateLockstepStall(
+      { stallShown: this.lockstepStallShown, syncingShown: this.syncingShown },
+      {
+        hasReceivedTicks: this.lockstep.hasReceivedTicks(),
+        matchEnded: this.state.ended,
+        documentHidden: isDocumentHidden(),
+        msSinceLastTick: this.lockstep.msSinceLastTick(),
+        backlog: this.lockstep.backlog(this.state.tick),
+      },
+    );
+    this.lockstepStallShown = result.stallShown;
+    this.syncingShown = result.syncingShown;
+    if (result.resetStallClock) this.lockstep.resetStallClock();
+    if (result.hint !== null) hudHint(result.hint);
   }
 }

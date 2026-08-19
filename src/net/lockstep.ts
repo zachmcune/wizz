@@ -83,6 +83,11 @@ export class LockstepClient {
     return Date.now() - this.lastTickAtMs;
   }
 
+  /** Restart the stall timer (tab resume / wall-clock jump). Does not invent ticks. */
+  resetStallClock(nowMs = Date.now()): void {
+    if (this.lastTickAtMs) this.lastTickAtMs = nowMs;
+  }
+
   /** Highest tick the relay has confirmed so far (its live head is this + 1). */
   lastConfirmedTick(): number {
     return this.lastReceivedTick;
