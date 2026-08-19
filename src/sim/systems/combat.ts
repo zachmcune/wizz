@@ -1,5 +1,5 @@
 // Target acquisition, firing (instant or projectile), chasing, cooldowns. Buildings can fire too.
-import { TICK_HZ } from '../../core/constants';
+import { HIGH_GROUND_RANGE_BONUS, TICK_HZ, TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { UnitEntity, BuildingEntity } from '../entity-types';
 import type { GameState, Entity, EntityId } from '../types';
@@ -30,9 +30,38 @@ export function sightOf(ctx: StepContext, e: Entity): number {
   return 128;
 }
 
-export function inWeaponBand(attacker: Entity, target: Entity, w: WeaponDef): boolean {
+/** Extra range when the attacker occupies higher ground than the target. */
+export function highGroundRangeBonus(attacker: Entity, target: Entity, nav: { heightAtWorld(x: number, y: number): number }): number {
+  return nav.heightAtWorld(attacker.pos.x, attacker.pos.y) > nav.heightAtWorld(target.pos.x, target.pos.y)
+    ? HIGH_GROUND_RANGE_BONUS
+    : 0;
+}
+
+/** Ground fire cannot shoot up a cliff; ramps and equal/lower height are allowed. */
+export function heightBlocksGroundFire(
+  attacker: Entity,
+  target: Entity,
+  nav: { heightAtWorld(x: number, y: number): number; isRamp(tx: number, ty: number): boolean },
+  flyingAttacker: boolean,
+): boolean {
+  if (flyingAttacker) return false;
+  const ah = nav.heightAtWorld(attacker.pos.x, attacker.pos.y);
+  const th = nav.heightAtWorld(target.pos.x, target.pos.y);
+  if (th <= ah) return false;
+  if (nav.isRamp(Math.floor(attacker.pos.x / TILE), Math.floor(attacker.pos.y / TILE))) return false;
+  if (nav.isRamp(Math.floor(target.pos.x / TILE), Math.floor(target.pos.y / TILE))) return false;
+  return true;
+}
+
+export function inWeaponBand(
+  attacker: Entity,
+  target: Entity,
+  w: WeaponDef,
+  nav?: { heightAtWorld(x: number, y: number): number },
+): boolean {
   const d = len(target.pos.x - attacker.pos.x, target.pos.y - attacker.pos.y);
-  const maxReach = w.range + attacker.radius + target.radius;
+  const range = w.range + (nav ? highGroundRangeBonus(attacker, target, nav) : 0);
+  const maxReach = range + attacker.radius + target.radius;
   const minReach = (w.minRange ?? 0) + attacker.radius + target.radius;
   return d <= maxReach && d >= minReach;
 }
@@ -61,11 +90,12 @@ export function acquireTarget(state: GameState, ctx: StepContext, e: Entity, ran
     if (!isEnemy(state, e.owner, o.owner)) continue;
     if (!isVisibleTo(state, e.owner, o, ctx.services.nav)) continue;
     if (weapon && !weaponHitsEntity(ctx.services.registry, weapon, o)) continue;
+    if (heightBlocksGroundFire(e, o, ctx.services.nav, isAirEntity(ctx.services.registry, e))) continue;
     const d = distSq(e.pos.x, e.pos.y, o.pos.x, o.pos.y);
     if (weapon) {
       const minReach = (weapon.minRange ?? 0) + e.radius + o.radius;
       if (d < minReach * minReach) continue;
-      if (e.kind === 'building' && !inWeaponBand(e, o, weapon)) continue;
+      if (e.kind === 'building' && !inWeaponBand(e, o, weapon, ctx.services.nav)) continue;
     }
     const swarm = weapon?.preferSwarms ? swarmScore(state, ctx, e.owner, o, weapon.splashRadius ?? 48) : 0;
     if (
@@ -193,7 +223,12 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
 
     if (e.kind === 'building' && e.chargingAttack) {
       const target = state.entities.get(e.chargingAttack.targetId);
-      if (!isAlive(target) || !isVisibleTo(state, e.owner, target, ctx.services.nav) || !inWeaponBand(e, target, w)) {
+      if (
+        !isAlive(target) ||
+        !isVisibleTo(state, e.owner, target, ctx.services.nav) ||
+        heightBlocksGroundFire(e, target, ctx.services.nav, isAirEntity(ctx.services.registry, e)) ||
+        !inWeaponBand(e, target, w, ctx.services.nav)
+      ) {
         e.chargingAttack = undefined;
       } else if (--e.chargingAttack.remainingTicks <= 0) {
         e.chargingAttack = undefined;
@@ -229,8 +264,16 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
     if (!target) continue;
 
     const d = len(target.pos.x - e.pos.x, target.pos.y - e.pos.y);
-    const reach = w.range + e.radius + target.radius;
+    const reach = w.range + highGroundRangeBonus(e, target, ctx.services.nav) + e.radius + target.radius;
     const minReach = (w.minRange ?? 0) + e.radius + target.radius;
+    if (heightBlocksGroundFire(e, target, ctx.services.nav, isAirEntity(ctx.services.registry, e))) {
+      if (order && order.type === 'attack' && e.kind === 'unit') {
+        const udef = ctx.services.registry.unit(e.defId);
+        const pathCtx = makePathContext(ctx.services.nav, ctx.services.flow, state.relations, e.owner, isAirEntity(ctx.services.registry, e));
+        moveTowardGoal(pathCtx, e, target.pos, udef.speed, dt);
+      }
+      continue;
+    }
     if (d <= reach && d >= minReach) {
       if (!weaponHitsEntity(ctx.services.registry, w, target)) continue;
       const aim = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x);

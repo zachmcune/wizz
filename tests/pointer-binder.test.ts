@@ -103,6 +103,7 @@ function createBinder(mode: InputMode = 'normal', opts?: { paused?: boolean }) {
     confirmPlacement: vi.fn(),
     setMode: vi.fn(),
     notePointerWorld: vi.fn(),
+    worldFromScreen: vi.fn((p: { x: number; y: number }) => screenToWorld(p, CAM)),
     previewWallAt: vi.fn(),
   };
   const binder = new PointerBinder(canvas as unknown as HTMLCanvasElement, {

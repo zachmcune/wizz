@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { projectGround } from '../src/core/coords';
 import { VISUAL_HEIGHT_STEP } from '../src/core/projection';
-import { terrainTopFill } from '../src/render/terrain-draw';
+import { terrainTopFill, fogRunLift } from '../src/render/terrain-draw';
+import type { MapData } from '../src/data/defs';
 import {
   dropWallQuad,
   projectLiftedGround,
@@ -47,5 +48,13 @@ describe('raised ground fill', () => {
     const high = terrainTopFill(4, 5, 1, false);
     expect(high).toBeGreaterThan(low);
     expect(terrainTopFill(4, 5, 1, true)).toBe(terrainTopFill(3, 8, 0, true));
+  });
+
+  it('keeps fog lifted with terrain even on the cheap graphics path', () => {
+    const heights = new Array(16).fill(0);
+    heights[5] = 1;
+    const map = { tileW: 4, tileH: 4, tiles: new Array(16).fill(0), heights } as MapData;
+    expect(fogRunLift(map, { tx: 1, ty: 1, tw: 1 }, true)).toBe(1);
+    expect(fogRunLift(map, { tx: 1, ty: 1, tw: 1 }, false)).toBe(1);
   });
 });

@@ -188,7 +188,11 @@ export function beamWeaponSystem(state: GameState, ctx: StepContext): void {
     }
 
     const target = acquireTarget(state, ctx, e, sightOf(ctx, e), w);
-    if (!target || !inWeaponBand(e, target, w) || !isVisibleTo(state, e.owner, target, ctx.services.nav)) {
+    if (
+      !target ||
+      !inWeaponBand(e, target, w, ctx.services.nav) ||
+      !isVisibleTo(state, e.owner, target, ctx.services.nav)
+    ) {
       stopBeam(e, ctx);
       continue;
     }

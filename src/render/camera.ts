@@ -39,8 +39,8 @@ export class Camera implements CameraView {
     this.clampToBounds();
   }
 
-  centerOn(x: number, y: number): void {
-    const p = projectGround({ x, y });
+  centerOn(x: number, y: number, visualHeight = 0): void {
+    const p = projectGround({ x, y }, visualHeight);
     const cX = p.x - this.viewW / (2 * this.zoom);
     const cY = p.y - this.viewH / (2 * this.zoom);
     const a = cX / OBLIQUE_SCALE_X;

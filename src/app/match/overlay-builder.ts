@@ -1,4 +1,4 @@
-import { screenToWorld } from '../../core/coords';
+import { screenToWorldOnHeightField } from '../../core/coords';
 import type { Vec2 } from '../../core/coords';
 import type { Registry } from '../../data/registry';
 import type { Camera } from '../../render/camera';
@@ -54,7 +54,13 @@ export function buildMatchOverlay(
   if ((session.mode === 'spell' || session.mode === 'superweapon') && session.spellId) {
     const def = registry.spells.get(session.spellId);
     if (def && def.aoeRadius > 0) {
-      const w = screenToWorld(lastPointer, camera.view());
+      const w = screenToWorldOnHeightField(
+        lastPointer,
+        camera.view(),
+        (tx, ty) => services.nav.heightAt(tx, ty),
+        services.nav.w,
+        services.nav.h,
+      );
       spell = { x: w.x, y: w.y, radius: def.aoeRadius };
     }
   }

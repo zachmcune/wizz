@@ -4,6 +4,7 @@ import { GameLoop } from '../core/game-loop';
 import type { Registry } from '../data/registry';
 import type { GameState, Command, PlayerId, MatchConfig } from '../sim/types';
 import type { SimServices } from '../sim/context';
+import { visualHeightAt } from '../render/visual-height';
 import { Renderer } from '../render/renderer';
 import { GestureRecognizer } from '../input/gesture';
 import { InputController } from '../input/controller';
@@ -222,9 +223,12 @@ export class Game {
     this.renderer.setNav(this.services.nav);
     this.renderer.setOwnerColors(this.state, this.humanId);
 
-    const start = this.registry.map(this.state.mapId).startLocations[0]!;
+    const map = this.registry.map(this.state.mapId);
+    const start = map.startLocations[0]!;
     const sanctum = [...this.state.entities.values()].find((e) => e.owner === this.humanId && e.defId === 'sanctum');
-    this.renderer.camera.centerOn(sanctum?.pos.x ?? start.x, sanctum?.pos.y ?? start.y);
+    const focusX = sanctum?.pos.x ?? start.x;
+    const focusY = sanctum?.pos.y ?? start.y;
+    this.renderer.camera.centerOn(focusX, focusY, visualHeightAt(map, focusX, focusY));
 
     const mapSize = Math.max(72, Math.min(112, Math.floor(window.innerHeight * 0.26)));
     this.minimap = new Minimap(this.registry.map(this.state.mapId), this.renderer.camera, this.colorByOwner, mapSize);
@@ -432,7 +436,10 @@ export class Game {
     this.simCtrl.setSaveMeta(this.saveMeta, this.sandboxMode);
     this.sandboxPanel?.setControlledPlayer(playerId);
     const sanctum = [...this.state.entities.values()].find((e) => e.owner === playerId && e.defId === 'sanctum');
-    if (sanctum) this.renderer.camera.centerOn(sanctum.pos.x, sanctum.pos.y);
+    if (sanctum) {
+      const map = this.registry.map(this.state.mapId);
+      this.renderer.camera.centerOn(sanctum.pos.x, sanctum.pos.y, visualHeightAt(map, sanctum.pos.x, sanctum.pos.y));
+    }
     this.hud.showHint(`Now controlling ${playerId}`);
   }
 

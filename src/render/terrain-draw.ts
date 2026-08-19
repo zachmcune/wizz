@@ -15,20 +15,20 @@ import {
 /** Impassable rock / map-border blocks sit one extra level above walkable high ground. */
 const CLIFF_VISUAL_HEIGHT = 2;
 
-const WALL_SE = 0x2a2438;
-const WALL_SW = 0x15121c;
-const CLIFF_TOP = 0x2c2838;
-const RIM_LIGHT = 0xb8c6de;
-const RIM_SHADE = 0x6d7c96;
-const RAMP_FILL = 0x6b5340;
-const RAMP_HATCH = 0xc4a07a;
+const WALL_SE = 0x6b5340;
+const WALL_SW = 0x3d3228;
+const CLIFF_TOP = 0x3a3448;
+const RIM_LIGHT = 0xd4e2f4;
+const RIM_SHADE = 0x8a9bb4;
+const RAMP_FILL = 0x7a5e48;
+const RAMP_HATCH = 0xe0c09a;
 
 export function terrainTopFill(tx: number, ty: number, height: number, ramp: boolean): number {
   if (ramp) return RAMP_FILL;
   if (height <= 0) return (tx + ty) % 2 === 0 ? 0x1a1826 : 0x1d1b2a;
   const even = (tx + ty) % 2 === 0;
-  if (height === 1) return even ? 0x3c465c : 0x454f68;
-  return even ? 0x4c5870 : 0x56627c;
+  if (height === 1) return even ? 0x5a6a88 : 0x667694;
+  return even ? 0x6d7c96 : 0x7a8aa4;
 }
 
 function neighborDrawHeight(map: MapData, tx: number, ty: number): number {
@@ -152,8 +152,7 @@ export function buildTerrainGraphics(map: MapData): Graphics {
   return g;
 }
 
-function fogRunLift(map: MapData, run: FogRun, cheap: boolean): number {
-  if (cheap) return 0;
+export function fogRunLift(map: MapData, run: FogRun, _cheap = false): number {
   let lift = 0;
   for (let i = 0; i < run.tw; i++) {
     const h = visualHeightAtTile(map, run.tx + i, run.ty);
