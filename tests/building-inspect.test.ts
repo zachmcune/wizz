@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getRegistry } from './helpers';
-import { buildingInspectInfo, missingRequiresLabel } from '../src/ui/hud/building-inspect';
+import { buildingInspectInfo, missingRequiresLabel, BUILD_INSPECT_IDLE_DESC, BUILD_INSPECT_IDLE_NAME } from '../src/ui/hud/building-inspect';
 
 const reg = getRegistry();
 
@@ -100,5 +100,10 @@ describe('building inspect info', () => {
     const sanctuary = buildingInspectInfo(reg.building('sanctuary_spire'), reg, player(['arcane_nexus']));
     const aura = sanctuary.facts.find((f) => f.label === 'Aura')?.text ?? '';
     expect(aura).toMatch(/Heals/i);
+  });
+
+  it('keeps a stable idle prompt for the reserved inspect slot', () => {
+    expect(BUILD_INSPECT_IDLE_NAME).toBe('Building info');
+    expect(BUILD_INSPECT_IDLE_DESC).toMatch(/select a building/i);
   });
 });
