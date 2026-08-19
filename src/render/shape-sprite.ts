@@ -842,22 +842,6 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     drawIsoPyramid(g, 0, -r * 0.05, r * 0.42, r * 0.18, r * 0.85, parseHex(fill));
     drawAccentGlyph(g, 'storm_caster', 0, -r * 0.45, r * 0.58, accent, dir);
   },
-  arcane_bolt: (g, size, fill, accent, dir) => {
-    const r = size / 2;
-    const ang = (dir / 8) * Math.PI * 2 - Math.PI / 2;
-    const tx = Math.cos(ang);
-    const ty = Math.sin(ang) * 0.6;
-    const fillN = parseHex(fill);
-    const accentN = parseHex(accent);
-    g.circle(0, 0, r * 0.5).fill({ color: fillN, alpha: 0.35 });
-    g.poly([
-      tx * r * 0.95, ty * r * 0.95,
-      -tx * r * 0.45 + -ty * r * 0.4, -ty * r * 0.45 + tx * r * 0.4,
-      -tx * r * 0.2, -ty * r * 0.2,
-      -tx * r * 0.45 - -ty * r * 0.4, -ty * r * 0.45 - tx * r * 0.4,
-    ]).fill(accentN).stroke({ width: 1, color: OUTLINE });
-    g.circle(tx * r * 0.1, ty * r * 0.1, r * 0.16).fill({ color: 0xffffff, alpha: 0.9 });
-  },
   sanctum: (g, size, fill, accent, dir) => {
     const r = size / 2;
     const fillN = parseHex(fill);

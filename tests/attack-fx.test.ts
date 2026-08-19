@@ -64,10 +64,13 @@ describe('attack tells (Phase 1)', () => {
   });
 
   it('does not use the generic white ping as the melee or slam hit', () => {
-    const generic = { kind: 'flash', color: 0xffffff, radius: 5 };
+    const generic = { kind: 'flash' as const, color: 0xffffff, radius: 5 };
     for (const kind of ['lunge_slash', 'bolt', 'slam'] as const) {
       const hits = attackHitBursts(kind, 0.4);
-      expect(hits.some((b) => b.kind === generic.kind && b.color === generic.color && b.radius === generic.radius)).toBe(false);
+      expect(
+        hits.some((b) => b.kind === generic.kind && b.color === generic.color && b.radius === generic.radius),
+        kind,
+      ).toBe(false);
     }
   });
 
@@ -123,8 +126,9 @@ describe('melee fire stays instant in the sim', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
-    const dummy = spawnEntity(state, services, null, 'stone_golem', 'player1', 720, 700);
-    const imp = spawnEntity(state, services, null, 'imp_swarmling', 'player0', 700, 700);
+    const hq = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const dummy = spawnEntity(state, services, null, 'stone_golem', 'player1', hq.pos.x + 28, hq.pos.y);
+    const imp = spawnEntity(state, services, null, 'imp_swarmling', 'player0', hq.pos.x, hq.pos.y + 4);
     sim.enqueueNow([{ type: 'attack', playerId: 'player0', entityIds: [imp.id], targetId: dummy.id }]);
 
     let fired = false;
@@ -142,8 +146,9 @@ describe('melee fire stays instant in the sim', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
-    const dummy = spawnEntity(state, services, null, 'stone_golem', 'player1', 820, 700);
-    const archer = spawnEntity(state, services, null, 'arcane_archer', 'player0', 700, 700);
+    const hq = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const dummy = spawnEntity(state, services, null, 'stone_golem', 'player1', hq.pos.x + 140, hq.pos.y);
+    const archer = spawnEntity(state, services, null, 'arcane_archer', 'player0', hq.pos.x + 16, hq.pos.y);
     sim.enqueueNow([{ type: 'attack', playerId: 'player0', entityIds: [archer.id], targetId: dummy.id }]);
 
     let sawBolt = false;

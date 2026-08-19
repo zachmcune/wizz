@@ -86,7 +86,7 @@ export function attackHitBursts(kind: AttackFxKind, facing: number): AttackFxBur
   if (kind === 'bolt') {
     return [
       { kind: 'flash', color: BOLT, radius: 11, angle: facing },
-      { kind: 'flash', color: BOLT_CORE, radius: 5, angle: facing },
+      { kind: 'flash', color: BOLT_CORE, radius: 4, angle: facing },
       { kind: 'ring', color: BOLT, radius: 16, angle: facing, decorative: true },
     ];
   }
