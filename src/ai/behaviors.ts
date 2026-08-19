@@ -20,9 +20,14 @@ import {
 } from './intel';
 import {
   assignedHarvestersPerNode,
+  approachPoints,
+  constructionYards,
   enemiesNear,
   idleArmy,
+  isDefenseBuilding,
   nearestNode,
+  remainingMana,
+  stagingPoint,
 } from './shared';
 import type { AiDecisionContext, AiStrategyConfig } from './strategies/types';
 
@@ -49,6 +54,7 @@ export function assignHarvesters(ctx: AiDecisionContext, sanctum: BuildingEntity
   for (const w of ownedBy(state, p.id)) {
     if (!isHarvester(w) || !isAlive(w)) continue;
     if (w.orders.length > 0 || w.state !== 'idle') continue;
+    if (profile.workerFlee && enemiesNear(state, p.id, w.pos.x, w.pos.y, WORKER_THREAT_RADIUS).length) continue;
     const node = profile.expandNodes
       ? (pickSpreadNode(ctx, w, sanctum, assignments) ?? nearestHomeNode(state, w, sanctum) ?? nearestNode(state, w))
       : (nearestHomeNode(state, w, sanctum) ?? nearestNode(state, w));
@@ -139,7 +145,7 @@ export function trainWeavers(ctx: AiDecisionContext, config: AiStrategyConfig, a
   if (!vault || !buildingHasPower(state, services.registry, vault)) return;
   if ((getProductionQueue(vault)?.length ?? 0) >= profile.maxQueue) return;
   const udef = services.registry.units.get(config.production.weaverUnit);
-  if (!udef || p.mana < udef.cost) return;
+  if (!udef || remainingMana(ctx) < udef.cost) return;
   if (!udef.requires.every((r) => p.unlockedTech.includes(r))) return;
   cmds.push({ type: 'produce', playerId: p.id, buildingId: vault.id, defId: config.production.weaverUnit });
 }
@@ -167,30 +173,30 @@ export function produceArmy(ctx: AiDecisionContext, config: AiStrategyConfig, co
   if (roll(state.tick, p.id, 'produce', profile.missChance)) return;
   const reg = services.registry;
   const prod = config.production;
-  const circle = buildingsOf(state, p.id).find((b) => b.defId === prod.armyBuilding && b.buildProgress === undefined);
-  const forge = buildingsOf(state, p.id).find((b) => b.defId === prod.siegeBuilding && b.buildProgress === undefined);
+  const circles = buildingsOf(state, p.id).filter((b) => b.defId === prod.armyBuilding && b.buildProgress === undefined);
+  const forges = buildingsOf(state, p.id).filter((b) => b.defId === prod.siegeBuilding && b.buildProgress === undefined);
 
   const tryProduce = (building: BuildingEntity | undefined, defId: string): boolean => {
     if (!building || !buildingHasPower(state, reg, building)) return false;
-    if ((getProductionQueue(building)?.length ?? 0) >= profile.maxQueue) return false;
+    const queued = getProductionQueue(building)?.length ?? 0;
+    const pending = cmds.filter((c) => c.type === 'produce' && c.buildingId === building.id).length;
+    if (queued + pending >= profile.maxQueue) return false;
     const udef = reg.units.get(defId);
-    if (!udef || p.mana < udef.cost) return false;
+    if (!udef || remainingMana(ctx) < udef.cost) return false;
     if (!udef.requires.every((r) => p.unlockedTech.includes(r))) return false;
+    const wispDef = reg.units.get(prod.harvesterUnit);
+    const wispCount = ownedBy(state, p.id).filter((e) => e.kind === 'unit' && e.defId === prod.harvesterUnit).length;
+    if (wispDef && wispCount < diff.wispTarget && remainingMana(ctx) - udef.cost < wispDef.cost) return false;
     cmds.push({ type: 'produce', playerId: p.id, buildingId: building.id, defId });
     return true;
   };
 
-  if (circle) {
-    const airCount = ownedBy(state, p.id).filter((e) => e.kind === 'unit' && e.defId === prod.airUnit).length;
-    if (
-      profile.airTarget > 0 &&
-      combatCount >= 5 &&
-      airCount < profile.airTarget &&
-      tryProduce(circle, prod.airUnit)
-    ) {
-      return;
+  const airCount = ownedBy(state, p.id).filter((e) => e.kind === 'unit' && e.defId === prod.airUnit).length;
+  for (const circle of circles) {
+    if (profile.airTarget > 0 && combatCount >= 5 && airCount < profile.airTarget && tryProduce(circle, prod.airUnit)) {
+      continue;
     }
-    if (p.unlockedTech.includes('arcane_nexus') && combatCount >= 6 && tryProduce(circle, prod.nexusUnit)) return;
+    if (p.unlockedTech.includes('arcane_nexus') && combatCount >= 6 && tryProduce(circle, prod.nexusUnit)) continue;
     const phase = Math.floor(state.tick / 40) % prod.armyRotation.length;
     const rotated = [...prod.armyRotation.slice(phase), ...prod.armyRotation.slice(0, phase)];
     for (const uid of rotated) {
@@ -198,9 +204,11 @@ export function produceArmy(ctx: AiDecisionContext, config: AiStrategyConfig, co
     }
   }
 
-  if (forge && combatCount >= Math.floor(diff.armyThreshold * prod.forgeArmyThresholdFactor)) {
-    for (const uid of prod.siegeUnits) {
-      if (tryProduce(forge, uid)) break;
+  if (combatCount >= Math.floor(diff.armyThreshold * prod.forgeArmyThresholdFactor)) {
+    for (const forge of forges) {
+      for (const uid of prod.siegeUnits) {
+        if (tryProduce(forge, uid)) break;
+      }
     }
   }
 }
@@ -214,12 +222,16 @@ export function decideSpells(ctx: AiDecisionContext, config: AiStrategyConfig, a
   const requireVisible = profile.intel !== 'omniscient';
   const cluster = densestEnemyCluster(ctx, METEOR_RADIUS, requireVisible);
   const hq = omniscientEnemyHq(ctx);
+  const from = army[0]?.pos ?? hq?.pos ?? { x: 0, y: 0 };
+  const defense = pickAttackObjective(ctx, from, config.combat.attackBias);
   const lanceTarget =
-    profile.id === 'hard' && cluster && cluster.count >= 3
+    cluster && cluster.count >= (profile.id === 'easy' ? 99 : 3)
       ? { x: cluster.x, y: cluster.y }
-      : hq
-        ? { x: hq.pos.x, y: hq.pos.y }
-        : pickAttackObjective(ctx, army[0]?.pos ?? { x: 0, y: 0 }, config.combat.attackBias);
+      : defense
+        ? { x: defense.x, y: defense.y }
+        : hq
+          ? { x: hq.pos.x, y: hq.pos.y }
+          : null;
 
   if (lanceTarget) {
     if (beam && beam.state === 'firing') {
@@ -264,7 +276,7 @@ export function decideSpells(ctx: AiDecisionContext, config: AiStrategyConfig, a
   if (!profile.blinkSiege) return;
   const blinkCd = p.spellCooldowns[config.spells.blink] ?? 0;
   const siege = idle.filter((u) => u.defId === config.combat.siegeUnit);
-  const dest = hq ? { x: hq.pos.x, y: hq.pos.y } : lanceTarget;
+  const dest = defense ?? (hq ? { x: hq.pos.x, y: hq.pos.y } : lanceTarget);
   if (blinkCd === 0 && siege.length && dest) {
     const lead = siege[0]!;
     const dx = dest.x - lead.pos.x;
@@ -287,7 +299,6 @@ export function decideSpells(ctx: AiDecisionContext, config: AiStrategyConfig, a
 export function decideScout(ctx: AiDecisionContext, config: AiStrategyConfig, army: UnitEntity[]): void {
   const { state, player: p, profile, cmds } = ctx;
   if (!profile.scout || state.tick >= LATE_GAME_TICK) return;
-  if (army.some((u) => u.orders.some((o) => o.type === 'attackMove' || o.type === 'move'))) return;
   const scouts = idleArmy(army).filter((u) => u.defId === config.production.scoutUnit);
   const scout = scouts[0];
   if (!scout) return;
@@ -306,8 +317,12 @@ export function decideCombat(
   const { state, services, player: p, difficulty: diff, profile, cmds } = ctx;
   if (!army.length) return;
 
+  const yards = constructionYards(state, p.id);
   const defendRadius = config.defendRadius * profile.defendRadiusScale;
-  let threats = enemiesNear(state, p.id, sanctum.pos.x, sanctum.pos.y, defendRadius);
+  let threats: ReturnType<typeof enemiesNear> = [];
+  for (const yard of yards.length ? yards : [sanctum]) {
+    threats = mergeEntities(threats, enemiesNear(state, p.id, yard.pos.x, yard.pos.y, defendRadius));
+  }
   if (profile.workerDefense) {
     for (const w of ownedBy(state, p.id)) {
       if (!isHarvester(w) || !isAlive(w)) continue;
@@ -325,13 +340,18 @@ export function decideCombat(
 
   if (threats.length > 0 && defendPool.length >= (profile.id === 'easy' ? 2 : 3)) {
     const fraction = late ? 0.25 : Math.min(1, config.combat.defendFraction * profile.defendFractionScale);
-    const defendCount = Math.min(Math.floor(defendPool.length * fraction), Math.max(2, threats.length + 1));
+    const defendCount = Math.min(
+      defendPool.length,
+      Math.max(2, Math.floor(defendPool.length * fraction)),
+    );
     const defenders = defendPool.slice(0, defendCount);
     const target = profile.focusFire ? pickFocusTarget(threats) : threats[0]!;
     cmds.push({ type: 'attack', playerId: p.id, entityIds: defenders.map((u) => u.id), targetId: target.id });
     const defendIds = new Set(defenders.map((u) => u.id));
     army = army.filter((u) => !defendIds.has(u.id));
   }
+
+  army = peelHoldGuards(ctx, config, army, yards);
 
   pullWoundedHome(ctx, sanctum, army, late);
 
@@ -350,31 +370,150 @@ export function decideCombat(
   const healthyIdle = idleArmy(army).filter((u) => fitForPush(u, profile.retreatHp, late));
   const pushScale = late ? 0.45 : profile.minPushScale;
   const minPush = Math.max(3, Math.floor(diff.armyThreshold * config.combat.minPushFactor * pushScale));
+  const massing = !late && profile.id !== 'easy';
+  const toward =
+    pickAttackObjective(ctx, sanctum.pos, config.combat.attackBias) ?? omniscientEnemyHq(ctx)?.pos ?? { x: sanctum.pos.x + 200, y: sanctum.pos.y };
+  const staging = stagingPoint(sanctum.pos, toward, 220);
+
+  const canGrow =
+    remainingMana(ctx) >= 140 ||
+    buildingsOf(state, p.id).some((b) => (getProductionQueue(b)?.length ?? 0) > 0);
+  if (massing && healthyIdle.length < minPush && canGrow) {
+    rallyToStaging(ctx, healthyIdle, staging);
+    return;
+  }
   if (!late && army.length < minPush && healthyIdle.length < 3) return;
   if (healthyIdle.length < (late ? 1 : Math.max(2, Math.floor(minPush / 2)))) return;
 
   const waveFrac = late ? 1 : profile.waveFraction;
-  const waveSize = Math.max(late ? 1 : 2, Math.floor(healthyIdle.length * waveFrac));
-  let wave = healthyIdle.slice(0, waveSize);
+  const minWave = massing ? minPush : late ? 1 : 2;
+  const keep = late || profile.id === 'easy'
+    ? 0
+    : Math.min(Math.max(2, profile.holdCount), Math.max(0, healthyIdle.length - minPush));
+  const sorted = [...healthyIdle].sort((a, b) => {
+    const da = len(a.pos.x - sanctum.pos.x, a.pos.y - sanctum.pos.y);
+    const db = len(b.pos.x - sanctum.pos.x, b.pos.y - sanctum.pos.y);
+    return db - da || a.id - b.id;
+  });
+  const waveSize = Math.max(minWave, Math.floor(sorted.length * waveFrac) - keep);
+  const wave = uniqueUnits(sorted.slice(0, Math.max(0, sorted.length - keep)).slice(0, waveSize));
+  issuePush(ctx, config, sanctum, wave);
+}
 
-  const objective = pickAttackObjective(ctx, sanctum.pos, config.combat.attackBias);
-  const siegeReady = wave.filter((u) => u.defId === config.combat.siegeUnit);
-  const hq = profile.intel === 'omniscient' ? omniscientEnemyHq(ctx) : null;
-  if (hq && siegeReady.length > 0) {
-    const extra = Math.max(siegeReady.length + 3, minPush);
-    wave = uniqueUnits([...siegeReady, ...wave]).slice(0, extra);
-    cmds.push({ type: 'attackMove', playerId: p.id, entityIds: wave.map((u) => u.id), x: hq.pos.x, y: hq.pos.y });
+function rallyToStaging(
+  ctx: AiDecisionContext,
+  units: UnitEntity[],
+  staging: { x: number; y: number },
+): void {
+  const need = units.filter((u) => len(u.pos.x - staging.x, u.pos.y - staging.y) > 80);
+  if (!need.length) return;
+  ctx.cmds.push({
+    type: 'move',
+    playerId: ctx.player.id,
+    entityIds: need.map((u) => u.id),
+    x: staging.x,
+    y: staging.y,
+  });
+}
+
+function peelHoldGuards(
+  ctx: AiDecisionContext,
+  config: AiStrategyConfig,
+  army: UnitEntity[],
+  yards: BuildingEntity[],
+): UnitEntity[] {
+  const { state, player: p, profile, cmds } = ctx;
+  if (profile.holdCount <= 0) return army;
+  if (ctx.state.tick >= LATE_GAME_TICK) return army;
+  const camps = yards.filter((b) => b.defId === config.production.expandBuilding);
+  if (!camps.length) return army;
+  const taken = new Set<EntityId>();
+  let remaining = [...army];
+  for (const camp of camps.sort((a, b) => a.id - b.id)) {
+    if (enemiesNear(state, p.id, camp.pos.x, camp.pos.y, 140).length) continue;
+    const nearby = remaining.filter((u) => len(u.pos.x - camp.pos.x, u.pos.y - camp.pos.y) <= 180);
+    const missing = profile.holdCount - nearby.length;
+    if (missing <= 0) {
+      for (const u of nearby.slice(0, profile.holdCount)) taken.add(u.id);
+      continue;
+    }
+    const idle = idleArmy(remaining)
+      .filter((u) => !nearby.includes(u))
+      .sort((a, b) => len(a.pos.x - camp.pos.x, a.pos.y - camp.pos.y) - len(b.pos.x - camp.pos.x, b.pos.y - camp.pos.y));
+    const guards = [...nearby, ...idle.slice(0, missing)].slice(0, profile.holdCount);
+    const movers = guards.filter((u) => u.orders.length === 0 && len(u.pos.x - camp.pos.x, u.pos.y - camp.pos.y) > 90);
+    if (movers.length) {
+      cmds.push({ type: 'move', playerId: p.id, entityIds: movers.map((u) => u.id), x: camp.pos.x, y: camp.pos.y });
+    }
+    for (const u of guards) taken.add(u.id);
+    remaining = remaining.filter((u) => !taken.has(u.id));
+  }
+  return remaining;
+}
+
+function issuePush(
+  ctx: AiDecisionContext,
+  config: AiStrategyConfig,
+  sanctum: BuildingEntity,
+  wave: UnitEntity[],
+): void {
+  const { player: p, profile, cmds, services } = ctx;
+  if (!wave.length) return;
+  if (lateGame(ctx)) {
+    const hq = omniscientEnemyHq(ctx);
+    const dest = hq ?? pickAttackObjective(ctx, sanctum.pos, config.combat.attackBias);
+    if (!dest) return;
+    const x = 'pos' in dest ? dest.pos.x : dest.x;
+    const y = 'pos' in dest ? dest.pos.y : dest.y;
+    cmds.push({ type: 'attackMove', playerId: p.id, entityIds: wave.map((u) => u.id), x, y });
     return;
   }
-  if (objective) {
+  const from = {
+    x: wave.reduce((s, u) => s + u.pos.x, 0) / wave.length,
+    y: wave.reduce((s, u) => s + u.pos.y, 0) / wave.length,
+  };
+  const objective = pickAttackObjective(ctx, from, config.combat.attackBias);
+  if (!objective) return;
+
+  const siege = wave.filter((u) => u.defId === config.combat.siegeUnit);
+  const rest = wave.filter((u) => u.defId !== config.combat.siegeUnit);
+  const target = objective.entityId ? ctx.state.entities.get(objective.entityId) : undefined;
+  const smashDefense = target && target.kind === 'building' && isDefenseBuilding(services.registry, target.defId);
+
+  if (siege.length && smashDefense && target) {
+    cmds.push({ type: 'attack', playerId: p.id, entityIds: siege.map((u) => u.id), targetId: target.id });
+  } else if (siege.length) {
+    cmds.push({ type: 'attackMove', playerId: p.id, entityIds: siege.map((u) => u.id), x: objective.x, y: objective.y });
+  }
+
+  const flankers = rest.length ? rest : siege.length ? [] : wave;
+  if (!flankers.length) return;
+
+  const axes = lateGame(ctx) ? 1 : profile.attackAxes;
+  const points = approachPoints(sanctum.pos, { x: objective.x, y: objective.y }, axes);
+  const groups = splitUnits(rest.length ? rest : wave, points.length);
+  for (let i = 0; i < groups.length; i++) {
+    const dest = points[i] ?? points[0]!;
     cmds.push({
       type: 'attackMove',
       playerId: p.id,
-      entityIds: wave.map((u) => u.id),
-      x: objective.x,
-      y: objective.y,
+      entityIds: groups[i]!.map((u) => u.id),
+      x: dest.x,
+      y: dest.y,
     });
   }
+}
+
+function lateGame(ctx: AiDecisionContext): boolean {
+  return ctx.state.tick >= LATE_GAME_TICK;
+}
+
+function splitUnits(units: UnitEntity[], parts: number): UnitEntity[][] {
+  const n = Math.max(1, parts);
+  const groups: UnitEntity[][] = Array.from({ length: n }, () => []);
+  const sorted = [...units].sort((a, b) => a.id - b.id);
+  for (let i = 0; i < sorted.length; i++) groups[i % n]!.push(sorted[i]!);
+  return groups.filter((g) => g.length > 0);
 }
 
 function fitForPush(unit: UnitEntity, retreatHp: number, late: boolean): boolean {

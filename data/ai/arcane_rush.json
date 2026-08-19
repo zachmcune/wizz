@@ -50,20 +50,30 @@
     "armyRotation": ["imp_swarmling", "rift_familiar", "arcane_archer"],
     "siegeUnits": ["siege_behemoth", "stone_golem"],
     "siegeArmyThresholdFactor": 0.2,
-    "forgeArmyThresholdFactor": 0.2
+    "forgeArmyThresholdFactor": 0.2,
+    "expandUnit": "waystone_wagon",
+    "expandBuilding": "waystone_camp"
   },
   "combat": {
     "garrisonUnit": "arcane_archer",
     "garrisonBuilding": "arcane_bunker",
     "siegeUnit": "siege_behemoth",
     "defendFraction": 0.2,
-    "minPushFactor": 0.35,
+    "minPushFactor": 0.5,
     "attackBias": {
-      "sanctum": -800,
-      "waystone_camp": -800,
+      "celestial_cannon": -1400,
+      "storm_conductor": -1100,
+      "sanctuary_spire": -1100,
+      "frost_spire": -1000,
+      "inferno_beacon": -1000,
+      "astral_spire": -1000,
+      "arcane_sentry": -900,
+      "waystone_camp": -700,
+      "sanctum": -500,
       "attunement_spire": -400,
       "summoning_circle": -200,
-      "golem_forge": -200
+      "golem_forge": -200,
+      "arcane_bunker": -150
     }
   }
 }

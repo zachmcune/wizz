@@ -39,6 +39,8 @@ const aiStrategySchema = z.object({
     siegeUnits: z.array(z.string()).min(1),
     siegeArmyThresholdFactor: z.number().positive(),
     forgeArmyThresholdFactor: z.number().positive(),
+    expandUnit: z.string(),
+    expandBuilding: z.string(),
   }),
   combat: z.object({
     garrisonUnit: z.string(),

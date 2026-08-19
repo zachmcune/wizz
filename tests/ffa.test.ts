@@ -60,7 +60,8 @@ describe('N-player / FFA / teams & win conditions', () => {
     const { state, services } = initMatch(reg, cfg);
     const sim = createSimulation(state, services);
     let ended = false;
-    for (let i = 0; i < 60 * 20 * 25; i++) {
+    for (let i = 0; i < 60 * 20 * 40; i++) {
+      // up to ~40 minutes of sim time (massed armies + expansions take longer to break a 2v2)
       sim.step();
       if (state.ended) {
         ended = true;

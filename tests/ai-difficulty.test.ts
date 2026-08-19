@@ -12,9 +12,11 @@ import {
   decideCombat,
   decideSpells,
   fleeThreatenedWorkers,
+  produceArmy,
   repairOwnBuildings,
   trainWeavers,
 } from '../src/ai/behaviors';
+import { decideExpansion } from '../src/ai/expand';
 import { findSanctum, isArmyUnit } from '../src/ai/shared';
 import type { AiDecisionContext } from '../src/ai/strategies/types';
 import type { Command, MatchConfig } from '../src/sim/types';
@@ -81,6 +83,13 @@ describe('AI difficulty profiles', () => {
     expect(hard.repairAll).toBe(true);
     expect(hard.intel).toBe('omniscient');
     expect(hard.waveFraction).toBeGreaterThan(normal.waveFraction);
+    expect(easy.attackAxes).toBe(1);
+    expect(normal.attackAxes).toBe(2);
+    expect(hard.attackAxes).toBe(3);
+    expect(easy.expandCamps).toBe(0);
+    expect(normal.expandCamps).toBeGreaterThan(0);
+    expect(hard.expandCamps).toBeGreaterThan(normal.expandCamps);
+    expect(hard.extraFactories).toBeGreaterThan(normal.extraFactories);
   });
 
   it('exposes lobby hints for every difficulty', () => {
@@ -214,5 +223,146 @@ describe('AI difficulty behaviors', () => {
       const b = runHeadless(reg, cfg, 480);
       expect(hashState(a)).toBe(hashState(b));
     }
+  });
+
+  function spawnArmy(ctx: AiDecisionContext, count: number, defId = 'imp_swarmling'): void {
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    for (let i = 0; i < count; i++) {
+      spawnEntity(
+        ctx.state,
+        ctx.services,
+        null,
+        defId,
+        ctx.player.id,
+        sanctum.pos.x - TILE * (3 + (i % 6)),
+        sanctum.pos.y + TILE * Math.floor(i / 6),
+      );
+    }
+  }
+
+  it('Hard masses an army instead of sending two troops', () => {
+    const small = makeCtx('hard');
+    spawnArmy(small.ctx, 2);
+    decideCombat(small.ctx, strategyForPlayer(small.ctx.player).config, findSanctum(small.ctx.state, small.ctx.player.id)!, [
+      ...small.ctx.state.entities.values(),
+    ].filter((e) => isArmyUnit(small.ctx.services.registry, e)));
+    expect(small.cmds.some((c) => c.type === 'attackMove' || c.type === 'attack')).toBe(false);
+
+    const big = makeCtx('hard');
+    spawnArmy(big.ctx, 12);
+    decideCombat(big.ctx, strategyForPlayer(big.ctx.player).config, findSanctum(big.ctx.state, big.ctx.player.id)!, [
+      ...big.ctx.state.entities.values(),
+    ].filter((e) => isArmyUnit(big.ctx.services.registry, e)));
+    const push = big.cmds.filter((c) => c.type === 'attackMove' || c.type === 'attack');
+    expect(push.length).toBeGreaterThan(0);
+    const sent = new Set(push.flatMap((c) => ('entityIds' in c ? c.entityIds : [])));
+    expect(sent.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it('Easy still dribbles a small clump', () => {
+    const { ctx, cmds } = makeCtx('easy');
+    spawnArmy(ctx, 4);
+    decideCombat(ctx, strategyForPlayer(ctx.player).config, findSanctum(ctx.state, ctx.player.id)!, [
+      ...ctx.state.entities.values(),
+    ].filter((e) => isArmyUnit(ctx.services.registry, e)));
+    expect(cmds.some((c) => c.type === 'attackMove')).toBe(true);
+  });
+
+  it('Hard aims a push at a nearby defense instead of the far HQ', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    const sentry = spawnEntity(
+      ctx.state,
+      ctx.services,
+      null,
+      'arcane_sentry',
+      'player0',
+      sanctum.pos.x + TILE * 4,
+      sanctum.pos.y,
+    );
+    spawnArmy(ctx, 12);
+    decideCombat(ctx, strategyForPlayer(ctx.player).config, sanctum, [
+      ...ctx.state.entities.values(),
+    ].filter((e) => isArmyUnit(ctx.services.registry, e)));
+    const enemyHq = findSanctum(ctx.state, 'player0')!;
+    const towardSentry = cmds.some((c) => {
+      if (c.type === 'attack') return c.targetId === sentry.id;
+      if (c.type === 'attackMove') {
+        const ds = Math.hypot(c.x - sentry.pos.x, c.y - sentry.pos.y);
+        const dh = Math.hypot(c.x - enemyHq.pos.x, c.y - enemyHq.pos.y);
+        return ds < dh;
+      }
+      return false;
+    });
+    expect(towardSentry).toBe(true);
+  });
+
+  it('Hard splits a wave across more than one approach', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    spawnArmy(ctx, 12);
+    decideCombat(ctx, strategyForPlayer(ctx.player).config, findSanctum(ctx.state, ctx.player.id)!, [
+      ...ctx.state.entities.values(),
+    ].filter((e) => isArmyUnit(ctx.services.registry, e)));
+    const dests = cmds
+      .filter((c) => c.type === 'attackMove')
+      .map((c) => `${c.x},${c.y}`);
+    expect(new Set(dests).size).toBeGreaterThan(1);
+  });
+
+  it('Hard produces a Waystone Wagon to expand', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    spawnEntity(ctx.state, ctx.services, null, 'golem_forge', ctx.player.id, sanctum.pos.x + TILE * 6, sanctum.pos.y);
+    unlockTech(ctx.state, ctx.player.id, 'ley_conduit');
+    unlockTech(ctx.state, ctx.player.id, 'golem_forge');
+    ctx.player.mana = 4000;
+    spawnArmy(ctx, 8);
+    recomputePower(ctx.state, ctx.services);
+    decideExpansion(ctx, strategyForPlayer(ctx.player).config, sanctum, 8);
+    expect(cmds.some((c) => c.type === 'produce' && c.defId === 'waystone_wagon')).toBe(true);
+  });
+
+  it('Hard deploys an idle Waystone Wagon on a far node', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    spawnEntity(ctx.state, ctx.services, null, 'waystone_wagon', ctx.player.id, sanctum.pos.x + 20, sanctum.pos.y);
+    decideExpansion(ctx, strategyForPlayer(ctx.player).config, sanctum, 8);
+    expect(cmds.some((c) => c.type === 'move' || c.type === 'deploy')).toBe(true);
+  });
+
+  it('Hard places the Astral Spire once the Nexus is up and mana is banked', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    const prior = [
+      'attunement_spire',
+      'ley_conduit',
+      'summoning_circle',
+      'resonance_vault',
+      'scrying_obelisk',
+      'golem_forge',
+      'arcane_bunker',
+      'arcane_nexus',
+    ];
+    prior.forEach((id, i) => {
+      spawnEntity(ctx.state, ctx.services, null, id, ctx.player.id, sanctum.pos.x + TILE * (4 + (i % 4) * 3), sanctum.pos.y + TILE * Math.floor(i / 4) * 3);
+      unlockTech(ctx.state, ctx.player.id, id);
+    });
+    spawnEntity(ctx.state, ctx.services, null, 'ley_conduit', ctx.player.id, sanctum.pos.x + TILE * 16, sanctum.pos.y);
+    spawnEntity(ctx.state, ctx.services, null, 'ley_conduit', ctx.player.id, sanctum.pos.x + TILE * 16, sanctum.pos.y + TILE * 4);
+    ctx.player.mana = 8000;
+    recomputePower(ctx.state, ctx.services);
+    strategyForPlayer(ctx.player).decide(ctx);
+    expect(cmds.some((c) => c.type === 'build' && c.defId === 'astral_spire')).toBe(true);
+  });
+
+  it('queues army units even while the next building is unaffordable', () => {
+    const { ctx, cmds } = makeCtx('hard');
+    const sanctum = findSanctum(ctx.state, ctx.player.id)!;
+    spawnEntity(ctx.state, ctx.services, null, 'summoning_circle', ctx.player.id, sanctum.pos.x + TILE * 5, sanctum.pos.y);
+    unlockTech(ctx.state, ctx.player.id, 'summoning_circle');
+    ctx.player.mana = 400;
+    recomputePower(ctx.state, ctx.services);
+    produceArmy(ctx, strategyForPlayer(ctx.player).config, 4);
+    expect(cmds.some((c) => c.type === 'produce' && c.defId === 'imp_swarmling')).toBe(true);
   });
 });

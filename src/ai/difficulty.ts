@@ -20,6 +20,14 @@ export interface AiDifficultyProfile {
   waveFraction: number;
   /** Scales strategy minPushFactor. Lower = attacks with a smaller clump. */
   minPushScale: number;
+  /** Independent attack axes (1 = a single blob, 3 = left/center/right). */
+  attackAxes: number;
+  /** Extra Summoning Circles beyond the first. */
+  extraFactories: number;
+  /** Waystone Camps to plant away from the main HQ (0 = turtle). */
+  expandCamps: number;
+  /** Idle troops parked on each expansion. */
+  holdCount: number;
   /** Scales strategy defendRadius. */
   defendRadiusScale: number;
   /** Scales strategy defendFraction. */
@@ -47,8 +55,8 @@ export interface AiDifficultyProfile {
 
 export const AI_DIFFICULTY_HINTS: Record<AiDifficultyId, string> = {
   easy: 'Slow and sloppy — dribbled attacks, no spells or raids. Good for learning the ropes.',
-  normal: 'A competent rival — waves, repairs, scouting, and the odd meteor.',
-  hard: 'Relentless — strong economy, air raids, retreats, and the full spellbook.',
+  normal: 'Masses real waves, cracks defenses, expands with a Waystone, and builds the Astral Spire.',
+  hard: 'Relentless — multi-pronged armies, expansions, superweapons, and the full spellbook.',
 };
 
 const PROFILES: Record<AiDifficultyId, AiDifficultyProfile> = {
@@ -60,6 +68,10 @@ const PROFILES: Record<AiDifficultyId, AiDifficultyProfile> = {
     maxQueue: 1,
     waveFraction: 0.4,
     minPushScale: 0.7,
+    attackAxes: 1,
+    extraFactories: 0,
+    expandCamps: 0,
+    holdCount: 0,
     defendRadiusScale: 0.65,
     defendFractionScale: 0.45,
     retreatHp: 0,
@@ -86,6 +98,10 @@ const PROFILES: Record<AiDifficultyId, AiDifficultyProfile> = {
     maxQueue: 2,
     waveFraction: 0.85,
     minPushScale: 1,
+    attackAxes: 2,
+    extraFactories: 1,
+    expandCamps: 1,
+    holdCount: 2,
     defendRadiusScale: 1,
     defendFractionScale: 1,
     retreatHp: 0.28,
@@ -112,6 +128,10 @@ const PROFILES: Record<AiDifficultyId, AiDifficultyProfile> = {
     maxQueue: 3,
     waveFraction: 1,
     minPushScale: 0.85,
+    attackAxes: 3,
+    extraFactories: 2,
+    expandCamps: 2,
+    holdCount: 3,
     defendRadiusScale: 1.3,
     defendFractionScale: 1.15,
     retreatHp: 0.34,
