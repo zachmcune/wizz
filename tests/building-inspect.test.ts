@@ -11,7 +11,7 @@ function player(unlockedTech: string[], mana = 10_000) {
 describe('building inspect info', () => {
   it('shows cost, power, and ready status for an unlocked affordable building', () => {
     const def = reg.building('ley_conduit');
-    const info = buildingInspectInfo(def, reg, player(['sanctum']));
+    const info = buildingInspectInfo(def, reg, player(['sanctum', 'attunement_spire']));
     expect(info.unlocked).toBe(true);
     expect(info.canPlace).toBe(true);
     expect(info.subtitle).toBe(`${def.cost} mana · +${def.powerProduced} pwr`);
@@ -21,6 +21,15 @@ describe('building inspect info', () => {
     expect(info.statusLine).toBe('Ready to place');
     expect(info.description).toContain('power');
     expect(info.facts.some((f) => f.label === 'Power' && f.text.includes('+60'))).toBe(true);
+  });
+
+  it('names the missing Attunement Spire on opening buildings', () => {
+    const def = reg.building('ley_conduit');
+    const info = buildingInspectInfo(def, reg, player(['sanctum'], def.cost));
+    expect(info.unlocked).toBe(false);
+    expect(info.subtitle).toBe('Needs Attunement Spire');
+    expect(info.statusLine).toBe('Needs Attunement Spire');
+    expect(info.missingRequires.map((r) => r.id)).toEqual(['attunement_spire']);
   });
 
   it('names the missing buildings instead of a generic Locked label', () => {
@@ -55,7 +64,7 @@ describe('building inspect info', () => {
 
   it('reports not enough mana without hiding the cost', () => {
     const def = reg.building('summoning_circle');
-    const info = buildingInspectInfo(def, reg, player(['sanctum'], def.cost - 1));
+    const info = buildingInspectInfo(def, reg, player(['sanctum', 'attunement_spire'], def.cost - 1));
     expect(info.unlocked).toBe(true);
     expect(info.affordable).toBe(false);
     expect(info.canPlace).toBe(false);

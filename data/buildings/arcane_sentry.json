@@ -12,7 +12,7 @@
   "footprint": 1,
   "menuCategory": "defenses",
   "requires": [
-    "sanctum"
+    "attunement_spire"
   ],
   "powerUsed": 20,
   "weapon": {

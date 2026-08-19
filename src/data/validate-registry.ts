@@ -35,10 +35,29 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
     }
   }
 
+  const refineryIds = new Set(
+    [...registry.buildings.values()].filter((b) => b.isRefinery).map((b) => b.id),
+  );
+
   for (const [id, building] of registry.buildings) {
     for (const req of building.requires) {
       if (!buildingIds.has(req)) {
         issues.push({ path: `buildings/${id}.json`, message: `requires "${req}" is not a known building` });
+      }
+    }
+    // Opening mana can be spent on any menu building; require a completed refinery first
+    // so skipping the Attunement Spire cannot soft-lock harvesting.
+    if (building.menuCategory && !building.isRefinery && !building.isConstructionYard) {
+      if (refineryIds.size === 0) {
+        issues.push({
+          path: `buildings/${id}.json`,
+          message: `player-buildable buildings must follow a refinery (none marked isRefinery)`,
+        });
+      } else if (!requiresAnyTransitively(registry, id, refineryIds)) {
+        issues.push({
+          path: `buildings/${id}.json`,
+          message: `player-buildable buildings must require a refinery (directly or via the tech chain) so the opening cannot skip the mana drop-off`,
+        });
       }
     }
     for (const unitId of building.producesUnits ?? []) {
@@ -152,6 +171,20 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
   }
 
   return issues;
+}
+
+function requiresAnyTransitively(
+  registry: Registry,
+  buildingId: string,
+  targets: Set<string>,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (targets.has(buildingId)) return true;
+  if (seen.has(buildingId)) return false;
+  seen.add(buildingId);
+  const def = registry.buildings.get(buildingId);
+  if (!def) return false;
+  return def.requires.some((req) => requiresAnyTransitively(registry, req, targets, seen));
 }
 
 export function assertRegistryValid(registry: Registry): void {

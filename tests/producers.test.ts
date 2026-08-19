@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getRegistry } from './helpers';
-import { initMatch } from '../src/sim/factory';
+import { initMatch, unlockTech } from '../src/sim/factory';
 import { Simulation } from '../src/sim/simulation';
 import { ownedBy } from '../src/sim/queries';
 import { leastBusyProducer, listProducersForUnit, producerLabel, type ProducerInfo } from '../src/ui/hud/producers';
@@ -20,6 +20,8 @@ describe('producer helpers', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
     sim.setAiEnabled(false);
+    unlockTech(state, 'player0', 'attunement_spire');
+    state.players.find((p) => p.id === 'player0')!.mana = 9999;
     sim.enqueueNow([{ type: 'build', playerId: 'player0', defId: 'summoning_circle', x: 420, y: 260 }]);
     sim.step();
     for (let i = 0; i < reg.building('summoning_circle').buildTime * 20 + 10; i++) sim.step();

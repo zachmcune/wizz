@@ -44,6 +44,7 @@ describe('RA2 low power', () => {
     sim.setAiEnabled(false);
     const human = state.players.find((p) => p.id === 'player0')!;
     human.mana = 5000;
+    human.unlockedTech.push('attunement_spire');
     const sanctum = ownedBy(state, human.id).find((e) => e.defId === 'sanctum')!;
     sim.enqueueNow([{ type: 'build', playerId: human.id, defId: 'arcane_sentry', x: sanctum!.pos.x + 96, y: sanctum!.pos.y }]);
     sim.step();
