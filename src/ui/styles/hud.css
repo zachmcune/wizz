@@ -13,13 +13,12 @@
 .hud .spell-confirm,
 .hud .result-card,
 .hud .menu-screen,
-.hud .settings-card {
+.hud .settings-card,
+.hud .cmd-card {
   pointer-events: auto;
 }
-/* Pass clicks through empty cmd-card area; only panels capture input */
-.hud .cmd-card .panel {
-  pointer-events: auto;
-}
+/* Panels still capture input; the card itself must too so it can be the
+   mobile scroll container (pointer-events: none ancestors do not scroll). */
 
 .zoom-slider {
   position: absolute;
@@ -244,7 +243,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 2px 0 4px;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -336,7 +335,6 @@
   flex-direction: row;
   align-items: stretch;
   gap: 4px;
-  min-height: 0;
   min-width: 0;
 }
 .cmd-sidebar {
@@ -382,12 +380,20 @@
   -webkit-overflow-scrolling: touch;
 }
 /* Buttons default to touch-action: manipulation (body), which blocks vertical
-   pan scrolling inside overflow containers on mobile. */
+   pan scrolling inside overflow containers on mobile. Category chips also need
+   pan-y so a downward swipe on the Build tab scrolls the list. */
 .hud-scroll .build-btn,
 .hud-scroll .produce-btn,
 .command-row .build-btn,
-.command-row .produce-btn {
+.command-row .produce-btn,
+.cmd-card .panel-tab,
+.cmd-card .building-row .btn,
+.cmd-card .producer-chip {
   touch-action: pan-y;
+}
+.cmd-card .category-chip,
+.cmd-card .category-chips-scroll {
+  touch-action: pan-x pan-y;
 }
 .btn:active {
   transform: translateY(1px);
@@ -454,7 +460,9 @@
   -webkit-overflow-scrolling: touch;
 }
 .cmd-card > .cmd-card-layout {
-  min-height: 0;
+  /* Do not shrink below content — that clips the build list with no scrollbar.
+     The card is the scroll container (overflow-y: auto + max-height). */
+  flex-shrink: 0;
   min-width: 0;
 }
 .cmd-card > .panel {

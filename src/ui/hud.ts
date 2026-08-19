@@ -168,9 +168,12 @@ export class Hud {
     const keepScroll = (e: Event) => e.stopPropagation();
     for (const node of [
       cmdCard,
+      cmdCardLayout,
+      this.cmdContent,
       this.cmdSidebar,
       this.spellBar.row,
       this.panelTabRow,
+      this.commandMenu.panel.root,
       ...this.commandMenu.touchRoots,
       this.unitOrdersPanel.row,
       this.buildingActions.row,
