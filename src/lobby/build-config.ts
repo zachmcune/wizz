@@ -1,5 +1,6 @@
 import type { MatchConfig } from '../sim/types';
 import type { MapData } from '../data/defs';
+import { missingStartHint } from './start-hint';
 import { teamLabelToId } from './teams';
 import type { LobbyMode, LobbySlot, LobbyState } from './types';
 
@@ -24,14 +25,14 @@ export function validateLobby(state: LobbyState, mode: LobbyMode, map: MapData, 
     errors.push(`This map supports at most ${map.maxPlayers} players`);
   }
 
+  const startHint = missingStartHint(state.slots);
+  if (startHint) errors.push(startHint);
+
   const corners = new Set<number>();
   for (const slot of active) {
-    if (slot.startIndex === null) {
-      errors.push('Each active player must choose a starting position');
-      break;
-    }
+    if (slot.startIndex === null) continue;
     if (corners.has(slot.startIndex)) {
-      errors.push('Each active player needs a unique starting position');
+      errors.push('Each player needs a different corner. Tap another number on the map.');
       break;
     }
     corners.add(slot.startIndex);

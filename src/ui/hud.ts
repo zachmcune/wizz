@@ -1,7 +1,7 @@
 // In-match DOM HUD: context-sensitive, collapsible panels for mobile landscape.
 import type { GameState, PlayerId, Entity } from '../sim/types';
 import { isBuilding, isUnit } from '../sim/types';
-import { isAlive, isPowerShort, powerDeficit, buildingHasPower, radarActive } from '../sim/views';
+import { isAlive, isPowerShort, powerDeficit, buildingHasPower, radarActive, isHarvester } from '../sim/views';
 import { getRally, garrisonedIds, garrisonReservedIds, isChanneling, hasMorph, getMorph } from '../sim/capabilities';
 import type { Registry } from '../data/registry';
 import type { ArtDef, BuildingDef } from '../data/defs';
@@ -16,9 +16,21 @@ import { SpellBar } from './hud/spell-bar';
 import { SuperweaponStatus } from './hud/superweapon-status';
 import { MatchSettingsScreen } from './hud/settings-screen';
 import type { Settings } from '../storage/settings';
+import { saveSettings } from '../storage/settings';
 import type { AudioManager } from '../audio/audio';
 import { placementConfirmHint, placementCostLabel } from '../input/placement';
 import { radarOfflineHint } from './radar-hint';
+import { CoachCard } from './coach/card';
+import {
+  advanceMatchCoach,
+  initialMatchCoachStep,
+  matchCoachCopy,
+  RADAR_OFFLINE_HOW,
+  RADAR_OFFLINE_TITLE,
+  skipMatchCoachStep,
+  type MatchCoachFacts,
+  type MatchCoachStep,
+} from './coach/progress';
 
 export interface HudOptions {
   settings: Settings;
@@ -28,6 +40,8 @@ export interface HudOptions {
     isPaused: () => boolean;
     onToggle: () => void;
   } | null;
+  /** Developer sandbox has its own banner; skip the first-match coach. */
+  sandbox?: boolean;
 }
 
 export class Hud {
@@ -67,6 +81,11 @@ export class Hud {
   private commandTabBtn = el('button', 'btn panel-tab', 'Build');
   private cmdSidebar = el('div', 'cmd-sidebar');
   private cmdContent = el('div', 'cmd-content');
+  private coach = new CoachCard();
+  private coachStep: MatchCoachStep = 'done';
+  private minimapCaption = el('p', 'minimap-caption');
+  private readonly sandbox: boolean;
+  private readonly hudOptions: HudOptions;
 
   onExit: (() => void) | null = null;
 
@@ -108,6 +127,8 @@ export class Hud {
     iconFor: (art: ArtDef, color: string) => HTMLCanvasElement,
     hudOptions: HudOptions,
   ) {
+    this.hudOptions = hudOptions;
+    this.sandbox = hudOptions.sandbox ?? false;
     const compact = window.innerHeight < 460 || window.innerWidth < 820;
     const top = el('div', 'topbar');
     const mana = el('div', 'stat compact-stat');
@@ -186,7 +207,9 @@ export class Hud {
     }
 
     const minimapWrap = el('div', 'minimap-wrap');
-    minimapWrap.append(minimap.canvas, this.minimapHint);
+    this.minimapCaption.textContent = RADAR_OFFLINE_HOW;
+    this.minimapCaption.style.display = 'none';
+    minimapWrap.append(minimap.canvas, this.minimapHint, this.minimapCaption);
     this.minimapPanel = new Collapsible('Map', false);
     this.minimapPanel.body.append(minimapWrap);
     this.minimapPanel.root.classList.add('minimap-panel');
@@ -199,9 +222,21 @@ export class Hud {
     this.settingsScreen = new MatchSettingsScreen({
       settings: hudOptions.settings,
       audio: hudOptions.audio,
-      onSettingsChange: hudOptions.onSettingsChange,
+      onSettingsChange: (settings) => {
+        this.syncCoachEnabled();
+        hudOptions.onSettingsChange(settings);
+      },
       onLeaveMatch: () => this.onExit?.(),
+      onReplayTips: () => {
+        if (this.sandbox) return;
+        this.coachStep = initialMatchCoachStep();
+        this.syncCoach();
+      },
     });
+
+    this.coach.onSkip = () => this.finishCoach();
+    this.coach.onGotIt = () => this.gotItCoach();
+    this.syncCoachEnabled();
 
     const pauseCard = el('div', 'pause-card');
     pauseCard.append(
@@ -227,6 +262,7 @@ export class Hud {
       this.result,
       this.settingsScreen.root,
       this.pauseOverlay,
+      this.coach.root,
     );
     this.result.style.display = 'none';
     this.debugEl.style.display = 'none';
@@ -356,9 +392,18 @@ export class Hud {
     if (st.ended) {
       this.minimapPanel.setTitle('Map');
       this.minimapPanel.root.classList.remove('minimap-offline');
+      this.minimapPanel.root.title = '';
+      this.minimapCaption.style.display = 'none';
+    } else if (radarOn) {
+      this.minimapPanel.setTitle('Map');
+      this.minimapPanel.root.classList.remove('minimap-offline');
+      this.minimapPanel.root.title = '';
+      this.minimapCaption.style.display = 'none';
     } else {
-      this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar');
-      this.minimapPanel.root.classList.toggle('minimap-offline', !radarOn);
+      this.minimapPanel.setTitle(RADAR_OFFLINE_TITLE);
+      this.minimapPanel.root.classList.add('minimap-offline');
+      this.minimapPanel.root.title = RADAR_OFFLINE_HOW;
+      this.minimapCaption.style.display = 'block';
     }
     this.minimapHint.textContent = radarHint ?? '';
 
@@ -513,6 +558,7 @@ export class Hud {
       sel.length > 1,
     );
     this.syncSidebarVisibility();
+    this.syncCoach();
 
     if (inRallyMode) {
       this.buildConfirm.style.display = 'flex';
@@ -548,5 +594,91 @@ export class Hud {
     if (st.ended && this.result.style.display === 'none') {
       this.showResult(p.team === st.winnerTeam);
     }
+  }
+
+  private syncCoachEnabled(): void {
+    if (this.sandbox) {
+      this.coachStep = 'done';
+      this.coach.hide();
+      return;
+    }
+    if (this.hudOptions.settings.showTips) {
+      if (this.coachStep === 'done') this.coachStep = initialMatchCoachStep();
+    } else {
+      this.coachStep = 'done';
+      this.coach.hide();
+    }
+  }
+
+  private persistTips(showTips: boolean): void {
+    this.hudOptions.settings.showTips = showTips;
+    void saveSettings(this.hudOptions.settings);
+    this.hudOptions.onSettingsChange(this.hudOptions.settings);
+    this.syncCoachEnabled();
+  }
+
+  private finishCoach(): void {
+    this.coachStep = 'done';
+    this.coach.hide();
+    if (this.hudOptions.settings.showTips) this.persistTips(false);
+  }
+
+  private gotItCoach(): void {
+    if (this.coachStep === 'done') return;
+    this.coachStep = skipMatchCoachStep(this.coachStep);
+    if (this.coachStep === 'done') this.finishCoach();
+    else this.syncCoach();
+  }
+
+  private collectCoachFacts(): MatchCoachFacts {
+    const st = this.state();
+    const session = this.controller.session;
+    const selected = session.selection;
+    let hqSelected = false;
+    let ownedNonHqBuilding = false;
+    let wispSelected = false;
+    let wispHasOrder = false;
+    for (const e of st.entities.values()) {
+      if (e.owner !== this.playerId || !isAlive(e)) continue;
+      if (isBuilding(e)) {
+        const def = this.registry.buildings.get(e.defId);
+        if (def?.isConstructionYard) {
+          if (selected.has(e.id)) hqSelected = true;
+        } else {
+          ownedNonHqBuilding = true;
+        }
+      } else if (isUnit(e) && isHarvester(e)) {
+        if (selected.has(e.id)) wispSelected = true;
+        const busy =
+          e.orders.length > 0 ||
+          e.state === 'moving' ||
+          e.state === 'harvesting' ||
+          e.state === 'returning';
+        if (busy) wispHasOrder = true;
+      }
+    }
+    return {
+      hqSelected,
+      placingBuilding: session.mode === 'build' && !!session.buildDefId,
+      ownedNonHqBuilding,
+      wispSelected,
+      wispHasOrder,
+    };
+  }
+
+  private syncCoach(): void {
+    if (this.sandbox || !this.hudOptions.settings.showTips || this.coachStep === 'done' || this.state().ended) {
+      this.coach.hide();
+      return;
+    }
+    const facts = this.collectCoachFacts();
+    this.coachStep = advanceMatchCoach(this.coachStep, facts);
+    if (this.coachStep === 'done') {
+      this.finishCoach();
+      return;
+    }
+    const copy = matchCoachCopy(this.coachStep, facts);
+    if (copy) this.coach.show(copy);
+    else this.coach.hide();
   }
 }

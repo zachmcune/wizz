@@ -273,6 +273,7 @@ export class Game {
               isPaused: () => this.simCtrl.isPaused,
               onToggle: () => this.setPaused(!this.simCtrl.isPaused),
             },
+        sandbox: this.sandboxMode,
       },
     );
     this.hud.onExit = () => this.exit();
@@ -379,8 +380,6 @@ export class Game {
           ? 'Sandbox — tap ⚙ (bottom-left) for dev tools'
           : 'Sandbox — press ` for dev panel, Ctrl+Shift+P for commands',
       );
-    } else {
-      this.hud.showHint('Tap teal nodes to send wisps · Build MINE + PWR, then RAD for full map intel');
     }
 
     if (this.startPaused) this.setPaused(true);

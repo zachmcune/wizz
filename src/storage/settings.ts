@@ -12,6 +12,11 @@ export interface Settings {
   showBuildingNames: boolean;
   /** Auto picks Low on Chromebooks / constrained devices. */
   graphicsQuality: GraphicsQualityPref;
+  /**
+   * First-match teaching coach. Defaults on for new players.
+   * Skip / finish turns this off; Settings can turn it back on to replay.
+   */
+  showTips: boolean;
 }
 
 const KEY = 'arcane:settings';
@@ -21,6 +26,7 @@ const DEFAULTS: Settings = {
   dragMode: 'select',
   showBuildingNames: false,
   graphicsQuality: 'auto',
+  showTips: true,
 };
 
 export async function loadSettings(): Promise<Settings> {

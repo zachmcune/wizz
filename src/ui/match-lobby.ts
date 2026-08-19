@@ -3,6 +3,7 @@ import { el } from './dom';
 import type { Registry } from '../data/registry';
 import type { LobbyClient } from '../net/lobby-client';
 import { validateLobby } from '../lobby/build-config';
+import { missingStartHint } from '../lobby/start-hint';
 import { ECONOMY_PACING_OPTIONS, economyPacingDetail, type EconomyPacing } from '../data/economy-pacing';
 import { getLobbyTemplates } from '../lobby/templates';
 import { TEAM_LABELS, teamLabelDisplay } from '../lobby/teams';
@@ -10,6 +11,8 @@ import type { AiDifficulty, LobbyMode, LobbySlot, LobbyState, SlotId, SlotKind }
 import { DEFAULT_COLORS } from '../lobby/types';
 import { AI_DIFFICULTY_HINTS } from '../ai/difficulty';
 import { LobbyMapPreview } from './lobby-map-preview';
+import { CoachCard } from './coach/card';
+import { lobbyCoachCopy } from './coach/progress';
 
 function lobbyMapSize(): number {
   const h = window.innerHeight;
@@ -27,6 +30,8 @@ export interface MatchLobbyOptions {
   localSlotId?: string;
   isHost?: boolean;
   lobbyClient?: LobbyClient;
+  showTips?: boolean;
+  onSkipTips?: () => void;
   onStart: (state: LobbyState) => void;
   onBack: () => void;
 }
@@ -48,11 +53,22 @@ export class MatchLobby {
   private playersEl = el('div', 'lobby-players');
   private mapPreview: LobbyMapPreview;
   private pickSlotId: SlotId | null = null;
+  private coach = new CoachCard();
+  private showTips: boolean;
+  private lobbyCoachDismissed = false;
+  private statusText = '';
+  private errorText = '';
 
   constructor(private opts: MatchLobbyOptions) {
     this.state = structuredClone(opts.initialState);
+    this.showTips = opts.showTips ?? false;
     this.mapPreview = new LobbyMapPreview(this.opts.registry.map(this.state.mapId), lobbyMapSize());
     this.hintEl.style.display = 'none';
+    this.coach.onSkip = () => this.skipTips();
+    this.coach.onGotIt = () => {
+      this.lobbyCoachDismissed = true;
+      this.coach.hide();
+    };
     this.build();
     if (opts.lobbyClient) this.wireNetwork(opts.lobbyClient);
     this.pickSlotId = this.defaultPickSlot();
@@ -72,6 +88,7 @@ export class MatchLobby {
     titleBlock.append(
       el('h1', 'menu-title lobby-title', 'Match Setup'),
       el('p', 'lobby-map-hint', 'Tap a slot, then tap a number on the map'),
+      this.coach.root,
     );
     topRow.append(titleBlock, this.mapPreview.root);
 
@@ -466,8 +483,12 @@ export class MatchLobby {
 
     const map = this.opts.registry.map(this.state.mapId);
     const validation = validateLobby(this.state, this.opts.mode, map, this.opts.localSlotId);
-    if (!validation.valid) {
+    if (this.errorText) {
+      this.setHint(this.errorText, true);
+    } else if (!validation.valid) {
       this.setHint(validation.errors[0] ?? 'Invalid setup', true);
+    } else if (this.statusText) {
+      this.setHint(this.statusText, false);
     } else {
       this.hintEl.style.display = 'none';
       this.hintEl.textContent = '';
@@ -483,6 +504,9 @@ export class MatchLobby {
       this.actionBtn.textContent = 'Waiting…';
       this.actionBtn.disabled = true;
     }
+    this.actionBtn.title = validation.valid ? 'Start the match' : (validation.errors[0] ?? 'Finish setup to start');
+
+    this.syncLobbyCoach(validation.valid);
 
     const editable = this.opts.mode !== 'guest';
     this.mapSelect.disabled = !editable || this.opts.mode !== 'host';
@@ -497,11 +521,14 @@ export class MatchLobby {
   }
 
   setStatus(text: string): void {
-    this.setHint(text, false);
+    this.statusText = text;
+    this.errorText = '';
+    this.refresh();
   }
 
   showError(text: string): void {
-    this.setHint(text, true);
+    this.errorText = text;
+    this.refresh();
   }
 
   getState(): LobbyState {
@@ -539,6 +566,23 @@ export class MatchLobby {
 
     const seed = this.state.seed ?? Math.floor(Math.random() * 0xffffffff);
     this.opts.onStart({ ...this.state, seed });
+  }
+
+  private skipTips(): void {
+    this.showTips = false;
+    this.lobbyCoachDismissed = true;
+    this.coach.hide();
+    this.opts.onSkipTips?.();
+  }
+
+  private syncLobbyCoach(setupReady: boolean): void {
+    if (!this.showTips || this.lobbyCoachDismissed || setupReady) {
+      this.coach.hide();
+      return;
+    }
+    const copy = lobbyCoachCopy(missingStartHint(this.state.slots));
+    if (copy) this.coach.show(copy);
+    else this.coach.hide();
   }
 
   destroy(): void {

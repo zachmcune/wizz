@@ -36,6 +36,13 @@
   opacity: 0.5;
   line-height: 1.3;
 }
+.match-lobby .coach-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin-top: 8px;
+  z-index: 1;
+}
 .lobby-header {
   display: flex;
   flex-wrap: wrap;
@@ -412,6 +419,29 @@
 }
 .compact-ui .minimap-panel.minimap-offline {
   width: min(42vw, 168px);
+}
+.compact-ui .coach-card {
+  width: min(240px, 54vw);
+  padding: 8px 10px;
+  gap: 6px;
+}
+.compact-ui .coach-title {
+  font-size: 13px;
+}
+.compact-ui .coach-body {
+  font-size: 12px;
+}
+.compact-ui .coach-got-it,
+.compact-ui .coach-skip {
+  min-height: 36px;
+}
+.compact-ui .hud .coach-card--cmd,
+.compact-ui .coach-card--cmd {
+  right: calc(min(50vw, 252px) + var(--hud-gap) * 2);
+  left: calc(min(18vw, 88px) + var(--hud-gap) * 2);
+}
+.compact-ui .coach-card--map {
+  left: calc(min(18vw, 88px) + var(--hud-gap) * 2);
 }
 .compact-ui .build-confirm,
 .compact-ui .spell-confirm {

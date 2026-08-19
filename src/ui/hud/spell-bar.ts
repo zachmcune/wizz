@@ -2,6 +2,7 @@ import type { Registry } from '../../data/registry';
 import type { Player } from '../../sim/types';
 import type { InputController } from '../../input/controller';
 import { el } from './dom';
+import { spellChipTitle } from '../coach/progress';
 
 export class SpellBar {
   readonly row = el('div', 'spell-row');
@@ -20,7 +21,8 @@ export class SpellBar {
       const short = def.name.split(' ').map((w) => w[0]).join('');
       const b = el('button', 'btn spell-btn compact-btn', short);
       b.dataset.spell = id;
-      b.title = def.name;
+      b.title = spellChipTitle(def.name, false);
+      b.setAttribute('aria-label', b.title);
       b.addEventListener('click', () => {
         const spell = this.registry.spells.get(id)!;
         if (spell.effect.kind === 'beam') this.controller.startSuperweapon(id);
@@ -41,6 +43,9 @@ export class SpellBar {
       const cd = player.spellCooldowns[sid] ?? 0;
       btn.disabled = !unlocked || cd > 0;
       btn.classList.toggle('active', session.spellId === sid);
+      btn.classList.toggle('spell-locked', !unlocked);
+      btn.title = spellChipTitle(def.name, unlocked, cd > 0);
+      btn.setAttribute('aria-label', btn.title);
       const short = def.name.split(' ').map((w) => w[0]).join('');
       btn.textContent = cd > 0 ? `${short}…` : short;
     }
