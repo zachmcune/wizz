@@ -36,8 +36,90 @@ export function worldToScreen(world: Vec2, cam: CameraView, visualHeight = 0): V
   return getProjection().worldToScreen(world, cam, visualHeight);
 }
 
-export function screenToWorld(screen: Vec2, cam: CameraView): Vec2 {
-  return getProjection().screenToWorld(screen, cam);
+export function screenToWorld(screen: Vec2, cam: CameraView, visualHeight = 0): Vec2 {
+  return getProjection().screenToWorld(screen, cam, visualHeight);
+}
+
+/** Discrete tile height used to pick the raised surface under a screen point. */
+export type TileHeightAt = (tx: number, ty: number) => number;
+
+function pointInConvexQuad(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+): boolean {
+  const cross = (x0: number, y0: number, x1: number, y1: number, x2: number, y2: number) =>
+    (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
+  const d0 = cross(ax, ay, bx, by, px, py);
+  const d1 = cross(bx, by, cx, cy, px, py);
+  const d2 = cross(cx, cy, dx, dy, px, py);
+  const d3 = cross(dx, dy, ax, ay, px, py);
+  const hasNeg = d0 < 0 || d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPos = d0 > 0 || d1 > 0 || d2 > 0 || d3 > 0;
+  return !(hasNeg && hasPos);
+}
+
+function tileTopContainsScreen(
+  tx: number,
+  ty: number,
+  height: number,
+  screen: Vec2,
+  cam: CameraView,
+): boolean {
+  const x0 = tx * TILE;
+  const y0 = ty * TILE;
+  const x1 = x0 + TILE;
+  const y1 = y0 + TILE;
+  const tl = worldToScreen({ x: x0, y: y0 }, cam, height);
+  const tr = worldToScreen({ x: x1, y: y0 }, cam, height);
+  const br = worldToScreen({ x: x1, y: y1 }, cam, height);
+  const bl = worldToScreen({ x: x0, y: y1 }, cam, height);
+  return pointInConvexQuad(screen.x, screen.y, tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
+}
+
+/**
+ * Unproject a screen point onto the raised tile under the cursor (highest first).
+ * Height-0 `screenToWorld` is the fallback when no tile top contains the point.
+ */
+export function screenToWorldOnHeightField(
+  screen: Vec2,
+  cam: CameraView,
+  heightAt: TileHeightAt,
+  tileW: number,
+  tileH: number,
+): Vec2 {
+  const fallback = screenToWorld(screen, cam, 0);
+  let best: Vec2 | null = null;
+  let bestH = -1;
+  const seen = new Set<number>();
+  for (const probe of [0, 1, 2, 3]) {
+    const world = screenToWorld(screen, cam, probe);
+    const tx0 = Math.floor(world.x / TILE);
+    const ty0 = Math.floor(world.y / TILE);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const tx = tx0 + dx;
+        const ty = ty0 + dy;
+        if (tx < 0 || ty < 0 || tx >= tileW || ty >= tileH) continue;
+        const key = ty * tileW + tx;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const h = heightAt(tx, ty);
+        if (!tileTopContainsScreen(tx, ty, h, screen, cam)) continue;
+        if (h < bestH) continue;
+        bestH = h;
+        best = screenToWorld(screen, cam, h);
+      }
+    }
+  }
+  return best ?? fallback;
 }
 
 export function projectionSortKey(world: Vec2, cam: CameraView, visualHeight = 0): number {

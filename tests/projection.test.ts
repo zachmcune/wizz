@@ -4,7 +4,8 @@ import {
   facingToDirection,
   VISUAL_HEIGHT_STEP,
 } from '../src/core/projection';
-import { worldToScreen, screenToWorld, projectionSortKey } from '../src/core/coords';
+import { worldToScreen, screenToWorld, projectionSortKey, screenToWorldOnHeightField, tileToWorld } from '../src/core/coords';
+import { TILE } from '../src/core/constants';
 
 const cam = { x: 100, y: 80, zoom: 1.5 };
 
@@ -15,6 +16,35 @@ describe('2.5D projection', () => {
     const back = screenToWorld(screen, cam);
     expect(back.x).toBeCloseTo(world.x, 4);
     expect(back.y).toBeCloseTo(world.y, 4);
+  });
+
+  it('round-trips screen/world on a raised plane', () => {
+    const world = { x: 512, y: 384 };
+    const screen = worldToScreen(world, cam, 1);
+    const back = screenToWorld(screen, cam, 1);
+    expect(back.x).toBeCloseTo(world.x, 4);
+    expect(back.y).toBeCloseTo(world.y, 4);
+  });
+
+  it('picks the raised tile surface instead of the ground behind it', () => {
+    const pickCam = { x: 0, y: 0, zoom: 1 };
+    const tileW = 16;
+    const tileH = 16;
+    const heights = new Array(tileW * tileH).fill(0);
+    heights[8 * tileW + 8] = 1;
+    const world = tileToWorld(8, 8);
+    const screen = worldToScreen(world, pickCam, 1);
+    const flat = screenToWorld(screen, pickCam, 0);
+    expect(Math.floor(flat.x / TILE) !== 8 || Math.floor(flat.y / TILE) !== 8).toBe(true);
+    const picked = screenToWorldOnHeightField(
+      screen,
+      pickCam,
+      (tx, ty) => heights[ty * tileW + tx] ?? 0,
+      tileW,
+      tileH,
+    );
+    expect(Math.floor(picked.x / TILE)).toBe(8);
+    expect(Math.floor(picked.y / TILE)).toBe(8);
   });
 
   it('visual height lifts screen Y', () => {

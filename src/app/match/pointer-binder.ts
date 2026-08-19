@@ -1,5 +1,4 @@
 import { TAP_SLOP_PX, WHEEL_PAN_SCALE } from '../../core/constants';
-import { screenToWorld } from '../../core/coords';
 import type { Camera } from '../../render/camera';
 import type { InputController } from '../../input/controller';
 import type { GestureRecognizer } from '../../input/gesture';
@@ -110,7 +109,7 @@ export class PointerBinder {
 
   private notePointer(p: { x: number; y: number }): void {
     this.lastPointer = p;
-    this.deps.controller.notePointerWorld(screenToWorld(p, this.deps.camera.view()));
+    this.deps.controller.notePointerWorld(this.deps.controller.worldFromScreen(p));
   }
 
   private isPaused(): boolean {
@@ -151,7 +150,7 @@ export class PointerBinder {
     const mode = this.deps.controller.session.mode;
     if (mode === 'build' && this.deps.controller.isWallBuild()) {
       this.wallDragging = true;
-      const w = screenToWorld(p, this.deps.camera.view());
+      const w = this.deps.controller.worldFromScreen(p);
       this.deps.controller.startWallDrag(w);
     }
     this.deps.gesture.pointerDown(e.pointerId, p.x, p.y, performance.now());
@@ -173,7 +172,7 @@ export class PointerBinder {
     }
     const mode = this.deps.controller.session.mode;
     if (mode === 'build' && this.deps.controller.isWallBuild() && this.wallDragging) {
-      const w = screenToWorld(p, this.deps.camera.view());
+      const w = this.deps.controller.worldFromScreen(p);
       this.deps.controller.updateWallDrag(w);
       return;
     }
@@ -185,7 +184,7 @@ export class PointerBinder {
       shouldTrackPlacementGhost(e) &&
       !isOverHudChrome(e.clientX, e.clientY)
     ) {
-      const w = screenToWorld(p, this.deps.camera.view());
+      const w = this.deps.controller.worldFromScreen(p);
       if (mode === 'build') {
         if (this.deps.controller.isWallBuild()) this.deps.controller.previewWallAt(w);
         else this.deps.controller.updateGhost(w);
@@ -197,7 +196,7 @@ export class PointerBinder {
       if (this.deps.gesture.activePointers >= 2) {
         this.deps.gesture.pointerMove(e.pointerId, p.x, p.y, performance.now());
       } else {
-        const w = screenToWorld(p, this.deps.camera.view());
+        const w = this.deps.controller.worldFromScreen(p);
         this.deps.controller.updateRallyCursor(w);
       }
       return;
@@ -251,7 +250,7 @@ export class PointerBinder {
       if (this.deps.gesture.activePointers === 0) {
         const panned = this.deps.gesture.lastEndKind === 'pan' || this.deps.gesture.lastEndKind === 'pinch';
         if (!panned && drift <= TAP_SLOP_PX) {
-          this.deps.controller.confirmRally(screenToWorld(p, this.deps.camera.view()));
+          this.deps.controller.confirmRally(this.deps.controller.worldFromScreen(p));
         }
       }
       return;
@@ -259,7 +258,7 @@ export class PointerBinder {
     if (mode === 'build' && this.deps.controller.isWallBuild()) {
       this.deps.gesture.pointerUp(e.pointerId, p.x, p.y, performance.now());
       if (this.wallDragging) {
-        const w = screenToWorld(p, this.deps.camera.view());
+        const w = this.deps.controller.worldFromScreen(p);
         this.deps.controller.updateWallDrag(w);
         this.deps.controller.finishWallDrag();
         this.wallDragging = false;

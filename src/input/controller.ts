@@ -1,7 +1,7 @@
 // Translates gestures + HUD actions into Commands for the local human player.
 // Owns the view-only SessionState. Mode-specific tap logic lives in input/modes/.
 import { TILE } from '../core/constants';
-import { screenToWorld } from '../core/coords';
+import { screenToWorldOnHeightField } from '../core/coords';
 import type { Vec2 } from '../core/coords';
 import type { Camera } from '../render/camera';
 import type { Registry } from '../data/registry';
@@ -82,8 +82,18 @@ export class InputController {
     };
   }
 
+  worldFromScreen(p: Vec2): Vec2 {
+    return screenToWorldOnHeightField(
+      p,
+      this.camera.view(),
+      (tx, ty) => this.nav.heightAt(tx, ty),
+      this.nav.w,
+      this.nav.h,
+    );
+  }
+
   private toWorld(p: Vec2): Vec2 {
-    return screenToWorld(p, this.camera.view());
+    return this.worldFromScreen(p);
   }
 
   private selectionEntities(): Entity[] {

@@ -13,6 +13,8 @@ import { dist } from '../src/sim/math';
 import { worldToScreen } from '../src/core/coords';
 import { FLYER_HOVER_LEVELS } from '../src/core/projection';
 import { pickEntityForInput } from '../src/input/projected-pick';
+import { HIGH_GROUND_RANGE_BONUS } from '../src/core/constants';
+import { highGroundRangeBonus, heightBlocksGroundFire, inWeaponBand } from '../src/sim/systems/combat';
 
 const reg = getRegistry();
 
@@ -109,6 +111,19 @@ describe('Duel Glade plateau', () => {
     expect(nav.canStep(55, 44, 56, 44)).toBe(true);
   });
 
+  it('puts each starting Sanctum on a height-1 mesa with inward ramps', () => {
+    const { services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const nav = services.nav;
+    expect(nav.heightAt(14, 14)).toBe(1);
+    expect(nav.heightAt(113, 14)).toBe(1);
+    expect(nav.heightAt(14, 73)).toBe(1);
+    expect(nav.heightAt(113, 73)).toBe(1);
+    expect(nav.isRamp(21, 14)).toBe(true);
+    expect(nav.isRamp(23, 14)).toBe(true);
+    expect(nav.canStep(22, 14, 23, 14)).toBe(true);
+    expect(nav.canStep(22, 10, 23, 10)).toBe(false);
+  });
+
   it('lets a ground unit climb the west ramp and blocks a cliff hop', () => {
     const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
     const sim = new Simulation(state, services);
@@ -125,6 +140,19 @@ describe('Duel Glade plateau', () => {
     for (let i = 0; i < 50; i++) sim.step();
     expect(services.nav.heightAtWorld(hopper.pos.x, hopper.pos.y)).toBe(0);
     expect(hopper.pos.y).toBeLessThan(38 * TILE);
+  });
+
+  it('routes a unit off the starting mesa via a ramp instead of trapping it on the cliff', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+    const start = tileToWorld(14, 14);
+    const low = tileToWorld(20, 28);
+    const walker = spawnEntity(state, services, null, 'imp_swarmling', 'player0', start.x, start.y);
+    sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [walker.id], x: low.x, y: low.y }]);
+    for (let i = 0; i < 400; i++) sim.step();
+    expect(services.nav.heightAtWorld(walker.pos.x, walker.pos.y)).toBe(0);
+    expect(dist(walker.pos, low)).toBeLessThan(TILE * 3);
   });
 });
 
@@ -144,6 +172,40 @@ describe('high-ground vision', () => {
     spawnEntity(state, services, null, 'rift_skimmer', 'player0', edge.x, edge.y);
     visibilitySystem(state, { services, events: [] });
     expect(isTileVisible(human, plateauTx * TILE + 16, plateauTy * TILE + 16, services.nav)).toBe(true);
+  });
+});
+
+describe('high-ground combat', () => {
+  it('blocks ground fire up a cliff and grants extra range firing down', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const high = tileToWorld(64, 38);
+    const low = tileToWorld(64, 33);
+    const above = spawnEntity(state, services, null, 'arcane_archer', 'player0', high.x, high.y);
+    const below = spawnEntity(state, services, null, 'imp_swarmling', 'player1', low.x, low.y);
+    const weapon = reg.unit('arcane_archer').weapon!;
+
+    expect(services.nav.heightAtWorld(above.pos.x, above.pos.y)).toBe(1);
+    expect(services.nav.heightAtWorld(below.pos.x, below.pos.y)).toBe(0);
+    expect(heightBlocksGroundFire(below, above, services.nav, false)).toBe(true);
+    expect(heightBlocksGroundFire(above, below, services.nav, false)).toBe(false);
+    expect(highGroundRangeBonus(above, below, services.nav)).toBe(HIGH_GROUND_RANGE_BONUS);
+    expect(inWeaponBand(above, below, weapon, services.nav)).toBe(true);
+    expect(inWeaponBand(above, below, weapon)).toBe(false);
+  });
+
+  it('lets a high-ground archer hit a target that is out of flat range', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+    const high = tileToWorld(64, 38);
+    const low = tileToWorld(64, 33);
+    const archer = spawnEntity(state, services, null, 'arcane_archer', 'player0', high.x, high.y);
+    const target = spawnEntity(state, services, null, 'imp_swarmling', 'player1', low.x, low.y);
+    visibilitySystem(state, { services, events: [] });
+    const hp = target.hp;
+    sim.enqueueNow([{ type: 'attack', playerId: 'player0', entityIds: [archer.id], targetId: target.id }]);
+    for (let i = 0; i < 80; i++) sim.step();
+    expect(target.hp).toBeLessThan(hp);
   });
 });
 

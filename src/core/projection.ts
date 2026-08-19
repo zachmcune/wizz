@@ -15,7 +15,7 @@ export const OBLIQUE_SCALE_Y = 0.25;
 export interface Projection {
   projectGround(world: Vec2, visualHeight?: number): Vec2;
   worldToScreen(world: Vec2, cam: CameraView, visualHeight?: number): Vec2;
-  screenToWorld(screen: Vec2, cam: CameraView): Vec2;
+  screenToWorld(screen: Vec2, cam: CameraView, visualHeight?: number): Vec2;
   sortKey(world: Vec2, cam: CameraView, visualHeight?: number): number;
   /** Convert a screen drag delta to camera top-left movement in world space. */
   screenPanToCameraDelta(dxScreen: number, dyScreen: number, zoom: number): Vec2;
@@ -41,10 +41,10 @@ export const ObliqueProjection: Projection = {
     const c = camProjectGround(cam);
     return { x: (p.x - c.x) * cam.zoom, y: (p.y - c.y) * cam.zoom };
   },
-  screenToWorld(screen: Vec2, cam: CameraView): Vec2 {
+  screenToWorld(screen: Vec2, cam: CameraView, visualHeight = 0): Vec2 {
     const c = camProjectGround(cam);
     const px = screen.x / cam.zoom + c.x;
-    const py = screen.y / cam.zoom + c.y;
+    const py = screen.y / cam.zoom + c.y + visualHeight * VISUAL_HEIGHT_STEP;
     const a = px / OBLIQUE_SCALE_X;
     const b = py / OBLIQUE_SCALE_Y;
     return { x: (a + b) / 2, y: (b - a) / 2 };

@@ -78,7 +78,8 @@ function revealSight(
       const dx = cx - x;
       const dy = cy - y;
       if (dx * dx + dy * dy > sightSq) continue;
-      if (!flying && nav.heightAt(tx, ty) > viewerHeight) continue;
+      // Cliffs hide higher ground; ramps stay visible so units can fight on the slope.
+      if (!flying && nav.heightAt(tx, ty) > viewerHeight && !nav.isRamp(tx, ty)) continue;
       const i = ty * nav.w + tx;
       explored[i] = 1;
       visible[i] = 1;

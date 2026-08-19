@@ -108,7 +108,12 @@ export class LobbyMapPreview {
       for (let tx = 0; tx < this.map.tileW; tx++) {
         const i = ty * this.map.tileW + tx;
         const blocked = this.map.tiles[i] === 1;
-        c.fillStyle = blocked ? '#1a1528' : '#243018';
+        const ramp = this.map.tiles[i] === 2;
+        const h = this.map.heights?.[i] ?? this.map.visualHeights?.[i] ?? 0;
+        if (blocked) c.fillStyle = '#1a1528';
+        else if (ramp) c.fillStyle = '#8a6a4a';
+        else if (h > 0) c.fillStyle = h === 1 ? '#5a6a88' : '#7a8aa4';
+        else c.fillStyle = '#243018';
         c.fillRect(tx * TILE * s, ty * TILE * s, TILE * s + 0.5, TILE * s + 0.5);
       }
     }

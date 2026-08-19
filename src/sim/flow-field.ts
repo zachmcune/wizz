@@ -97,6 +97,12 @@ export function computeFlowField(
         const nx = tx + dx;
         const ny = ty + dy;
         if (!nav.inBounds(nx, ny)) continue;
+        if (isTileBlocked(nx, ny)) continue;
+        if (!nav.canStep(tx, ty, nx, ny)) continue;
+        if (dx !== 0 && dy !== 0) {
+          if (isTileBlocked(tx + dx, ty) || isTileBlocked(tx, ty + dy)) continue;
+          if (!nav.canStep(tx, ty, tx + dx, ty) || !nav.canStep(tx, ty, tx, ty + dy)) continue;
+        }
         const nc = cost[ny * nav.w + nx]!;
         if (nc < bestC) {
           bestC = nc;

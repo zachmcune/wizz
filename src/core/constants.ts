@@ -30,6 +30,9 @@ export const DOUBLE_TAP_MS = 300;
 /** Extra empty tiles required around a new building footprint (RA2-style: 0 = adjacent placement). */
 export const BUILD_SPACING_TILES = 0;
 
+/** Extra weapon range (world units) when firing from higher ground onto a lower target. */
+export const HIGH_GROUND_RANGE_BONUS = TILE;
+
 /** Camera zoom clamps. */
 export const MIN_ZOOM = 0.4;
 export const MAX_ZOOM = 2.0;
