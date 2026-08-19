@@ -71,6 +71,13 @@
 .art-gallery-section:first-child {
   margin-top: 0;
 }
+.art-gallery-section-hint {
+  grid-column: 1 / -1;
+  margin: -4px 0 4px;
+  font-size: 12px;
+  opacity: 0.5;
+  line-height: 1.35;
+}
 .art-gallery-card {
   display: flex;
   flex-direction: column;
@@ -80,11 +87,14 @@
   background: rgba(20, 16, 32, 0.85);
   border: 1px solid rgba(139, 108, 255, 0.25);
 }
+.art-gallery-card-live,
 .art-gallery-card-defense {
   cursor: pointer;
   border-color: rgba(127, 227, 255, 0.35);
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
+.art-gallery-card-live:hover,
+.art-gallery-card-live:focus-visible,
 .art-gallery-card-defense:hover,
 .art-gallery-card-defense:focus-visible {
   border-color: rgba(127, 227, 255, 0.75);
