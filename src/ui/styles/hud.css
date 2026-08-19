@@ -6,6 +6,10 @@
   pointer-events: none;
   z-index: 10;
 }
+/* Sit above the zoom slider (z-index 14) so the pause dimmer actually covers it. */
+.hud.paused {
+  z-index: 30;
+}
 .hud button,
 .hud .minimap-panel,
 .hud .topbar,
@@ -14,7 +18,8 @@
 .hud .result-card,
 .hud .menu-screen,
 .hud .settings-card,
-.hud .cmd-card {
+.hud .cmd-card,
+.hud .pause-overlay {
   pointer-events: auto;
 }
 /* Panels still capture input; the card itself must too so it can be the
@@ -900,6 +905,8 @@
   justify-content: center;
   background: rgba(6, 5, 12, 0.72);
   z-index: 24;
+  pointer-events: auto;
+  touch-action: none;
 }
 .pause-card {
   display: flex;

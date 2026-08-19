@@ -36,6 +36,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export class KeyboardControls {
   private readonly pressed = new Set<string>();
+  private attached = false;
 
   constructor(
     private controller: KeyboardController,
@@ -43,11 +44,15 @@ export class KeyboardControls {
   ) {}
 
   attach(): void {
+    if (this.attached) return;
+    this.attached = true;
     this.target.addEventListener('keydown', this.onKeyDown);
     this.target.addEventListener('keyup', this.onKeyUp);
   }
 
   detach(): void {
+    if (!this.attached) return;
+    this.attached = false;
     this.target.removeEventListener('keydown', this.onKeyDown);
     this.target.removeEventListener('keyup', this.onKeyUp);
     this.pressed.clear();

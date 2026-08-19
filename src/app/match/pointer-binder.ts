@@ -56,6 +56,7 @@ export function shouldTrackPlacementGhost(e: Pick<PointerEvent, 'buttons' | 'poi
 
 export interface PointerBinderDeps {
   getEnded: () => boolean;
+  getPaused?: () => boolean;
   camera: Camera;
   controller: InputController;
   gesture: GestureRecognizer;
@@ -112,11 +113,20 @@ export class PointerBinder {
     this.deps.controller.notePointerWorld(screenToWorld(p, this.deps.camera.view()));
   }
 
+  private isPaused(): boolean {
+    return this.deps.getPaused?.() === true;
+  }
+
   private onWindowMove = (e: PointerEvent): void => {
+    if (this.isPaused()) return;
     this.notePointer(this.rel(e));
   };
 
   private onDown = (e: PointerEvent): void => {
+    if (this.isPaused()) {
+      e.preventDefault();
+      return;
+    }
     this.deps.audio.unlock();
     void lockLandscape();
     const p = this.rel(e);
@@ -148,6 +158,7 @@ export class PointerBinder {
   };
 
   private onMove = (e: PointerEvent): void => {
+    if (this.isPaused()) return;
     const p = this.rel(e);
     if (this.middlePanPointerId === e.pointerId) {
       e.preventDefault();
@@ -197,6 +208,17 @@ export class PointerBinder {
   };
 
   private onUp = (e: PointerEvent): void => {
+    if (this.isPaused()) {
+      this.middlePanPointerId = null;
+      this.wallDragging = false;
+      this.deps.gesture.cancel();
+      try {
+        this.canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+      return;
+    }
     const p = this.rel(e);
     if (e.button === 2) {
       this.notePointer(p);
@@ -288,6 +310,7 @@ export class PointerBinder {
 
   private onWheel = (e: WheelEvent): void => {
     e.preventDefault();
+    if (this.isPaused()) return;
     this.deps.controller.panByScreen(-e.deltaX * WHEEL_PAN_SCALE, -e.deltaY * WHEEL_PAN_SCALE);
   };
 }

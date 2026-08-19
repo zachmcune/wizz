@@ -7,9 +7,15 @@ const lobbyCss = readFileSync(new URL('../src/ui/styles/lobby.css', import.meta.
 
 describe('HUD command card mobile scroll', () => {
   it('makes the command card a touch target so it can scroll on mobile', () => {
-    expect(hudCss).toMatch(/\.hud \.cmd-card\s*\{\s*pointer-events:\s*auto/);
+    expect(hudCss).toMatch(/\.hud \.cmd-card(?:,|\s*\{)/);
     expect(hudCss).toMatch(/^\.cmd-card\s*\{[^}]*overflow-y:\s*auto/m);
     expect(hudCss).toMatch(/^\.cmd-card\s*\{[^}]*touch-action:\s*pan-y/m);
+  });
+
+  it('makes the pause overlay a modal hit target above HUD chrome and the zoom slider', () => {
+    expect(hudCss).toMatch(/\.hud \.pause-overlay(?:,|\s*\{)/);
+    expect(hudCss).toMatch(/\.hud\.paused\s*\{[^}]*z-index:\s*30/s);
+    expect(hudCss).toMatch(/^\.pause-overlay\s*\{[^}]*pointer-events:\s*auto/m);
   });
 
   it('keeps the build list’s full height so the card, not a clipped child, scrolls', () => {

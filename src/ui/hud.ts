@@ -210,6 +210,7 @@ export class Hud {
     pauseCard.append(resumeBtn);
     this.pauseOverlay.append(pauseCard);
     this.pauseOverlay.style.display = 'none';
+    this.pauseOverlay.setAttribute('aria-hidden', 'true');
 
     this.root.append(
       top,
@@ -231,6 +232,8 @@ export class Hud {
 
   setPaused(paused: boolean): void {
     this.pauseOverlay.style.display = paused ? 'flex' : 'none';
+    this.root.classList.toggle('paused', paused);
+    this.pauseOverlay.setAttribute('aria-hidden', paused ? 'false' : 'true');
     if (this.pauseBtn) this.pauseBtn.textContent = paused ? 'Resume' : 'Pause';
   }
 
