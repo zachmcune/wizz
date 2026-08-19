@@ -72,7 +72,8 @@ export const INPUT_DELAY_TICKS = protocolConstants.INPUT_DELAY_TICKS;
 
 /**
  * Max ticks the relay may run ahead of the slowest acknowledged peer. Bounds the
- * worst-case drift between clients (LEAD_TICKS / TICK_HZ seconds). The relay pauses
+ * worst-case drift between clients (LEAD_TICKS / TICK_HZ seconds). Sized to absorb
+ * Chromebook / mobile timer throttling without pausing everyone; the relay pauses
  * its clock once it reaches this lead until acks catch up.
  */
 export const LEAD_TICKS = protocolConstants.LEAD_TICKS;
@@ -82,14 +83,17 @@ export const ACK_EVERY_TICKS = protocolConstants.ACK_EVERY_TICKS;
 
 /**
  * A peer whose last ack is older than this is excluded from the relay's pacing set
- * (so one frozen/backgrounded player cannot stall the whole match). It resyncs via a
- * state snapshot when it returns.
+ * (so one frozen player cannot stall the whole match forever). Sized above typical
+ * school-wifi / ChromeOS blips (5–8s) so a hitching peer stays in lockstep instead
+ * of snapshot-resyncing. A returning peer that fell too far behind still resyncs
+ * via a state snapshot.
  */
 export const STALL_DROP_MS = protocolConstants.STALL_DROP_MS;
 
 /**
  * When a client's sim tick lags the relay head by more than this many ticks, it
- * requests a state snapshot instead of replaying the whole backlog.
+ * requests a state snapshot instead of replaying the whole backlog. Must stay
+ * above LEAD_TICKS so a peer that was merely at the pacing limit does not jump.
  */
 export const SNAPSHOT_RESYNC_TICKS = protocolConstants.SNAPSHOT_RESYNC_TICKS;
 
@@ -111,5 +115,15 @@ export const LOCKSTEP_DRAIN_BUDGET_MS = protocolConstants.LOCKSTEP_DRAIN_BUDGET_
  */
 export const LOCKSTEP_MAX_BATCH_TICKS = protocolConstants.LOCKSTEP_MAX_BATCH_TICKS;
 
-/** No relay tick for this long → show a connection-stall hint. */
+/**
+ * No relay tick for this long → show a connection-stall hint. Must exceed a brief
+ * wifi/timer hitch (and stay below STALL_DROP_MS minus the lead window) so real
+ * disconnects still surface. Hidden documents skip this hint.
+ */
 export const LOCKSTEP_STALL_MS = protocolConstants.LOCKSTEP_STALL_MS;
+
+/**
+ * A single-frame gap this far past LOCKSTEP_STALL_MS is a tab-freeze wall-clock
+ * jump (backgrounded PWA / ChromeOS timer catch-up), not a live disconnect.
+ */
+export const LOCKSTEP_STALL_JUMP_MS = protocolConstants.LOCKSTEP_STALL_JUMP_MS;

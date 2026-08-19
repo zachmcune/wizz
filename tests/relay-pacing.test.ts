@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 // The relay is plain JS shared by dev and production entry points.
 import { Room } from '../relay/relay-app.mjs';
+import { LEAD_TICKS, STALL_DROP_MS } from '../src/net/protocol';
 
 interface FakeWs {
   readyState: number;
@@ -51,9 +52,9 @@ describe('relay peer-paced clock', () => {
 
     room.tick = 0;
     expect(room.canAdvance()).toBe(true);
-    room.tick = 19; // 19 <= (-1) + 20
+    room.tick = LEAD_TICKS - 1; // still within lead of an unacked peer (lastAckTick -1)
     expect(room.canAdvance()).toBe(true);
-    room.tick = 20; // 20 > 19 -> paused waiting for acks
+    room.tick = LEAD_TICKS; // LEAD_TICKS > (-1) + LEAD_TICKS -> paused waiting for acks
     expect(room.canAdvance()).toBe(false);
   });
 
@@ -64,12 +65,12 @@ describe('relay peer-paced clock', () => {
     addSlotted(room, a, 'a', 'player0');
     addSlotted(room, b, 'b', 'player1');
 
-    room.tick = 20;
+    room.tick = LEAD_TICKS;
     expect(room.canAdvance()).toBe(false);
     room.receiveAck(a, 5);
     expect(room.canAdvance()).toBe(false); // b still at -1 (the slowest)
     room.receiveAck(b, 5);
-    expect(room.canAdvance()).toBe(true); // minAcked 5 -> 20 <= 25
+    expect(room.canAdvance()).toBe(true); // minAcked 5 -> tick <= 5 + LEAD_TICKS
   });
 
   it('excludes a peer that has been silent beyond STALL_DROP_MS', () => {
@@ -80,19 +81,34 @@ describe('relay peer-paced clock', () => {
     addSlotted(room, b, 'b', 'player1');
 
     room.receiveAck(a, 5);
-    room.clients.get(b)!.lastAckAtMs = Date.now() - 5000; // stalled peer, dropped from pacing
+    room.clients.get(b)!.lastAckAtMs = Date.now() - (STALL_DROP_MS + 1_000);
 
-    room.tick = 24; // only 'a' counts: 24 <= 5 + 20
+    room.tick = 5 + LEAD_TICKS; // only 'a' counts: tick == 5 + LEAD_TICKS
     expect(room.canAdvance()).toBe(true);
-    room.tick = 26; // 26 > 25 -> paused
+    room.tick = 5 + LEAD_TICKS + 1; // past a's lead -> paused
     expect(room.canAdvance()).toBe(false);
+  });
+
+  it('keeps a peer in the pacing set through an 8s wifi blip', () => {
+    const room = makeRoom();
+    const a = fakeWs();
+    const b = fakeWs();
+    addSlotted(room, a, 'a', 'player0');
+    addSlotted(room, b, 'b', 'player1');
+
+    room.receiveAck(a, 5);
+    room.receiveAck(b, 5);
+    room.clients.get(b)!.lastAckAtMs = Date.now() - 8_000;
+
+    room.tick = 5 + LEAD_TICKS + 1;
+    expect(room.canAdvance()).toBe(false); // b still counts, so the clock waits
   });
 
   it('keeps the clock running when no peer is responsive (recovery)', () => {
     const room = makeRoom();
     const a = fakeWs();
     addSlotted(room, a, 'a', 'player0');
-    room.clients.get(a)!.lastAckAtMs = Date.now() - 10_000;
+    room.clients.get(a)!.lastAckAtMs = Date.now() - (STALL_DROP_MS + 1_000);
     room.tick = 999;
     expect(room.canAdvance()).toBe(true);
   });
@@ -112,9 +128,9 @@ describe('relay peer-paced clock', () => {
     const room = makeRoom();
     const a = fakeWs();
     addSlotted(room, a, 'a', 'player0');
-    room.tick = 20; // unacked peer -> paused
+    room.tick = LEAD_TICKS; // unacked peer -> paused
     room.tryAdvance();
-    expect(room.tick).toBe(20);
+    expect(room.tick).toBe(LEAD_TICKS);
     expect(a.sent).toHaveLength(0);
   });
 

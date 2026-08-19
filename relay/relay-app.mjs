@@ -426,6 +426,8 @@ class Room {
    * Peer-paced clock: advance only while the relay is within LEAD_TICKS of the
    * slowest responsive peer. Returns false when the clock is intentionally paused
    * waiting for a lagging peer (which bounds cross-client drift to LEAD_TICKS).
+   * STALL_DROP_MS is intentionally above brief school-wifi / ChromeOS timer
+   * hitches so a hitching peer stays in the pacing set instead of snapshotting.
    */
   canAdvance() {
     const now = Date.now();

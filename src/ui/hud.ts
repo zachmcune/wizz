@@ -45,6 +45,7 @@ export class Hud {
   private settingsScreen: MatchSettingsScreen;
   private debugEl = el('div', 'debug-overlay');
   private hintEl = el('div', 'hint-banner');
+  private hintHideTimer = 0;
   private debugOn = false;
   private pauseOverlay = el('div', 'pause-overlay');
   private pauseBtn: HTMLButtonElement | null = null;
@@ -238,11 +239,21 @@ export class Hud {
   }
 
   showHint(text: string): void {
+    if (this.hintHideTimer) {
+      clearTimeout(this.hintHideTimer);
+      this.hintHideTimer = 0;
+    }
+    if (!text) {
+      this.hintEl.textContent = '';
+      this.hintEl.style.display = 'none';
+      return;
+    }
     this.hintEl.textContent = text;
     this.hintEl.style.display = 'block';
-    setTimeout(() => {
+    this.hintHideTimer = window.setTimeout(() => {
       this.hintEl.style.display = 'none';
-    }, 12000);
+      this.hintHideTimer = 0;
+    }, 12_000);
   }
 
   setDebug(fps: number, tick: number, entities: number): void {

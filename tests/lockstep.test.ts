@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { LockstepClient, type Transport } from '../src/net/lockstep';
 import { ACK_EVERY_TICKS, INPUT_DELAY_TICKS } from '../src/net/protocol';
 import type { Command } from '../src/sim/types';
@@ -34,6 +34,9 @@ class FakeTransport implements Transport {
 }
 
 describe('lockstep scaffolding (V2)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it('applies input delay to locally submitted commands', () => {
     const t = new FakeTransport();
     const c = new LockstepClient(t);
@@ -113,5 +116,20 @@ describe('lockstep scaffolding (V2)', () => {
     const bad = c.detectDesync(10, 'AAAA');
     expect(bad).toContain('player2');
     expect(bad).not.toContain('player1');
+  });
+
+  it('msSinceLastTick tracks wall-clock since the last relay tick', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const t = new FakeTransport();
+    const c = new LockstepClient(t);
+    expect(c.msSinceLastTick()).toBe(0);
+    t.emitTick(0, []);
+    vi.setSystemTime(1_003_000);
+    expect(c.msSinceLastTick()).toBe(3_000);
+    c.resetStallClock();
+    expect(c.msSinceLastTick()).toBe(0);
+    vi.setSystemTime(1_003_500);
+    expect(c.msSinceLastTick()).toBe(500);
   });
 });
