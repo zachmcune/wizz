@@ -3,7 +3,14 @@ import { Application } from 'pixi.js';
 import type { Registry } from '../data/registry';
 import type { ArtDef } from '../data/defs';
 import { ShapeSpriteProvider } from '../render/shape-sprite';
-import { DefenseCombatPreview, isDefenseBuilding } from './defense-combat-preview';
+import {
+  DefenseCombatPreview,
+  galleryPreviewCardTitle,
+  galleryPreviewHint,
+  isDefenseBuilding,
+  isGalleryPreviewable,
+  previewScenarioFor,
+} from './defense-combat-preview';
 import { el } from './dom';
 
 const TEAM_COLORS = [
@@ -37,7 +44,7 @@ export class ArtGallery {
     const back = el('button', 'btn', '← Back');
     back.addEventListener('click', () => this.onBack());
     const title = el('h1', 'art-gallery-title', 'Entity Designs');
-    const sub = el('p', 'art-gallery-sub', '2.5D · HUD icon — click defenses for live combat preview');
+    const sub = el('p', 'art-gallery-sub', '2.5D · HUD icon — click troops or defenses for live preview');
 
     const controls = el('div', 'art-gallery-controls');
     const colorLabel = el('span', 'art-gallery-control-label', 'Team color');
@@ -100,16 +107,17 @@ export class ArtGallery {
     return lastSection === 'Buildings' ? null : 'Buildings';
   }
 
-  private async openCombatPreview(defenseId: string, defenseName: string): Promise<void> {
+  private async openCombatPreview(kind: 'unit' | 'building', defId: string, name: string): Promise<void> {
     if (this.combatPreview || this.destroyed) return;
     const preview = new DefenseCombatPreview(
       this.registry,
-      defenseId,
-      defenseName,
+      defId,
+      name,
       this.teamColor,
       () => {
         this.combatPreview = null;
       },
+      kind,
     );
     this.combatPreview = preview;
     await preview.open();
@@ -137,15 +145,21 @@ export class ArtGallery {
         lastSection = heading;
         const headingEl = el('h2', 'art-gallery-section', heading);
         this.grid.appendChild(headingEl);
+        if (heading === 'Troops') {
+          this.grid.appendChild(el('p', 'art-gallery-section-hint', 'Click a troop for a live 2.5D preview — combat, harvest, support, or deploy.'));
+        } else if (heading === 'Defenses') {
+          this.grid.appendChild(el('p', 'art-gallery-section-hint', 'Click a defense for a live 2.5D combat preview.'));
+        }
       }
 
-      const isDefense = entry.kind === 'building' && isDefenseBuilding(this.registry, entry.id);
-      const card = el('div', `art-gallery-card${isDefense ? ' art-gallery-card-defense' : ''}`);
-      if (isDefense) {
+      const live = isGalleryPreviewable(this.registry, entry.kind, entry.id);
+      const scenario = live ? previewScenarioFor(this.registry, entry.kind, entry.id) : null;
+      const card = el('div', `art-gallery-card${live ? ' art-gallery-card-live' : ''}${entry.kind === 'building' && isDefenseBuilding(this.registry, entry.id) ? ' art-gallery-card-defense' : ''}`);
+      if (live && scenario) {
         card.setAttribute('role', 'button');
         card.tabIndex = 0;
-        card.title = 'Preview this defense fighting troops in 2.5D';
-        const openPreview = () => void this.openCombatPreview(entry.id, entry.name);
+        card.title = galleryPreviewCardTitle(scenario);
+        const openPreview = () => void this.openCombatPreview(entry.kind, entry.id, entry.name);
         card.addEventListener('click', openPreview);
         card.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -159,8 +173,8 @@ export class ArtGallery {
         el('span', 'art-gallery-name', entry.name),
         el('span', 'art-gallery-id', entry.id),
       );
-      if (isDefense) {
-        meta.appendChild(el('span', 'art-gallery-combat-hint', '▶ Combat preview'));
+      if (live && scenario) {
+        meta.appendChild(el('span', 'art-gallery-combat-hint', galleryPreviewHint(scenario)));
       }
       const accent = el('span', 'art-gallery-accent');
       accent.style.backgroundColor = entry.art.accent;

@@ -1,14 +1,8 @@
-// Live oblique combat vignette for a single defense — uses the real renderer + sim.
+// Live oblique vignette for gallery entities — uses the real renderer + sim.
 import { GameLoop } from '../core/game-loop';
 import { TICK_MS } from '../core/constants';
 import type { Registry } from '../data/registry';
-import type { BuildingEntity, UnitEntity } from '../sim/entity-types';
-import { initMatch, recomputePower, spawnEntity, unlockTech } from '../sim/factory';
-import { setGarrisonedIn, ensureGarrisonHost } from '../sim/capabilities';
-import { Simulation } from '../sim/simulation';
-import { visibilitySystem } from '../sim/systems/visibility';
-import type { StepContext } from '../sim/context';
-import type { EntityId, GameEvent, GameState, PlayerId } from '../sim/types';
+import type { EntityId, GameEvent, GameState } from '../sim/types';
 import { spawnCelestialScorch, spawnCelestialSkyStrike } from '../render/celestial-cannon-vfx';
 import { spawnStormSequence } from '../render/storm-conductor-vfx';
 import { isUnitInSanctuaryAura, resetSanctuaryVfx, spawnSanctuaryAttackTrail, tickSanctuarySpireAudio } from '../render/sanctuary-spire-vfx';
@@ -28,139 +22,29 @@ import {
 import { Renderer } from '../render/renderer';
 import { AudioManager } from '../audio/audio';
 import { el } from './dom';
+import {
+  galleryPreviewTitleKind,
+  previewScenarioFor,
+  previewShouldReset,
+  setupPreviewScene,
+  PREVIEW_DEFENDER,
+  PREVIEW_FOCUS_X,
+  PREVIEW_FOCUS_Y,
+  type GalleryPreviewSubject,
+  type PreviewScenario,
+} from './gallery-preview-scene';
+import type { Simulation } from '../sim/simulation';
 
-// Open meadow tile — away from the center mana node at (2064, 1424).
-const DEFENSE_X = 2384;
-const DEFENSE_Y = 1184;
-const DEFENDER: PlayerId = 'player0';
-const ATTACKER: PlayerId = 'player1';
-const RESET_TICKS = 360;
+export {
+  isDefenseBuilding,
+  isGalleryPreviewable,
+  previewScenarioFor,
+  galleryPreviewHint,
+  galleryPreviewCardTitle,
+} from './gallery-preview-scene';
+export type { GalleryPreviewSubject } from './gallery-preview-scene';
+
 const PREVIEW_ZOOM = 2.4;
-
-type ScenarioKind = 'combat' | 'heal' | 'garrison';
-
-interface PreviewScenario {
-  kind: ScenarioKind;
-  caption: string;
-  attackerUnit: string;
-  attackerCount: number;
-  attackerDx: number;
-  attackerDy: number;
-  attackerSpacing: number;
-}
-
-const SCENARIOS: Record<string, PreviewScenario> = {
-  arcane_sentry: { kind: 'combat', caption: 'Arcane Sentry firing rapid arcane bolts at advancing heavy troops.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
-  frost_spire: { kind: 'combat', caption: 'Frost Spire channeling a freezing energy stream.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 170, attackerDy: 0, attackerSpacing: 48 },
-  inferno_beacon: { kind: 'combat', caption: 'Inferno Beacon sweeping a continuous flamethrower through a swarm.', attackerUnit: 'imp_swarmling', attackerCount: 4, attackerDx: 150, attackerDy: -20, attackerSpacing: 28 },
-  storm_conductor: { kind: 'combat', caption: 'Storm Conductor chaining lightning through heavies.', attackerUnit: 'stone_golem', attackerCount: 3, attackerDx: 165, attackerDy: 0, attackerSpacing: 40 },
-  celestial_cannon: { kind: 'combat', caption: 'Celestial Cannon channeling skyfire — rune warning, then devastating impact.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 340, attackerDy: 0, attackerSpacing: 56 },
-  sanctuary_spire: { kind: 'heal', caption: 'Sanctuary Spire healing a wounded ally in its ward.', attackerUnit: 'stone_golem', attackerCount: 1, attackerDx: 220, attackerDy: 0, attackerSpacing: 0 },
-  arcane_bunker: { kind: 'garrison', caption: 'Arcane Bunker with garrisoned archers firing at attackers.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 175, attackerDy: 0, attackerSpacing: 44 },
-  stone_wall: { kind: 'combat', caption: 'Stone Wall holding the line while enemies break against it.', attackerUnit: 'imp_swarmling', attackerCount: 3, attackerDx: 90, attackerDy: 0, attackerSpacing: 24 },
-  arcane_gate: { kind: 'combat', caption: 'Arcane Gate blocking the lane while enemies siege it.', attackerUnit: 'stone_golem', attackerCount: 2, attackerDx: 100, attackerDy: 0, attackerSpacing: 36 },
-};
-
-const DEFAULT_SCENARIO: PreviewScenario = {
-  kind: 'combat',
-  caption: 'Defense engaging enemy troops in oblique view.',
-  attackerUnit: 'stone_golem',
-  attackerCount: 2,
-  attackerDx: 170,
-  attackerDy: 0,
-  attackerSpacing: 48,
-};
-
-function scenarioFor(defenseId: string): PreviewScenario {
-  return SCENARIOS[defenseId] ?? DEFAULT_SCENARIO;
-}
-
-function spawnAttackers(
-  state: GameState,
-  services: StepContext['services'],
-  scenario: PreviewScenario,
-): EntityId[] {
-  const ids: EntityId[] = [];
-  const count = scenario.attackerCount;
-  for (let i = 0; i < count; i++) {
-    const row = i - (count - 1) / 2;
-    const u = spawnEntity(
-      state,
-      services,
-      null,
-      scenario.attackerUnit,
-      ATTACKER,
-      DEFENSE_X + scenario.attackerDx,
-      DEFENSE_Y + scenario.attackerDy + row * scenario.attackerSpacing,
-    );
-    ids.push(u.id);
-  }
-  return ids;
-}
-
-function garrisonArchers(state: GameState, services: StepContext['services'], bunker: BuildingEntity): void {
-  const archerIds: EntityId[] = [];
-  for (const ox of [-36, 36]) {
-    const archer = spawnEntity(state, services, null, 'arcane_archer', DEFENDER, bunker.pos.x + ox, bunker.pos.y + 24) as UnitEntity;
-    setGarrisonedIn(archer, bunker.id);
-    archer.orders = [];
-    archer.state = 'garrisoned';
-    archerIds.push(archer.id);
-  }
-  ensureGarrisonHost(bunker).garrisonedIds = archerIds;
-}
-
-function setupScene(registry: Registry, defenseId: string, teamColor: string): {
-  state: GameState;
-  services: ReturnType<typeof initMatch>['services'];
-  sim: Simulation;
-  defenseEntityId: EntityId;
-  attackerIds: EntityId[];
-  scenario: PreviewScenario;
-} {
-  const { state, services } = initMatch(registry, registry.match('skirmish_1v1'));
-  const scenario = scenarioFor(defenseId);
-  const defender = state.players.find((p) => p.id === DEFENDER);
-  if (defender) defender.color = teamColor;
-
-  unlockTech(state, DEFENDER, 'sanctum');
-  unlockTech(state, DEFENDER, 'ley_conduit');
-  unlockTech(state, DEFENDER, 'arcane_nexus');
-  unlockTech(state, DEFENDER, defenseId);
-
-  spawnEntity(state, services, null, 'ley_conduit', DEFENDER, DEFENSE_X - 96, DEFENSE_Y + 72);
-  spawnEntity(state, services, null, 'ley_conduit', DEFENDER, DEFENSE_X + 96, DEFENSE_Y + 72);
-
-  const defense = spawnEntity(state, services, null, defenseId, DEFENDER, DEFENSE_X, DEFENSE_Y);
-  if (scenario.kind === 'garrison' && defense.kind === 'building') {
-    garrisonArchers(state, services, defense);
-  }
-
-  const attackerIds = spawnAttackers(state, services, scenario);
-
-  if (scenario.kind === 'heal') {
-    const ally = spawnEntity(state, services, null, 'stone_golem', DEFENDER, DEFENSE_X + 72, DEFENSE_Y) as UnitEntity;
-    ally.hp = Math.max(1, Math.floor(ally.maxHp * 0.55));
-  }
-
-  recomputePower(state, services);
-  const visCtx: StepContext = { services, events: [] };
-  visibilitySystem(state, visCtx);
-
-  const sim = new Simulation(state, services);
-  sim.setAiEnabled(false);
-
-  if (scenario.kind !== 'heal') {
-    sim.enqueue(0, [{
-      type: 'attack',
-      playerId: ATTACKER,
-      entityIds: attackerIds,
-      targetId: defense.id,
-    }]);
-  }
-
-  return { state, services, sim, defenseEntityId: defense.id, attackerIds, scenario };
-}
 
 let previewPendingStormChain = false;
 
@@ -262,6 +146,27 @@ function handlePreviewEvent(
       audio.play(ev);
       effects.spawn('puff', ev.x, ev.y, 0x9a9a9a, 14);
       break;
+    case 'manaDeposited':
+      audio.play(ev);
+      effects.spawn('spark', ev.x, ev.y, 0x7fe3ff, 4);
+      break;
+    case 'manaConjured':
+      audio.play(ev);
+      effects.spawn('spark', ev.x, ev.y, 0xb58cff, 6);
+      break;
+    case 'buildingComplete': {
+      const b = state.entities.get(ev.id);
+      if (b) {
+        audio.play(ev);
+        effects.spawn('ring', b.pos.x, b.pos.y, 0x8b6cff, 30);
+      }
+      break;
+    }
+    case 'mobileHQDeployed': {
+      const b = state.entities.get(ev.id);
+      if (b) effects.spawn('flash', b.pos.x, b.pos.y, 0x8b6cff, 16);
+      break;
+    }
   }
 }
 
@@ -276,8 +181,9 @@ export class DefenseCombatPreview {
   private renderer: Renderer | null = null;
   private loop: GameLoop | null = null;
   private sim: Simulation | null = null;
-  private defenseEntityId: EntityId = 0;
-  private attackerIds: EntityId[] = [];
+  private focusEntityId: EntityId = 0;
+  private opposingIds: EntityId[] = [];
+  private scenario: PreviewScenario;
   private ticksSinceReset = 0;
   private destroyed = false;
   private panActive = false;
@@ -288,13 +194,15 @@ export class DefenseCombatPreview {
 
   constructor(
     private registry: Registry,
-    private defenseId: string,
-    defenseName: string,
+    private defId: string,
+    name: string,
     private teamColor: string,
     private onClose: () => void,
+    private subject: GalleryPreviewSubject = 'building',
   ) {
-    this.titleEl.textContent = `${defenseName} — 2.5D combat preview`;
-    this.captionEl.textContent = scenarioFor(defenseId).caption;
+    this.scenario = previewScenarioFor(registry, subject, defId);
+    this.titleEl.textContent = `${name} — ${galleryPreviewTitleKind(this.scenario)}`;
+    this.captionEl.textContent = this.scenario.caption;
     this.closeBtn.addEventListener('click', () => this.close());
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) this.close();
@@ -312,7 +220,7 @@ export class DefenseCombatPreview {
     this.renderer = new Renderer(this.registry, map);
     await this.renderer.init(this.canvasHost);
     this.renderer.setNav(this.sim!.services.nav);
-    this.renderer.setOwnerColors(this.sim!.state, DEFENDER);
+    this.renderer.setOwnerColors(this.sim!.state, PREVIEW_DEFENDER);
     this.frameCamera();
     this.bindPan();
     this.renderer.syncTick(this.sim!.state);
@@ -336,9 +244,9 @@ export class DefenseCombatPreview {
     if (!this.renderer || !this.sim) return;
     this.applyViewport();
     const cam = this.renderer.camera;
-    const defense = this.sim.state.entities.get(this.defenseEntityId);
-    const focusX = defense?.pos.x ?? DEFENSE_X;
-    const focusY = defense?.pos.y ?? DEFENSE_Y;
+    const focus = this.sim.state.entities.get(this.focusEntityId);
+    const focusX = focus?.pos.x ?? PREVIEW_FOCUS_X;
+    const focusY = focus?.pos.y ?? PREVIEW_FOCUS_Y;
     cam.centerOn(focusX, focusY);
     cam.setZoom(PREVIEW_ZOOM);
   }
@@ -380,10 +288,11 @@ export class DefenseCombatPreview {
   }
 
   private bootstrapScene(): void {
-    const built = setupScene(this.registry, this.defenseId, this.teamColor);
+    const built = setupPreviewScene(this.registry, this.subject, this.defId, this.teamColor);
     this.sim = built.sim;
-    this.defenseEntityId = built.defenseEntityId;
-    this.attackerIds = built.attackerIds;
+    this.focusEntityId = built.focusEntityId;
+    this.opposingIds = built.opposingIds;
+    this.scenario = built.scenario;
     this.ticksSinceReset = 0;
     this.captionEl.textContent = built.scenario.caption;
     this.renderer?.syncTick(built.state);
@@ -394,17 +303,19 @@ export class DefenseCombatPreview {
     this.frameCamera();
   }
 
+  private retargetFocus(state: GameState): void {
+    if (state.entities.get(this.focusEntityId)) return;
+    if (this.scenario.kind !== 'deploy' || !this.scenario.deployAs) return;
+    for (const e of state.entities.values()) {
+      if (e.owner === PREVIEW_DEFENDER && e.defId === this.scenario.deployAs && e.hp > 0) {
+        this.focusEntityId = e.id;
+        return;
+      }
+    }
+  }
+
   private shouldReset(state: GameState): boolean {
-    if (this.ticksSinceReset >= RESET_TICKS) return true;
-    const defense = state.entities.get(this.defenseEntityId);
-    if (!defense || defense.hp <= 0) return true;
-    const anyAttackers = this.attackerIds.some((id) => {
-      const u = state.entities.get(id);
-      return u && u.hp > 0;
-    });
-    const scenario = scenarioFor(this.defenseId);
-    if (scenario.kind !== 'heal' && !anyAttackers) return true;
-    return false;
+    return previewShouldReset(state, this.scenario, this.focusEntityId, this.opposingIds, this.ticksSinceReset);
   }
 
   private stepSim(): boolean {
@@ -414,6 +325,7 @@ export class DefenseCombatPreview {
       handlePreviewEvent(ev, this.renderer.effects, () => this.sim!.state, this.registry, this.audio);
     }
     this.renderer.syncTick(this.sim.state);
+    this.retargetFocus(this.sim.state);
     this.ticksSinceReset++;
     if (this.shouldReset(this.sim.state)) {
       this.bootstrapScene();
@@ -424,8 +336,8 @@ export class DefenseCombatPreview {
   private renderFrame(alpha: number): void {
     if (this.destroyed || !this.sim || !this.renderer) return;
     const nav = this.sim.services.nav;
-    tickSanctuarySpireAudio(this.audio, this.sim.state, this.registry, DEFENDER, nav, true);
-    tickArcaneSentryAudio(this.audio, this.sim.state, this.registry, DEFENDER, nav, true);
+    tickSanctuarySpireAudio(this.audio, this.sim.state, this.registry, PREVIEW_DEFENDER, nav, true);
+    tickArcaneSentryAudio(this.audio, this.sim.state, this.registry, PREVIEW_DEFENDER, nav, true);
     this.renderer.render(this.sim.state, alpha, new Set(), undefined, TICK_MS, true);
   }
 
@@ -443,8 +355,4 @@ export class DefenseCombatPreview {
     this.overlay.remove();
     this.onClose();
   }
-}
-
-export function isDefenseBuilding(registry: Registry, buildingId: string): boolean {
-  return registry.building(buildingId).menuCategory === 'defenses';
 }
