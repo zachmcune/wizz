@@ -58,7 +58,7 @@ export class CommandMenuPanel {
   ) {
     this.panel = new Collapsible('Command', startOpen, onHeadClick);
     this.categoryChips = new CategoryChips((id) => this.onCategorySelect(id));
-    this.inspectCard = new BuildingInspectCard(() => this.hideInspect());
+    this.inspectCard = new BuildingInspectCard();
     this.panel.body.append(
       this.categoryChips.root,
       this.inspectCard.root,
@@ -281,7 +281,7 @@ export class CommandMenuPanel {
       return;
     }
     if (isTrainCategory(this.activeCategory)) {
-      this.hideInspect();
+      this.clearInspect();
       for (const [, udef] of this.registry.units) {
         if (udef.menuCategory !== this.activeCategory) continue;
         this.contentRow.appendChild(this.makeTrainButton(udef));
@@ -328,9 +328,7 @@ export class CommandMenuPanel {
     infoBtn.setAttribute('aria-label', `About ${def.name}`);
     infoBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      const pointerType = 'pointerType' in ev ? (ev as PointerEvent).pointerType : '';
-      if (pointerType === 'mouse') this.showInspect(def.id);
-      else this.toggleInspect(def.id);
+      this.showInspect(def.id);
     });
 
     item.addEventListener('pointerenter', (ev) => {
@@ -375,35 +373,35 @@ export class CommandMenuPanel {
     this.syncInspectingClass();
   }
 
-  private hideInspect(): void {
+  private clearInspect(): void {
     this.inspectDefId = null;
-    this.inspectCard.hide();
+    this.inspectCard.showIdle();
     this.syncInspectingClass();
   }
 
-  private toggleInspect(defId: string): void {
-    if (this.inspectDefId === defId) this.hideInspect();
-    else this.showInspect(defId);
-  }
-
   private pruneInspect(): void {
-    if (!this.inspectDefId) return;
     if (!isBuildCategory(this.activeCategory)) {
-      this.hideInspect();
+      this.clearInspect();
+      return;
+    }
+    if (!this.inspectDefId) {
+      this.inspectCard.showIdle();
+      this.syncInspectingClass();
       return;
     }
     const def = this.registry.buildings.get(this.inspectDefId);
-    if (!def || def.menuCategory !== this.activeCategory) this.hideInspect();
+    if (!def || def.menuCategory !== this.activeCategory) this.clearInspect();
   }
 
   private refreshInspect(): void {
-    if (!this.inspectDefId || !this.lastPlayer) {
+    if (!isBuildCategory(this.activeCategory) || !this.inspectDefId || !this.lastPlayer) {
+      this.inspectCard.showIdle();
       this.syncInspectingClass();
       return;
     }
     const def = this.registry.buildings.get(this.inspectDefId);
     if (!def) {
-      this.hideInspect();
+      this.clearInspect();
       return;
     }
     this.inspectCard.show(buildingInspectInfo(def, this.registry, this.lastPlayer));

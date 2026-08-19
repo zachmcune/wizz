@@ -392,6 +392,9 @@
 .compact-ui .build-inspect {
   padding: 6px;
   gap: 3px;
+  height: 128px;
+  min-height: 128px;
+  max-height: 128px;
 }
 .compact-ui .build-inspect-name {
   font-size: 11px;

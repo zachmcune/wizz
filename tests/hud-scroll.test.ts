@@ -41,4 +41,20 @@ describe('HUD command card mobile scroll', () => {
     expect(hudCss).toMatch(/^\.build-req\.missing\s*\{/m);
     expect(hudCss).toMatch(/^\.build-info-btn\s*\{/m);
   });
+
+  it('reserves a fixed-size inspect card so the build list does not jump', () => {
+    const card = hudCss.match(/^\.build-inspect\s*\{[^}]+\}/m)?.[0];
+    expect(card).toBeTruthy();
+    expect(card).toMatch(/height:\s*152px/);
+    expect(card).toMatch(/min-height:\s*152px/);
+    expect(card).toMatch(/max-height:\s*152px/);
+    expect(card).toMatch(/flex-shrink:\s*0/);
+    expect(card).toMatch(/overflow:\s*hidden/);
+    expect(hudCss).toMatch(/^\.build-inspect-details\s*\{[^}]*overflow-y:\s*auto/m);
+    const compact = lobbyCss.match(/\.compact-ui \.build-inspect\s*\{[^}]+\}/)?.[0];
+    expect(compact).toBeTruthy();
+    expect(compact).toMatch(/height:\s*128px/);
+    expect(compact).toMatch(/min-height:\s*128px/);
+    expect(compact).toMatch(/max-height:\s*128px/);
+  });
 });

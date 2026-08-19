@@ -164,30 +164,27 @@ export function buildingInspectInfo(
   };
 }
 
+export const BUILD_INSPECT_IDLE_NAME = 'Building info';
+export const BUILD_INSPECT_IDLE_DESC = 'Select a building to see what it does.';
+
 export class BuildingInspectCard {
   readonly root = el('div', 'build-inspect');
   private nameEl = el('div', 'build-inspect-name');
-  private closeBtn = el('button', 'build-inspect-close', '×');
   private descEl = el('p', 'build-inspect-desc');
   private statsEl = el('div', 'build-inspect-stats');
+  private detailsEl = el('div', 'build-inspect-details');
   private reqsEl = el('div', 'build-inspect-reqs');
   private factsEl = el('div', 'build-inspect-facts');
   private statusEl = el('div', 'build-inspect-status');
   private shownId: string | null = null;
   private reqKey = '';
 
-  constructor(onClose: () => void) {
-    this.closeBtn.type = 'button';
-    this.closeBtn.title = 'Close';
-    this.closeBtn.setAttribute('aria-label', 'Close building info');
-    this.closeBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      onClose();
-    });
+  constructor() {
     const head = el('div', 'build-inspect-head');
-    head.append(this.nameEl, this.closeBtn);
-    this.root.append(head, this.descEl, this.statsEl, this.reqsEl, this.factsEl, this.statusEl);
-    this.root.hidden = true;
+    head.append(this.nameEl);
+    this.detailsEl.append(this.reqsEl, this.factsEl);
+    this.root.append(head, this.descEl, this.statsEl, this.detailsEl, this.statusEl);
+    this.showIdle();
   }
 
   get defId(): string | null {
@@ -199,7 +196,7 @@ export class BuildingInspectCard {
     const same = this.shownId === info.id && this.reqKey === reqKey;
     this.shownId = info.id;
     this.reqKey = reqKey;
-    this.root.hidden = false;
+    this.root.classList.remove('idle');
     this.root.classList.toggle('locked', !info.unlocked);
     this.root.classList.toggle('unaffordable', info.unlocked && !info.affordable);
     this.statusEl.textContent = info.statusLine;
@@ -212,10 +209,21 @@ export class BuildingInspectCard {
     this.renderFacts(info.facts);
   }
 
-  hide(): void {
+  /** Keep the reserved slot visible with placeholder copy so the build list does not jump. */
+  showIdle(): void {
     this.shownId = null;
     this.reqKey = '';
-    this.root.hidden = true;
+    this.root.classList.add('idle');
+    this.root.classList.remove('locked', 'unaffordable');
+    this.nameEl.textContent = BUILD_INSPECT_IDLE_NAME;
+    this.descEl.textContent = BUILD_INSPECT_IDLE_DESC;
+    this.statsEl.textContent = '';
+    this.reqsEl.innerHTML = '';
+    this.reqsEl.hidden = true;
+    this.factsEl.innerHTML = '';
+    this.factsEl.hidden = true;
+    this.statusEl.textContent = '';
+    this.statusEl.className = 'build-inspect-status';
   }
 
   private renderRequires(info: BuildingInspectInfo): void {
