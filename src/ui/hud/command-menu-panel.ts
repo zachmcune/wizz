@@ -332,7 +332,15 @@ export class CommandMenuPanel {
       btn.classList.toggle('unaffordable', unlocked && !affordable);
       btn.classList.toggle('locked-out', !unlocked);
       const sub = btn.querySelector('.btn-sub');
-      if (sub) sub.textContent = !unlocked ? 'Locked' : `${def.cost} mana`;
+      if (sub) {
+        if (!unlocked) {
+          const missing = def.requires.find((r) => !player.unlockedTech.includes(r));
+          const missingName = missing ? this.registry.buildings.get(missing)?.name ?? missing : 'Locked';
+          sub.textContent = `Needs ${missingName}`;
+        } else {
+          sub.textContent = `${def.cost} mana`;
+        }
+      }
     }
 
     const st = this.state;

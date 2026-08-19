@@ -38,7 +38,12 @@ export class ConfigDrivenStrategy implements AiStrategy {
         (e) => e.kind === 'building' && e.defId === 'ley_conduit' && e.buildProgress !== undefined,
       );
       const leyDef = reg.buildings.get('ley_conduit');
-      if (!pendingLey && leyDef && p.unlockedTech.includes('sanctum') && p.mana >= leyDef.cost) {
+      if (
+        !pendingLey &&
+        leyDef &&
+        leyDef.requires.every((r) => p.unlockedTech.includes(r)) &&
+        p.mana >= leyDef.cost
+      ) {
         const spot = findPlacement(state, services, p.id, sanctum.pos.x, sanctum.pos.y, 'ley_conduit');
         if (spot) cmds.push({ type: 'build', playerId: p.id, defId: 'ley_conduit', x: spot.x, y: spot.y });
       }

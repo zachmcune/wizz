@@ -12,7 +12,7 @@
   "footprint": 2,
   "menuCategory": "buildings",
   "requires": [
-    "sanctum"
+    "attunement_spire"
   ],
   "powerProduced": 60,
   "art": {

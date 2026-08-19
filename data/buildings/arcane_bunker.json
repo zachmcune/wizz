@@ -11,7 +11,7 @@
   "sight": 165,
   "footprint": 2,
   "menuCategory": "defenses",
-  "requires": ["sanctum"],
+  "requires": ["attunement_spire"],
   "garrison": {
     "capacity": 4,
     "allowedUnitIds": ["arcane_archer", "storm_caster"],
