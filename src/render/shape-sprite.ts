@@ -251,6 +251,20 @@ const GLYPHS: Record<string, GlyphFn> = {
   frost_bolt: (g, r, accent) => {
     g.poly([0, -r * 0.8, r * 0.22, 0, 0, r * 0.8, -r * 0.22, 0]).fill(accent);
   },
+  arcane_bolt: (g, r, accent, dir = 0) => {
+    const ang = facingAngle(dir);
+    const tx = Math.cos(ang);
+    const ty = Math.sin(ang);
+    const px = -ty;
+    const py = tx;
+    g.poly([
+      tx * r * 0.95, ty * r * 0.95,
+      -tx * r * 0.55 + px * r * 0.38, -ty * r * 0.55 + py * r * 0.38,
+      -tx * r * 0.2, -ty * r * 0.2,
+      -tx * r * 0.55 - px * r * 0.38, -ty * r * 0.55 - py * r * 0.38,
+    ]).fill(accent);
+    g.circle(tx * r * 0.15, ty * r * 0.15, r * 0.18).fill({ color: 0xffffff, alpha: 0.9 });
+  },
   inferno_orb: (g, r, accent) => {
     g.circle(0, 0, r * 0.45).fill(accent);
     strokeArc(g, 0, 0, r * 0.72, -0.6, 2.2, { width: 1.5, color: accent });
@@ -827,6 +841,22 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
     drawIsoPlate(g, 0, r * 0.32, r * 0.55, r * 0.22, shade(parseHex(fill), 0.4));
     drawIsoPyramid(g, 0, -r * 0.05, r * 0.42, r * 0.18, r * 0.85, parseHex(fill));
     drawAccentGlyph(g, 'storm_caster', 0, -r * 0.45, r * 0.58, accent, dir);
+  },
+  arcane_bolt: (g, size, fill, accent, dir) => {
+    const r = size / 2;
+    const ang = (dir / 8) * Math.PI * 2 - Math.PI / 2;
+    const tx = Math.cos(ang);
+    const ty = Math.sin(ang) * 0.6;
+    const fillN = parseHex(fill);
+    const accentN = parseHex(accent);
+    g.circle(0, 0, r * 0.5).fill({ color: fillN, alpha: 0.35 });
+    g.poly([
+      tx * r * 0.95, ty * r * 0.95,
+      -tx * r * 0.45 + -ty * r * 0.4, -ty * r * 0.45 + tx * r * 0.4,
+      -tx * r * 0.2, -ty * r * 0.2,
+      -tx * r * 0.45 - -ty * r * 0.4, -ty * r * 0.45 - tx * r * 0.4,
+    ]).fill(accentN).stroke({ width: 1, color: OUTLINE });
+    g.circle(tx * r * 0.1, ty * r * 0.1, r * 0.16).fill({ color: 0xffffff, alpha: 0.9 });
   },
   sanctum: (g, size, fill, accent, dir) => {
     const r = size / 2;

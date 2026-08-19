@@ -32,7 +32,8 @@
     "shape": "diamond",
     "size": 16,
     "accent": "#c9b8ff",
-    "sprite": "arcane_archer"
+    "sprite": "arcane_archer",
+    "attackFx": "bolt"
   },
   "sfx": {
     "select": "archer_select",

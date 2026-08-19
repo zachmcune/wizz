@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 const armorClass = z.enum(['light', 'heavy', 'building']);
 const shapeKind = z.enum(['triangle', 'circle', 'square', 'diamond', 'hexagon', 'pentagon', 'building']);
+const attackFxKind = z.enum(['lunge_slash', 'bolt', 'slam']);
 
 const artSchema = z.object({
   shape: shapeKind,
@@ -14,6 +15,8 @@ const artSchema = z.object({
   frameHeight: z.number().positive().optional(),
   directions: z.number().int().positive().optional(),
   anchor: z.object({ x: z.number(), y: z.number() }).optional(),
+  attackFx: attackFxKind.optional(),
+  trail: z.boolean().optional(),
 });
 
 const sfxSchema = z

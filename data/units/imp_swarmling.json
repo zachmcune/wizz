@@ -30,7 +30,8 @@
     "shape": "triangle",
     "size": 16,
     "accent": "#ff8a5c",
-    "sprite": "imp_swarmling"
+    "sprite": "imp_swarmling",
+    "attackFx": "lunge_slash"
   },
   "sfx": {
     "select": "imp_select",

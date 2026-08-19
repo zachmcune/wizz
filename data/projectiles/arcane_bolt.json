@@ -1,5 +1,11 @@
 {
   "id": "arcane_bolt",
   "speed": 1200,
-  "art": { "shape": "circle", "size": 4, "accent": "#ffffff" }
+  "art": {
+    "shape": "diamond",
+    "size": 8,
+    "accent": "#c9b8ff",
+    "sprite": "arcane_bolt",
+    "trail": true
+  }
 }

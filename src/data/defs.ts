@@ -8,6 +8,9 @@ export type BuildMenuCategory = 'buildings' | 'defenses' | 'advanced';
 export type TrainMenuCategory = 'workers' | 'small_troops' | 'large_troops' | 'wizards';
 export type MenuCategory = BuildMenuCategory | TrainMenuCategory;
 
+/** View-only attack tell. Renderer + effects only; does not change combat. */
+export type AttackFxKind = 'lunge_slash' | 'bolt' | 'slam';
+
 export interface ArtDef {
   shape: ShapeKind;
   size: number; // draw size in world units
@@ -21,6 +24,10 @@ export interface ArtDef {
   directions?: number;
   /** World-sprite pivot as a fraction of the generated texture. Omit to pin buildings to the foundation. */
   anchor?: { x: number; y: number };
+  /** Distinct attack VFX for this unit (Phase 1 tells). */
+  attackFx?: AttackFxKind;
+  /** Short motion trail behind this projectile sprite. */
+  trail?: boolean;
 }
 
 export interface SfxDef {

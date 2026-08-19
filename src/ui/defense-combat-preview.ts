@@ -19,6 +19,12 @@ import {
   spawnSentrySilhouetteFlash,
   tickArcaneSentryAudio,
 } from '../render/arcane-sentry-vfx';
+import {
+  applyAttackFxBursts,
+  attackFiredBursts,
+  attackFxForEntity,
+  attackHitBursts,
+} from '../render/attack-fx';
 import { Renderer } from '../render/renderer';
 import { AudioManager } from '../audio/audio';
 import { el } from './dom';
@@ -184,13 +190,19 @@ function handlePreviewEvent(
         registerSentryBoltFired(ev.sourceId, crystalIndex, src.facing, ev.x, ev.y);
         break;
       }
-      if (src?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, src)) {
+      const fx = attackFxForEntity(registry, src);
+      const inSanctuary = src?.kind === 'unit' && isUnitInSanctuaryAura(state, registry, src);
+      if (inSanctuary && src) {
         audio.playSanctuaryBuffShimmer();
         spawnSanctuaryAttackTrail(ev.x, ev.y, src.facing);
-        break;
+      } else {
+        audio.play(ev);
       }
-      audio.play(ev);
-      effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+      if (fx && src) {
+        applyAttackFxBursts(effects, attackFiredBursts(fx, src.facing), ev.x, ev.y, src.facing);
+      } else if (!inSanctuary) {
+        effects.spawn('flash', ev.x, ev.y, 0xffe08a, 6);
+      }
       break;
     }
     case 'beamStarted':
@@ -202,7 +214,13 @@ function handlePreviewEvent(
         if (isSentryDamageSource(state, ev.sourceId)) {
           spawnSentrySilhouetteFlash(ev.targetId, ev.x, ev.y);
         } else {
-          effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+          const src = ev.sourceId !== undefined ? state.entities.get(ev.sourceId) : undefined;
+          const fx = attackFxForEntity(registry, src);
+          if (fx && src) {
+            applyAttackFxBursts(effects, attackHitBursts(fx, src.facing), ev.x, ev.y, src.facing);
+          } else {
+            effects.spawn('flash', ev.x, ev.y, 0xffffff, 5);
+          }
         }
       }
       break;
