@@ -383,6 +383,27 @@
   max-height: none;
   overflow-y: visible;
 }
+.compact-ui .build-info-btn {
+  flex-basis: 32px;
+  width: 32px;
+  min-width: 32px;
+  min-height: 30px;
+}
+.compact-ui .build-inspect {
+  padding: 6px;
+  gap: 3px;
+}
+.compact-ui .build-inspect-name {
+  font-size: 11px;
+}
+.compact-ui .build-inspect-desc {
+  font-size: 10px;
+  -webkit-line-clamp: 3;
+}
+.compact-ui .build-inspect-fact {
+  grid-template-columns: 56px 1fr;
+  font-size: 9px;
+}
 .compact-ui .minimap-panel {
   width: min(18vw, 88px);
 }

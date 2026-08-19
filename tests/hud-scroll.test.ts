@@ -26,6 +26,13 @@ describe('HUD command card mobile scroll', () => {
 
   it('allows vertical pan on build controls and category chips', () => {
     expect(hudCss).toMatch(/\.hud-scroll \.build-btn/);
+    expect(hudCss).toMatch(/\.hud-scroll \.build-info-btn/);
     expect(hudCss).toMatch(/\.cmd-card \.category-chip,\s*\.cmd-card \.category-chips-scroll\s*\{\s*touch-action:\s*pan-x pan-y/);
+  });
+
+  it('styles a build-tab inspect card for hover and tap details', () => {
+    expect(hudCss).toMatch(/^\.build-inspect\s*\{/m);
+    expect(hudCss).toMatch(/^\.build-req\.missing\s*\{/m);
+    expect(hudCss).toMatch(/^\.build-info-btn\s*\{/m);
   });
 });

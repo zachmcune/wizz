@@ -191,13 +191,42 @@
   opacity: 0.65;
   line-height: 1.2;
 }
+.build-item {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+}
 .build-btn {
   border-left: 4px solid var(--accent);
   min-width: 0;
-  flex: 1 1 100%;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.build-info-btn {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1;
+  opacity: 0.75;
+}
+.build-info-btn.active,
+.build-item.inspecting .build-info-btn {
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  background: rgba(127, 227, 255, 0.12);
+}
+.build-item.inspecting .build-btn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 .build-btn.unaffordable {
   opacity: 0.5;
@@ -208,10 +237,12 @@
   color: #ff9a9a;
 }
 .build-btn.locked-out {
-  opacity: 0.38;
+  opacity: 0.62;
+  cursor: pointer;
 }
 .build-btn.locked-out .btn-sub {
-  opacity: 0.65;
+  opacity: 0.95;
+  color: #efc36a;
 }
 .produce-btn {
   min-width: 0;
@@ -379,13 +410,141 @@
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
+.build-inspect {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(10, 8, 18, 0.72);
+}
+.build-inspect[hidden] {
+  display: none;
+}
+.build-inspect-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.build-inspect-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.build-inspect-close {
+  flex: 0 0 28px;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: rgba(36, 32, 56, 0.95);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.build-inspect-desc {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.88;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.build-inspect-stats {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.build-inspect-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.build-inspect-reqs-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.build-req {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+}
+.build-req.met {
+  color: #8fffc0;
+  border-color: rgba(79, 208, 122, 0.45);
+  background: rgba(43, 107, 58, 0.28);
+}
+.build-req.missing {
+  color: #ffd27a;
+  border-color: rgba(239, 195, 106, 0.5);
+  background: rgba(90, 64, 20, 0.4);
+}
+.build-inspect-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.build-inspect-fact {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 6px;
+  align-items: start;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.build-inspect-fact-label {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  padding-top: 1px;
+}
+.build-inspect-fact-text {
+  opacity: 0.9;
+}
+.build-inspect-status {
+  font-size: 10px;
+  font-weight: 700;
+}
+.build-inspect-status.ready {
+  color: #8fffc0;
+}
+.build-inspect-status.unaffordable {
+  color: #ff9a9a;
+}
+.build-inspect-status.locked {
+  color: #efc36a;
+}
+.build-inspect.locked {
+  border-color: rgba(239, 195, 106, 0.35);
+}
+.build-inspect.unaffordable {
+  border-color: rgba(255, 154, 154, 0.35);
+}
 /* Buttons default to touch-action: manipulation (body), which blocks vertical
    pan scrolling inside overflow containers on mobile. Category chips also need
    pan-y so a downward swipe on the Build tab scrolls the list. */
 .hud-scroll .build-btn,
 .hud-scroll .produce-btn,
+.hud-scroll .build-info-btn,
 .command-row .build-btn,
 .command-row .produce-btn,
+.command-row .build-info-btn,
 .cmd-card .panel-tab,
 .cmd-card .building-row .btn,
 .cmd-card .producer-chip {
