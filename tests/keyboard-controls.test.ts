@@ -82,6 +82,18 @@ describe('KeyboardControls', () => {
     expect(event.prevented).toBe(true);
   });
 
+  it('does not register duplicate listeners when attach is called twice', () => {
+    const target = new FakeKeyboardTarget();
+    const clearSelection = vi.fn();
+    const keyboard = new KeyboardControls({ clearSelection, confirmPlacement: vi.fn() }, target);
+
+    keyboard.attach();
+    keyboard.attach();
+    target.dispatch('keydown', 'Escape');
+
+    expect(clearSelection).toHaveBeenCalledTimes(1);
+  });
+
   it('does not intercept typing in editable controls', () => {
     const target = new FakeKeyboardTarget();
     const keyboard = new KeyboardControls({ clearSelection: vi.fn(), confirmPlacement: vi.fn() }, target);

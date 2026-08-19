@@ -78,7 +78,7 @@ function wheelEvent(deltaX: number, deltaY: number): WheelEvent & { prevented: b
   } as WheelEvent & { prevented: boolean };
 }
 
-function createBinder(mode: InputMode = 'normal') {
+function createBinder(mode: InputMode = 'normal', opts?: { paused?: boolean }) {
   const canvas = new FakeCanvas();
   const gesture = {
     activePointers: 0,
@@ -107,6 +107,7 @@ function createBinder(mode: InputMode = 'normal') {
   };
   const binder = new PointerBinder(canvas as unknown as HTMLCanvasElement, {
     getEnded: () => false,
+    getPaused: () => opts?.paused === true,
     camera: { view: () => ({ x: 0, y: 0, zoom: 1 }) },
     controller,
     gesture,
@@ -317,5 +318,22 @@ describe('PointerBinder desktop controls', () => {
     canvas.dispatch('contextmenu', event as unknown as Event);
 
     expect(event.prevented).toBe(true);
+  });
+
+  it('ignores taps, pans, and wheel while the match is paused', () => {
+    const { canvas, controller, gesture } = createBinder('normal', { paused: true });
+    const down = pointerEvent({ pointerId: 4, clientX: 200, clientY: 220 });
+
+    canvas.dispatch('pointerdown', down);
+    canvas.dispatch('pointermove', pointerEvent({ pointerId: 4, clientX: 240, clientY: 260 }));
+    canvas.dispatch('pointerup', pointerEvent({ pointerId: 4, buttons: 0, clientX: 240, clientY: 260 }));
+    canvas.dispatch('wheel', wheelEvent(12, -18));
+
+    expect(down.prevented).toBe(true);
+    expect(gesture.pointerDown).not.toHaveBeenCalled();
+    expect(gesture.pointerMove).not.toHaveBeenCalled();
+    expect(controller.tap).not.toHaveBeenCalled();
+    expect(controller.panByScreen).not.toHaveBeenCalled();
+    expect(canvas.captured).toEqual([]);
   });
 });

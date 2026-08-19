@@ -295,6 +295,7 @@ export class Game {
     this.setupGestures();
     this.pointerBinder = new PointerBinder(this.renderer.app.canvas, {
       getEnded: () => this.state.ended,
+      getPaused: () => this.simCtrl.isPaused,
       camera: this.renderer.camera,
       controller: this.controller,
       gesture: this.gesture,
@@ -464,6 +465,13 @@ export class Game {
     this.simCtrl.setPaused(paused);
     this.loop?.setPaused(paused);
     this.hud?.setPaused(paused);
+    if (paused) {
+      this.gesture?.cancel();
+      this.boxEl.style.display = 'none';
+      this.keyboard?.detach();
+    } else {
+      this.keyboard?.attach();
+    }
     if (!paused && !this.sandboxMode) void saveGame(this.state, this.saveMeta);
   }
 
