@@ -56,4 +56,50 @@ describe('build ghost under the pointer', () => {
       y: (Math.floor((100 - TILE) / TILE) + 1) * TILE,
     });
   });
+
+  it('snaps the ghost next to the selected building when the pointer is outside the build zone', () => {
+    const hq = {
+      id: 1,
+      kind: 'building' as const,
+      owner: 'p1',
+      defId: 'sanctum',
+      pos: { x: 400, y: 400 },
+      vel: { x: 0, y: 0 },
+      facing: 0,
+      hp: 100,
+      maxHp: 100,
+      radius: 24,
+      state: 'idle' as const,
+    };
+    const registry = getRegistry();
+    const controller = new InputController(
+      () =>
+        ({
+          entities: new Map([[hq.id, hq]]),
+          players: [],
+          tick: 0,
+        }) as unknown as GameState,
+      {
+        view: () => ({ x: 0, y: 0, zoom: 1 }),
+        visibleWorldRect: () => ({ x: 0, y: 0, w: 800, h: 600 }),
+      } as unknown as Camera,
+      registry,
+      { isOccupied: () => false, footprintHeightOk: () => true } as unknown as NavGrid,
+      'p1',
+      vi.fn(),
+      vi.fn(),
+      () => true,
+      (tx) => tx >= 12,
+      () => false,
+    );
+    controller.setSelection([hq.id]);
+    controller.notePointerWorld({ x: 40, y: 40 });
+    controller.startBuild('stone_wall');
+
+    const expectedX = (Math.floor((400 + TILE * 4 - TILE / 2) / TILE) + 0.5) * TILE;
+    const expectedY = (Math.floor((400 - TILE / 2) / TILE) + 0.5) * TILE;
+    expect(controller.session.buildGhost).toMatchObject({ x: expectedX, y: expectedY });
+    expect(controller.session.buildGhost?.issue).not.toBe('range');
+    expect(controller.session.wallDragTiles?.some((t) => t.valid)).toBe(true);
+  });
 });

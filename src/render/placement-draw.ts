@@ -5,6 +5,7 @@ import type { BuildZoneTile, PlacementCell, PlacementCellKind } from '../sim/pla
 import { projectLiftedGround, projectedTileCorners } from './tile-project';
 
 const OPEN_FILL = 0x5dff8f;
+const BLOCKED_FILL = 0xff5d5d;
 const NODE_FILL = 0xffd166;
 const EDGE_STROKE = 0x8cffb4;
 
@@ -59,6 +60,9 @@ export function drawBuildZoneTiles(
     if (t.kind === 'open') {
       appendTileQuad(g, t.tx, t.ty, 1.5, lift);
       g.fill({ color: OPEN_FILL, alpha: 0.16 });
+    } else if (t.kind === 'blocked') {
+      appendTileQuad(g, t.tx, t.ty, 1.5, lift);
+      g.fill({ color: BLOCKED_FILL, alpha: 0.2 });
     } else if (t.kind === 'node') {
       appendTileQuad(g, t.tx, t.ty, 1.5, lift);
       g.fill({ color: NODE_FILL, alpha: 0.22 });

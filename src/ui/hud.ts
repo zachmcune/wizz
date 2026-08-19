@@ -17,7 +17,8 @@ import { SuperweaponStatus } from './hud/superweapon-status';
 import { MatchSettingsScreen } from './hud/settings-screen';
 import type { Settings } from '../storage/settings';
 import type { AudioManager } from '../audio/audio';
-import { placementConfirmHint } from '../input/placement';
+import { placementConfirmHint, placementCostLabel } from '../input/placement';
+import { radarOfflineHint } from './radar-hint';
 
 export interface HudOptions {
   settings: Settings;
@@ -51,6 +52,7 @@ export class Hud {
 
   private infoPanel: Collapsible;
   private minimapPanel: Collapsible;
+  private minimapHint = el('p', 'minimap-hint');
   private commandMenu: CommandMenuPanel;
   private unitOrdersPanel: UnitOrdersPanel;
   private buildingActions: BuildingActionsPanel;
@@ -183,7 +185,7 @@ export class Hud {
     }
 
     const minimapWrap = el('div', 'minimap-wrap');
-    minimapWrap.appendChild(minimap.canvas);
+    minimapWrap.append(minimap.canvas, this.minimapHint);
     this.minimapPanel = new Collapsible('Map', false);
     this.minimapPanel.body.append(minimapWrap);
     this.minimapPanel.root.classList.add('minimap-panel');
@@ -339,13 +341,15 @@ export class Hud {
     this.powerStat.title = short ? 'Low power — production and defenses offline. Build Ley Conduit (+60 pwr).' : '';
 
     const radarOn = radarActive(st, this.registry, this.playerId);
+    const radarHint = st.ended ? null : radarOfflineHint(st, this.registry, this.playerId);
     if (st.ended) {
       this.minimapPanel.setTitle('Map');
       this.minimapPanel.root.classList.remove('minimap-offline');
     } else {
-      this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar offline');
+      this.minimapPanel.setTitle(radarOn ? 'Map' : 'Radar');
       this.minimapPanel.root.classList.toggle('minimap-offline', !radarOn);
     }
+    this.minimapHint.textContent = radarHint ?? '';
 
     const session = this.controller.session;
     this.spellBar.update(p, session);
@@ -522,9 +526,7 @@ export class Hud {
       const costLabel =
         session.mode === 'deploy'
           ? 'free'
-          : wallPreview && session.wallDragTiles
-            ? String(def.cost * session.wallDragTiles.filter((t) => t.valid).length)
-            : String(def.cost);
+          : placementCostLabel(def.cost, wallPreview ? session.wallDragTiles : null);
       this.buildConfirmLabel.textContent = `${prefix} (${costLabel}) ${hint}`;
       this.buildConfirmBtn.disabled = !ok;
     } else {

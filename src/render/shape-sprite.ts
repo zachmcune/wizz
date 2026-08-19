@@ -104,8 +104,8 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.poly([-r * 0.8, r * 0.1, 0, -r * 0.5, r * 0.8, r * 0.1, 0, r * 0.35]).fill(accent);
   },
   rift_skimmer: (g, r, accent) => {
-    g.ellipse(0, r * 0.15, r * 0.85, r * 0.28).stroke({ width: 2, color: accent });
-    g.poly([-r * 0.45, 0, 0, -r * 0.55, r * 0.45, 0]).fill(accent);
+    g.circle(0, -r * 0.12, r * 0.14).fill(accent);
+    g.ellipse(0, r * 0.18, r * 0.42, r * 0.1).stroke({ width: 1.5, color: accent, alpha: 0.85 });
   },
   stone_golem: (g, r, accent) => {
     g.moveTo(-r * 0.4, -r * 0.2).lineTo(r * 0.1, r * 0.35).stroke({ width: 2, color: accent });
@@ -126,8 +126,9 @@ const GLYPHS: Record<string, GlyphFn> = {
     g.moveTo(-r * 0.35, -r * 0.15).lineTo(r * 0.35, -r * 0.15).stroke({ width: 2, color: accent });
   },
   storm_caster: (g, r, accent) => {
-    g.moveTo(-r * 0.15, -r * 0.5).lineTo(r * 0.1, 0).lineTo(-r * 0.05, 0).lineTo(r * 0.2, r * 0.5).stroke({ width: 2.5, color: accent });
-    g.circle(r * 0.35, -r * 0.35, r * 0.08).fill(accent);
+    g.moveTo(-r * 0.08, -r * 0.35).lineTo(r * 0.06, -r * 0.05).lineTo(-r * 0.04, -r * 0.05).lineTo(r * 0.1, r * 0.22)
+      .stroke({ width: 2, color: accent });
+    g.circle(r * 0.22, -r * 0.28, r * 0.07).fill(accent);
   },
   sanctum: (g, r, accent) => {
     // Crown-and-eye sigil: broad enough to remain legible in the HUD icon,
@@ -298,8 +299,8 @@ const ICON_DESIGNS: Record<string, DesignFn> = {
   },
   rift_skimmer: (g, size, fill, accent, dir) => {
     const r = size / 2;
-    g.ellipse(0, r * 0.2, r * 0.95, r * 0.35).fill(fill).stroke({ width: 2, color: OUTLINE });
-    g.ellipse(0, -r * 0.05, r * 0.45, r * 0.22).fill(fill).stroke({ width: 1.5, color: OUTLINE });
+    g.ellipse(0, r * 0.22, r * 0.98, r * 0.38).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.ellipse(0, -r * 0.08, r * 0.5, r * 0.26).fill(fill).stroke({ width: 1.5, color: OUTLINE });
     GLYPHS.rift_skimmer!(g, r, accent);
     drawFacingLine(g, r, dir);
   },
@@ -330,7 +331,10 @@ const ICON_DESIGNS: Record<string, DesignFn> = {
   },
   storm_caster: (g, size, fill, accent, dir) => {
     const r = size / 2;
-    g.poly([0, -r, r * 0.35, 0, r, 0, r * 0.35, r, 0, r, -r * 0.35, r, -r, 0, -r * 0.35, -r]).fill(fill).stroke({ width: 2, color: OUTLINE });
+    g.poly([0, -r, r * 0.42, 0, r * 0.7, r * 0.15, r * 0.38, r, 0, r * 0.85, -r * 0.38, r, -r * 0.7, r * 0.15, -r * 0.42, 0])
+      .fill(fill)
+      .stroke({ width: 2, color: OUTLINE });
+    g.circle(0, -r * 0.55, r * 0.22).fill(fill).stroke({ width: 1.5, color: OUTLINE });
     GLYPHS.storm_caster!(g, r, accent);
     drawFacingLine(g, r, dir);
   },
@@ -792,9 +796,12 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   rift_skimmer: (g, size, fill, accent, dir) => {
     const r = size / 2;
     const fillN = parseHex(fill);
-    drawIsoPlate(g, 0, r * 0.28, r * 0.85, r * 0.22, shade(fillN, 0.45));
-    drawIsoPrism(g, 0, -r * 0.05, r * 0.42, r * 0.16, r * 0.35, fillN);
-    drawAccentGlyph(g, 'rift_skimmer', 0, -r * 0.15, r * 0.5, accent, dir);
+    drawIsoPlate(g, 0, r * 0.32, r * 1.05, r * 0.3, shade(fillN, 0.42));
+    drawIsoPrism(g, 0, r * 0.08, r * 0.78, r * 0.22, r * 0.22, fillN);
+    drawIsoPrism(g, 0, -r * 0.08, r * 0.42, r * 0.16, r * 0.28, fillN);
+    g.circle(0, -r * 0.28, r * 0.12).fill(accent).stroke({ width: 1.5, color: OUTLINE });
+    drawAccentGlyph(g, 'rift_skimmer', 0, -r * 0.08, r * 0.42, accent, dir);
+    drawObliqueFacing(g, 0, -r * 0.12, r * 0.45, dir);
   },
   stone_golem: (g, size, fill, accent, dir) => {
     const r = size / 2;
@@ -824,9 +831,12 @@ const OBLIQUE_DESIGNS: Record<string, ObliqueDesignFn> = {
   },
   storm_caster: (g, size, fill, accent, dir) => {
     const r = size / 2;
-    drawIsoPlate(g, 0, r * 0.32, r * 0.55, r * 0.22, shade(parseHex(fill), 0.4));
-    drawIsoPyramid(g, 0, -r * 0.05, r * 0.42, r * 0.18, r * 0.85, parseHex(fill));
-    drawAccentGlyph(g, 'storm_caster', 0, -r * 0.45, r * 0.58, accent, dir);
+    const fillN = parseHex(fill);
+    drawIsoPlate(g, 0, r * 0.38, r * 0.68, r * 0.26, shade(fillN, 0.38));
+    drawIsoPyramid(g, 0, r * 0.02, r * 0.52, r * 0.22, r * 1.15, fillN);
+    drawIsoPrism(g, 0, -r * 0.55, r * 0.22, r * 0.12, r * 0.22, fillN);
+    drawAccentGlyph(g, 'storm_caster', 0, -r * 0.62, r * 0.42, accent, dir);
+    drawObliqueFacing(g, 0, -r * 0.2, r * 0.4, dir);
   },
   sanctum: (g, size, fill, accent, dir) => {
     const r = size / 2;

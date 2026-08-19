@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TILE, TILE_BLOCKED } from '../src/core/constants';
 import type { MapData } from '../src/data/defs';
-import { placementConfirmHint } from '../src/input/placement';
+import { placementConfirmHint, placementCostLabel } from '../src/input/placement';
 import { BUILD_ZONE_TILES, canBuildNearBase, collectBuildZoneTiles, tileInBuildZone } from '../src/sim/build-zone';
 import { initMatch } from '../src/sim/factory';
 import { NavGrid } from '../src/sim/nav-grid';
@@ -38,6 +38,14 @@ describe('placement issue hints', () => {
     expect(placementConfirmHint('range')).toBe('· too far from your buildings');
     expect(placementConfirmHint('cliff')).toBe('· needs level ground');
     expect(placementConfirmHint('blocked')).toBe('· blocked by terrain or a structure');
+  });
+
+  it('shows the unit cost for an invalid wall preview instead of 0', () => {
+    expect(placementCostLabel(40)).toBe('40');
+    expect(placementCostLabel(40, null)).toBe('40');
+    expect(placementCostLabel(40, [{ valid: false }])).toBe('40');
+    expect(placementCostLabel(40, [{ valid: true }])).toBe('40');
+    expect(placementCostLabel(40, [{ valid: true }, { valid: true }, { valid: false }])).toBe('80');
   });
 });
 
@@ -129,6 +137,10 @@ describe('build zone tile overlay', () => {
 
     expect(classified.some((t) => t.kind === 'open')).toBe(true);
     expect(classified.some((t) => t.kind === 'blocked')).toBe(true);
+    const sanctum = [...state.entities.values()].find((e) => e.defId === 'sanctum' && e.owner === 'player0')!;
+    const originTx = Math.floor((sanctum.pos.x - (3 * TILE) / 2) / TILE);
+    const originTy = Math.floor((sanctum.pos.y - (3 * TILE) / 2) / TILE);
+    expect(classified.find((t) => t.tx === originTx && t.ty === originTy)?.kind).toBe('blocked');
 
     const node = resourceNodeTiles(state)[0];
     if (node && tiles.some((t) => t.tx === node.tx && t.ty === node.ty)) {

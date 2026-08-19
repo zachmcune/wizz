@@ -410,6 +410,9 @@
 .compact-ui .minimap-panel {
   width: min(18vw, 88px);
 }
+.compact-ui .minimap-panel.minimap-offline {
+  width: min(42vw, 168px);
+}
 .compact-ui .build-confirm,
 .compact-ui .spell-confirm {
   max-width: calc(100% - min(50vw, 252px) - var(--hud-gap) * 4);
