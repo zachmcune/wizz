@@ -89,6 +89,7 @@ export class InputController {
       (tx, ty) => this.nav.heightAt(tx, ty),
       this.nav.w,
       this.nav.h,
+      (x, y) => this.nav.surfaceHeightAtWorld(x, y),
     );
   }
 

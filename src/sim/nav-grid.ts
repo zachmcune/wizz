@@ -1,6 +1,7 @@
 // Tile passability grid. Derived from map terrain + building footprints.
 // Used by pathfinding (flow fields) and building placement validation.
 import { BUILD_SPACING_TILES, TILE, TILE_BLOCKED, TILE_RAMP } from '../core/constants';
+import { surfaceHeightAt } from '../core/ramp-slope';
 import type { MapData } from '../data/defs';
 import type { PlayerId, Relation } from './types';
 
@@ -46,6 +47,20 @@ export class NavGrid {
 
   heightAtWorld(x: number, y: number): number {
     return this.heightAt(Math.floor(x / TILE), Math.floor(y / TILE));
+  }
+
+  /** Continuous walkable surface height (ramps lerp; cliffs stay discrete). */
+  surfaceHeightAtWorld(x: number, y: number): number {
+    return surfaceHeightAt(
+      {
+        tileW: this.w,
+        tileH: this.h,
+        heightAt: (tx, ty) => this.heightAt(tx, ty),
+        isRamp: (tx, ty) => this.isRamp(tx, ty),
+      },
+      x,
+      y,
+    );
   }
 
   isRamp(tx: number, ty: number): boolean {
