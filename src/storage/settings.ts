@@ -10,7 +10,7 @@ export interface Settings {
   dragMode: 'pan' | 'select';
   /** Show full building names on the map (off by default). */
   showBuildingNames: boolean;
-  /** Auto picks Low on Chromebooks / constrained devices. */
+  /** Defaults to High. Auto still steps down on phones and 2-core / 2 GB machines. */
   graphicsQuality: GraphicsQualityPref;
   /**
    * First-match teaching coach. Defaults on for new players.
@@ -25,7 +25,7 @@ const DEFAULTS: Settings = {
   muted: false,
   dragMode: 'select',
   showBuildingNames: false,
-  graphicsQuality: 'auto',
+  graphicsQuality: 'high',
   showTips: true,
 };
 

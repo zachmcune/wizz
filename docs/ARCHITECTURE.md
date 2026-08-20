@@ -37,8 +37,9 @@ See `docs/MULTIPLAYER_PREP.md` for the lockstep roadmap.
 - `src/data/` loaders + Zod schemas + registries. All content is data-driven JSON in `/data`.
 - `src/render/` PixiJS renderer + camera + shape sprites (placeholder art in code).
   The view is always 2.5D (dimetric/oblique); there is no Classic 2D / top-down mode.
-  Graphics quality (`auto` / `low` / `medium` / `high`) lives here: Auto maps Chromebooks
-  and other constrained devices onto Low (resolution cap, no antialias, cheaper fog/VFX).
+  Graphics quality (`auto` / `low` / `medium` / `high`) lives here. The default is High;
+  Auto maps phones and 2-core / 2 GB machines onto a cheaper profile (resolution cap,
+  no antialias, cheaper fog/VFX). Chromebooks stay on High.
 - `src/input/` gesture recognizer (FSM) + input controller (gestures -> commands).
 - `src/ui/` DOM HUD overlay, menus, minimap.
 - `src/ai/` layered AI controller (emits standard commands).

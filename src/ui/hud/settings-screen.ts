@@ -80,7 +80,7 @@ export class MatchSettingsScreen {
     const qualityHint = el(
       'p',
       'settings-hint',
-      'Auto picks Low on Chromebooks and most phones. Low cuts resolution, antialias, and extra VFX.',
+      'High is the default. Auto still picks Medium on phones and Low on 2-core / 2 GB machines. Low cuts resolution, antialias, and extra VFX.',
     );
 
     displaySection.append(namesRow, qualityRow, qualityHint);
