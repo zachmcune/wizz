@@ -26,7 +26,7 @@ describe('compact-ui breakpoint', () => {
 describe('compact-ui CSS contracts', () => {
   it('gives lobby player selects enough width for Human and Normal', () => {
     const selects = rule('.lobby-kind-select, .lobby-ai-select');
-    expect(selects).toMatch(/min-width:\s*8em/);
+    expect(selects).toMatch(/min-width:\s*9em/);
     expect(selects).toMatch(/flex:\s*0 0 auto/);
     expect(selects).not.toMatch(/min-width:\s*64px/);
   });
@@ -41,7 +41,7 @@ describe('compact-ui CSS contracts', () => {
     const banner = rule('.compact-ui .hint-banner');
     expect(banner).toMatch(/transform:\s*none/);
     expect(banner).toMatch(/min\(50vw,\s*252px\)/);
-    expect(banner).toMatch(/min\(18vw,\s*88px\)/);
+    expect(banner).toMatch(/var\(--hud-gap\) \* 5/);
     expect(lobbyCss).toMatch(/\.compact-ui \.hud:has\(\.minimap-offline\) \.hint-banner/);
   });
 
@@ -59,9 +59,17 @@ describe('compact-ui CSS contracts', () => {
     expect(screen).toMatch(/justify-content:\s*flex-start/);
     expect(screen).toMatch(/overflow-y:\s*auto/);
     expect(rule('.compact-ui .settings-card')).toMatch(/flex-shrink:\s*0/);
+    expect(rule('.compact-ui .settings-hint')).toMatch(/display:\s*none/);
+  });
+
+  it('shrinks the lobby coach so player rows are not pushed off-screen', () => {
+    expect(rule('.compact-ui .match-lobby .coach-card')).toMatch(/padding:\s*6px 8px/);
+    expect(rule('.compact-ui .match-lobby .coach-got-it, .compact-ui .match-lobby .coach-skip')).toMatch(
+      /min-height:\s*28px/,
+    );
   });
 
   it('insets the zoom slider from the left bezel', () => {
-    expect(rule('.compact-ui .zoom-slider')).toMatch(/left:\s*10px/);
+    expect(rule('.compact-ui .zoom-slider')).toMatch(/left:\s*14px/);
   });
 });
