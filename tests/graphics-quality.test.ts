@@ -51,11 +51,20 @@ describe('graphics quality', () => {
     expect(detectConstrainedDevice(desktop)).toBe(false);
   });
 
-  it('Auto picks Low on Chromebooks and High on capable desktops', () => {
-    expect(resolveGraphicsLevel('auto', chromebook)).toBe('low');
+  it('Auto picks High on Chromebooks and capable desktops', () => {
+    expect(resolveGraphicsLevel('auto', chromebook)).toBe('high');
     expect(resolveGraphicsLevel('auto', desktop)).toBe('high');
     expect(resolveGraphicsLevel('auto', phone)).toBe('medium');
     expect(resolveGraphicsLevel('high', chromebook)).toBe('high');
+    expect(
+      resolveGraphicsLevel('auto', {
+        userAgent: 'Mozilla/5.0 (Linux; Android 10)',
+        hardwareConcurrency: 2,
+        deviceMemory: 2,
+        coarsePointer: true,
+        innerWidth: 720,
+      }),
+    ).toBe('low');
   });
 
   it('Low profile disables antialias, shadows, and expensive VFX', () => {
@@ -75,10 +84,11 @@ describe('graphics quality', () => {
     expect(canvasResolution(graphicsProfile('medium'), 1)).toBe(1);
   });
 
-  it('parses stored quality prefs and falls back to Auto', () => {
+  it('parses stored quality prefs and falls back to High', () => {
     expect(parseGraphicsQualityPref('low')).toBe('low');
-    expect(parseGraphicsQualityPref('nope')).toBe('auto');
-    expect(parseGraphicsQualityPref(undefined)).toBe('auto');
+    expect(parseGraphicsQualityPref('auto')).toBe('auto');
+    expect(parseGraphicsQualityPref('nope')).toBe('high');
+    expect(parseGraphicsQualityPref(undefined)).toBe('high');
   });
 });
 

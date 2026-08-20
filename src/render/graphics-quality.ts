@@ -1,5 +1,6 @@
 // Presentation-only graphics quality. Never imported by the sim.
-// Auto maps Chromebooks and other constrained devices onto a cheaper profile.
+// Default is High. Auto still maps phones and 2-core / 2 GB machines onto a cheaper
+// profile; Chromebooks stay on High.
 
 export type GraphicsQualityPref = 'auto' | 'low' | 'medium' | 'high';
 export type GraphicsLevel = 'low' | 'medium' | 'high';
@@ -65,8 +66,8 @@ export function detectConstrainedDevice(hints: DeviceHints): boolean {
 export function resolveGraphicsLevel(pref: GraphicsQualityPref, hints: DeviceHints): GraphicsLevel {
   if (pref !== 'auto') return pref;
   if (!detectConstrainedDevice(hints)) return 'high';
-  // ChromeOS GPUs and 2-core / 2 GB machines need the cheapest path.
-  if (/CrOS/i.test(hints.userAgent)) return 'low';
+  // Chromebooks handle High; only phones / very small machines step down.
+  if (/CrOS/i.test(hints.userAgent)) return 'high';
   if ((hints.hardwareConcurrency ?? 8) <= 2) return 'low';
   if (hints.deviceMemory !== undefined && hints.deviceMemory <= 2) return 'low';
   return 'medium';
@@ -129,5 +130,5 @@ export function parseGraphicsQualityPref(value: unknown): GraphicsQualityPref {
   if (typeof value === 'string' && (QUALITY_PREFS as readonly string[]).includes(value)) {
     return value as GraphicsQualityPref;
   }
-  return 'auto';
+  return 'high';
 }

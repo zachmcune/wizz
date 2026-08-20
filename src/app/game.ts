@@ -77,7 +77,7 @@ export class Game {
   private fps = 60;
   private lastFrameTime = 0;
   private resolvedGraphics: GraphicsLevel = 'high';
-  private appliedGraphicsPref: Settings['graphicsQuality'] = 'auto';
+  private appliedGraphicsPref: Settings['graphicsQuality'] = 'high';
   private adaptiveLow = false;
   private lowFpsStreak = 0;
   private postGameCameraReady = false;
