@@ -12,7 +12,9 @@
   width: min(100%, 720px);
   margin: 0 auto;
   gap: 8px;
-  min-height: 0;
+  /* Do not shrink this column on desktop/CI: a shrunken scroller-less
+     body lets closed player rows paint over Start. Compact-ui opts in. */
+  flex: 0 0 auto;
 }
 .lobby-main {
   display: flex;
@@ -20,7 +22,7 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
-  min-height: 0;
+  flex: 0 0 auto;
 }
 .lobby-top-row {
   display: flex;
@@ -234,6 +236,9 @@
   gap: 6px;
   width: 100%;
   padding-top: 4px;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
 }
 .lobby-footer-actions {
   display: flex;
@@ -501,12 +506,14 @@
 }
 .compact-ui .lobby-shell {
   flex: 1 1 auto;
+  min-height: 0;
   height: 100%;
   max-height: 100%;
   gap: 6px;
 }
 .compact-ui .lobby-main {
   flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -518,6 +525,7 @@
   flex: 0 0 auto;
   padding-top: 6px;
   background: var(--bg);
+  z-index: 2;
 }
 .compact-ui .lobby-option-detail {
   display: none;

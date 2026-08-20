@@ -16,6 +16,7 @@ describe('compact-ui breakpoint', () => {
   it('turns on for Phone SE and iPhone 14 landscape, off for Chromebook/desktop', () => {
     expect(isCompactUiSize(667, 375)).toBe(true);
     expect(isCompactUiSize(844, 390)).toBe(true);
+    expect(isCompactUiSize(900, 500)).toBe(false);
     expect(isCompactUiSize(1024, 768)).toBe(false);
     expect(isCompactUiSize(1366, 768)).toBe(false);
     expect(isCompactUiSize(1280, 800)).toBe(false);
@@ -34,7 +35,16 @@ describe('compact-ui CSS contracts', () => {
   it('pins the lobby footer and scrolls the setup body on compact phones', () => {
     expect(rule('.compact-ui .match-lobby')).toMatch(/overflow:\s*hidden/);
     expect(rule('.compact-ui .lobby-main')).toMatch(/overflow-y:\s*auto/);
+    expect(rule('.compact-ui .lobby-main')).toMatch(/min-height:\s*0/);
     expect(rule('.compact-ui .lobby-footer')).toMatch(/flex:\s*0 0 auto/);
+  });
+
+  it('does not shrink the lobby body over Start outside compact-ui', () => {
+    expect(rule('.lobby-shell')).toMatch(/flex:\s*0 0 auto/);
+    expect(rule('.lobby-shell')).not.toMatch(/min-height:\s*0/);
+    expect(rule('.lobby-main')).toMatch(/flex:\s*0 0 auto/);
+    expect(rule('.lobby-main')).not.toMatch(/min-height:\s*0/);
+    expect(rule('.lobby-footer')).toMatch(/z-index:\s*2/);
   });
 
   it('keeps the graphics toast out of the selection/build column', () => {
