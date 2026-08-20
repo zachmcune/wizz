@@ -13,10 +13,12 @@ import { AI_DIFFICULTY_HINTS } from '../ai/difficulty';
 import { LobbyMapPreview } from './lobby-map-preview';
 import { CoachCard } from './coach/card';
 import { lobbyCoachCopy } from './coach/progress';
+import { isCompactUiSize } from './viewport';
 
 function lobbyMapSize(): number {
   const h = window.innerHeight;
-  if (h <= 380) return 108;
+  const w = window.innerWidth;
+  if (isCompactUiSize(w, h)) return h <= 380 ? 88 : 108;
   if (h <= 460) return 124;
   return 140;
 }
@@ -256,8 +258,10 @@ export class MatchLobby {
     footerActions.append(backBtn, this.templateSelect, this.actionBtn);
     footer.append(this.hintEl, footerActions);
 
+    const main = el('div', 'lobby-main');
+    main.append(topRow, header, optionsRow, this.roomEl ?? '', this.playersEl);
     const shell = el('div', 'lobby-shell');
-    shell.append(topRow, header, optionsRow, this.roomEl ?? '', this.playersEl, footer);
+    shell.append(main, footer);
     this.root.appendChild(shell);
   }
 
