@@ -111,6 +111,16 @@ describe('Duel Glade plateau', () => {
     expect(nav.canStep(55, 44, 56, 44)).toBe(true);
   });
 
+  it('lerps surface height along the west ramp from ground to the plateau', () => {
+    const { services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const y = 44 * TILE + TILE / 2;
+    expect(services.nav.surfaceHeightAtWorld(54 * TILE, y)).toBeCloseTo(0, 5);
+    expect(services.nav.surfaceHeightAtWorld(56 * TILE, y)).toBeCloseTo(0.5, 5);
+    expect(services.nav.surfaceHeightAtWorld(58 * TILE, y)).toBeCloseTo(1, 5);
+    expect(services.nav.heightAtWorld(55 * TILE + 1, y)).toBe(0);
+    expect(services.nav.heightAtWorld(56 * TILE + 1, y)).toBe(1);
+  });
+
   it('puts each starting Sanctum on a height-1 mesa with inward ramps', () => {
     const { services } = initMatch(reg, reg.match('skirmish_1v1'));
     const nav = services.nav;
@@ -140,6 +150,28 @@ describe('Duel Glade plateau', () => {
     for (let i = 0; i < 50; i++) sim.step();
     expect(services.nav.heightAtWorld(hopper.pos.x, hopper.pos.y)).toBe(0);
     expect(hopper.pos.y).toBeLessThan(38 * TILE);
+  });
+
+  it('raises a climber smoothly along the west ramp instead of popping up a step', () => {
+    const { state, services } = initMatch(reg, reg.match('skirmish_1v1'));
+    const sim = new Simulation(state, services);
+    sim.setAiEnabled(false);
+    const climber = spawnEntity(state, services, null, 'imp_swarmling', 'player0', westApproach.x, westApproach.y);
+    sim.enqueueNow([{ type: 'move', playerId: 'player0', entityIds: [climber.id], x: plateau.x, y: plateau.y }]);
+    const samples: number[] = [];
+    for (let i = 0; i < 400; i++) {
+      sim.step();
+      if (!services.nav.isRamp(Math.floor(climber.pos.x / TILE), Math.floor(climber.pos.y / TILE))) continue;
+      samples.push(services.nav.surfaceHeightAtWorld(climber.pos.x, climber.pos.y));
+    }
+    expect(samples.length).toBeGreaterThan(8);
+    const unique = new Set(samples.map((h) => h.toFixed(2)));
+    expect(unique.size).toBeGreaterThan(4);
+    expect(Math.min(...samples)).toBeLessThan(0.25);
+    expect(Math.max(...samples)).toBeGreaterThan(0.75);
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i]! - samples[i - 1]!).toBeLessThan(0.35);
+    }
   });
 
   it('routes a unit off the starting mesa via a ramp instead of trapping it on the cliff', () => {

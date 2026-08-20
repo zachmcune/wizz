@@ -9,7 +9,7 @@ import { garrisonedInId } from '../sim/capabilities';
 import type { GameState, Entity, EntityId, PlayerId } from '../sim/types';
 
 function entityPickHeight(e: Entity, nav: NavGrid | null, registry?: Registry): number {
-  const base = nav ? nav.heightAtWorld(e.pos.x, e.pos.y) : 0;
+  const base = nav ? nav.surfaceHeightAtWorld(e.pos.x, e.pos.y) : 0;
   const flying = e.kind === 'unit' && registry?.units.get(e.defId)?.mobility === 'air';
   return base + (flying ? FLYER_HOVER_LEVELS : 0);
 }

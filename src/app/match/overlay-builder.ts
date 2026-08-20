@@ -60,6 +60,7 @@ export function buildMatchOverlay(
         (tx, ty) => services.nav.heightAt(tx, ty),
         services.nav.w,
         services.nav.h,
+        (x, y) => services.nav.surfaceHeightAtWorld(x, y),
       );
       spell = { x: w.x, y: w.y, radius: def.aoeRadius };
     }

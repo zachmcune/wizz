@@ -5,7 +5,8 @@ import {
   VISUAL_HEIGHT_STEP,
 } from '../src/core/projection';
 import { worldToScreen, screenToWorld, projectionSortKey, screenToWorldOnHeightField, tileToWorld } from '../src/core/coords';
-import { TILE } from '../src/core/constants';
+import { TILE, TILE_RAMP } from '../src/core/constants';
+import { mapTileQuery, surfaceHeightAt } from '../src/core/ramp-slope';
 
 const cam = { x: 100, y: 80, zoom: 1.5 };
 
@@ -45,6 +46,38 @@ describe('2.5D projection', () => {
     );
     expect(Math.floor(picked.x / TILE)).toBe(8);
     expect(Math.floor(picked.y / TILE)).toBe(8);
+  });
+
+  it('picks a sloped ramp surface at fractional height', () => {
+    const pickCam = { x: 0, y: 0, zoom: 1 };
+    const tileW = 16;
+    const tileH = 8;
+    const tiles = new Array(tileW * tileH).fill(0);
+    const heights = new Array(tileW * tileH).fill(0);
+    for (let tx = 8; tx < 15; tx++) heights[4 * tileW + tx] = 1;
+    tiles[4 * tileW + 6] = TILE_RAMP;
+    tiles[4 * tileW + 7] = TILE_RAMP;
+    tiles[4 * tileW + 8] = TILE_RAMP;
+    tiles[4 * tileW + 9] = TILE_RAMP;
+    heights[4 * tileW + 6] = 0;
+    heights[4 * tileW + 7] = 0;
+    heights[4 * tileW + 8] = 1;
+    heights[4 * tileW + 9] = 1;
+    const q = mapTileQuery({ tileW, tileH, tiles, heights });
+    const world = { x: 8 * TILE, y: 4 * TILE + TILE / 2 };
+    const h = surfaceHeightAt(q, world.x, world.y);
+    expect(h).toBeCloseTo(0.5, 5);
+    const screen = worldToScreen(world, pickCam, h);
+    const picked = screenToWorldOnHeightField(
+      screen,
+      pickCam,
+      (tx, ty) => heights[ty * tileW + tx] ?? 0,
+      tileW,
+      tileH,
+      (x, y) => surfaceHeightAt(q, x, y),
+    );
+    expect(picked.x).toBeCloseTo(world.x, 1);
+    expect(picked.y).toBeCloseTo(world.y, 1);
   });
 
   it('visual height lifts screen Y', () => {

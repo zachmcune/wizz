@@ -3,13 +3,15 @@ import { Graphics } from 'pixi.js';
 import { TILE, TILE_BLOCKED, TILE_RAMP } from '../core/constants';
 import type { MapData } from '../data/defs';
 import { worldToTileX, worldToTileY } from '../core/coords';
-import { visualHeightAtTile } from './visual-height';
+import { visualCornerHeights, visualHeightAtTile } from './visual-height';
 import { fogRunProjectedCorners, type FogRun } from './fog-draw';
 import {
-  dropWallQuad,
+  dropWallQuadLifted,
   projectLiftedGround,
   projectedTileCorners,
+  projectedTileCornersLifted,
   tileHeightLift,
+  type CornerLifts,
 } from './tile-project';
 
 /** Impassable rock / map-border blocks sit one extra level above walkable high ground. */
@@ -31,22 +33,43 @@ export function terrainTopFill(tx: number, ty: number, height: number, ramp: boo
   return even ? 0x6d7c96 : 0x7a8aa4;
 }
 
-function neighborDrawHeight(map: MapData, tx: number, ty: number): number {
-  if (tx < 0 || ty < 0 || tx >= map.tileW || ty >= map.tileH) return 0;
-  if (map.tiles[ty * map.tileW + tx] === TILE_BLOCKED) return CLIFF_VISUAL_HEIGHT;
-  return visualHeightAtTile(map, tx, ty);
+function uniformCorners(h: number): CornerLifts {
+  return { tl: h, tr: h, br: h, bl: h };
+}
+
+function tileDrawCorners(map: MapData, tx: number, ty: number): CornerLifts {
+  if (tx < 0 || ty < 0 || tx >= map.tileW || ty >= map.tileH) return uniformCorners(0);
+  if (map.tiles[ty * map.tileW + tx] === TILE_BLOCKED) return uniformCorners(CLIFF_VISUAL_HEIGHT);
+  const corners = visualCornerHeights(map, tx, ty);
+  return {
+    tl: tileHeightLift(corners.tl),
+    tr: tileHeightLift(corners.tr),
+    br: tileHeightLift(corners.br),
+    bl: tileHeightLift(corners.bl),
+  };
 }
 
 function drawGroundTile(g: Graphics, tx: number, ty: number, lift: number, fill: number): void {
   g.poly(projectedTileCorners(tx, ty, 1, 0, lift)).fill(fill);
 }
 
-function drawDropWalls(g: Graphics, map: MapData, tx: number, ty: number, topH: number): void {
-  if (topH <= 0) return;
-  const se = neighborDrawHeight(map, tx + 1, ty);
-  const sw = neighborDrawHeight(map, tx, ty + 1);
-  if (topH > se) g.poly(dropWallQuad(tx, ty, topH, se, 'se')).fill(WALL_SE);
-  if (topH > sw) g.poly(dropWallQuad(tx, ty, topH, sw, 'sw')).fill(WALL_SW);
+function drawSlopedGroundTile(g: Graphics, tx: number, ty: number, lifts: CornerLifts, fill: number): void {
+  g.poly(projectedTileCornersLifted(tx, ty, 1, 0, lifts)).fill(fill);
+}
+
+function edgeDrops(selfA: number, selfB: number, neighborA: number, neighborB: number): boolean {
+  return selfA > neighborA + 0.001 || selfB > neighborB + 0.001;
+}
+
+function drawDropWalls(g: Graphics, map: MapData, tx: number, ty: number, self: CornerLifts): void {
+  const se = tileDrawCorners(map, tx + 1, ty);
+  const sw = tileDrawCorners(map, tx, ty + 1);
+  if (edgeDrops(self.tr, self.br, se.tl, se.bl)) {
+    g.poly(dropWallQuadLifted(tx, ty, self, se, 'se')).fill(WALL_SE);
+  }
+  if (edgeDrops(self.bl, self.br, sw.tl, sw.tr)) {
+    g.poly(dropWallQuadLifted(tx, ty, self, sw, 'sw')).fill(WALL_SW);
+  }
 }
 
 function strokeTileEdge(
@@ -88,28 +111,53 @@ function strokeTileEdge(
   g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width, color, alpha, cap: 'round' });
 }
 
-function drawRaisedRim(g: Graphics, map: MapData, tx: number, ty: number, h: number): void {
-  if (neighborDrawHeight(map, tx, ty - 1) < h) strokeTileEdge(g, tx, ty, 'n', h, RIM_LIGHT, 1.8, 0.95);
-  if (neighborDrawHeight(map, tx - 1, ty) < h) strokeTileEdge(g, tx, ty, 'w', h, RIM_LIGHT, 1.5, 0.72);
-  if (neighborDrawHeight(map, tx + 1, ty) < h) strokeTileEdge(g, tx, ty, 'e', h, RIM_SHADE, 1.4, 0.7);
-  if (neighborDrawHeight(map, tx, ty + 1) < h) strokeTileEdge(g, tx, ty, 's', h, RIM_SHADE, 1.6, 0.85);
+function maxCorner(c: CornerLifts): number {
+  return Math.max(c.tl, c.tr, c.br, c.bl);
 }
 
-function drawRampHatch(g: Graphics, tx: number, ty: number, h: number): void {
+function drawRaisedRim(g: Graphics, map: MapData, tx: number, ty: number, self: CornerLifts): void {
+  const h = maxCorner(self);
+  if (h <= 0) return;
+  if (maxCorner(tileDrawCorners(map, tx, ty - 1)) < h) strokeTileEdge(g, tx, ty, 'n', self.tl, RIM_LIGHT, 1.8, 0.95);
+  if (maxCorner(tileDrawCorners(map, tx - 1, ty)) < h) strokeTileEdge(g, tx, ty, 'w', self.tl, RIM_LIGHT, 1.5, 0.72);
+  if (maxCorner(tileDrawCorners(map, tx + 1, ty)) < h) strokeTileEdge(g, tx, ty, 'e', self.tr, RIM_SHADE, 1.4, 0.7);
+  if (maxCorner(tileDrawCorners(map, tx, ty + 1)) < h) strokeTileEdge(g, tx, ty, 's', self.bl, RIM_SHADE, 1.6, 0.85);
+}
+
+function drawRampHatch(g: Graphics, tx: number, ty: number, lifts: CornerLifts): void {
   const pad = 7;
+  const x0 = tx * TILE + pad;
+  const y0 = ty * TILE + pad;
+  const x1 = (tx + 1) * TILE - pad;
+  const y1 = (ty + 1) * TILE - pad;
+  const slopeX = Math.abs(lifts.tr - lifts.tl) + Math.abs(lifts.br - lifts.bl);
+  const slopeY = Math.abs(lifts.bl - lifts.tl) + Math.abs(lifts.br - lifts.tr);
   for (let i = 1; i <= 3; i++) {
     const t = i / 4;
-    const y = ty * TILE + TILE * t;
-    const a = projectLiftedGround(tx * TILE + pad, y, h);
-    const b = projectLiftedGround((tx + 1) * TILE - pad, y, h);
-    g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1.35, color: RAMP_HATCH, alpha: 0.62, cap: 'round' });
+    if (slopeX >= slopeY) {
+      const x = tx * TILE + TILE * t;
+      const h0 = lifts.tl + (lifts.tr - lifts.tl) * t;
+      const h1 = lifts.bl + (lifts.br - lifts.bl) * t;
+      const a = projectLiftedGround(x, y0, h0);
+      const b = projectLiftedGround(x, y1, h1);
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1.35, color: RAMP_HATCH, alpha: 0.62, cap: 'round' });
+    } else {
+      const y = ty * TILE + TILE * t;
+      const h0 = lifts.tl + (lifts.bl - lifts.tl) * t;
+      const h1 = lifts.tr + (lifts.br - lifts.tr) * t;
+      const a = projectLiftedGround(x0, y, h0);
+      const b = projectLiftedGround(x1, y, h1);
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1.35, color: RAMP_HATCH, alpha: 0.62, cap: 'round' });
+    }
   }
 }
 
 function drawCliffBlock(g: Graphics, tx: number, ty: number): void {
   const topH = CLIFF_VISUAL_HEIGHT;
-  g.poly(dropWallQuad(tx, ty, topH, 0, 'se')).fill(WALL_SE);
-  g.poly(dropWallQuad(tx, ty, topH, 0, 'sw')).fill(WALL_SW);
+  const self = uniformCorners(topH);
+  const ground = uniformCorners(0);
+  g.poly(dropWallQuadLifted(tx, ty, self, ground, 'se')).fill(WALL_SE);
+  g.poly(dropWallQuadLifted(tx, ty, self, ground, 'sw')).fill(WALL_SW);
   g.poly(projectedTileCorners(tx, ty, 1, 0, topH)).fill(CLIFF_TOP);
 }
 
@@ -137,11 +185,15 @@ function drawObliqueTerrain(g: Graphics, map: MapData): void {
         continue;
       }
       const h = visualHeightAtTile(map, tx, ty);
-      const lift = tileHeightLift(h);
-      drawDropWalls(g, map, tx, ty, lift);
-      drawGroundTile(g, tx, ty, lift, terrainTopFill(tx, ty, h, code === TILE_RAMP));
-      if (h > 0) drawRaisedRim(g, map, tx, ty, lift);
-      if (code === TILE_RAMP) drawRampHatch(g, tx, ty, lift);
+      const lifts = tileDrawCorners(map, tx, ty);
+      drawDropWalls(g, map, tx, ty, lifts);
+      if (code === TILE_RAMP) {
+        drawSlopedGroundTile(g, tx, ty, lifts, terrainTopFill(tx, ty, h, true));
+        drawRampHatch(g, tx, ty, lifts);
+      } else {
+        drawGroundTile(g, tx, ty, tileHeightLift(h), terrainTopFill(tx, ty, h, false));
+        if (h > 0) drawRaisedRim(g, map, tx, ty, lifts);
+      }
     }
   }
 }

@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { TILE } from '../src/core/constants';
 import { projectGround } from '../src/core/coords';
 import { VISUAL_HEIGHT_STEP } from '../src/core/projection';
 import { terrainTopFill, fogRunLift } from '../src/render/terrain-draw';
+import { visualCornerHeights, visualHeightAt } from '../src/render/visual-height';
 import type { MapData } from '../src/data/defs';
 import {
   dropWallQuad,
   projectLiftedGround,
   projectedTileCorners,
+  projectedTileCornersLifted,
   tileHeightLift,
 } from '../src/render/tile-project';
 
@@ -56,5 +59,60 @@ describe('raised ground fill', () => {
     const map = { tileW: 4, tileH: 4, tiles: new Array(16).fill(0), heights } as MapData;
     expect(fogRunLift(map, { tx: 1, ty: 1, tw: 1 }, true)).toBe(1);
     expect(fogRunLift(map, { tx: 1, ty: 1, tw: 1 }, false)).toBe(1);
+  });
+});
+
+describe('ramp slope', () => {
+  it('lerps visual height along a ramp instead of stepping at the cliff', () => {
+    const tiles = new Array(16 * 8).fill(0);
+    const heights = new Array(16 * 8).fill(0);
+    for (let ty = 1; ty < 7; ty++) {
+      for (let tx = 8; tx < 15; tx++) heights[ty * 16 + tx] = 1;
+    }
+    tiles[4 * 16 + 6] = 2;
+    tiles[4 * 16 + 7] = 2;
+    tiles[4 * 16 + 8] = 2;
+    tiles[4 * 16 + 9] = 2;
+    heights[4 * 16 + 6] = 0;
+    heights[4 * 16 + 7] = 0;
+    heights[4 * 16 + 8] = 1;
+    heights[4 * 16 + 9] = 1;
+    const map = { tileW: 16, tileH: 8, tiles, heights } as MapData;
+    const y = 4 * TILE + TILE / 2;
+    const low = visualHeightAt(map, 6 * TILE, y);
+    const mid = visualHeightAt(map, 8 * TILE, y);
+    const high = visualHeightAt(map, 10 * TILE, y);
+    expect(low).toBeCloseTo(0, 5);
+    expect(high).toBeCloseTo(1, 5);
+    expect(mid).toBeCloseTo(0.5, 5);
+    expect(visualHeightAt(map, 7 * TILE, y)).toBeGreaterThan(low);
+    expect(visualHeightAt(map, 7 * TILE, y)).toBeLessThan(mid);
+    expect(visualHeightAt(map, 9 * TILE, y)).toBeGreaterThan(mid);
+    expect(visualHeightAt(map, 9 * TILE, y)).toBeLessThan(high);
+  });
+
+  it('projects a ramp tile as a slope, not a flat step', () => {
+    const tiles = new Array(16 * 8).fill(0);
+    const heights = new Array(16 * 8).fill(0);
+    for (let tx = 8; tx < 15; tx++) heights[4 * 16 + tx] = 1;
+    tiles[4 * 16 + 6] = 2;
+    tiles[4 * 16 + 7] = 2;
+    tiles[4 * 16 + 8] = 2;
+    tiles[4 * 16 + 9] = 2;
+    heights[4 * 16 + 6] = 0;
+    heights[4 * 16 + 7] = 0;
+    heights[4 * 16 + 8] = 1;
+    heights[4 * 16 + 9] = 1;
+    const map = { tileW: 16, tileH: 8, tiles, heights } as MapData;
+    const corners = visualCornerHeights(map, 7, 4);
+    expect(corners.tr).toBeGreaterThan(corners.tl);
+    expect(corners.br).toBeGreaterThan(corners.bl);
+    expect(corners.tl).toBeCloseTo(corners.bl, 5);
+    expect(corners.tr).toBeCloseTo(corners.br, 5);
+    const flat = projectedTileCornersLifted(7, 4, 1, 0, { tl: 0, tr: 0, br: 0, bl: 0 });
+    const sloped = projectedTileCornersLifted(7, 4, 1, 0, corners);
+    expect(flat[1]! - sloped[1]!).toBeCloseTo(corners.tl * VISUAL_HEIGHT_STEP, 5);
+    expect(flat[3]! - sloped[3]!).toBeCloseTo(corners.tr * VISUAL_HEIGHT_STEP, 5);
+    expect(flat[3]! - sloped[3]!).toBeGreaterThan(flat[1]! - sloped[1]!);
   });
 });
