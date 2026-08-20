@@ -31,6 +31,7 @@ import {
   type MatchCoachFacts,
   type MatchCoachStep,
 } from './coach/progress';
+import { isCompactUiSize } from './viewport';
 
 export interface HudOptions {
   settings: Settings;
@@ -129,7 +130,7 @@ export class Hud {
   ) {
     this.hudOptions = hudOptions;
     this.sandbox = hudOptions.sandbox ?? false;
-    const compact = window.innerHeight < 460 || window.innerWidth < 820;
+    const compact = isCompactUiSize(window.innerWidth, window.innerHeight);
     const top = el('div', 'topbar');
     const mana = el('div', 'stat compact-stat');
     mana.append(el('span', 'stat-label', 'Mana '), this.manaEl);

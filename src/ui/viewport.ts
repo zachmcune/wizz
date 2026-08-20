@@ -1,3 +1,11 @@
+// Short landscape phones and typical mobile landscape widths. CSS keys off `.compact-ui`.
+export const COMPACT_UI_MAX_HEIGHT = 460;
+export const COMPACT_UI_MAX_WIDTH = 820;
+
+export function isCompactUiSize(width: number, height: number): boolean {
+  return height < COMPACT_UI_MAX_HEIGHT || width < COMPACT_UI_MAX_WIDTH;
+}
+
 // Keeps CSS layout in sync with the mobile browser chrome (URL bar, safe areas).
 export function initViewport(): void {
   const apply = (): void => {
@@ -8,8 +16,7 @@ export function initViewport(): void {
     root.style.setProperty('--app-h', `${h}px`);
     root.style.setProperty('--app-w', `${w}px`);
     root.style.setProperty('--vv-top', `${vv?.offsetTop ?? 0}px`);
-    // Short landscape phones and typical mobile landscape widths.
-    root.classList.toggle('compact-ui', h < 460 || w < 820);
+    root.classList.toggle('compact-ui', isCompactUiSize(w, h));
   };
 
   apply();

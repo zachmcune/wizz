@@ -12,6 +12,17 @@
   width: min(100%, 720px);
   margin: 0 auto;
   gap: 8px;
+  /* Do not shrink this column on desktop/CI: a shrunken scroller-less
+     body lets closed player rows paint over Start. Compact-ui opts in. */
+  flex: 0 0 auto;
+}
+.lobby-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 .lobby-top-row {
   display: flex;
@@ -134,14 +145,20 @@
   opacity: 0.5;
 }
 .lobby-player-name {
-  flex: 0 0 26px;
+  flex: 0 0 auto;
+  min-width: 1.6em;
   font-weight: 700;
   font-size: 12px;
   opacity: 0.85;
+  white-space: nowrap;
 }
-.lobby-kind-select {
-  flex: 0 1 72px;
-  min-width: 64px;
+.lobby-kind-select,
+.lobby-ai-select {
+  /* Native <select> chevron needs room so "Human" / "Normal" / "Closed" never clip. */
+  flex: 0 0 auto;
+  min-width: 9em;
+  width: max-content;
+  padding-right: 1.6em;
 }
 .lobby-team-select {
   flex: 0 0 44px;
@@ -156,10 +173,6 @@
   padding-left: 4px;
   padding-right: 4px;
   text-align: center;
-}
-.lobby-ai-select {
-  flex: 0 1 72px;
-  min-width: 64px;
 }
 .lobby-swatches {
   display: flex;
@@ -223,6 +236,9 @@
   gap: 6px;
   width: 100%;
   padding-top: 4px;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
 }
 .lobby-footer-actions {
   display: flex;
@@ -293,6 +309,7 @@
   padding: 6px 10px;
   pointer-events: none;
   z-index: 9;
+  overflow-wrap: break-word;
 }
 .box-select {
   position: absolute;
@@ -364,10 +381,18 @@
 .compact-ui .cmd-card {
   width: min(50vw, 252px);
 }
+.compact-ui .category-chips-scroll {
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  gap: 3px;
+}
 .compact-ui .category-chip {
-  min-height: 44px;
-  padding: 8px 12px;
-  font-size: 10px;
+  flex: 1 1 auto;
+  min-width: min-content;
+  min-height: 36px;
+  padding: 6px 6px;
+  font-size: 9px;
+  text-align: center;
 }
 .compact-ui .producer-chip {
   min-height: 36px;
@@ -457,6 +482,137 @@
 .compact-ui .superweapon-status .sw-swatch {
   width: 5px;
   height: 5px;
+}
+
+/* Keep the graphics/toast banner in the gap between radar and the command card. */
+.compact-ui .hint-banner {
+  left: calc(min(18vw, 88px) + var(--hud-gap) * 3);
+  right: calc(min(50vw, 252px) + var(--hud-gap) * 5);
+  transform: none;
+  max-width: none;
+  width: auto;
+  font-size: 10px;
+  padding: 5px 8px;
+  z-index: 9;
+}
+.compact-ui .hud:has(.minimap-offline) .hint-banner {
+  left: calc(min(42vw, 168px) + var(--hud-gap) * 3);
+}
+
+/* Lobby: pin Back/templates/Start; scroll the map + player list above them. */
+.compact-ui .match-lobby {
+  overflow: hidden;
+  padding: 6px 10px;
+}
+.compact-ui .lobby-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  gap: 6px;
+}
+.compact-ui .lobby-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  gap: 6px;
+}
+.compact-ui .lobby-footer {
+  flex: 0 0 auto;
+  padding-top: 6px;
+  background: var(--bg);
+  z-index: 2;
+}
+.compact-ui .lobby-option-detail {
+  display: none;
+}
+.compact-ui .lobby-field {
+  min-width: 0;
+  flex-basis: 140px;
+}
+.compact-ui .lobby-title {
+  font-size: 17px;
+}
+.compact-ui .lobby-map-hint {
+  display: none;
+}
+.compact-ui .lobby-player {
+  padding: 5px 8px;
+  gap: 5px;
+}
+.compact-ui .lobby-kind-select,
+.compact-ui .lobby-ai-select {
+  min-width: 9em;
+}
+
+/* Keep the lobby coach from eating the player list on short landscape. */
+.compact-ui .match-lobby .coach-card {
+  width: min(280px, 100%);
+  max-width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  gap: 4px;
+}
+.compact-ui .match-lobby .coach-title {
+  font-size: 12px;
+}
+.compact-ui .match-lobby .coach-body {
+  font-size: 11px;
+  line-height: 1.25;
+}
+.compact-ui .match-lobby .coach-got-it,
+.compact-ui .match-lobby .coach-skip {
+  min-height: 28px;
+}
+.compact-ui .lobby-hint {
+  font-size: 10px;
+  margin: 0 0 2px;
+}
+
+/* In-match settings must scroll on short landscape; centered flex clips both ends. */
+.compact-ui .settings-screen {
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 12px 12px;
+}
+.compact-ui .settings-screen .menu-title {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.compact-ui .settings-card {
+  gap: 6px;
+  padding: 8px 12px;
+  width: min(94vw, 340px);
+  flex-shrink: 0;
+}
+.compact-ui .settings-section {
+  gap: 4px;
+}
+.compact-ui .settings-hint {
+  display: none;
+}
+.compact-ui .settings-actions {
+  gap: 6px;
+  margin-top: 0;
+}
+.compact-ui .settings-actions .btn {
+  min-height: 36px;
+}
+
+/* Keep the zoom control off the bezel. */
+.compact-ui .zoom-slider {
+  left: 14px;
+  padding: 5px 4px;
+}
+.compact-ui .zoom-slider-btn,
+.compact-ui .zoom-slider-track {
+  width: 26px;
 }
 
 @media (max-height: 420px) {
