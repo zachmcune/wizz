@@ -4,10 +4,17 @@
 screen, and data-driven behaviour of the *current* game (v1, `main` @ `8786665`) is listed with
 the exact file that implements it. v2 may rebuild the implementation, but every row here must
 either exist in v2 or be struck out with an explicit, reasoned decision recorded in
-`REBUILD_PLAN.md` §"Recommended rule changes".
+`REBUILD_PLAN.md` §3.
 
-Status legend: `[ ]` pending in v2 · `[x]` done in v2 · `[~]` deliberately replaced (see plan) ·
-`[!]` known-broken in v1 (fix is mandatory in v2).
+**Status legend:** `[ ]` pending in v2 · `[x]` done in v2 · `[~]` deliberately replaced (see plan) ·
+`[!]` known-broken in v1 (fix is mandatory in v2) · `[+]` **new in v2** (not in v1).
+
+**Scope note (decisions recorded):** all v1 rules are kept **except** §3.3 (no AI fog cheating at
+any difficulty) and §3.6 (surface what the Astral Spire unlocks), which were accepted. Harvest
+pacing, the soft harvester cap, bankruptcy elimination and slower projectiles were **rejected** —
+those v1 rules are kept verbatim. See `REBUILD_PLAN.md` §3.1–§3.8 for the reasoning, including the
+proof that the harvest rate is exactly as configured and that the stall is an AI defect, not a rule
+defect.
 
 **How this inventory was produced.** Every row was verified by reading the referenced file in this
 run, and the behaviour was additionally exercised for the rows marked with a `▣` by the test suite
@@ -409,3 +416,81 @@ system (`src/data/defs.ts`, `docs/DATA_SCHEMA.md`). Verified by `tests/combat.te
 | 22.19 | AI-vs-AI balance harness (slow) | `tests/balance.test.ts` | 2 |
 | 22.20 | E2E smoke / canvas / solo tick / sandbox | `e2e/*.spec.ts` | 6 |
 | **Total (fast suite)** | | `npm test` | **431 passing** |
+
+---
+
+## 23. Bugs that must be fixed in v2 (rule-neutral)
+
+These are defects in v1, not design choices. Fixing them changes no rule. Evidence is in
+`REBUILD_PLAN.md` §12.
+
+| # | Bug | v1 location | Evidence | v2 |
+|---|---|---|---|---|
+| 23.1 | Match seed has no effect: `rngState` is seeded but `nextRandom()` is never called | `src/sim/factory.ts:172`, `src/sim/rng.ts` | [E12][E13] | [ ] |
+| 23.2 | `MAX_UNITS_PER_PLAYER = 90` declared but enforced nowhere | `src/core/constants.ts:21` | [E15] | [ ] |
+| 23.3 | Coach card intercepts the build-confirm Place button on phones | `src/ui/styles/hud.css:1102,1112` vs `885-897` | [E16] | [ ] |
+| 23.4 | `.cmd-card` measures 0 px high at 1366×768 and 1920×1080 | `src/ui/styles/hud.css:658-671` | [E17] | [ ] |
+| 23.5 | Lobby shows a red validation error before any user input | `src/ui/match-lobby.ts:489-494` | [E21] | [ ] |
+| 23.6 | AI keeps zero harvesters and freezes permanently | `src/ai/behaviors.ts:51-63,187-190` | [E11][E14] | [ ] |
+| 23.7 | AI reads hidden state at every difficulty | `src/ai/behaviors.ts:226,369,463`; `difficulty.ts:138` | [E12] | [~] accepted §3.3 |
+| 23.8 | AI refinery placement ignores node distance, halving income | `src/ai/shared.ts` `searchPlacementRings` | [E22] | [ ] |
+| 23.9 | `docs/ARCHITECTURE.md` documents 12 systems; `step.ts` runs 17 | `docs/ARCHITECTURE.md` | §10.17 | [ ] |
+
+## 24. New in v2 (`[+]` scope added by decision)
+
+Nothing in this section exists in v1. It is additive; every §1–§22 row still applies.
+
+### 24.1 Illustrated art pipeline
+
+| # | Feature | Notes | v2 |
+|---|---|---|---|
+| 24.1 | Authored vector art sources under `v2/art/src/` | Human-readable path data, not opaque binaries | [ ] |
+| 24.2 | Build-time atlas rasteriser producing WebP pages + frame JSON | Runs in `npm run build` / `art:build` | [ ] |
+| 24.3 | Team-colour **mask layer** so materials keep their own colour | Replaces v1 whole-sprite tint | [ ] |
+| 24.4 | 8 authored facings per unit | v1 rotated one shape | [ ] |
+| 24.5 | Procedural fallback behind the same `SpriteProvider` interface | Keeps phases shippable | [ ] |
+| 24.6 | Art budget enforced: ≤ 2 MB, ≤ 3 atlas pages | Automated size assertion | [ ] |
+
+### 24.2 Research tree
+
+| # | Research | Building | Effect | v2 |
+|---|---|---|---|---|
+| 24.7 | Attuned Siphons (2 ranks) | Resonance Vault | `siphonPerSecond` +8 %/rank | [ ] |
+| 24.8 | Runed Armour | Arcane Nexus | light-unit `hp` +12 % | [ ] |
+| 24.9 | Heavy Plating | Arcane Nexus | heavy-unit `hp` +15 % | [ ] |
+| 24.10 | Focused Bolts | Arcane Nexus | ranged `damage` +10 % | [ ] |
+| 24.11 | Ley Efficiency | Arcane Nexus | defense `powerUsed` −15 % | [ ] |
+| 24.12 | Astral Attunement | Astral Spire | spell cooldowns −20 % | [ ] |
+| 24.13 | Forge Tempering | Golem Forge | siege `cooldownTicks` −8 % | [ ] |
+| 24.14 | Research panel per building + tech-tree view | UI | — | [ ] |
+
+### 24.3 Maps
+
+| # | Map | Size | Players | Character | v2 |
+|---|---|---|---|---|---|
+| 24.15 | Duel Glade (v1 map, verbatim) | 128×88 | 2–4 | baseline parity | [ ] |
+| 24.16 | Ashen Steps | 112×96 | 2 | height-heavy, 3 tiers | [ ] |
+| 24.17 | Tideglass | 144×80 | 2–4 | wide, contested centre | [ ] |
+| 24.18 | Sunken Vault | 96×96 | 2 | tight, fast, few nodes | [ ] |
+| 24.19 | Ember Reach | 160×112 | 4 | 4-corner FFA, long hauls | [ ] |
+| 24.20 | Map linter: all starts mutually reachable, no node unreachable, no starved start, legal footprints | tooling | — | [ ] |
+
+### 24.4 Factions
+
+| # | Faction | Identity | v2 |
+|---|---|---|---|
+| 24.21 | Arcane Dominion (v1, numbers identical) | balanced | [ ] |
+| 24.22 | Verdant Concord | cheap infantry, strong healing, weak siege | [ ] |
+| 24.23 | Obsidian Pact | heavy armour, strong defenses, slower | [ ] |
+| 24.24 | Faction filtering in build/train menus | UI | [ ] |
+| 24.25 | Faction stat modifiers through the existing `modifiers.ts` pipeline | — | [ ] |
+
+### 24.4 Delivery and tooling
+
+| # | Feature | v2 |
+|---|---|---|
+| 24.26 | Separate Cloudflare Pages project `wizz-aw8-v2`; `wizz-aw8` untouched until approval | [ ] |
+| 24.27 | `v2` owns its package.json, tsconfig, Vite, Vitest, ESLint configs | [ ] |
+| 24.28 | Determinism lint guard ported to `v2` (sim purity + no `Math.random`/`Date`/DOM) | [ ] |
+| 24.29 | Data parity test proving Arcane content is byte-identical to v1 | [ ] |
+| 24.30 | Proof artifacts per phase: 4-viewport screenshots + screen recordings | [ ] |

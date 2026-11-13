@@ -151,93 +151,164 @@ still forever and the match never ends."
 
 ---
 
-## 3. Recommended rule changes (with reasoning)
+## 3. Rule changes: decisions (settled)
 
-The brief says keep the rules unless research and reasoning justify a change. These six are
-justified by measurement; everything else stays identical.
+Zachary reviewed the six proposals and **accepted two, rejected four**. This section records the
+decision and, for the rejected ones, exactly how v2 satisfies the underlying concern without
+changing the rule.
 
-### 3.1 Harvest income must be decoupled from travel time — **change**
+### 3.1 Harvest pacing — **REJECTED (rule unchanged)**
 
-**Problem.** `siphonPerSecond: 16` is applied *only while touching the node* (`harvest.ts:90-99`);
-the ~7.5 s round trip means effective income is 3.75 mana/s [E10]. A 900-mana start = 4 minutes
-before the first tank-sized unit. Every subsequent build is gated behind that, which is why the
-scripted plan needs **159 s to field 10 basic infantry** [E9].
+**v1 rule (keep exactly):** `siphonPerSecond: 16`, `wisp.carry: 75`, `wisp.speed: 72`,
+`manaNodeCapacity: 12000`, `vaultSiphonMultiplier: 1.3`, starting mana 900. No soft harvester cap.
+No change to travel, carry, node capacity, or costs.
 
-**Proposal.** Apply siphon *continuously from the moment the wisp reaches the node until it fills*
-(the v1 code already models this), and raise `carry` so a trip is economically meaningful. Concretely:
+**Is the 16/s rate "wrong"? No — it is exactly implemented.** Verified by per-tick instrumentation
+of the harvest cycle [E22]:
 
-- `siphonPerSecond` 16 → 20, `wisp.carry` 75 → 100, `wisp.speed` 72 → 84.
-- Keep the round trip; it is what makes map control matter.
-- Retune `manaNodeCapacity` 12 000 → 9 000 so 4 corner nodes still last ~7.5 min at the new rate.
+| Observation | Measured |
+|---|---|
+| Carry during node contact | 0 → 16 → 32 → 48 → 64 → 75 at exactly **1 s** intervals |
+| Time to fill 75 at the configured rate | 4.69 s (75 / 16) |
+| Siphon duty cycle on a realistic ~82-unit haul | **85.4 %** → **13.1 mana/s** |
+| Siphon duty cycle on a deliberately long 320-unit haul | 27.4 % → 4.4 mana/s |
 
-**Expected effect.** ~5.0 mana/s per wisp (up from 3.75), 10 imps at ~95 s instead of 159 s. The
-first 2 minutes stop being dead time.
+So `siphonPerSecond` is **honoured exactly**; the lower whole-economy number I reported in phase 0
+(3.75 mana/s) was the *round-trip-average* on a badly-placed refinery, not a rate bug. The
+configured value governs only the contact phase, which is the intended RA2-style model: income is
+*meant* to depend on refinery placement and haul distance. **This is design, not a bug, and v2 keeps
+it verbatim.**
 
-**Why not just raise starting mana?** Because the complaint is *pacing*, not *affordability* — a
-bigger bank makes the opening trivial and then re-stalls at the same wall.
+**What v2 fixes instead (bugs, not rules):**
 
-### 3.2 The `resonance_vault` economy upgrade should scale with harvester count — **change**
+- **Placement guidance.** v1 gives no indication that refinery distance matters. v2's placement
+  preview shows the effective mana/s for the spot under the cursor, so players can see the trade-off
+  instead of discovering it by feel. Presentation only; the rule is untouched.
+- **The AI's refinery placement.** v1's AI calls `findPlacement` around the HQ with no regard for
+  node distance (`ai/shared.ts` `searchPlacementRings` walks rings 2..16 from the centre and takes
+  the first legal tile). On a bad map seed this alone can halve its income. v2's AI scores candidate
+  placements by haul distance. **This is a genuine v1 AI bug** and is the main reason its economy
+  collapses; fixing it is the correct remedy rather than raising the harvest rate.
+- **Opening dead time is a UI/onboarding problem, not an economy problem.** v1's coach says "build
+  an Attunement Spire" but not "put it next to the node". v2's coach does.
 
-**Problem.** `vaultSiphonMultiplier: 1.3` multiplies the *per-wisp* rate, so its value scales with
-however many wisps you own. Combined with 3.1 it becomes a runaway: more wisps → more income →
-more wisps. Meanwhile v1 has no diminishing returns anywhere.
+### 3.2 Soft harvester cap — **REJECTED (rule unchanged)**
 
-**Proposal.** Keep the 1.3×, but add a soft harvester cap per refinery: each Attunement Spire
-supports **4 harvesters at full rate**, with a 15 % penalty per extra harvester beyond that. This
-preserves the RA2 "build more refineries" decision without letting one refinery feed 12 wisps.
+No harvester cap beyond the existing per-refinery docking behaviour. Any number of wisps may work a
+node; `vaultSiphonMultiplier: 1.3` applies per wisp exactly as in v1.
 
-### 3.3 Difficulty must not equal maphack — **change**
+*(Consequence accepted: a Vault-backed economy can scale steeply. v2 compensates only through AI
+quality and map design, never by changing the multiplier.)*
 
-**Problem.** Hard literally sees the whole map (`intel: 'omniscient'`), and *all* difficulties use
-`omniscientEnemyHq()` to aim pushes [E12] (`behaviors.ts:226,369,463`). That is both unfair-feeling
-and bad AI design — it hides the real weaknesses instead of fixing them.
+### 3.3 No AI fog cheating at any difficulty — **ACCEPTED**
 
-**Proposal.** Replace with a three-tier *information* model that never reads hidden state:
+**v1 problem.** `omniscientEnemyHq()` is called unconditionally at three sites
+(`ai/behaviors.ts:226, 369, 463`) regardless of the `intel` profile, and Hard uses
+`intel: 'omniscient'` (`ai/difficulty.ts:138`). So *every* difficulty aims at the true HQ through
+fog.
 
-| Tier | Sees | How |
+**v2 rule.** No AI difficulty may read any entity, position, or building that the player could not
+see. Concretely:
+
+| Tier | Sees | Learns by |
 |---|---|---|
-| Easy | Only currently-visible enemies; attacks the nearest *visible* building or probes start locations | `probe` mode, scout disabled |
-| Normal | Currently-visible + remembered scouted buildings + last-seen army positions with decay | `memory` mode, one scout |
-| Hard | Same as Normal but with a **scouting program**: dedicated scouts, expansion denial, and full use of `knownBuildings` | `memory`+, two scouts |
+| Easy | Currently-visible enemies only; attacks nearest *visible* target or probes known start locations | nothing retained |
+| Normal | Visible now + scouted buildings + last-seen army positions with a 30 s decay | one scout |
+| Hard | Visible now + scouted buildings + last-seen positions with a 90 s decay | two scouts, continuous |
 
-Hard gets its edge from *acting on information faster* (reaction latency 2 s vs 6 s vs 12 s) and
-from better build orders — not from seeing through fog. This is both fairer and harder to exploit.
+**Enforcement (not just intent).** The AI receives a `PerceivedWorld` façade, never `GameState`.
+The façade filters through the same `isVisibleTo` the renderer uses, and the test harness swaps in a
+**throwing proxy** in place of `GameState` so any hidden-state read fails loudly (§7.3).
 
-### 3.4 Matches must always resolve — **change (add a rule)**
+**Difficulty is expressed only through legal levers:** reaction latency (12 s / 6 s / 2 s), number of
+scouts, build-order sophistication, wave size and coordination, retreat thresholds, and spell usage.
+Hard is not given information; it is given *speed and discipline*.
 
-**Problem.** 50 % of AI-vs-AI matches run forever [E11] because a player with no harvesters and no
-income is not "defeated" by `winCheckSystem` (which only checks for a living HQ).
+### 3.4 Bankruptcy elimination — **REJECTED (rule unchanged)**
 
-**Proposal.** Add a **stalemate clock**: if a player has had no income event (`manaDeposited` /
-`manaConjured`) for **180 s** and owns no harvester and cannot afford one, they are eliminated with
-a `playerDefeated` event and reason `bankrupt`. This is not a new mechanic players interact with —
-it is a correctness guard that prevents unending matches. It also protects multiplayer.
+No new elimination rule. `winCheckSystem` keeps its v1 semantics: a player is defeated only when
+they hold no HQ (Sanctum / Waystone Camp).
 
-### 3.5 Attack tells and projectile speeds need a readability pass — **minor change**
+**But matches must still not stall**, so the stall is fixed at its real cause. Phase-0 forensics
+showed the stall is *not* a rules problem — it is an AI bug [E11, E14]:
 
-**Problem.** `arcane_bolt` travels at **1200 world units/s** (`data/projectiles/arcane_bolt.json`),
-i.e. a 132-unit archer shot lands in 0.11 s. At 20 Hz that is ~2 ticks — visually a hitscan. The
-Arcane Sentry fires the same projectile every 2 ticks.
+1. The AI assigns harvesters only when they are already `idle` (`ai/behaviors.ts:51-63`). Once its
+   wisps are killed it never replaces them, because `produceArmy`'s harvester check
+   (`behaviors.ts:187-190`) only *reserves* mana for a wisp when `wispCount < diff.wispTarget` — and
+   that reserve is inside the army-production path, which returns early on other conditions.
+2. Its refinery placement ignores haul distance (§3.1), so income was already fragile.
+3. Nothing re-evaluates "I have no income" as an emergency, so it sits at 10 mana forever.
 
-**Proposal.** Slow bolts to 520–700 u/s (still fast, still readable), keep the sentry's own rate.
-Pure presentation change; no balance impact because damage is applied on impact either way. This is
-the single cheapest "feels better" win in the game.
+**v2 fix (AI, plus genuine bugs — no rule change):**
 
-### 3.6 The `astral_spire` cost/time wall — **keep, but surface it earlier**
+- **Harvester economy is self-healing.** Every intent tick the AI computes `harvesters <
+  wantedHarvesters` and, if so, puts a Wisp at the *front* of its production priority with a mana
+  reservation. A player with zero wisps will always re-train.
+- **No-income is a first-class emergency state** in the planner, ranked above attacking.
+- **Refinery placement is scored by haul distance** (§3.1).
+- **A stalled AI always has a fallback offensive.** If it cannot grow its army for a configured
+  period, it sends what it has at the enemy's last-known position rather than idling.
+- **Real bug fixed:** if any path can leave a player with no income *and* no ability to produce
+  (e.g. no producer left but an HQ alive), the AI surrenders via the existing `surrender` command.
+  Surrender is a v1 command and v1 rule; no new elimination mechanic.
 
-**Problem.** Astral Spire costs 4500 mana and 45 s, and it gates *all four* spells including the
-basic utility ones (`aegis_ward`, `blink_gate`). Nothing in the UI tells a new player that the cool
-spell chips they see at match start will be locked for 10+ minutes.
+With those fixes, every AI-vs-AI match resolves by *legitimate* means: armies are rebuilt, attacks
+continue, and an HQ falls. Phase-5 gate: **100 % of 15 seeded matches terminate inside 20 minutes**
+(§7.3), enforced in CI.
 
-**Proposal.** Rules unchanged; add a visible tech-path preview in the build menu ("Astral Spire
-unlocks Aegis / Blink / Meteor / Lance"). Zero balance risk, large clarity win.
+### 3.5 Slower projectiles — **REJECTED (rule unchanged)**
 
-### Explicitly **not** changing
+`arcane_bolt` stays at **1200 u/s**; all projectile speeds, damage, and cooldowns are unchanged.
 
-Single resource; armor/counter `vs` table; power-offline rules; building footprints and costs
-(except the §3.1 pacing retune); the 2.5D-only camera; the 20 Hz tick; fog/ghost semantics; the
-win condition (HQ destruction); unit roster and abilities; spells' damage/cooldowns; the
-lockstep protocol's semantics.
+**Readability is solved in the renderer instead**, which is where the phase-0 concern actually
+belongs: a 2-tick projectile is legible if it is *drawn* legibly. v2 gives fast projectiles a
+motion-streak (a velocity-aligned trail spanning several frames of travel) and an impact flash, so
+the eye reads the shot even though it crosses the screen in ~0.1 s. No rule, timing, or balance
+change.
+
+### 3.6 Surface what the Astral Spire unlocks — **ACCEPTED**
+
+Content and UI only; no numbers change.
+
+- The build menu shows, on the Astral Spire entry, the four spells it unlocks
+  (`meteor_storm`, `aegis_ward`, `blink_gate`, `astral_lance`) with their cooldowns.
+- The spell chips remain visible but locked, and their tooltip names the prerequisite chain
+  (`Arcane Nexus → Astral Spire`) instead of the current generic "unlocks later".
+- The tech tree view (new in v2, part of the research feature) shows the same dependency.
+
+### 3.7 Summary table
+
+| # | Proposal | Decision | v2 treatment |
+|---|---|---|---|
+| 3.1 | Harvest pacing retune | **REJECTED** | v1 values verbatim; fix AI placement + add placement readout |
+| 3.2 | Soft harvester cap | **REJECTED** | v1 values verbatim |
+| 3.3 | No AI fog cheating | **ACCEPTED** | `PerceivedWorld` façade + throwing-proxy test |
+| 3.4 | Bankruptcy elimination | **REJECTED** | v1 win check verbatim; fix AI economy instead |
+| 3.5 | Slower projectiles | **REJECTED** | v1 speeds verbatim; renderer-side motion streaks |
+| 3.6 | Surface Astral Spire unlocks | **ACCEPTED** | Build menu + spell tooltips + tech tree |
+
+### 3.8 Everything else is unchanged
+
+Single resource; armour/`vs` counter table; power offline rules; all building costs, footprints and
+build times; the 20 Hz tick; fog and building-ghost semantics; HQ-destruction win condition; the
+unit roster and stats; spell damage and cooldowns; projectile speeds; node capacity; starting mana;
+harvest rate and carry; repair and sell ratios.
+
+### 3.9 v1 bugs that v2 must fix (rule-neutral)
+
+These are defects, not design choices. Each is listed with the evidence that established it; §10 has
+the full repros.
+
+| Bug | Evidence | Fix in v2 |
+|---|---|---|
+| Match seed has no effect (`nextRandom` never called) | [E12][E13] | seeded RNG is actually consumed by map/gen/AI tie-breaks |
+| `MAX_UNITS_PER_PLAYER = 90` never enforced | [E15] | enforced at production + spawn, with a test |
+| Coach card intercepts the Place button on phones | [E16] | coach never overlaps an interactive control; geometry asserted in tests |
+| `.cmd-card` collapses to 0 px on desktop/Chromebook | [E17] | explicit grid rows; height asserted at 4 viewports |
+| Lobby shows a red error before user input | [E21] | neutral first-run state; corners auto-assigned |
+| AI keeps zero harvesters and freezes | [E11][E14] | self-healing economy (§3.4) |
+| AI reads hidden state at every difficulty | [E12] | `PerceivedWorld` façade (§3.3) |
+| AI refinery placement ignores haul distance | §3.1 | scored placement |
 
 ---
 
@@ -413,7 +484,32 @@ guarantees the AI never batches conflicting constructions.
 - **Siege handling.** Siege units target defenses first (`isDefenseBuilding`), else the nearest
   economic building; Blink is used to skip a wall.
 
-### 5.5 Determinism of the AI
+### 5.5 Self-healing economy (the anti-stall fix)
+
+Rule changes to the economy were **rejected**, so match termination is an AI-and-bugs problem. The
+planner therefore treats economy loss as a top-priority emergency, above any attack decision:
+
+| Priority | Condition | Action |
+|---|---|---|
+| 0 | no refinery finished | build one at the best-scored node (see below) |
+| 1 | `harvesters < wanted` | queue a Wisp, reserving mana for it *before* any army |
+| 2 | `harvesters == 0 && mana < wispCost` | sell the least valuable building for the refund |
+| 3 | enemy inside the base radius | pull harvesters home, fight with everything idle |
+| 4 | no growth possible for N s | attack with whatever exists at last-known enemy position |
+
+**Refinery placement is scored, not first-fit.** v1's `findPlacement` returns the first legal ring
+tile radiating from the HQ (`ai/shared.ts` `searchPlacementRings`), which can put a refinery far from
+the node it serves and halve income. v2 scores every candidate by
+`expectedManaPerSecond(candidate, nearestNode)` — computed from the same travel/siphon model the
+simulation uses — then by distance to the HQ, then by tile coordinates for determinism. Given the
+measured duty cycle of **85.4 % on an 82-unit haul vs 27.4 % on a 320-unit haul** [E22], this single
+change more than triples early income without touching a single balance number.
+
+**Stall freedom is a gate, not a hope.** Phase-5 CI requires 100 % of 15 seeded matches to terminate
+within 20 sim-minutes (§7.3). No elimination rule is added; the AI simply keeps replacing workers
+and attacking, so an HQ eventually falls.
+
+### 5.6 Determinism of the AI
 
 The AI is a pure function of `(GameState, tick, playerId)`. It uses **no** randomness in v2 —
 difficulty comes from latency and mistake *schedules* (a deterministic tick-period skip), not dice.
@@ -424,36 +520,154 @@ That makes AI-vs-AI replays exactly reproducible and makes lockstep with AI peer
 
 ## 6. Visual upgrade direction
 
-Keep the identity — dark arcane palette, bold silhouettes, oblique 2.5D — and fix the three things
-that make v1 look "programmer art":
+**Decision: illustrated sprites.** v1 draws everything from code (`shape-sprite.ts`, 1322 lines of
+procedural canvas drawing). v2 ships **authored illustration** as the primary art path. This is the
+largest single change in the rebuild and drives several architectural choices below.
 
-**V1. Silhouette and material separation.** v1 renders flat colour + black outline (`shape-sprite.ts`
-voxel boxes). v2: two-tone shading per face (top / left / right) from a fixed 3-axis light, plus a
-1-px inner rim light on team-coloured parts. Same geometry cost, dramatically more readable at
-667×375.
+### 6.1 Art pipeline (chosen implementation)
 
-**V2. Real terrain with height.** v1 draws a flat checkered platform with a wood-textured side.
-v2: cliff faces get banded strata, ramps get a lit surface gradient matched to the slope
-(`ramp-slope.ts` already gives the exact surface height — it becomes a shader parameter), and the
-ground gets a subtle tiled arcane motif instead of a plain grid.
+We cannot hand-paint in this environment, but "illustrated" does not require a human with a tablet.
+v2 uses **scripted illustration**: authored vector art (SVG-style paths with gradients, rim light,
+and material shading) that is rasterised **at build time** into a texture atlas, then reviewed
+visually and iterated per asset.
 
-**V3. Motion.** v1 units glide (`DISPLAY_SMOOTH_HZ` exponential smoothing) with a static texture.
-v2: 4-frame walk cycles for 8 facings baked into the atlas (bob + limb offset), attack poses driven
-by the existing `attackFx` timing, and hit-flash. This is the largest perceived-quality jump per
+```
+v2/art/
+  src/<entity>.svg.ts     authored path data + gradient/shadow layers, human-readable
+  build-atlas.mjs         rasterise → atlas pages + JSON frame map (run at build time)
+  dist/atlas-0.webp       2–3 atlas pages, mip-mapped
+  dist/atlas.json         frame rects, pivots, ground points, 8 facing variants
+```
+
+Why this satisfies "illustrated" rather than being procedural art by another name:
+
+| | v1 (`shape-sprite.ts`) | v2 (illustrated atlas) |
+|---|---|---|
+| Source | runtime canvas draw calls, flat fills + outline | authored path layers with gradient, shading, highlight |
+| Detail | 1 fill + 1 stroke per face | 4–8 layers per asset (base, shade, rim light, accent, detail) |
+| Cost at runtime | one texture per (art × colour × 8 facings), generated on first use (causes first-draw stalls) | zero generation; one atlas lookup |
+| Team colouring | whole-sprite tint | **mask layer** — only designated team-colour regions are tinted, so metal/stone keep their material |
+| Batching | broken by per-entity `zIndex` sort | atlas batching, one draw call per page |
+| Facing | 8 rotations of one shape | 8 authored frames (or 8 rendered yaw variants) |
+
+Team colour via a mask layer is the key visual upgrade: in v1 a blue Stone Golem looks like a blue
+golem, whereas v2 keeps stone grey and tints only the runes/crystal. That reads as illustration
+rather than as a recoloured primitive.
+
+**Sprite budget (bounded for Chromebooks).** 14 units × 8 facings = 112 unit frames;
+26+ buildings × 1 frame = ~28; projectiles/FX ~20; UI icons ~60. At 128 px max frame size on 3
+WebP atlas pages this lands near **1.2–1.8 MB**, versus v1's 1352 KiB precache total. Budget:
+**≤ 2 MB of art, ≤ 3 atlas pages**. Frames are sampled with nearest-neighbour at 1× and linear
+above, so upscaling on a 1920×1080 desktop stays clean.
+
+**Fallback path if art slips.** The atlas loader accepts a `procedural` provider with the v1-style
+generator ported forward, behind the same `SpriteProvider` interface. That keeps phases 1–4
+shippable while art lands, and it is how the gallery can show a "flat vs illustrated" comparison.
+
+### 6.2 Visual targets
+
+**V1. Silhouette and material separation.** Every unit gets a distinct silhouette readable at 32 px
+tall (the actual on-screen size at 667×375 zoomed out). Buildings get a roof/body/base separation
+and a cast shadow that matches the light direction.
+
+**V2. Terrain with real height.** Cliff faces get banded strata and a darker base; ramps get a lit
+surface gradient driven by the exact slope from `ramp-slope.ts`; ground gets a tiled arcane motif
+instead of a visible grid. Height levels are readable from colour and shadow alone, which matters
+because cliffs block line of fire (§13.7 of the inventory) — players must *see* the mechanic.
+
+**V3. Motion.** 4-frame walk cycles per facing, attack poses keyed to the existing `attackFx` timing
+data, hit flash, death dissolve, and a spawn shimmer. This is the biggest perceived-quality jump per
 unit of work.
 
-**V4. VFX.** v1 has five bespoke 450–600-line VFX modules. v2 replaces them with a single pooled
-particle/beam system driven by data (`v2/data/vfx/*.json`), so adding a new tower's look is data,
-not a 500-line file.
+**V4. VFX.** v1's five bespoke 450–600-line modules are replaced by one pooled particle/beam system
+driven by data (`v2/data/vfx/*.json`). Motion streaks for fast projectiles implement the accepted
+readability fix for §3.5 without touching projectile speed.
 
-**V5. UI.** The HUD stays DOM (it is 0.003 ms to layout and perfectly accessible) but gets a proper
-design system: 8-pt spacing scale, three type sizes, one accent per player, and real touch targets
-(≥44 px) on the compact layout. The `cmd-card` 0-height bug (§10.1) disappears because the panel is
-rebuilt around CSS grid with explicit row definitions.
+**V5. UI.** DOM HUD (0.003 ms to lay out, accessible) with a real design system: 8-pt spacing scale,
+three type sizes, per-player accent colour, ≥44 px touch targets on compact layouts. Panels are CSS
+grid with explicit rows so the `.cmd-card` zero-height bug cannot recur.
+
+**V6. Readability at 667×375.** Every screen is reviewed at the smallest target first, not last.
+Acceptance: at 667×375 with the game at minimum zoom, a player can distinguish Imp / Archer / Golem
+/ Skimmer silhouettes and identify a powered vs unpowered turret at a glance.
+
+---
+
+## 6b. Content expansion (decided)
+
+Zachary approved **more maps and more factions on top of everything existing**. This is additive:
+every v1 map, faction, unit, building and spell remains.
+
+### 6b.1 Factions
+
+v1 has one faction (`arcane`) and the unit roster is effectively global — `factionId` exists on the
+player and on building/unit defs but nothing filters by it. v2 makes factions real:
+
+| Faction | Identity | Roster emphasis | Availability |
+|---|---|---|---|
+| **Arcane Dominion** | the v1 faction, unchanged | balanced, storm casters, Rift Skimmers | always |
+| **Verdant Concord** | living / growth | cheaper infantry, strong healing, weaker siege | new |
+| **Obsidian Pact** | industry / sacrifice | heavier armour, stronger defenses, slower | new |
+
+Implementation: a `factionId` filter on build/train menus plus per-faction stat modifiers resolved
+through the existing `modifiers.ts` pipeline. **Every v1 unit and building remains buildable by
+Arcane Dominion with identical numbers** — cross-faction variants are additive content, so the
+conformance suite still proves v1 parity for the Arcane roster.
+
+### 6b.2 Maps
+
+v1 ships one map (`duel_glade`, 128×88, 4 start locations, 13 nodes). v2 ships **at least 5**:
+
+| Map | Size | Players | Character | Proves |
+|---|---|---|---|---|
+| Duel Glade | 128×88 | 2–4 | v1 map, verbatim | parity |
+| Ashen Steps | 112×96 | 2 | height-heavy, 3 tiers, chokepoints | verticality |
+| Tideglass | 144×80 | 2–4 | wide, open, contested centre node | expansion pressure |
+| Sunken Vault | 96×96 | 2 | tight, fast, few nodes | rush viability |
+| Ember Reach | 160×112 | 4 | 4-corner FFA, long hauls | 20-minute pacing |
+
+Each map is generated by a checked-in script and validated by a map-lint test (all start locations
+reachable from each other, no node unreachable, no start location starved of a nearby node,
+footprints legal).
+
+### 6b.3 Research tree (decided)
+
+v1 has a complete research *system* but **zero content** (`data/research/` does not exist) [E20].
+v2 ships a real tree. Because Zachary rejected economy retuning, research is the intended long-game
+progression instead of a bigger harvest rate.
+
+| Building | Research | Effect | Cost / time |
+|---|---|---|---|
+| Resonance Vault | Attuned Siphons | `siphonPerSecond` +8 % per rank (2 ranks) | 400 / 30 s, 700 / 45 s |
+| Arcane Nexus | Runed Armour | `hp` +12 % for light units | 500 / 35 s |
+| Arcane Nexus | Heavy Plating | `hp` +15 % for heavy units | 600 / 40 s |
+| Arcane Nexus | Focused Bolts | `damage` +10 % for ranged units | 650 / 40 s |
+| Arcane Nexus | Ley Efficiency | `powerUsed` −15 % on defenses | 550 / 35 s |
+| Astral Spire | Astral Attunement | spell cooldowns −20 % | 900 / 60 s |
+| Golem Forge | Forge Tempering | `cooldownTicks` −8 % for siege | 600 / 40 s |
+
+All effects flow through the existing `ResearchEffect` schema and `modifiers.ts`, so the pipeline is
+already proven; v2 only supplies content plus the UI (a research panel per building and a tech-tree
+view). Every research is optional, none gates a v1 unit, and all are visible in the tech tree.
+
+### 6b.4 Match length target
+
+**~20 minutes** for 1v1. That sets the design targets:
+
+- Economy and tech timings must let a full tech tree + superweapon be reachable by ~12–14 minutes
+  with competent play, so the last third is superweapon-and-siege play.
+- Research ranks are paced so a player completes ~4–5 of 7 by minute 20.
+- The AI's tech schedule is written against this curve (§5.3), and the Phase-8 balance harness
+  asserts median 1v1 length **14–24 minutes** across seeds.
+
+Because §3.1 and §3.2 were rejected, this target is met by *AI competence* and *map design*, not by
+changing harvest numbers.
 
 ---
 
 ## 7. Test and proof strategy
+
+
 
 The standing rule is "prove it". Each phase must produce artifacts, not assertions.
 
@@ -532,61 +746,196 @@ recording of the new behaviour. The v1 baseline images are already committed at
 
 ## 8. Build phases with done-criteria
 
-Each phase ends with: all tests green, `npm run lint`, `npm run typecheck`, a perf number against
-the §7.4 budget, and committed proof artifacts. No phase starts before the previous one's criteria
-are met.
+Re-planned after Zachary's decisions: illustrated art, a real research tree, more maps and factions,
+2–4 player lockstep, sandbox retained, ~20 minute 1v1 target, and a separate Pages project.
 
-### Phase 1 — Foundation (no gameplay)
-- Repo scaffold under `v2/`, Vite + TS strict + Vitest + Playwright, own Cloudflare Pages target.
-- `src/sim` purity lint rules ported (import bans + `Math.random`/`Date`/`DOM` bans).
-- Deterministic RNG that is **actually consumed**; seeded map/starting-state variation.
-- `hashState` with incremental rolling hash.
-- Data pipeline: Zod schemas + loader + registry for all v1 content, byte-identical values.
-- **Done:** `v2` builds; all content loads; schema rejects a deliberately corrupted file with a
-  file+path error; 30+ schema/registry tests pass; `npm run lint` clean.
-
-### Phase 2 — Simulation core
-- SoA entity store, spatial grid, flow-field pathing, nav/height grid, command handling for all
-  **23 player commands + 12 dev commands**, all 17 systems in the v1 order.
-- **Done:** conformance suite covers **every rule in §4–§15 of the inventory** and passes;
-  determinism test (2 runs, 1200 ticks, identical hash); 4-peer lockstep to 1200 ticks;
-  sim ≤ 1.5 ms/tick at 187 entities.
-
-### Phase 3 — Renderer and art
-- Atlas build step, batched sprites, chunked terrain, pooled VFX, camera, fog, minimap.
-- Visual upgrade V1–V4.
-- **Done:** all inventory §13 and §20 rows implemented; visual golden screenshots at 4 sizes;
-  JS render cost ≤ 4 ms/frame at 187 entities; 60 fps verified on a real GPU machine.
-
-### Phase 4 — UI, HUD, and screens
-- Menu, lobby, settings, pause, result, coach, gallery, sandbox (all 10 tabs).
-- **Done:** every inventory §2, §3, §8, §9, §10, §11 row implemented; Playwright covers every
-  screen at 4 viewports with zero page errors; HUD occupancy ≤ 18 % of a 667×375 screen;
-  no element overflows the viewport at any of the 4 sizes (automated geometry assertion).
-
-### Phase 5 — AI
-- Perception model, planner, combat, all three difficulties, openings as data.
-- **Done:** every §7.3 gate passes in CI; two 10-minute AI-vs-AI matches recorded as video at
-  1366×768 showing real waves, defense, expansion, and a decisive ending.
-
-### Phase 6 — Multiplayer
-- Lockstep client + relay compatibility (same wire protocol), rejoin, stall handling.
-- **Done:** 2/3/4 human peers in real browsers stay in sync for 5 minutes (checksums match);
-  forced desync is detected and reported with a replay; tab-background/resume does not stall;
-  rejoin restores a live match.
-
-### Phase 7 — PWA, polish, performance
-- Manifest, SW, install prompt, orientation lock, resume handling, audio.
-- **Done:** installable on Android Chrome + desktop Chromium; cold-load TTI ≤ 6 s on Fast 3G
-  throttling; all §7.4 budgets met; 20-minute memory soak passes.
-
-### Phase 8 — Balance and final proof
-- Full conformance re-run, balance harness across 5 seeds × 3 pairings, final video suite.
-- **Done:** every inventory row `[x]` or `[~]` with a linked justification; final report with
-  measured before/after tables.
+Each phase ends with **all** of: `typecheck` clean, `lint` clean, full test suite green, the phase's
+perf number against budget, and committed proof artifacts (screenshots at 667×375, 844×390,
+1366×768, 1920×1080 plus a short screen recording of the phase's headline behaviour). No phase
+starts before the previous one's criteria are met.
 
 ---
 
+### Phase 1 — Foundation: project, data pipeline, determinism, seeded RNG
+
+**Build**
+- `v2/package.json`, own Vite config, own tsconfig (strict, `noUncheckedIndexedAccess`), own
+  Vitest config, own ESLint config that ports the v1 determinism guard (`src/sim/**` may not import
+  render/ui/audio/input/storage; no `Math.random`, `Date.now`, `window`, `document`, `performance`).
+- `v2/src/core/`: constants, coordinates, **2.5D-only projection** (dimetric, X×0.5 / Y×0.25),
+  math, seeded PRNG.
+- **RNG that is actually consumed** (fixes [E12][E13]): a documented draw-order contract, used by
+  map variation, cosmetic tie-breaks, and AI tie-breaks. Seed must visibly change outcomes.
+- Deterministic `hashState` with an incremental per-entity rolling hash.
+- Data pipeline: Zod schemas + loader + registry, covering **every v1 content file** plus the new
+  research / faction / extra-map schemas. Values byte-identical to v1 for Arcane content.
+- Content files copied into `v2/data/` (units, buildings, spells, projectiles, factions, matches,
+  balance, the v1 map) with a **parity test** asserting every field matches v1.
+- `v2/scripts/` tooling: content validator, `npm run build` producing a static bundle.
+
+**Done-criteria**
+1. `npm run typecheck && npm run lint && npm test` green in `v2/`.
+2. Every v1 content definition loads and equals v1 field-for-field (automated parity test, listing
+   the count: 10 units, 20 buildings, 4 spells, 6 projectiles, 1 faction, 4 match presets).
+3. A deliberately corrupted data file fails to load with **file + field path** in the error.
+4. Same seed + same commands ⇒ identical hash (2 runs, 2000 ticks); **different seeds ⇒ different
+   hashes**, proving the RNG is live.
+5. Determinism lint guard actually fires (a test fixture that imports `pixi.js` into `src/sim` must
+   fail lint; captured as evidence).
+6. Zero imports from `v1 src/` — enforced by a test that greps `v2/src` for `../src/` and `../data/`.
+7. `v2` builds to a static `dist/` and the bundle's JS gzip is recorded as the Phase-1 baseline.
+
+---
+
+### Phase 2 — Simulation core
+
+**Build**
+- Structure-of-arrays entity store with stable ids, owned spatial grid, incremental spatial index.
+- Nav/height grid, ramp slope, flow-field pathing, local separation.
+- All **23 player commands + 12 dev commands**, exhaustive switches.
+- All 17 systems in the v1 order (order is load-bearing; asserted by a test that snapshots the order).
+- Fog of war with `explored` / `visible` / `knownBuildings` ghost semantics and radar gating.
+- Height rules: ramp-only ±1 steps, cliffs block ground fire, high ground +1 tile range, high
+  ground hides lower tiles.
+- Combat: armour `vs` table, splash, chain, beams, turret arcs, charge-up, min-range, air layers,
+  garrison fire, stances.
+- Economy: harvest cycle, refinery deposit, Vault multiplier, repair, sell, conjure, Tight pacing.
+- Power: hard vs soft consumers, production slowdown floor.
+- **`MAX_UNITS_PER_PLAYER` enforced** at produce + spawn (fixes [E15]).
+- Win check identical to v1 (HQ destruction only — no bankruptcy rule, per §3.4).
+
+**Done-criteria**
+1. Conformance suite covers **every rule in inventory §4–§15** and passes (each test names its
+   inventory row).
+2. `npm test` green; determinism green at 2000 ticks.
+3. Sim ≤ **1.5 ms/tick at 187 entities** (v1 baseline: 6.995 ms [E7]) — measured and recorded.
+4. Unit cap enforced: a test spawns 200 units and asserts the 90th+ is refused at the command layer.
+5. Zero allocations in the steady-state tick (measured via `--expose-gc` heap delta over 2000 ticks,
+   asserted under a threshold).
+6. Replay: recorded command stream reproduces the identical final hash.
+
+---
+
+### Phase 3 — Renderer, art pipeline, and the illustrated atlas
+
+**Build**
+- Atlas pipeline: authored vector sources → build-time rasteriser → WebP atlas pages + frame JSON.
+- `SpriteProvider` with `illustrated` (primary) and `procedural` (fallback) backends.
+- Batched rendering: one draw call per atlas page; depth via a sorted index, not `zIndex`.
+- Chunked pre-rendered terrain with height strata and slope shading.
+- Pooled particle/beam VFX from data; motion streaks for fast projectiles (§3.5 fix).
+- Fog rendering, minimap, camera (clamped, overscan), occlusion markers.
+- All 14 units × 8 facings, 26+ buildings, projectiles, icons drawn and reviewed.
+
+**Done-criteria**
+1. Inventory §13 and §20 rows all implemented.
+2. Art ≤ 2 MB across ≤ 3 atlas pages (measured); bundle recorded.
+3. JS render cost ≤ **4 ms/frame at 187 entities** (measured).
+4. Screenshots at all 4 sizes for: idle base, massed battle, zoomed out, max zoom, height/cliff
+   showcase, each faction's palette.
+5. Short recording (10–20 s) of a 40-unit battle showing walk cycles, attack poses, streaks, VFX.
+6. Silhouette test at 667×375: all 14 units distinguishable (side-by-side sheet committed).
+7. Real-GPU fps verified on available hardware (see §13 — this VM has no GPU).
+
+---
+
+### Phase 4 — UI, HUD, screens, sandbox, research UI, content UI
+
+**Build**
+- Menu, lobby (fixing [E21] red-error-on-load and auto-assigning corners), settings, pause, result.
+- HUD on a design system: grid panels (structurally prevents the [E17] 0-px bug), ≥44 px touch
+  targets, compact layout variants.
+- Coach/tutorial with a **layout guarantee** that it can never overlap an interactive control
+  (fixes [E16]); geometry asserted in tests at all 4 viewports.
+- Build/train menus with faction filtering, research panel per building, tech-tree view.
+- Full developer sandbox: **all 10 tabs, all dev commands, command palette, scenarios, overlays,
+  pause/step/timescale, multi-player control switching** (Zachary: keep it).
+- Entity Designs gallery with live 2.5D previews, now showing illustrated sprites.
+
+**Done-criteria**
+1. Inventory §2, §3, §8, §9, §10, §11 all implemented; §16 (research UI) implemented.
+2. Playwright: every screen at 4 viewports, **zero page errors**, zero console errors.
+3. Automated geometry assertions: nothing overflows the viewport; `.cmd-card` height > 0; the Place
+   button is the topmost element at its own centre on all 4 viewports (the exact [E16] test, now
+   passing).
+4. HUD occupies ≤ 18 % of a 667×375 screen.
+5. Sandbox: all 10 tabs visited with no errors; representative action per tab asserted.
+
+---
+
+### Phase 5 — AI
+
+**Build**
+- `PerceivedWorld` façade — the **only** input to AI decisions (fixes the [E3.3] maphack).
+- Economy planner with self-healing harvester logic and scored refinery placement (§5.5).
+- Military planner: threat map, staging, waves, multi-axis, retreat, focus fire, siege handling.
+- Three difficulties using only legal levers (latency, scouts, build order, wave size, spells).
+- Openings as data.
+- Tech/research decisions driven by the 20-minute target.
+
+**Done-criteria (all automated in CI)**
+1. **100 %** of 15 seeded matches terminate within 20 sim-minutes (v1: 50 % [E11]).
+2. Zero hidden-state reads: throwing-proxy harness reports 0 violations over 10 matches.
+3. Peak army ≥ **40 units** for Hard by 8 minutes (v1: 28 [E11]).
+4. Difficulty ordering: Hard > Normal and Normal > Easy each ≥ 80 % over 10 seeds.
+5. Seed variety: ≥ 3 distinct winners across 5 seeds at equal difficulty.
+6. No match has a player with 0 harvesters for > 60 s (self-healing proof).
+7. Median 1v1 length 14–24 sim-minutes across seeds (the ~20-minute target).
+
+---
+
+### Phase 6 — Multiplayer (2–4 players)
+
+**Build**
+- Lockstep client + rejoin + stall policy, keeping the **v1 wire protocol** so the Railway relay
+  needs no change.
+- Host/guest lobby sync, ready states, claim, seed negotiation.
+- Checksum comparison per tick, desync capture with replay, reconnect with backoff.
+
+**Done-criteria**
+1. 2, 3 and 4 **real browser peers** stay in sync for 5 minutes (checksums equal every ACK window).
+2. A forced desync is detected and reported with a serialized replay.
+3. Background/resume does not trip the stall banner; a genuine stall does.
+4. Rejoin restores a live match mid-game.
+5. Relay compatibility: the unchanged v1 relay serves v2 peers (proven by running `relay/server.mjs`
+   and connecting a v2 client).
+
+---
+
+### Phase 7 — PWA, content completion, polish, performance
+
+**Build**
+- Manifest, service worker, cache headers, icons, install prompt, orientation lock, resume.
+- **5 maps** completed and map-linted; **3 factions** with real filtering.
+- Research tree content wired into AI and UI.
+- Audio pass.
+- Bundle splitting (code-split the renderer and sandbox) to hit the gzip budget.
+
+**Done-criteria**
+1. Installable on Android Chrome and desktop Chromium (documented manual check).
+2. Cold TTI ≤ 6 s on throttled Fast 3G.
+3. Bundle ≤ **150 kB gzip** main chunk (v1: 236.7 kB [E3]).
+4. All 5 maps pass map-lint (reachability, no starved start, legal footprints).
+5. All 3 factions buildable and playable; Arcane numbers still byte-identical to v1.
+6. 20-minute memory soak ≤ 250 MB.
+
+---
+
+### Phase 8 — Balance, conformance re-run, deploy, final proof
+
+**Build**
+- Full conformance re-run against v1 for every unchanged rule.
+- Balance pass against the 20-minute target.
+- **Separate Cloudflare Pages project `wizz-aw8-v2`**; `wizz-aw8` untouched.
+
+**Done-criteria**
+1. Conformance: every unchanged rule matches v1; every changed rule (only §3.3 and §3.6) is
+   asserted as the new behaviour with a link to its decision.
+2. Balance harness: median 1v1 14–24 min; no faction above 60 % win rate over 20 matches.
+3. v2 deployed to `wizz-aw8-v2` and verified live; `wizz-aw8` still serving v1 (verified).
+4. Final evidence pack: before/after tables, full video suite, inventory checklist fully `[x]`/`[~]`.
+
+---
 ## 9. Audit harnesses committed with this phase
 
 All under `v2/audit/`, runnable but outside v1's test glob (so v1 CI is untouched):
@@ -879,6 +1228,37 @@ else if (!validation.valid) { this.setHint(validation.errors[0] ?? 'Invalid setu
 with `defaultLobbyState()` (`src/lobby/build-config.ts:98-105`) setting `startIndex: null` for every
 slot. Visible in all four `v2/docs/baseline-screenshots/*--10-lobby.png` captures.
 
+**[E22] The harvest siphon rate is exactly as configured — travel overhead is design, not a bug.**
+Per-tick instrumentation of the harvest cycle (`v2/audit/harvest-forensics.test.ts`,
+`v2/audit/income-model.test.ts`) plus a position/velocity trace (`v2/audit/wisp-stuck.test.ts`).
+
+While in node contact, `carry` rises exactly 16 per second (sample: carry `0 → 16 → 32 → 48 → 64 → 75`
+at 1 s intervals), i.e. `siphonPerSecond: 16` is honoured precisely and a full 75 load takes
+`75 / 16 = 4.69 s`. What varies is the *duty cycle* of contact, because the wisp must travel
+spire→node→spire:
+
+```
+INCOME {
+ "short": { "hopDistance": 320, "mana": 525,  "manaPerSec": 4.375,  "siphonDutyCycle": 0.274 },
+ "long":  { "hopDistance":  82, "mana": 1575, "manaPerSec": 13.125, "siphonDutyCycle": 0.854 },
+ "configured": 16
+}
+```
+
+Reading the "long" row: a refinery built ~82 world units from its node achieves an **85.4 %** contact
+duty cycle and therefore **13.1 mana/s** — within 18 % of the configured ceiling, the difference
+being turn-around time. The low figure I reported in phase 0 (3.75 mana/s) came from a refinery
+placed **320 units** away (27.4 % duty cycle), which is a *placement* outcome, not a rate defect.
+
+The wisp position trace further rules out a stuck-unit bug: over a 60 s run it moves continuously
+between node (`dNode` 391 → 10) and spire (`dSpire` 310 → 41), with `vel` 72 while travelling and
+0 only while siphoning, exactly as designed.
+
+**Conclusion for §3.1: no bug in the harvest rate. v1's rule is correctly implemented and is kept
+verbatim in v2.** The actionable defect is the AI's refinery placement (`ai/shared.ts`
+`searchPlacementRings` takes the first legal ring tile with no regard for node distance), which v2
+fixes in the AI (§5.5), not in the economy.
+
 ---
 
 ## 13. What I could NOT verify in this run
@@ -903,31 +1283,41 @@ Stated plainly, per the standing rule:
 
 ---
 
-## 14. Open questions only Zachary can answer
+## 14. Decisions recorded (settled) and remaining questions
 
-1. **Visual direction.** Do you want to keep the current "flat shapes + bold outline" language and
-   simply polish it (lower risk, closer to v1), or move toward richer illustrated 2.5D sprites
-   (bigger perceived jump, but every unit/building needs new art)? The plan is written for the
-   polish-first path with atlas-ready hooks; the other path changes Phase 3 substantially.
-2. **Art production.** Should v2 ship **procedurally generated** art (as v1 does — no binary assets,
-   tiny bundle, fully team-colourable) or may it include authored sprite sheets? Procedural keeps the
-   bundle small and the palette consistent; authored art looks better but adds megabytes and asset
-   pipeline work — which matters on school Chromebooks.
-3. **Rule changes in §3.** Do you accept 3.1 (harvest rate), 3.2 (soft harvester cap), 3.3 (no
-   maphack), 3.4 (bankruptcy elimination), 3.5 (slower bolts)? 3.3 and 3.4 are the ones that change
-   how matches feel; 3.1 is the one that changes pacing most.
-4. **Match length target.** With the reworked AI, what is the ideal 1v1 length — 8 minutes (snappy,
-   school-friendly) or 15–20 (full tech tree incl. superweapons)? This directly sets the economy
-   constants and the AI's tech timing.
-5. **Research tree.** `data/research/` is empty but the whole system exists. Should v2 ship an
-   actual research tree (e.g. +damage, +armour, faster harvest at the Arcane Nexus), or delete the
-   dead system? Shipping it adds content and depth; deleting it reduces surface area.
-6. **More maps and factions.** v1 ships one map and one faction. Is content expansion in scope for
-   v2, or strictly a like-for-like rebuild?
-7. **Multiplayer scope.** Keep 2–4 player lockstep over the existing Railway relay? Or is 1v1 the
-   only supported mode and the rest is best-effort?
-8. **Deployment.** Should v2 deploy to a **separate** Cloudflare Pages project (e.g.
-   `wizz-aw8-v2`) so the live game is never at risk, with a cutover only after you approve? My
-   recommendation is yes.
-9. **Sandbox.** Keep the full developer sandbox in v2 (it is 8 files, ~39 tests, and the main QA
-   tool), or is it out of scope for a shipped rebuild?
+### 14.1 Settled — Zachary's decisions
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Visual direction | **Illustrated sprites** (§6) |
+| 2 | Art production | **Illustrated/atlas art**, not procedural (§6.1) |
+| 3 | Rule changes | **Accept §3.3** (no AI fog cheating) and **§3.6** (surface Astral Spire unlocks). **Reject §3.1, §3.2, §3.4, §3.5** — keep v1 rules. Matches must still not stall; fixed through AI + genuine bug fixes (§3.4, §5.5) |
+| 4 | Match length target | **~20 minutes** for 1v1 (§6b.4) |
+| 5 | Research tree | **Build a real research tree** (§6b.3) |
+| 6 | More maps and factions | **Yes, additive** on top of everything existing (§6b) |
+| 7 | Multiplayer scope | **2–4 player lockstep** |
+| 8 | Deployment | **Separate Pages project `wizz-aw8-v2`**; `wizz-aw8` switches over only on Zachary's approval |
+| 9 | Sandbox | **Keep** the full developer sandbox |
+
+Additional guidance recorded: fix the real bugs listed in §3.9 (dead seed, unenforced unit cap,
+coach card blocking Place, 0-px `cmd-card`, lobby error, AI stall). Where a measured rate differs
+from a configured value, determine whether it is a bug or intended design and say which — done in
+§3.1: the harvest siphon rate is **exactly as configured**, and the lower whole-economy figure is
+travel overhead (design), not a bug.
+
+### 14.2 Remaining questions (new, non-blocking — Phase 1 proceeds regardless)
+
+1. **Faction identity.** I have drafted Verdant Concord (living/growth) and Obsidian Pact
+   (industry/sacrifice) in §6b.1. Are those the right directions, or would you rather they be
+   different archetypes? Changing them later only affects content files and menu copy, not the
+   simulation.
+2. **Art review gate.** Since art is now a first-class deliverable, should each phase's screenshots
+   be reviewed by you before the next phase starts, or should I proceed and batch the review at
+   Phase 3 completion?
+3. **`wizz-aw8-v2` provisioning.** I can produce the build output and the exact deploy steps, but
+   creating the Cloudflare Pages project and its credentials needs your account access. Are you
+   happy to create the project when Phase 7 lands, or should I prepare a one-command deploy script
+   for you to run?
+
+None of these block Phase 1.
+
