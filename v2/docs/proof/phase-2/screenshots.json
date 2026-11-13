@@ -1,0 +1,46 @@
+[
+  {
+    "viewport": "phone-667x375",
+    "errors": [],
+    "geom": {
+      "vw": 667,
+      "vh": 375,
+      "scrollW": 667,
+      "scrollH": 375,
+      "hudOverflowRight": 0
+    }
+  },
+  {
+    "viewport": "phone-844x390",
+    "errors": [],
+    "geom": {
+      "vw": 844,
+      "vh": 390,
+      "scrollW": 844,
+      "scrollH": 390,
+      "hudOverflowRight": 0
+    }
+  },
+  {
+    "viewport": "chromebook-1366x768",
+    "errors": [],
+    "geom": {
+      "vw": 1366,
+      "vh": 768,
+      "scrollW": 1366,
+      "scrollH": 768,
+      "hudOverflowRight": 0
+    }
+  },
+  {
+    "viewport": "desktop-1920x1080",
+    "errors": [],
+    "geom": {
+      "vw": 1920,
+      "vh": 1080,
+      "scrollW": 1920,
+      "scrollH": 1080,
+      "hudOverflowRight": 0
+    }
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "id": "cinder_acolyte",
+  "name": "Cinder Acolyte",
+  "kind": "unit",
+  "role": "armoured_melee",
+  "cost": 195,
+  "buildTime": 6,
+  "hp": 130,
+  "armor": "heavy",
+  "speed": 62,
+  "sight": 150,
+  "radius": 9,
+  "weapon": {
+    "damage": 15,
+    "range": 20,
+    "cooldownTicks": 12,
+    "projectile": null,
+    "vs": {
+      "light": 0.9,
+      "heavy": 1.0,
+      "building": 0.75
+    }
+  },
+  "producedBy": "summoning_circle",
+  "menuCategory": "small_troops",
+  "requires": [
+    "summoning_circle"
+  ],
+  "factions": [
+    "obsidian"
+  ],
+  "art": {
+    "sprite": "cinder_acolyte",
+    "shape": "square",
+    "size": 16,
+    "accent": "#ff8a3c",
+    "attackFx": "slam"
+  },
+  "sfx": {
+    "select": "imp_select",
+    "move": "imp_move",
+    "attack": "melee_heavy",
+    "die": "unit_die"
+  }
+}

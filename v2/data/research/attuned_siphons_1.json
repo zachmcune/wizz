@@ -1,0 +1,20 @@
+{
+  "id": "attuned_siphons_1",
+  "name": "Attuned Siphons I",
+  "description": "Attune the refinery's ley-lines. Harvesters siphon 8% more mana per second.",
+  "kind": "research",
+  "cost": 400,
+  "researchTime": 30,
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "resonance_vault",
+  "effects": [
+    {
+      "kind": "economyModifier",
+      "stat": "siphonPerSecond",
+      "operation": "multiply",
+      "value": 1.08
+    }
+  ]
+}

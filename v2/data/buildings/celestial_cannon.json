@@ -1,0 +1,38 @@
+{
+  "id": "celestial_cannon",
+  "name": "Celestial Cannon",
+  "shortLabel": "CANN",
+  "description": "Late-game artillery defense. Channels skyfire onto distant enemies after a long charge. Devastating area impact with a blind spot at close range.",
+  "kind": "building",
+  "cost": 2200,
+  "buildTime": 28,
+  "hp": 900,
+  "armor": "building",
+  "sight": 440,
+  "footprint": 3,
+  "menuCategory": "defenses",
+  "requires": [
+    "arcane_nexus"
+  ],
+  "powerUsed": 90,
+  "weapon": {
+    "damage": 180,
+    "range": 420,
+    "minRange": 120,
+    "chargeTicks": 60,
+    "cooldownTicks": 100,
+    "projectile": null,
+    "impactRadius": 90,
+    "vs": {
+      "light": 1,
+      "heavy": 1.3,
+      "building": 0.8
+    }
+  },
+  "art": {
+    "shape": "building",
+    "size": 74,
+    "accent": "#d9f3ff",
+    "sprite": "celestial_cannon"
+  }
+}

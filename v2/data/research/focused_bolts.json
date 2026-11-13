@@ -1,0 +1,26 @@
+{
+  "id": "focused_bolts",
+  "name": "Focused Bolts",
+  "description": "Hone ranged attacks. +10% damage for ranged troops.",
+  "kind": "research",
+  "cost": 650,
+  "researchTime": 40,
+  "requires": [
+    "arcane_nexus"
+  ],
+  "researchedAt": "arcane_nexus",
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "light_ranged",
+        "aoe_ranged",
+        "sustained_ranged",
+        "flying_harass"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.1
+    }
+  ]
+}

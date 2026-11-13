@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+preview-out/
+.demo-builder.mjs
+.demo-determinism.mjs
+.demo-entry.ts
+.atlas.mjs
+.sheet.mjs
+.preview.mjs
+art/dist/
+.a2.mjs
+.sh2.mjs
+.pv2.mjs
+preview-out2/
