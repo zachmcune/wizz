@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-13T21:35:26.097Z",
+  "generated": "2026-11-13T21:42:39.715Z",
   "images": [
     {
       "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/wisp.png",
@@ -22,8 +22,8 @@
       "name": "stone_golem",
       "atlasKey": "unit/stone_golem/blue/0",
       "atlas": "atlas-pilot",
-      "md5": "7f7118da7a9d7ccca343137086378321",
-      "bytes": 1025607
+      "md5": "d01851d8f0c28c130e05ec77574f0d3a",
+      "bytes": 1027997
     },
     {
       "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/imp_swarmling.png",
@@ -38,8 +38,8 @@
       "name": "storm_caster",
       "atlasKey": "unit/storm_caster/blue/0",
       "atlas": "atlas-pilot",
-      "md5": "3c79ca3d3c5d61b5e4f1edf3ace5d554",
-      "bytes": 885086
+      "md5": "f1b25393d9e5886af1a5744cc1bc2646",
+      "bytes": 867513
     },
     {
       "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/sanctum.png",
@@ -78,8 +78,8 @@
       "name": "comparison-v1-oldv2-new",
       "atlasKey": "multiple",
       "atlas": "v1+atlas+atlas-pilot",
-      "md5": "3211e295f1295adb277730b36681f258",
-      "bytes": 458828
+      "md5": "36768641b773bc34b7fdb33197dd35d2",
+      "bytes": 458032
     }
   ],
   "skipped": [

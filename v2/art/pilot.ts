@@ -270,14 +270,15 @@ function stoneGolem(): Assembly {
 function stormCaster(): Assembly {
   return {
     parts: [
-      // robe: a cone with a slight flare
-      part(tube([[0, 0, 0, 7.4], [0, 0, 3.0, 6.6], [0, 0, 9.0, 4.8], [0, 0, 14.0, 3.8]], 14), [0, 0, 0], PAL.robeDeep),
+      // robe: a cone with a slight flare. Kept NARROW (5.6 at the hem, not 7.4) because a wide cone
+      // base reads as a building, not a person — the earlier version was mistaken for a Sanctum.
+      part(tube([[0, 0, 0, 5.6], [0, 0, 3.0, 5.0], [0, 0, 9.0, 4.0], [0, 0, 14.0, 3.4]], 14), [0, 0, 0], PAL.robeDeep),
       // hem band (team)
-      part(prism(7.6, 1.4, 14), [0, 0, 1.2], PAL.trimTeam),
+      part(prism(5.8, 1.4, 14), [0, 0, 1.2], PAL.trimTeam),
       // torso / shoulders under the robe
-      part(bbox(7.0, 6.4, 5.6, 1.6, 0.8), [0, 0, 14.4], PAL.robe),
+      part(bbox(6.6, 5.8, 5.6, 1.6, 0.8), [0, 0, 14.4], PAL.robe),
       // high collar: a flared tube around the neck — the identifying shape
-      part(tube([[0, 0, 0, 4.2], [0, 0, 3.4, 5.6]], 12), [0, 0, 17.6], PAL.robeLit, { scale: { x: 1, y: 1, z: 1 } }),
+      part(tube([[0, 0, 0, 3.8], [0, 0, 3.4, 5.0]], 12), [0, 0, 17.6], PAL.robeLit),
       // head inside the collar
       part(sph(2.8, 10), [0, 0, 20.4], PAL.bone),
       part(sph(0.95, 6), [-1.2, -2.4, 20.6], PAL.eyeTeam),
@@ -285,19 +286,29 @@ function stormCaster(): Assembly {
       // pointed hat
       part(cone(4.4, 9.0, 9), [0, 0, 22.2], PAL.robeDeep, { rotX: 0.1 }),
       part(prism(4.2, 0.9, 9), [0, 0, 23.0], PAL.trimTeam),
-      // staff: tapered shaft with a claw holding a crystal
-      part(tube([[0, 0, 0, 0.85], [0.4, 0, 11.0, 0.7], [0.8, 0, 22.0, 0.55]], 7), [7.4, 0, 1.4], PAL.wood),
-      part(sph(2.6, 10), [8.4, 0, 25.0], PAL.crystalHot),
+      // ---- staff: shaft planted at the caster's side and GRIPPED by a visible arm. Without the arm
+      // the staff read as a separate object standing next to the unit.
+      part(tube([[0, 0, 0, 0.8], [0.3, 0, 11.0, 0.66], [0.6, 0, 22.0, 0.5]], 7), [6.2, 0, 1.4], PAL.wood),
+      part(sph(2.5, 10), [6.8, 0, 25.0], PAL.crystalHot),
       ...[-1, 1].map((s) =>
-        part(tube([[0, 0, 0, 0.42], [0.5 * s, 0, 2.4, 0.2]], 5), [8.4, 0, 23.2], PAL.brass, { rotZ: s * 0.5 }),
+        part(tube([[0, 0, 0, 0.4], [0.45 * s, 0, 2.3, 0.18]], 5), [6.8, 0, 23.2], PAL.brass, { rotZ: s * 0.5 }),
       ),
+      // right arm reaching out to grip the shaft (shoulder -> elbow -> hand)
+      part(
+        tube([[0, 0, 0, 1.5], [3.4, 0.2, -3.2, 1.15], [5.6, 0.1, -6.4, 0.9]], 8),
+        [1.2, 0, 17.4],
+        PAL.robe,
+      ),
+      part(sph(1.15, 8), [6.2, 0, 10.6], PAL.bone),
+      // left arm, hanging with a bracer
+      part(tube([[0, 0, 0, 1.4], [-2.6, 0.2, -4.0, 1.05], [-3.4, 0.2, -7.0, 0.85]], 8), [-1.4, 0, 17.2], PAL.robe),
       // ---- three orbiting orbs at different radii, giving the outline movement
-      part(sph(2.1, 9), [-8.6, -1.6, 21.4], PAL.crystal),
-      part(sph(1.6, 9), [5.2, -7.4, 15.0], PAL.aether),
-      part(sph(1.3, 9), [-3.0, 7.6, 26.2], PAL.crystalHot),
+      part(sph(2.1, 9), [-8.0, -1.6, 21.4], PAL.crystal),
+      part(sph(1.6, 9), [4.6, -7.0, 15.0], PAL.aether),
+      part(sph(1.3, 9), [-2.6, 7.2, 26.2], PAL.crystalHot),
       // a couple of floating rune shards
-      part(prism(0.9, 3.0, 4), [-5.4, 4.4, 12.6], PAL.aether, { rotZ: 0.4 }),
-      part(prism(0.7, 2.4, 4), [4.6, 5.2, 10.2], PAL.crystal, { rotZ: -0.3 }),
+      part(prism(0.9, 3.0, 4), [-5.0, 4.2, 12.6], PAL.aether, { rotZ: 0.4 }),
+      part(prism(0.7, 2.4, 4), [4.2, 4.8, 10.2], PAL.crystal, { rotZ: -0.3 }),
     ],
   };
 }

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-13T21:35:36.772Z",
+  "generated": "2026-11-13T21:42:58.873Z",
   "base": "http://127.0.0.1:5333/",
   "shots": [
     {
@@ -8,8 +8,8 @@
       "note": "default phone (landscape)",
       "zoom": 1,
       "aliveUnits": 29,
-      "nondTerrainPixelFraction": 0.076,
-      "bytes": 143624
+      "nondTerrainPixelFraction": 0.075,
+      "bytes": 142667
     },
     {
       "viewport": "phone-844x390",
@@ -17,17 +17,17 @@
       "note": "large phone (landscape)",
       "zoom": 1,
       "aliveUnits": 29,
-      "nondTerrainPixelFraction": 0.056,
-      "bytes": 170256
+      "nondTerrainPixelFraction": 0.059,
+      "bytes": 173641
     },
     {
       "viewport": "chromebook-1366x768",
       "size": "1366x768",
       "note": "school Chromebook",
       "zoom": 1,
-      "aliveUnits": 36,
-      "nondTerrainPixelFraction": 0.047,
-      "bytes": 455113
+      "aliveUnits": 34,
+      "nondTerrainPixelFraction": 0.046,
+      "bytes": 453752
     },
     {
       "viewport": "desktop-1920x1080",
@@ -36,7 +36,7 @@
       "zoom": 1,
       "aliveUnits": 38,
       "nondTerrainPixelFraction": 0.131,
-      "bytes": 778263
+      "bytes": 778967
     }
   ],
   "errors": []
