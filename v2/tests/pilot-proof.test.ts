@@ -28,7 +28,7 @@ const md5 = (b: Buffer) => createHash('md5').update(b).digest('hex');
 const KNOWN_BAD = new Set(['297ca11317ed2539377f9317d55ea2de']);
 
 const index = JSON.parse(readFileSync(join(PROOF, 'proof-index.json'), 'utf8')) as {
-  images: { file: string; name: string; atlasKey: string; md5: string; bytes: number }[];
+  images: { file: string; name: string; atlasKey: string; atlas: string; md5: string; bytes: number }[];
 };
 
 const unitsManifest = JSON.parse(readFileSync(join(ATLAS, 'units.json'), 'utf8'));
