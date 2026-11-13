@@ -1,0 +1,26 @@
+{
+  "id": "heavy_plating",
+  "name": "Heavy Plating",
+  "description": "Reinforce heavy constructs. +15% HP.",
+  "kind": "research",
+  "cost": 600,
+  "researchTime": 40,
+  "requires": [
+    "arcane_nexus"
+  ],
+  "researchedAt": "arcane_nexus",
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "heavy_melee",
+        "siege",
+        "mobile_hq",
+        "armoured_melee"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.15
+    }
+  ]
+}

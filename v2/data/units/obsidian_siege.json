@@ -1,0 +1,47 @@
+{
+  "id": "obsidian_siege",
+  "name": "Obsidian Siegebreaker",
+  "kind": "unit",
+  "role": "siege",
+  "cost": 900,
+  "buildTime": 17,
+  "hp": 620,
+  "armor": "heavy",
+  "speed": 30,
+  "sight": 165,
+  "radius": 14,
+  "weapon": {
+    "damage": 70,
+    "range": 150,
+    "cooldownTicks": 42,
+    "projectile": "siege_shard",
+    "splashRadius": 30,
+    "vs": {
+      "light": 0.75,
+      "heavy": 1.15,
+      "building": 2.7
+    }
+  },
+  "producedBy": "golem_forge",
+  "menuCategory": "large_troops",
+  "requires": [
+    "ley_conduit",
+    "golem_forge",
+    "arcane_nexus"
+  ],
+  "factions": [
+    "obsidian"
+  ],
+  "art": {
+    "sprite": "obsidian_siege",
+    "shape": "hexagon",
+    "size": 27,
+    "accent": "#ff6a2a"
+  },
+  "sfx": {
+    "select": "behemoth_select",
+    "move": "behemoth_move",
+    "attack": "siege_fire",
+    "die": "unit_die_heavy"
+  }
+}

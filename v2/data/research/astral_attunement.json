@@ -1,0 +1,23 @@
+{
+  "id": "astral_attunement",
+  "name": "Astral Attunement",
+  "description": "Bind the spire to the ley-current. The Astral Spire gains 20% HP.",
+  "kind": "research",
+  "cost": 900,
+  "researchTime": 60,
+  "requires": [
+    "astral_spire"
+  ],
+  "researchedAt": "astral_spire",
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "astral_spire"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.2
+    }
+  ]
+}

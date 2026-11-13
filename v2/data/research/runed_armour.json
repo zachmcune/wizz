@@ -1,0 +1,29 @@
+{
+  "id": "runed_armour",
+  "name": "Runed Armour",
+  "description": "Ward-light armour for light troops. +12% HP.",
+  "kind": "research",
+  "cost": 500,
+  "researchTime": 35,
+  "requires": [
+    "arcane_nexus"
+  ],
+  "researchedAt": "arcane_nexus",
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "light_melee",
+        "light_ranged",
+        "fast_scout",
+        "flying_harass",
+        "aoe_ranged",
+        "cheap_melee",
+        "sustained_ranged"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.12
+    }
+  ]
+}

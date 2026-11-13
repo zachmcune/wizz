@@ -1,0 +1,45 @@
+{
+  "id": "thorn_grove",
+  "name": "Thorn Grove",
+  "shortLabel": "GRVE",
+  "description": "Living barricade. Roots any enemy that comes close, buying the Concord time to regenerate.",
+  "kind": "building",
+  "cost": 380,
+  "buildTime": 8,
+  "hp": 700,
+  "armor": "building",
+  "sight": 170,
+  "footprint": 2,
+  "menuCategory": "defenses",
+  "requires": [
+    "attunement_spire"
+  ],
+  "factions": [
+    "verdant"
+  ],
+  "powerUsed": 25,
+  "weapon": {
+    "damage": 4,
+    "range": 155,
+    "cooldownTicks": 6,
+    "projectile": null,
+    "targetsAir": false,
+    "onHitStatus": {
+      "kind": "slow",
+      "durationTicks": 40,
+      "moveFactor": 0.6,
+      "attackCooldownFactor": 1.25
+    },
+    "vs": {
+      "light": 1.0,
+      "heavy": 0.8,
+      "building": 0.3
+    }
+  },
+  "art": {
+    "sprite": "thorn_grove",
+    "shape": "building",
+    "size": 58,
+    "accent": "#4fd97a"
+  }
+}

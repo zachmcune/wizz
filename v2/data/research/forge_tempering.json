@@ -1,0 +1,23 @@
+{
+  "id": "forge_tempering",
+  "name": "Forge Tempering",
+  "description": "Quicken siege mechanisms. -8% cooldown for siege units.",
+  "kind": "research",
+  "cost": 600,
+  "researchTime": 40,
+  "requires": [
+    "golem_forge"
+  ],
+  "researchedAt": "golem_forge",
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "siege"
+      ],
+      "stat": "cooldownTicks",
+      "operation": "multiply",
+      "value": 0.92
+    }
+  ]
+}

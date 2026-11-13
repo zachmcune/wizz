@@ -26,7 +26,7 @@ not verify something I say so explicitly (§13).
 | Playwright specs / passing | 4 files, **6 passing** | `npx playwright test` [E2] |
 | Largest modules | `shape-sprite.ts` 1322, `renderer.ts` 1099, `hud.ts` 685, `sanctuary-spire-vfx.ts` 604, `match-lobby.ts` 595, `ai/behaviors.ts` 563 | `wc -l` |
 | Production bundle | 847.8 kB main chunk (**236.7 kB gzip**) + Pixi splits; `dist/` 6.4 MB | `npm run build` [E3] |
-| Content | 10 units, 20 buildings, 4 spells, 6 projectiles, 1 map, 4 match presets, 2 AI strategies | `data/**` |
+| Content | 10 units, 19 buildings, 4 spells, 6 projectiles, 1 map, 4 match presets, 2 AI strategies | `data/**` |
 
 The code is well-factored in places (`src/sim` is genuinely pure; the render/UI/sim split is real
 and lint-enforced) but has grown organically: 212 files with a 1300-line procedural texture
@@ -776,7 +776,7 @@ starts before the previous one's criteria are met.
 **Done-criteria**
 1. `npm run typecheck && npm run lint && npm test` green in `v2/`.
 2. Every v1 content definition loads and equals v1 field-for-field (automated parity test, listing
-   the count: 10 units, 20 buildings, 4 spells, 6 projectiles, 1 faction, 4 match presets).
+   the count: 10 units, 19 buildings, 4 spells, 6 projectiles, 1 faction, 4 match presets).
 3. A deliberately corrupted data file fails to load with **file + field path** in the error.
 4. Same seed + same commands ⇒ identical hash (2 runs, 2000 ticks); **different seeds ⇒ different
    hashes**, proving the RNG is live.

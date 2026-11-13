@@ -107,7 +107,7 @@ audit harnesses described in `REBUILD_PLAN.md` §9.
 | 5.4 | HUD shows `used/total (−deficit)` and a red low-power state | `hud.ts` | [ ] |
 | 5.5 | Sanctum +20 pwr, Ley Conduit +60 pwr | `sanctum.json`, `ley_conduit.json` | [ ] |
 
-## 6. Buildings (20 defs)
+## 6. Buildings (19 defs)
 
 | # | Building | Key rules | v1 file | v2 |
 |---|---|---|---|---|
@@ -130,7 +130,7 @@ audit harnesses described in `REBUILD_PLAN.md` §9.
 | 6.17 | Stone Wall | 40 mana, blocks movement, 350 HP | `stone_wall.json` | [ ] |
 | 6.18 | Arcane Gate | 60 mana, own/allied units pass, enemies blocked | `arcane_gate.json`, `nav-grid.ts` `setGate` | [ ] |
 | 6.19 | Waystone Camp (deployed MHQ) | 1400 HP, construction yard, packs back into a Wagon | `waystone_camp.json`, `sim/systems/morph.ts` | [ ] |
-| 6.20 | Mana Node (neutral entity) | Resource node, depletes, never blocks | `sim/factory.ts:188` | [ ] |
+| 6.20 | Mana Node — a **neutral entity**, not a building def (kept in this table because players interact with it as if it were a building) | Resource node, depletes, never blocks | `sim/factory.ts:188` | [ ] |
 
 ## 7. Units (10 defs) — counters are the `vs` multipliers
 
@@ -426,7 +426,7 @@ These are defects in v1, not design choices. Fixing them changes no rule. Eviden
 
 | # | Bug | v1 location | Evidence | v2 |
 |---|---|---|---|---|
-| 23.1 | Match seed has no effect: `rngState` is seeded but `nextRandom()` is never called | `src/sim/factory.ts:172`, `src/sim/rng.ts` | [E12][E13] | [ ] |
+| 23.1 | Match seed has no effect: `rngState` is seeded but `nextRandom()` is never called | `src/sim/factory.ts:172`, `src/sim/rng.ts` | [E12][E13] | [x] fixed in Phase 1: named-stream RNG, proven consumed |
 | 23.2 | `MAX_UNITS_PER_PLAYER = 90` declared but enforced nowhere | `src/core/constants.ts:21` | [E15] | [ ] |
 | 23.3 | Coach card intercepts the build-confirm Place button on phones | `src/ui/styles/hud.css:1102,1112` vs `885-897` | [E16] | [ ] |
 | 23.4 | `.cmd-card` measures 0 px high at 1366×768 and 1920×1080 | `src/ui/styles/hud.css:658-671` | [E17] | [ ] |
@@ -490,7 +490,7 @@ Nothing in this section exists in v1. It is additive; every §1–§22 row still
 | # | Feature | v2 |
 |---|---|---|
 | 24.26 | Separate Cloudflare Pages project `wizz-aw8-v2`; `wizz-aw8` untouched until approval | [ ] |
-| 24.27 | `v2` owns its package.json, tsconfig, Vite, Vitest, ESLint configs | [ ] |
-| 24.28 | Determinism lint guard ported to `v2` (sim purity + no `Math.random`/`Date`/DOM) | [ ] |
-| 24.29 | Data parity test proving Arcane content is byte-identical to v1 | [ ] |
+| 24.27 | `v2` owns its package.json, tsconfig, Vite, Vitest, ESLint configs | [x] |
+| 24.28 | Determinism lint guard ported to `v2` (sim purity + no `Math.random`/`Date`/DOM) | [x] |
+| 24.29 | Data parity test proving Arcane content is byte-identical to v1 | [x] |
 | 24.30 | Proof artifacts per phase: 4-viewport screenshots + screen recordings | [ ] |

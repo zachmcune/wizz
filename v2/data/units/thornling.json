@@ -1,0 +1,45 @@
+{
+  "id": "thornling",
+  "name": "Thornling",
+  "kind": "unit",
+  "role": "cheap_melee",
+  "cost": 115,
+  "buildTime": 4,
+  "hp": 85,
+  "armor": "light",
+  "speed": 94,
+  "sight": 150,
+  "radius": 8,
+  "weapon": {
+    "damage": 11,
+    "range": 18,
+    "cooldownTicks": 8,
+    "projectile": null,
+    "vs": {
+      "light": 1.05,
+      "heavy": 0.6,
+      "building": 0.5
+    }
+  },
+  "producedBy": "summoning_circle",
+  "menuCategory": "small_troops",
+  "requires": [
+    "summoning_circle"
+  ],
+  "factions": [
+    "verdant"
+  ],
+  "art": {
+    "sprite": "thornling",
+    "shape": "triangle",
+    "size": 15,
+    "accent": "#5cff8a",
+    "attackFx": "lunge_slash"
+  },
+  "sfx": {
+    "select": "imp_select",
+    "move": "imp_move",
+    "attack": "melee_hit",
+    "die": "unit_die"
+  }
+}

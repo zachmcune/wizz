@@ -1,0 +1,29 @@
+{
+  "id": "ley_efficiency",
+  "name": "Ley Efficiency",
+  "description": "Route power more efficiently. Defenses draw 15% less power.",
+  "kind": "research",
+  "cost": 550,
+  "researchTime": 35,
+  "requires": [
+    "arcane_nexus"
+  ],
+  "researchedAt": "arcane_nexus",
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "arcane_sentry",
+        "frost_spire",
+        "inferno_beacon",
+        "storm_conductor",
+        "celestial_cannon",
+        "sanctuary_spire",
+        "scrying_obelisk"
+      ],
+      "stat": "powerUsed",
+      "operation": "multiply",
+      "value": 0.85
+    }
+  ]
+}

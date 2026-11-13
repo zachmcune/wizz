@@ -1,0 +1,10 @@
+{
+  "id": "siege_shard",
+  "speed": 300,
+  "art": {
+    "shape": "diamond",
+    "size": 9,
+    "accent": "#b06a3a",
+    "sprite": "siege_shard"
+  }
+}

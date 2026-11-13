@@ -1,0 +1,22 @@
+{
+  "id": "sanctum",
+  "name": "Sanctum",
+  "shortLabel": "HQ",
+  "description": "Your command center. Build new structures from here. Lose it and you lose the match.",
+  "kind": "building",
+  "cost": 0,
+  "buildTime": 1,
+  "hp": 2000,
+  "armor": "building",
+  "sight": 220,
+  "footprint": 3,
+  "requires": [],
+  "isConstructionYard": true,
+  "powerProduced": 20,
+  "art": {
+    "shape": "building",
+    "size": 90,
+    "accent": "#9b8cff",
+    "sprite": "sanctum"
+  }
+}
