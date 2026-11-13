@@ -119,3 +119,23 @@ export function visibleWorldAabb(
   }
   return { minX, minY, maxX, maxY };
 }
+
+// --------------------------------------------------------------------------------- free functions
+// Thin wrappers so call sites read as maths rather than as method chains on a singleton. These are
+// the ONLY world↔screen entry points used by the renderer.
+
+export function projectGround(world: Vec2, visualHeight = 0): Vec2 {
+  return ObliqueProjection.projectGround(world, visualHeight);
+}
+
+export function worldToScreen(world: Vec2, cam: CameraView, visualHeight = 0): Vec2 {
+  return ObliqueProjection.worldToScreen(world, cam, visualHeight);
+}
+
+export function screenToWorld(screen: Vec2, cam: CameraView, visualHeight = 0): Vec2 {
+  return ObliqueProjection.screenToWorld(screen, cam, visualHeight);
+}
+
+export function projectionSortKey(world: Vec2, cam: CameraView, visualHeight = 0): number {
+  return ObliqueProjection.sortKey(world, cam, visualHeight);
+}

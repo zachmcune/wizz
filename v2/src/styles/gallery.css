@@ -1,0 +1,28 @@
+body { overflow: auto; touch-action: auto; height: auto; }
+#gallery { padding: 18px 20px 48px; max-width: 1800px; margin: 0 auto; }
+.gal-header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: 0.01em; }
+.gal-header p { margin: 0 0 18px; color: #a49dc4; font-size: 13px; }
+.gal-heading { margin: 26px 0 10px; border-bottom: 1px solid #2e2947; padding-bottom: 6px; }
+.gal-heading h2 { margin: 0; font-size: 15px; text-transform: uppercase; letter-spacing: 0.09em; color: #b9aff0; }
+.gal-heading p { margin: 5px 0 0; font-size: 12px; color: #8d86ab; max-width: 1000px; line-height: 1.5; }
+
+.gal-facings, .gal-teams, .gal-buildings { display: flex; flex-direction: column; gap: 6px; }
+.gal-card {
+  display: flex; align-items: center; gap: 14px;
+  background: #171426; border: 1px solid #2a2440; border-radius: 10px; padding: 7px 12px;
+}
+.gal-title { font-size: 12px; font-weight: 600; color: #e8e4f8; min-width: 132px; }
+.gal-note { font-size: 10px; color: #6f6890; min-width: 118px; font-family: ui-monospace, monospace; }
+.gal-strip { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+.gal-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gal-cell canvas { border-radius: 6px; display: block; background: #151228; }
+.gal-cell span { font-size: 9px; color: #7d76a0; }
+
+.gal-silhouettes { display: flex; flex-wrap: wrap; gap: 10px; }
+.gal-silhouettes .gal-cell { width: 84px; }
+.gal-silhouettes .gal-cell span { font-size: 9px; text-align: center; line-height: 1.25; }
+
+@media (max-width: 900px) {
+  .gal-card { flex-direction: column; align-items: stretch; gap: 6px; }
+  .gal-title, .gal-note { min-width: 0; }
+}

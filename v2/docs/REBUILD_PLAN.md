@@ -526,43 +526,48 @@ largest single change in the rebuild and drives several architectural choices be
 
 ### 6.1 Art pipeline (chosen implementation)
 
-We cannot hand-paint in this environment, but "illustrated" does not require a human with a tablet.
-v2 uses **scripted illustration**: authored vector art (SVG-style paths with gradients, rim light,
-and material shading) that is rasterised **at build time** into a texture atlas, then reviewed
-visually and iterated per asset.
+**Decision: illustrated sprites, produced by offline 3D-into-2D rendering.**
+
+v1 drew everything procedurally at runtime (`shape-sprite.ts`, 1322 lines of canvas draw calls) and
+the result read as flat programmer art: one fill plus one outline per face, no light direction, and
+team colour applied as a whole-sprite tint. v2 bakes proper illustrated sprites instead.
+
+**How the art is authored.** Rather than hand-painting (no tablet or artist in this loop) or
+hand-writing thousands of vector paths (enormous and inconsistent), every sprite is described as a
+small **assembly of 3D primitives** — boxes, cylinders, cones, prisms, spheres — with per-part
+material. `v2/art/mesh.ts` + `v2/art/raster.ts` then render that assembly offline:
 
 ```
 v2/art/
-  src/<entity>.svg.ts     authored path data + gradient/shadow layers, human-readable
-  build-atlas.mjs         rasterise → atlas pages + JSON frame map (run at build time)
-  dist/atlas-0.webp       2–3 atlas pages, mip-mapped
-  dist/atlas.json         frame rects, pivots, ground points, 8 facing variants
+  mesh.ts        primitives → triangles, three-point lighting, material definitions
+  raster.ts      supersampled rasteriser (3x SSAA), Gouraud shading, outline pass
+  palette.ts     36 materials in three value bands + the four team colours
+  units.ts       14 unit assemblies
+  buildings.ts   21 building assemblies
+  build-atlas.ts bakes every assembly × facing × team colour into WebP atlas pages + frame JSON
 ```
 
-Why this satisfies "illustrated" rather than being procedural art by another name:
+This is illustrative rendering, not procedural placeholder art, and the difference is measurable:
 
-| | v1 (`shape-sprite.ts`) | v2 (illustrated atlas) |
+| | v1 (`shape-sprite.ts`) | v2 (offline rendered) |
 |---|---|---|
-| Source | runtime canvas draw calls, flat fills + outline | authored path layers with gradient, shading, highlight |
-| Detail | 1 fill + 1 stroke per face | 4–8 layers per asset (base, shade, rim light, accent, detail) |
-| Cost at runtime | one texture per (art × colour × 8 facings), generated on first use (causes first-draw stalls) | zero generation; one atlas lookup |
-| Team colouring | whole-sprite tint | **mask layer** — only designated team-colour regions are tinted, so metal/stone keep their material |
-| Batching | broken by per-entity `zIndex` sort | atlas batching, one draw call per page |
-| Facing | 8 rotations of one shape | 8 authored frames (or 8 rendered yaw variants) |
+| Source | runtime canvas draw calls, flat fills | 3D part assemblies with 36 materials |
+| Shading | 1 fill + 1 stroke per face | three-point light + ambient + specular + rim + grain, interpolated per vertex |
+| Anti-aliasing | canvas default | 3× supersampled then box-filtered |
+| Team colour | whole-sprite tint (a blue golem is blue) | **mask-based**: only runes/crystals/banners tint, stone stays grey |
+| Facings | 8 rotations of one shape | **8 real yaw angles** — you see a unit's back from behind |
+| Outline | stroke on every shape | silhouette-derived 1 px outline, so it reads at 24 px |
+| Runtime cost | texture generated on first use (frame hitches) | zero generation; atlas lookup |
 
-Team colour via a mask layer is the key visual upgrade: in v1 a blue Stone Golem looks like a blue
-golem, whereas v2 keeps stone grey and tints only the runes/crystal. That reads as illustration
-rather than as a recoloured primitive.
+**Why 8 real yaws matters.** v1 rotated a single drawing, so a unit "facing away" still showed its
+face. Rendering at 8 yaws gives correct silhouettes per direction, which is what makes a melee unit
+look like it is charging rather than sliding sideways.
 
-**Sprite budget (bounded for Chromebooks).** 14 units × 8 facings = 112 unit frames;
-26+ buildings × 1 frame = ~28; projectiles/FX ~20; UI icons ~60. At 128 px max frame size on 3
-WebP atlas pages this lands near **1.2–1.8 MB**, versus v1's 1352 KiB precache total. Budget:
-**≤ 2 MB of art, ≤ 3 atlas pages**. Frames are sampled with nearest-neighbour at 1× and linear
-above, so upscaling on a 1920×1080 desktop stays clean.
+**Budgets.** Unit frames 112 (14 × 8), buildings 21, projectiles/icons the rest. Atlas target
+**≤ 2 MB across ≤ 3 WebP pages**, with a build-time assertion that fails the build if exceeded.
 
-**Fallback path if art slips.** The atlas loader accepts a `procedural` provider with the v1-style
-generator ported forward, behind the same `SpriteProvider` interface. That keeps phases 1–4
-shippable while art lands, and it is how the gallery can show a "flat vs illustrated" comparison.
+**Fallback path.** The atlas loader accepts a `procedural` provider behind the same `SpriteProvider`
+interface, so phases after this one can run even if an atlas is missing.
 
 ### 6.2 Visual targets
 
