@@ -110,6 +110,39 @@ describe('phase 3 pilot proof pack', () => {
   });
 });
 
+describe('phase 3 full sprite proof pack (all 35 entities)', () => {
+  const FULL = join(ROOT, 'docs/proof/phase-3/sprites');
+
+  it('has one proof per atlas entity and none are duplicated', () => {
+    const idx = JSON.parse(readFileSync(join(ROOT, 'docs/proof/phase-3/sprite-index.json'), 'utf8')) as {
+      images: { file: string; name: string; atlasKey: string }[];
+    };
+    expect(idx.images.length).toBe(35);
+    const hashes = idx.images.map((i) => md5(readFileSync(i.file)));
+    expect(new Set(hashes).size).toBe(idx.images.length);
+    // The specific five that were byte-identical must each now be distinct.
+    const wasBroken = ['arcane_gate', 'obsidian_bastion', 'stone_wall', 'thorn_grove', 'waystone_camp'];
+    const picked = wasBroken.map((n) => {
+      const e = idx.images.find((i) => i.name === n);
+      expect(e, `no proof for ${n}`).toBeDefined();
+      return md5(readFileSync(e!.file));
+    });
+    expect(new Set(picked).size).toBe(wasBroken.length);
+    for (const h of picked) expect(KNOWN_BAD.has(h), 'broken duplicate hash reappeared').toBe(false);
+  });
+
+  it('every full-pack proof names its own entity in the atlas key', () => {
+    const idx = JSON.parse(readFileSync(join(ROOT, 'docs/proof/phase-3/sprite-index.json'), 'utf8')) as {
+      images: { file: string; name: string; atlasKey: string }[];
+    };
+    for (const img of idx.images) {
+      expect(img.atlasKey.split('/')[1], `${img.name} proof points at another entity`).toBe(img.name);
+      expect(existsSync(img.file), `${img.name} proof file missing`).toBe(true);
+    }
+    expect(existsSync(FULL)).toBe(true);
+  });
+});
+
 describe('pilot geometry sanity', () => {
   // "Flat panels jutting out at odd angles" is machine-checkable: a part may not extend beyond the
   // asset's own footprint by more than a small margin. This catches accidental unit/argument swaps
