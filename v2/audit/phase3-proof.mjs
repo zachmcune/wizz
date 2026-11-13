@@ -71,29 +71,29 @@ report.atlas = {
   // Full-page gallery (the master art review sheet).
   await page.screenshot({ path: join(OUT, 'gallery-full.png'), fullPage: true });
 
-  // Individual close-up sheets per unit and per building, cropped from the rendered page.
-  const shots = await page.evaluate(() => {
-    const out = [];
-    const cards = [...document.querySelectorAll('.gal-card')];
-    for (const c of cards) {
-      const title = c.querySelector('.gal-title')?.textContent ?? '';
-      const note = c.querySelector('.gal-note')?.textContent ?? '';
-      const r = c.getBoundingClientRect();
-      out.push({ title, note, top: r.top + window.scrollY, height: r.height });
-    }
-    return out;
-  });
-  for (const s of shots) {
-    const safe = s.note.replace(/[^a-z0-9_]/gi, '_');
-    // Playwright cannot screenshot off-screen regions directly, so scroll to it first.
-    await page.evaluate((top) => window.scrollTo(0, Math.max(0, top - 60)), s.top);
-    await page.waitForTimeout(120);
-    await page.screenshot({
-      path: join(SPRITES, `${safe}.png`),
-      clip: { x: 0, y: 0, width: 1760, height: Math.min(1200, Math.max(60, s.height + 20)) },
+  // Individual close-up sheets per unit and per building.
+  //
+  // These are NOT screen crops any more. The previous implementation scrolled the page and then
+  // captured `clip: {x:0,y:0,...}`, which is interpreted in DOCUMENT coordinates — so the clip always
+  // grabbed the same top-left region and several proofs came out byte-identical. Instead we scroll the
+  // card into view and screenshot the ELEMENT, which is unambiguous and can never land on the wrong
+  // region.
+  const cards = await page.$$('.gal-card');
+  const seenTitles = [];
+  for (const card of cards) {
+    const safe = await card.evaluate((el) => {
+      const note = el.querySelector('.gal-note')?.textContent ?? '';
+      return note.replace(/[^a-z0-9_]/gi, '_');
     });
+    const title = await card.evaluate((el) => el.querySelector('.gal-title')?.textContent ?? '');
+    if (!safe) continue;
+    seenTitles.push({ safe, title });
+    await card.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(80);
+    await card.screenshot({ path: join(SPRITES, `${safe}.png`) });
   }
-  report.gallery.sheets = shots.length;
+  report.gallery.sheets = seenTitles.length;
+  report.gallery.sheetNames = seenTitles.map((t) => t.safe);
   await ctx.close();
 }
 

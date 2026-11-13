@@ -50,6 +50,11 @@ async function loadOne(baseUrl: string, name: string): Promise<{ textures: Map<s
   const pivots = new Map<string, { x: number; y: number }>();
   const frames = new Map<string, FrameRect>();
   for (const [key, r] of Object.entries(manifest.frames)) {
+    // A zero/NaN dimension means the manifest is malformed (a writer bug shipped a rect without
+    // `h` once, and every sprite in the game drew as an invisible zero-height slice). Fail loudly.
+    if (!(r.w > 0) || !(r.h > 0)) {
+      throw new Error(`atlas ${name}: frame "${key}" has invalid size ${r.w}x${r.h}`);
+    }
     const base = pageTextures[r.page]!;
     textures.set(key, new Texture({ source: base.source, frame: new Rectangle(r.x, r.y, r.w, r.h) }));
     pivots.set(key, { x: r.pivotX, y: r.pivotY });
@@ -58,7 +63,12 @@ async function loadOne(baseUrl: string, name: string): Promise<{ textures: Map<s
   return { textures, pivots, frames };
 }
 
-export async function loadAtlas(baseUrl = './atlas/'): Promise<LoadedAtlas> {
+/** Load the pilot atlas from `atlas-pilot/`, which carries its pivots in the manifest. */
+export async function loadPilotAtlas(baseUrl = '/atlas-pilot/'): Promise<LoadedAtlas> {
+  return loadAtlas(baseUrl);
+}
+
+export async function loadAtlas(baseUrl = '/atlas/'): Promise<LoadedAtlas> {
   const [units, buildings] = await Promise.all([loadOne(baseUrl, 'units'), loadOne(baseUrl, 'buildings')]);
   const textures = new Map([...units.textures, ...buildings.textures]);
   const pivots = new Map([...units.pivots, ...buildings.pivots]);

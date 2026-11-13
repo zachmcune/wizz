@@ -173,7 +173,7 @@ async function boot(): Promise<void> {
   const registry: Registry = loadRegistry();
   // Absolute path: `import.meta.env.BASE_URL` is './' here, which makes the request relative to the
   // current URL and resolves to the wrong place. Vite serves `public/` at the site root.
-  const atlas: LoadedAtlas = await loadAtlas('/atlas/');
+  const atlas: LoadedAtlas = await loadAtlas('/atlas-pilot/');
 
   const { state, services }: { state: GameState; services: SimServices } = initMatch(registry, {
     mapId: 'duel_glade',
@@ -317,10 +317,8 @@ async function boot(): Promise<void> {
   const spawnBattle = (perSide = 26): void => {
     const centreX = 2048;
     const centreY = 1320;
-    const units = [
-      'imp_swarmling', 'arcane_archer', 'stone_golem', 'storm_caster',
-      'rift_skimmer', 'rift_familiar', 'wisp',
-    ];
+    // Pilot art only: these are the assets under review.
+    const units = ['imp_swarmling', 'arcane_archer', 'stone_golem', 'storm_caster', 'wisp'];
     for (const [side, pid] of ['player0', 'player1'].entries()) {
       const sign = side === 0 ? -1 : 1;
       for (let i = 0; i < perSide; i++) {
@@ -359,6 +357,7 @@ async function boot(): Promise<void> {
   (window as unknown as { __v2?: unknown }).__v2 = {
     state,
     renderer,
+    registry,
     spawnBattle,
     loadMs: performance.now() - t0,
     teamOf: (i: number) => teamIdForColor(state.players[i]!.color),

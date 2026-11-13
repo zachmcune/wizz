@@ -16,6 +16,11 @@ export default [
       'node_modules/**',
       'coverage/**',
       'art/dist/**',
+      // Generated bundles for the art dev tools (`npx esbuild art/x.ts --outfile=.x.mjs`). They are
+      // build output, not source; linting them only reports missing Node globals.
+      '.*.mjs',
+      'preview-out/**',
+      'preview-out2/**',
       // Throwaway forensic harnesses from the phase-0 audit. They are documentation of how a
       // claim was measured, not shipped code, and they intentionally violate the sim guard to
       // reproduce v1 behaviour. Not linted.

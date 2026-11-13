@@ -1,0 +1,91 @@
+{
+  "generated": "2026-11-13T21:35:26.097Z",
+  "images": [
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/wisp.png",
+      "name": "wisp",
+      "atlasKey": "unit/wisp/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "56b17f80081836435a00fd4bd6641aaa",
+      "bytes": 767966
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/arcane_archer.png",
+      "name": "arcane_archer",
+      "atlasKey": "unit/arcane_archer/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "795ad973b5a753a2bfc96e276da055c3",
+      "bytes": 1061629
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/stone_golem.png",
+      "name": "stone_golem",
+      "atlasKey": "unit/stone_golem/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "7f7118da7a9d7ccca343137086378321",
+      "bytes": 1025607
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/imp_swarmling.png",
+      "name": "imp_swarmling",
+      "atlasKey": "unit/imp_swarmling/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "76d68af67cbce7cd1bbf20daae00d282",
+      "bytes": 1143883
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/storm_caster.png",
+      "name": "storm_caster",
+      "atlasKey": "unit/storm_caster/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "3c79ca3d3c5d61b5e4f1edf3ace5d554",
+      "bytes": 885086
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/sanctum.png",
+      "name": "sanctum",
+      "atlasKey": "building/sanctum/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "2665ebe3453fde0b09f8c91f195369e5",
+      "bytes": 329202
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/mana_node.png",
+      "name": "mana_node",
+      "atlasKey": "building/mana_node/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "3d4860f719675aaba2fa17691bcfe4ef",
+      "bytes": 227505
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/stone_wall.png",
+      "name": "stone_wall",
+      "atlasKey": "building/stone_wall/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "d79c386781dcd685b7f9853e59f7ab11",
+      "bytes": 313013
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/arcane_sentry.png",
+      "name": "arcane_sentry",
+      "atlasKey": "building/arcane_sentry/blue/0",
+      "atlas": "atlas-pilot",
+      "md5": "9ad648c902430ca1fa46939e6eb35192",
+      "bytes": 239878
+    },
+    {
+      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/comparison-v1-oldv2-new.png",
+      "name": "comparison-v1-oldv2-new",
+      "atlasKey": "multiple",
+      "atlas": "v1+atlas+atlas-pilot",
+      "md5": "3211e295f1295adb277730b36681f258",
+      "bytes": 458828
+    }
+  ],
+  "skipped": [
+    {
+      "name": "mana_node",
+      "reason": "missing v1 card or atlas frame"
+    }
+  ]
+}

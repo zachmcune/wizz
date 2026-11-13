@@ -9,3 +9,7 @@ preview-out/
 .sheet.mjs
 .preview.mjs
 art/dist/
+.a2.mjs
+.sh2.mjs
+.pv2.mjs
+preview-out2/

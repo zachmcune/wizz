@@ -26,7 +26,7 @@ import type { MapData } from '../data/defs';
 import type { LoadedAtlas } from './atlas';
 import { buildingFrameKey, unitFrameKey } from './atlas';
 import { Camera } from './camera';
-import { buildTerrain, type TerrainRender } from './terrain';
+import { buildTerrain, type TerrainRender } from './terrain2';
 
 /** Team colour ids in the same order as TEAM_RAMP in art/palette.ts. */
 export const TEAM_IDS = ['blue', 'red', 'green', 'gold'] as const;
@@ -262,17 +262,23 @@ export class Renderer {
     if (kind === KIND_BUILDING) {
       const def = this.registry.buildings.get(defId);
       if (!def) return 1;
-      // A footprint square of `n` tiles projects to `n * TILE` px across on each screen axis at
-      // zoom 1 (see projection: (x+y)*0.25 vertical, (x-y)*0.5 horizontal; a square's projected
-      // width is its diagonal in world terms). Use the projected width of the footprint.
       const worldW = def.footprint * 32 * 0.5 + def.footprint * 32 * 0.5;
       return worldW / frame.w;
     }
     const def = this.registry.units.get(defId);
     if (!def) return 1;
-    // `art.size` is the authored world height of the unit; convert to a projected pixel width.
-    const worldW = def.art.size * 1.15;
-    return worldW / frame.w;
+    /**
+     * UNIT VISUAL SCALE — the readability lever.
+     *
+     * Collision radius is tuned for gameplay (an Imp is 8 units so 90 fit in a fight) and is far too
+     * small to draw. At default zoom on a 667x375 phone a unit drawn at its collision size is ~13
+     * screen pixels, which is unreadable. Drawing at 2.6x the collision diameter gives ~34 world
+     * units -> ~28 screen px, which is identifiable. Hit boxes are unchanged, so gameplay is
+     * identical; only the sprite is larger. This is the standard RTS "visual size != collision size"
+     * trick.
+     */
+    const visualWorld = def.radius * 2 * 2.6;
+    return visualWorld / frame.w;
   }
 
   /** Render one frame with interpolation factor `alpha` (0..1 between ticks). */
