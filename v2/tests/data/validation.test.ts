@@ -154,6 +154,22 @@ describe('data loading: failure paths', () => {
     expect(run).toThrow(/faction "Empty" has no exclusive content/);
   });
 
+  it('rejects a unit whose producer does not list it (the bug that shipped with the faction units)', () => {
+    const run = loadWith((m) => {
+      const circle = m['/data/buildings/summoning_circle.json'] as Record<string, unknown>;
+      (circle.producesUnits as string[]).splice((circle.producesUnits as string[]).indexOf('thornling'), 1);
+    });
+    expect(run).toThrow(/does not list this unit in producesUnits/);
+  });
+
+  it('rejects a producer listing a unit that points elsewhere', () => {
+    const run = loadWith((m) => {
+      const forge = m['/data/buildings/golem_forge.json'] as Record<string, unknown>;
+      (forge.producesUnits as string[]).push('arcane_archer');
+    });
+    expect(run).toThrow(/producesUnits lists "arcane_archer"/);
+  });
+
   it('reports MULTIPLE broken files in one load instead of stopping at the first', () => {
     const run = loadWith((m) => {
       (m['/data/units/wisp.json'] as Record<string, unknown>).hp = -1;

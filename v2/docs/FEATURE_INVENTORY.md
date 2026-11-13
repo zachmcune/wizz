@@ -83,27 +83,26 @@ audit harnesses described in `REBUILD_PLAN.md` §9.
 
 | # | Rule | v1 implementation | v2 |
 |---|---|---|---|
-| 4.1 | Single resource: **Mana** | `data/balance.json` (`startingMana: 900`) | [ ] |
-| 4.2 | Mana Nodes: 4 corner nodes @ 25 000 (capped to 12 000), 9 contested nodes @ 3 000 | `data/maps/duel_glade.json` `manaNodes`, `sim/factory.ts:188` (`manaNodeCapacity`) | [ ] |
-| 4.3 | Wisp harvest cycle: travel → siphon → return → deposit | `sim/systems/harvest.ts` | [ ] |
-| 4.4 | Siphon 16 mana/s while in node contact, carry cap 75 | `balance.json` `siphonPerSecond`, `data/units/wisp.json` `carry` | [ ] |
-| 4.5 | Deposit only at a completed, powered **Attunement Spire** (refinery) | `harvest.ts:63` (`buildingHasPower`), `isRefinery` | [ ] |
-| 4.6 | Resonance Vault boosts siphon ×1.3 | `balance.json` `vaultSiphonMultiplier`, `harvest.ts:93` | [ ] |
-| 4.7 | Node depletion → node disappears; harvester re-targets next node | `harvest.ts:77-88`, `sim/systems/death.ts:37` | [ ] |
-| 4.8 | Refinery spawns one free Wisp on completion | `attunement_spire.json` `spawnsFreeWisp`, `production.ts:64` | [ ] |
-| 4.9 | Mana Weaver conjures 6 mana / 3 s while channeling (stationary) | `sim/systems/channel.ts`, `balance.json` | [ ] |
-| 4.10 | Repair: 0.05 mana per HP, 2 HP/tick, cancelled when broke | `balance.json`, `production.ts:71-86` | [ ] |
-| 4.11 | Sell building for 50 % refund | `balance.json` `sellRefundRatio`, `commands/build.ts` | [ ] |
+| 4.1 | Single resource: **Mana** | `data/balance.json` (`startingMana: 900`) | [x] Phase 2 |
+| 4.2 | Mana Nodes: 4 corner nodes @ 25 000 (capped to 12 000), 9 contested nodes @ 3 000 | `data/maps/duel_glade.json` `manaNodes`, `sim/factory.ts:188` (`manaNodeCapacity`) | [x] Phase 2 |
+| 4.3 | Wisp harvest cycle: travel → siphon → return → deposit | `sim/systems/harvest.ts` | [x] Phase 2 |
+| 4.4 | Siphon 16 mana/s while in node contact, carry cap 75 | `balance.json` `siphonPerSecond`, `data/units/wisp.json` `carry` | [x] Phase 2 |
+| 4.5 | Deposit only at a completed, powered **Attunement Spire** (refinery) | `harvest.ts:63` (`buildingHasPower`), `isRefinery` | [x] Phase 2 |
+| 4.6 | Resonance Vault boosts siphon ×1.3 | `balance.json` `vaultSiphonMultiplier`, `harvest.ts:93` | [x] Phase 2 |
+| 4.7 | Node depletion → node disappears; harvester re-targets next node | `harvest.ts:77-88`, `sim/systems/death.ts:37` | [x] Phase 2 |
+| 4.8 | Refinery spawns one free Wisp on completion | `attunement_spire.json` `spawnsFreeWisp`, `production.ts:64` | [x] Phase 2 |
+| 4.9 | Mana Weaver conjures 6 mana / 3 s while channeling (stationary) | `sim/systems/channel.ts`, `balance.json` | [x] Phase 2 |
+| 4.10 | Repair: 0.05 mana per HP, 2 HP/tick, cancelled when broke | `balance.json`, `production.ts:71-86` | [x] Phase 2 |
+| 4.11 | Sell building for 50 % refund | `balance.json` `sellRefundRatio`, `commands/build.ts` | [x] Phase 2 |
 | 4.12 | Tight economy preset (costs ×1.5, fewer wisps, smaller nodes) | `data/economy-pacing.ts` | [ ] |
-| 4.13 | Production/build refunds on cancel | `commands/production.ts`, `commands/research.ts` | [ ] |
-
+| 4.13 | Production/build refunds on cancel | `commands/production.ts`, `commands/research.ts` | [x] Phase 2 |
 ## 5. Power grid (RA2 rules)
 
 | # | Rule | v1 implementation | v2 |
 |---|---|---|---|
-| 5.1 | Buildings consume/produce power; player has `power`/`powerUsed` | `sim/power.ts`, `sim/factory.ts:248` (`recomputePower`) | [ ] |
-| 5.2 | **Low power ⇒ defenses, radar, and auras go completely offline** | `power.ts` `buildingHasPower` / `isHardPowerConsumer` | [ ] |
-| 5.3 | Low power ⇒ production/construction slow proportionally, floor 10 % | `power.ts` `productionRate` | [ ] |
+| 5.1 | Buildings consume/produce power; player has `power`/`powerUsed` | `sim/power.ts`, `sim/factory.ts:248` (`recomputePower`) | [x] Phase 2 |
+| 5.2 | **Low power ⇒ defenses, radar, and auras go completely offline** | `power.ts` `buildingHasPower` / `isHardPowerConsumer` | [x] Phase 2 |
+| 5.3 | Low power ⇒ production/construction slow proportionally, floor 10 % | `power.ts` `productionRate` | [x] Phase 2 |
 | 5.4 | HUD shows `used/total (−deficit)` and a red low-power state | `hud.ts` | [ ] |
 | 5.5 | Sanctum +20 pwr, Ley Conduit +60 pwr | `sanctum.json`, `ley_conduit.json` | [ ] |
 
@@ -225,21 +224,21 @@ system (`src/data/defs.ts`, `docs/DATA_SCHEMA.md`). Verified by `tests/combat.te
 
 | # | Rule | v1 implementation | v2 |
 |---|---|---|---|
-| 12.1 | Damage = `base × vs[armourClass]` | `sim/combat-util.ts` `applyDamage` | [ ] |
-| 12.2 | Aegis buff = full damage immunity for its duration | `combat-util.ts:25` (`hasBuff(...,'aegis')`), `aegis_ward.json` | [ ] |
-| 12.3 | Splash damage with distance-sorted, id-tiebroken targets | `combat-util.ts` `applySplashDamage` | [ ] |
-| 12.4 | Chain lightning with falloff, no repeat hits | `combat-util.ts` `applyChainDamage` | [ ] |
+| 12.1 | Damage = `base × vs[armourClass]` | `sim/combat-util.ts` `applyDamage` | [x] Phase 2 |
+| 12.2 | Aegis buff = full damage immunity for its duration | `combat-util.ts:25` (`hasBuff(...,'aegis')`), `aegis_ward.json` | [x] Phase 2 |
+| 12.3 | Splash damage with distance-sorted, id-tiebroken targets | `combat-util.ts` `applySplashDamage` | [x] Phase 2 |
+| 12.4 | Chain lightning with falloff, no repeat hits | `combat-util.ts` `applyChainDamage` | [x] Phase 2 |
 | 12.5 | Continuous beam weapons (frost / flame) with cone hit detection | `sim/systems/beam-weapon.ts`, `sim/beam-util.ts` | [ ] |
 | 12.6 | Frost slow stacks up to `maxFrostExposure` and decays | `beam-weapon.ts` `applyFrostExposure`/`decayFrostExposure` | [ ] |
 | 12.7 | Turret rotation speed + fire arc gate | `combat.ts` `updateTurretFacing`/`canTurretFire` | [ ] |
-| 12.8 | Charge-up attacks (Storm Conductor 10t, Celestial Cannon 60t) | `combat.ts` `chargingAttack` | [ ] |
-| 12.9 | Minimum range / blind spot (`minRange`) | `combat.ts` `inWeaponBand` | [ ] |
-| 12.10 | Air vs ground targeting layers | `sim/mobility.ts` `weaponHitsEntity`/`weaponHitsLayer` | [ ] |
-| 12.11 | Garrisoned units fire from inside their host at reduced exposure | `sim/systems/garrison.ts` | [ ] |
+| 12.8 | Charge-up attacks (Storm Conductor 10t, Celestial Cannon 60t) | `combat.ts` `chargingAttack` | [x] Phase 2 |
+| 12.9 | Minimum range / blind spot (`minRange`) | `combat.ts` `inWeaponBand` | [x] Phase 2 |
+| 12.10 | Air vs ground targeting layers | `sim/mobility.ts` `weaponHitsEntity`/`weaponHitsLayer` | [x] Phase 2 |
+| 12.11 | Garrisoned units fire from inside their host at reduced exposure | `sim/systems/garrison.ts` | [x] Phase 2 |
 | 12.12 | Garrison damage on host destruction (50 %) | `death.ts` `ejectGarrisonOnDeath`, `arcane_bunker.json` | [ ] |
-| 12.13 | Stances: aggressive auto-acquire, hold, standground | `combat.ts:251` | [ ] |
+| 12.13 | Stances: aggressive auto-acquire, hold, standground | `combat.ts:251` | [x] Phase 2 |
 | 12.14 | Fog gates targeting (cannot shoot what you cannot see) | `combat.ts` `isVisibleTo` checks | [ ] |
-| 12.15 | Projectiles as real entities with travel time | `sim/systems/projectile.ts`, `makeProjectileCapability` | [ ] |
+| 12.15 | Projectiles as real entities with travel time | `sim/systems/projectile.ts`, `makeProjectileCapability` | [x] Phase 2 |
 | 12.16 | `targetsAir` / `targetsGround` defaults | `mobility.ts` | [ ] |
 | 12.17 | Attack tells (wind-up FX for Imp / Archer / Golem) | `render/attack-fx.ts` (`attackFxFromArt`), `attack-fx.test.ts` | [ ] |
 
@@ -249,13 +248,13 @@ system (`src/data/defs.ts`, `docs/DATA_SCHEMA.md`). Verified by `tests/combat.te
 |---|---|---|---|
 | 13.1 | 2.5D dimetric/oblique projection only (X×0.5, Y×0.25) | `src/core/projection.ts` | [ ] |
 | 13.2 | `VISUAL_HEIGHT_STEP = 16`, flyers hover 2 levels | `projection.ts` | [ ] |
-| 13.3 | Tile heights grid + ramp tiles (`TILE_RAMP`) | `sim/nav-grid.ts`, `core/ramp-slope.ts` | [ ] |
-| 13.4 | Ground units may step ±1 height only on/into a ramp tile | `nav-grid.ts` `canStep` | [ ] |
+| 13.3 | Tile heights grid + ramp tiles (`TILE_RAMP`) | `sim/nav-grid.ts`, `core/ramp-slope.ts` | [x] Phase 2 |
+| 13.4 | Ground units may step ±1 height only on/into a ramp tile | `nav-grid.ts` `canStep` | [x] Phase 2 |
 | 13.5 | Ramps render as continuous slopes (surface height lerp) | `core/ramp-slope.ts` `surfaceHeightAt`, `render/tile-project.ts` | [ ] |
 | 13.6 | Buildings can't straddle a height change (ramps tolerated) | `nav-grid.ts` `footprintHeightOk` | [ ] |
-| 13.7 | **Cliffs block ground line of fire** (unless on a ramp) | `combat.ts` `heightBlocksGroundFire` | [ ] |
-| 13.8 | High ground grants +1 tile weapon range | `HIGH_GROUND_RANGE_BONUS`, `combat.ts:34` | [ ] |
-| 13.9 | High ground hides lower tiles from sight | `fog.ts` `revealSight` height check | [ ] |
+| 13.7 | **Cliffs block ground line of fire** (unless on a ramp) | `combat.ts` `heightBlocksGroundFire` | [x] Phase 2 |
+| 13.8 | High ground grants +1 tile weapon range | `HIGH_GROUND_RANGE_BONUS`, `combat.ts:34` | [x] Phase 2 |
+| 13.9 | High ground hides lower tiles from sight | `fog.ts` `revealSight` height check | [x] Phase 2 |
 | 13.10 | Flyers ignore terrain and see over cliffs | `nav-grid.ts` `isBlockedForAir`, `fog.ts` flying branch | [ ] |
 | 13.11 | Depth sorting by projected Y | `renderer.ts` `sortKeyAt` | [ ] |
 | 13.12 | Screen-space occlusion markers for units hidden behind buildings | `render/unit-occlusion.ts`, `unit-occlusion.test.ts` | [ ] |
@@ -266,13 +265,13 @@ system (`src/data/defs.ts`, `docs/DATA_SCHEMA.md`). Verified by `tests/combat.te
 
 | # | Rule | v1 implementation | v2 |
 |---|---|---|---|
-| 14.1 | Per-player `explored` and `visible` tile arrays | `GameState.players[].explored/visible` | [ ] |
-| 14.2 | Terrain + nodes always drawn; enemy units need live sight | `sim/fog.ts`, `renderer.ts` | [ ] |
-| 14.3 | Enemy buildings leave grey **ghosts** once scouted | `Player.knownBuildings`, `fog.ts` `updateKnownBuildings` | [ ] |
+| 14.1 | Per-player `explored` and `visible` tile arrays | `GameState.players[].explored/visible` | [x] Phase 2 |
+| 14.2 | Terrain + nodes always drawn; enemy units need live sight | `sim/fog.ts`, `renderer.ts` | [x] Phase 2 |
+| 14.3 | Enemy buildings leave grey **ghosts** once scouted | `Player.knownBuildings`, `fog.ts` `updateKnownBuildings` | [x] Phase 2 |
 | 14.4 | Ghosts refresh HP/progress while re-scouted | `snapshotBuilding` | [ ] |
-| 14.5 | Radar (Scrying Obelisk) turns the minimap on; it does **not** reveal the main view | `fog.ts` `radarActive`, `isMinimapTileFogged` | [ ] |
+| 14.5 | Radar (Scrying Obelisk) turns the minimap on; it does **not** reveal the main view | `fog.ts` `radarActive`, `isMinimapTileFogged` | [x] Phase 2 |
 | 14.6 | Radar shuts off on low power | `radarActive` (`isPowerShort`) | [ ] |
-| 14.7 | Allied vision is shared | `fog.ts` `visionPartners` | [ ] |
+| 14.7 | Allied vision is shared | `fog.ts` `visionPartners` | [x] Phase 2 |
 | 14.8 | Dead-spectator full-map reveal (optional) | `sim/views.ts` `shouldRevealAllForViewer` | [ ] |
 
 ## 15. Spells & superweapons
@@ -336,17 +335,17 @@ system (`src/data/defs.ts`, `docs/DATA_SCHEMA.md`). Verified by `tests/combat.te
 
 | # | Rule | v1 implementation | v2 |
 |---|---|---|---|
-| 18.1 | `src/sim/**` may not import render/ui/audio/input/storage; no `Math.random`/`Date`/`window`/`document`/`performance` | `eslint.config.js`, `tests/architecture.test.ts` | [ ] |
-| 18.2 | Fixed 20 Hz tick, fixed system order | `sim/step.ts`, `TICK_HZ` | [ ] |
-| 18.3 | Commands are the only mutation path | `sim/systems/apply-commands.ts` | [ ] |
-| 18.4 | Entity iteration sorted by id for mutating loops | `sim/queries.ts` `entitiesSorted` | [ ] |
-| 18.5 | `hashState()` covers tick, rng, players, all entities | `sim/hash.ts` | [ ] |
-| 18.6 | Determinism tests incl. 1200-tick AI match | `tests/determinism.test.ts` (5 tests) | [ ] |
+| 18.1 | `src/sim/**` may not import render/ui/audio/input/storage; no `Math.random`/`Date`/`window`/`document`/`performance` | `eslint.config.js`, `tests/architecture.test.ts` | [x] Phase 2 |
+| 18.2 | Fixed 20 Hz tick, fixed system order | `sim/step.ts`, `TICK_HZ` | [x] Phase 2 |
+| 18.3 | Commands are the only mutation path | `sim/systems/apply-commands.ts` | [x] Phase 2 |
+| 18.4 | Entity iteration sorted by id for mutating loops | `sim/queries.ts` `entitiesSorted` | [x] Phase 2 |
+| 18.5 | `hashState()` covers tick, rng, players, all entities | `sim/hash.ts` | [x] Phase 2 |
+| 18.6 | Determinism tests incl. 1200-tick AI match | `tests/determinism.test.ts` (5 tests) | [x] Phase 2 |
 | 18.7 | Zustand-free, engine-free hand-rolled code | whole repo | [ ] |
 | 18.8 | Data validated by Zod at load with file+path errors | `data/schemas.ts`, `data/loader.ts` | [ ] |
 | 18.9 | Mod loader / overlay manifest | `data/mod-loader.ts`, `data/manifest.json` | [ ] |
 | 18.10 | Sim optionally runs in a Web Worker with delta mirroring | `app/sim.worker.ts`, `app/worker-client.ts`, `sim/worker/sim-host.ts` | [ ] |
-| 18.11 | Replay record/serialize | `sim/replay.ts` | [ ] |
+| 18.11 | Replay record/serialize | `sim/replay.ts` | [x] Phase 2 |
 | 18.12 | State transfer / save-migration helpers | `sim/state-transfer.ts`, `sim/sync-delta.ts` | [ ] |
 | 18.13 | [!] `GameState.rngState` is seeded but **never consumed** — seeds do nothing | see plan §10.3 | [ ] |
 
@@ -427,7 +426,7 @@ These are defects in v1, not design choices. Fixing them changes no rule. Eviden
 | # | Bug | v1 location | Evidence | v2 |
 |---|---|---|---|---|
 | 23.1 | Match seed has no effect: `rngState` is seeded but `nextRandom()` is never called | `src/sim/factory.ts:172`, `src/sim/rng.ts` | [E12][E13] | [x] fixed in Phase 1: named-stream RNG, proven consumed |
-| 23.2 | `MAX_UNITS_PER_PLAYER = 90` declared but enforced nowhere | `src/core/constants.ts:21` | [E15] | [ ] |
+| 23.2 | `MAX_UNITS_PER_PLAYER = 90` declared but enforced nowhere | `src/core/constants.ts:21` | [E15] | [x] Phase 2 |
 | 23.3 | Coach card intercepts the build-confirm Place button on phones | `src/ui/styles/hud.css:1102,1112` vs `885-897` | [E16] | [ ] |
 | 23.4 | `.cmd-card` measures 0 px high at 1366×768 and 1920×1080 | `src/ui/styles/hud.css:658-671` | [E17] | [ ] |
 | 23.5 | Lobby shows a red validation error before any user input | `src/ui/match-lobby.ts:489-494` | [E21] | [ ] |

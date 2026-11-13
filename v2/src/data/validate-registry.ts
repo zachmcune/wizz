@@ -74,6 +74,33 @@ export function validateRegistryRefs(registry: Registry): ContentValidationIssue
     checkFactionList(issues, path, unit.factions, factionIds);
   }
 
+  // ---------------------------------------------------------------------- reciprocal production
+  // A unit's `producedBy` and its producer's `producesUnits` must agree in BOTH directions.
+  // Checking only one direction (as v1 did) lets a unit become unbuildable while every file still
+  // validates — which is exactly the bug that shipped with the first four faction units.
+  for (const [id, unit] of registry.units) {
+    const producer = registry.buildings.get(unit.producedBy);
+    if (!producer) continue; // already reported above as an unknown building
+    if (!producer.producesUnits?.includes(id)) {
+      issues.push({
+        path: `units/${id}.json`,
+        message: `producedBy "${unit.producedBy}" does not list this unit in producesUnits, so it can never be trained`,
+      });
+    }
+  }
+  for (const [id, building] of registry.buildings) {
+    for (const unitId of building.producesUnits ?? []) {
+      const unit = registry.units.get(unitId);
+      if (!unit) continue; // already reported as unknown
+      if (unit.producedBy !== id) {
+        issues.push({
+          path: `buildings/${id}.json`,
+          message: `producesUnits lists "${unitId}" but that unit's producedBy is "${unit.producedBy}"`,
+        });
+      }
+    }
+  }
+
   // -------------------------------------------------------------- buildings
   const refineryIds = new Set([...registry.buildings.values()].filter((b) => b.isRefinery).map((b) => b.id));
 

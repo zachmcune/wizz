@@ -17,7 +17,8 @@
   "producesUnits": [
     "stone_golem",
     "siege_behemoth",
-    "waystone_wagon"
+    "waystone_wagon",
+    "obsidian_siege"
   ],
   "powerUsed": 40,
   "art": {

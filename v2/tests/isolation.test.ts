@@ -66,9 +66,12 @@ describe('v2 does not depend on v1', () => {
     for (const file of files) {
       const src = readFileSync(file, 'utf8');
       for (const spec of importSpecifiers(src)) {
-        if (spec.includes('/../src/') || spec.startsWith('../../../../src/') || spec.includes('/../data/')) {
-          offenders.push(`${relative(v2Root, file)} imports ${spec}`);
-        }
+        // The real check is whether the specifier RESOLVES outside v2/ — `../../data/defs` from
+        // src/sim/systems/ is v2/src/data/defs and perfectly fine. Matching on the literal string
+        // produced false positives, so resolve instead.
+        if (!spec.startsWith('.')) continue;
+        const resolved = relative(v2Root, join(file, '..', spec));
+        if (resolved.startsWith('..')) offenders.push(`${relative(v2Root, file)} imports ${spec}`);
       }
     }
     expect(offenders).toEqual([]);

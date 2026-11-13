@@ -162,6 +162,16 @@ function compareDefs(
       continue;
     }
     expect(v2, `${label} ${String(v1.id)} lost field "${key}"`).toHaveProperty(key);
+    if (key === 'producesUnits') {
+      // v2 adds faction units to their producers, which is additive: every v1 entry must still be
+      // present and in the same relative order, but new entries may follow. Check the PREFIX rather
+      // than exact equality so adding content never breaks the v1-parity guarantee.
+      expect(
+        (v2[key] as string[]).slice(0, (v1Value as string[]).length),
+        `${label} ${String(v1.id)}.producesUnits changed its existing entries or order`,
+      ).toEqual(v1Value);
+      continue;
+    }
     expect(v2[key], `${label} ${String(v1.id)}.${key} differs from v1`).toEqual(v1Value);
   }
   // v2 may add fields (e.g. `factions`); that is additive and does not need asserting here.

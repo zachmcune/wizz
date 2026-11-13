@@ -614,6 +614,33 @@ through the existing `modifiers.ts` pipeline. **Every v1 unit and building remai
 Arcane Dominion with identical numbers** — cross-faction variants are additive content, so the
 conformance suite still proves v1 parity for the Arcane roster.
 
+### 6b.1a Faction roster expansion (noted at Phase 1 review — later content phase)
+
+Zachary flagged that Obsidian Pact and Verdant Concord currently field only **2 units each** against
+Arcane's 10. That gap is expected at this stage (Phase 1 shipped the factions as proof that faction
+filtering works, not as finished content), and filling it is a **content task, not a Phase 2 task**.
+
+Target rosters, to be built in the content phase (Phase 7), so each faction has a real identity
+rather than being a subset of Arcane:
+
+| | Arcane Dominion | Verdant Concord | Obsidian Pact |
+|---|---|---|---|
+| Workers / econ | Wisp, Mana Weaver | Wisp, Thorn Harvester (tankier, slower) | Wisp, Cinder Drudge (cheaper, frailer) |
+| Cheap melee | Imp Swarmling | Thornling | Cinder Acolyte |
+| Ranged | Arcane Archer | Grove Warden | Obsidian Lancer (short range, heavy dmg) |
+| Fast scout | Rift Familiar | Sylph Scout | Ash Runner |
+| Heavy | Stone Golem | Bark Colossus | Obsidian Juggernaut |
+| Siege | Siege Behemoth | Rootbreaker (weaker, cheaper) | Obsidian Siegebreaker |
+| Support | Storm Caster | Grove Matron (heals) | Ember Warden (buffs armour) |
+| Air | Rift Skimmer | Pollen Drifter | Cinder Kite |
+| Mobile HQ | Waystone Wagon | Waystone Wagon | Waystone Wagon |
+| **Total** | **10** | **9-10** | **9-10** |
+
+Buildings stay mostly shared (Sanctum, Spire, Vault, Nexus, Forge, Conduit, Astral Spire) with one
+exclusive defense each plus one exclusive economy building, so each faction has a distinct line
+without tripling the building count. Balance target: no faction above 60 % win rate over 20 matches
+(Phase 8 gate).
+
 ### 6b.2 Maps
 
 v1 ships one map (`duel_glade`, 128×88, 4 start locations, 13 nodes). v2 ships **at least 5**:

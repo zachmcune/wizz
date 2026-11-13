@@ -19,7 +19,10 @@
     "arcane_archer",
     "rift_familiar",
     "storm_caster",
-    "rift_skimmer"
+    "rift_skimmer",
+    "thornling",
+    "grove_warden",
+    "cinder_acolyte"
   ],
   "powerUsed": 20,
   "art": {
