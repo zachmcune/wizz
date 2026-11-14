@@ -214,3 +214,51 @@ describe('ui style proof: the deliverables are wired into the build', () => {
     }
   });
 });
+
+describe('the CI workflow that verifies all of this', () => {
+  // A workflow file with a YAML error fails the whole run with "This run likely failed because of a
+  // workflow file issue" and NO jobs execute — which silently removes all coverage while looking like
+  // an infrastructure hiccup. I hit exactly that: an unquoted `name:` value containing a colon.
+  //
+  // There is no YAML parser in this project's dependency tree, so this checks the specific structural
+  // properties that matter rather than trying to reimplement YAML.
+  const WF = join(ROOT, '..', '.github/workflows/ci.yml');
+
+  it('exists and declares the v1 jobs plus a v2 job', () => {
+    expect(existsSync(WF), 'CI workflow missing').toBe(true);
+    const wf = readFileSync(WF, 'utf8');
+    for (const job of ['quality:', 'slow:', 'e2e:', 'v2:']) {
+      expect(wf, `CI workflow has no "${job}" job`).toContain(job);
+    }
+  });
+
+  it('runs the v2 suite and build, not just the v1 root scripts', () => {
+    const wf = readFileSync(WF, 'utf8');
+    const v2 = wf.slice(wf.indexOf('\n  v2:'));
+    expect(v2, 'v2 job does not run v2 tests').toContain('npm test');
+    expect(v2, 'v2 job does not build v2').toContain('npm run build');
+    expect(v2, 'v2 job does not set its working directory to v2').toContain('working-directory: v2');
+  });
+
+  it('has no unquoted step name containing a colon', () => {
+    // This is the exact defect that broke the run: `- name: Lint (rules: ...)` parses as a mapping.
+    const wf = readFileSync(WF, 'utf8');
+    const offenders: string[] = [];
+    for (const line of wf.split('\n')) {
+      const m = line.match(/^\s*-\s*name:\s*(.+)$/);
+      if (!m) continue;
+      const value = m[1]!;
+      if (value.startsWith('"') || value.startsWith("'")) continue;
+      // An unquoted value containing ": " is a YAML mapping error.
+      if (value.includes(': ')) offenders.push(value.trim());
+    }
+    expect(offenders, `unquoted step names containing a colon: ${offenders.join(' | ')}`).toEqual([]);
+  });
+
+  it('asserts the v2 build output contains every deployed entry', () => {
+    const wf = readFileSync(WF, 'utf8');
+    for (const entry of ['dist/index.html', 'dist/gallery.html', 'dist/styleguide.html', 'dist/ui-proof.html']) {
+      expect(wf, `CI does not assert ${entry} exists in the build`).toContain(entry);
+    }
+  });
+});

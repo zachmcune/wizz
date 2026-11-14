@@ -74,7 +74,7 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Lint (includes the UI style rules: no hard-coded colours, no purple chrome)
+      - name: "Lint (includes the UI style rules: no hard-coded colours, no purple chrome)"
         run: npm run lint
       - name: Unit and proof tests
         run: npm test
