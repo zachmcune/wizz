@@ -2,7 +2,7 @@
   "generated": "2026-11-13T21:42:39.715Z",
   "images": [
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/wisp.png",
+      "file": "docs/proof/phase-3-pilot/sprites/wisp.png",
       "name": "wisp",
       "atlasKey": "unit/wisp/blue/0",
       "atlas": "atlas-pilot",
@@ -10,7 +10,7 @@
       "bytes": 767966
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/arcane_archer.png",
+      "file": "docs/proof/phase-3-pilot/sprites/arcane_archer.png",
       "name": "arcane_archer",
       "atlasKey": "unit/arcane_archer/blue/0",
       "atlas": "atlas-pilot",
@@ -18,7 +18,7 @@
       "bytes": 1061629
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/stone_golem.png",
+      "file": "docs/proof/phase-3-pilot/sprites/stone_golem.png",
       "name": "stone_golem",
       "atlasKey": "unit/stone_golem/blue/0",
       "atlas": "atlas-pilot",
@@ -26,7 +26,7 @@
       "bytes": 1027997
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/imp_swarmling.png",
+      "file": "docs/proof/phase-3-pilot/sprites/imp_swarmling.png",
       "name": "imp_swarmling",
       "atlasKey": "unit/imp_swarmling/blue/0",
       "atlas": "atlas-pilot",
@@ -34,7 +34,7 @@
       "bytes": 1143883
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/storm_caster.png",
+      "file": "docs/proof/phase-3-pilot/sprites/storm_caster.png",
       "name": "storm_caster",
       "atlasKey": "unit/storm_caster/blue/0",
       "atlas": "atlas-pilot",
@@ -42,7 +42,7 @@
       "bytes": 867513
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/sanctum.png",
+      "file": "docs/proof/phase-3-pilot/sprites/sanctum.png",
       "name": "sanctum",
       "atlasKey": "building/sanctum/blue/0",
       "atlas": "atlas-pilot",
@@ -50,7 +50,7 @@
       "bytes": 329202
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/mana_node.png",
+      "file": "docs/proof/phase-3-pilot/sprites/mana_node.png",
       "name": "mana_node",
       "atlasKey": "building/mana_node/blue/0",
       "atlas": "atlas-pilot",
@@ -58,7 +58,7 @@
       "bytes": 227505
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/stone_wall.png",
+      "file": "docs/proof/phase-3-pilot/sprites/stone_wall.png",
       "name": "stone_wall",
       "atlasKey": "building/stone_wall/blue/0",
       "atlas": "atlas-pilot",
@@ -66,7 +66,7 @@
       "bytes": 313013
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/sprites/arcane_sentry.png",
+      "file": "docs/proof/phase-3-pilot/sprites/arcane_sentry.png",
       "name": "arcane_sentry",
       "atlasKey": "building/arcane_sentry/blue/0",
       "atlas": "atlas-pilot",
@@ -74,7 +74,7 @@
       "bytes": 239878
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3-pilot/comparison-v1-oldv2-new.png",
+      "file": "docs/proof/phase-3-pilot/comparison-v1-oldv2-new.png",
       "name": "comparison-v1-oldv2-new",
       "atlasKey": "multiple",
       "atlas": "v1+atlas+atlas-pilot",

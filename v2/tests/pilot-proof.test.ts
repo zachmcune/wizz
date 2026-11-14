@@ -30,6 +30,12 @@ const md5 = (b: Buffer) => createHash('md5').update(b).digest('hex');
 /** The hashes that shipped as broken proof. None may ever appear again. */
 const KNOWN_BAD = new Set(['297ca11317ed2539377f9317d55ea2de']);
 
+/**
+ * The proof index stores paths RELATIVE to the v2 root so it is portable across machines. Resolve them
+ * once here; an index full of absolute authoring paths made every proof 404 on a fresh clone.
+ */
+const PROOF_FILE = (rel: string): string => join(ROOT, rel);
+
 const index = JSON.parse(readFileSync(join(PROOF, 'proof-index.json'), 'utf8')) as {
   images: { file: string; name: string; atlasKey: string; atlas: string; md5: string; bytes: number }[];
 };
@@ -48,21 +54,21 @@ describe('phase 3 pilot proof pack', () => {
   });
 
   it('every proof image is byte-unique', () => {
-    const hashes = index.images.map((i) => md5(readFileSync(i.file)));
+    const hashes = index.images.map((i) => md5(readFileSync(PROOF_FILE(i.file))));
     const unique = new Set(hashes);
     expect(unique.size).toBe(index.images.length);
   });
 
   it('no proof image matches the known-bad duplicated hash', () => {
     for (const img of index.images) {
-      const h = md5(readFileSync(img.file));
+      const h = md5(readFileSync(PROOF_FILE(img.file)));
       expect(KNOWN_BAD.has(h), `${img.file} reproduced the broken duplicate proof`).toBe(false);
     }
   });
 
   it('the index md5 matches the file on disk', () => {
     for (const img of index.images) {
-      expect(md5(readFileSync(img.file)), `${img.file} md5 drifted`).toBe(img.md5);
+      expect(md5(readFileSync(PROOF_FILE(img.file))), `${img.file} md5 drifted`).toBe(img.md5);
     }
   });
 
@@ -93,7 +99,7 @@ describe('phase 3 pilot proof pack', () => {
 
   it('every proof image has non-blank pixels', async () => {
     for (const img of index.images) {
-      const { data, info } = await sharp(img.file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const { data, info } = await sharp(PROOF_FILE(img.file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
       let opaque = 0;
       let minX = Infinity;
       let maxX = -Infinity;
@@ -121,14 +127,14 @@ describe('phase 3 full sprite proof pack (all 35 entities)', () => {
       images: { file: string; name: string; atlasKey: string }[];
     };
     expect(idx.images.length).toBe(35);
-    const hashes = idx.images.map((i) => md5(readFileSync(i.file)));
+    const hashes = idx.images.map((i) => md5(readFileSync(PROOF_FILE(i.file))));
     expect(new Set(hashes).size).toBe(idx.images.length);
     // The specific five that were byte-identical must each now be distinct.
     const wasBroken = ['arcane_gate', 'obsidian_bastion', 'stone_wall', 'thorn_grove', 'waystone_camp'];
     const picked = wasBroken.map((n) => {
       const e = idx.images.find((i) => i.name === n);
       expect(e, `no proof for ${n}`).toBeDefined();
-      return md5(readFileSync(e!.file));
+      return md5(readFileSync(PROOF_FILE(e!.file)));
     });
     expect(new Set(picked).size).toBe(wasBroken.length);
     for (const h of picked) expect(KNOWN_BAD.has(h), 'broken duplicate hash reappeared').toBe(false);
@@ -140,7 +146,7 @@ describe('phase 3 full sprite proof pack (all 35 entities)', () => {
     };
     for (const img of idx.images) {
       expect(img.atlasKey.split('/')[1], `${img.name} proof points at another entity`).toBe(img.name);
-      expect(existsSync(img.file), `${img.name} proof file missing`).toBe(true);
+      expect(existsSync(PROOF_FILE(img.file)), `${img.name} proof file missing`).toBe(true);
     }
     expect(existsSync(FULL)).toBe(true);
   });

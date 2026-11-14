@@ -3,7 +3,7 @@
   "atlas": "public/atlas",
   "images": [
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/arcane_archer.png",
+      "file": "docs/proof/phase-3/sprites/arcane_archer.png",
       "name": "arcane_archer",
       "atlasKey": "unit/arcane_archer/blue/0",
       "atlas": "public/atlas",
@@ -11,7 +11,7 @@
       "bytes": 336888
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/cinder_acolyte.png",
+      "file": "docs/proof/phase-3/sprites/cinder_acolyte.png",
       "name": "cinder_acolyte",
       "atlasKey": "unit/cinder_acolyte/blue/0",
       "atlas": "public/atlas",
@@ -19,7 +19,7 @@
       "bytes": 343667
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/grove_warden.png",
+      "file": "docs/proof/phase-3/sprites/grove_warden.png",
       "name": "grove_warden",
       "atlasKey": "unit/grove_warden/blue/0",
       "atlas": "public/atlas",
@@ -27,7 +27,7 @@
       "bytes": 321233
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/imp_swarmling.png",
+      "file": "docs/proof/phase-3/sprites/imp_swarmling.png",
       "name": "imp_swarmling",
       "atlasKey": "unit/imp_swarmling/blue/0",
       "atlas": "public/atlas",
@@ -35,7 +35,7 @@
       "bytes": 418607
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/mana_weaver.png",
+      "file": "docs/proof/phase-3/sprites/mana_weaver.png",
       "name": "mana_weaver",
       "atlasKey": "unit/mana_weaver/blue/0",
       "atlas": "public/atlas",
@@ -43,7 +43,7 @@
       "bytes": 298930
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/obsidian_siege.png",
+      "file": "docs/proof/phase-3/sprites/obsidian_siege.png",
       "name": "obsidian_siege",
       "atlasKey": "unit/obsidian_siege/blue/0",
       "atlas": "public/atlas",
@@ -51,7 +51,7 @@
       "bytes": 271453
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/rift_familiar.png",
+      "file": "docs/proof/phase-3/sprites/rift_familiar.png",
       "name": "rift_familiar",
       "atlasKey": "unit/rift_familiar/blue/0",
       "atlas": "public/atlas",
@@ -59,7 +59,7 @@
       "bytes": 288005
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/rift_skimmer.png",
+      "file": "docs/proof/phase-3/sprites/rift_skimmer.png",
       "name": "rift_skimmer",
       "atlasKey": "unit/rift_skimmer/blue/0",
       "atlas": "public/atlas",
@@ -67,7 +67,7 @@
       "bytes": 270502
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/siege_behemoth.png",
+      "file": "docs/proof/phase-3/sprites/siege_behemoth.png",
       "name": "siege_behemoth",
       "atlasKey": "unit/siege_behemoth/blue/0",
       "atlas": "public/atlas",
@@ -75,7 +75,7 @@
       "bytes": 349648
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/stone_golem.png",
+      "file": "docs/proof/phase-3/sprites/stone_golem.png",
       "name": "stone_golem",
       "atlasKey": "unit/stone_golem/blue/0",
       "atlas": "public/atlas",
@@ -83,7 +83,7 @@
       "bytes": 328346
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/storm_caster.png",
+      "file": "docs/proof/phase-3/sprites/storm_caster.png",
       "name": "storm_caster",
       "atlasKey": "unit/storm_caster/blue/0",
       "atlas": "public/atlas",
@@ -91,7 +91,7 @@
       "bytes": 257591
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/thornling.png",
+      "file": "docs/proof/phase-3/sprites/thornling.png",
       "name": "thornling",
       "atlasKey": "unit/thornling/blue/0",
       "atlas": "public/atlas",
@@ -99,7 +99,7 @@
       "bytes": 289177
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/waystone_wagon.png",
+      "file": "docs/proof/phase-3/sprites/waystone_wagon.png",
       "name": "waystone_wagon",
       "atlasKey": "unit/waystone_wagon/blue/0",
       "atlas": "public/atlas",
@@ -107,7 +107,7 @@
       "bytes": 351125
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/wisp.png",
+      "file": "docs/proof/phase-3/sprites/wisp.png",
       "name": "wisp",
       "atlasKey": "unit/wisp/blue/0",
       "atlas": "public/atlas",
@@ -115,7 +115,7 @@
       "bytes": 419480
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/arcane_bunker.png",
+      "file": "docs/proof/phase-3/sprites/arcane_bunker.png",
       "name": "arcane_bunker",
       "atlasKey": "building/arcane_bunker/blue/0",
       "atlas": "public/atlas",
@@ -123,7 +123,7 @@
       "bytes": 141055
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/arcane_gate.png",
+      "file": "docs/proof/phase-3/sprites/arcane_gate.png",
       "name": "arcane_gate",
       "atlasKey": "building/arcane_gate/blue/0",
       "atlas": "public/atlas",
@@ -131,7 +131,7 @@
       "bytes": 152443
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/arcane_nexus.png",
+      "file": "docs/proof/phase-3/sprites/arcane_nexus.png",
       "name": "arcane_nexus",
       "atlasKey": "building/arcane_nexus/blue/0",
       "atlas": "public/atlas",
@@ -139,7 +139,7 @@
       "bytes": 122403
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/arcane_sentry.png",
+      "file": "docs/proof/phase-3/sprites/arcane_sentry.png",
       "name": "arcane_sentry",
       "atlasKey": "building/arcane_sentry/blue/0",
       "atlas": "public/atlas",
@@ -147,7 +147,7 @@
       "bytes": 94684
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/astral_spire.png",
+      "file": "docs/proof/phase-3/sprites/astral_spire.png",
       "name": "astral_spire",
       "atlasKey": "building/astral_spire/blue/0",
       "atlas": "public/atlas",
@@ -155,7 +155,7 @@
       "bytes": 112026
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/attunement_spire.png",
+      "file": "docs/proof/phase-3/sprites/attunement_spire.png",
       "name": "attunement_spire",
       "atlasKey": "building/attunement_spire/blue/0",
       "atlas": "public/atlas",
@@ -163,7 +163,7 @@
       "bytes": 147385
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/celestial_cannon.png",
+      "file": "docs/proof/phase-3/sprites/celestial_cannon.png",
       "name": "celestial_cannon",
       "atlasKey": "building/celestial_cannon/blue/0",
       "atlas": "public/atlas",
@@ -171,7 +171,7 @@
       "bytes": 123492
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/frost_spire.png",
+      "file": "docs/proof/phase-3/sprites/frost_spire.png",
       "name": "frost_spire",
       "atlasKey": "building/frost_spire/blue/0",
       "atlas": "public/atlas",
@@ -179,7 +179,7 @@
       "bytes": 88301
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/golem_forge.png",
+      "file": "docs/proof/phase-3/sprites/golem_forge.png",
       "name": "golem_forge",
       "atlasKey": "building/golem_forge/blue/0",
       "atlas": "public/atlas",
@@ -187,7 +187,7 @@
       "bytes": 141607
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/inferno_beacon.png",
+      "file": "docs/proof/phase-3/sprites/inferno_beacon.png",
       "name": "inferno_beacon",
       "atlasKey": "building/inferno_beacon/blue/0",
       "atlas": "public/atlas",
@@ -195,7 +195,7 @@
       "bytes": 98099
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/ley_conduit.png",
+      "file": "docs/proof/phase-3/sprites/ley_conduit.png",
       "name": "ley_conduit",
       "atlasKey": "building/ley_conduit/blue/0",
       "atlas": "public/atlas",
@@ -203,7 +203,7 @@
       "bytes": 185350
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/obsidian_bastion.png",
+      "file": "docs/proof/phase-3/sprites/obsidian_bastion.png",
       "name": "obsidian_bastion",
       "atlasKey": "building/obsidian_bastion/blue/0",
       "atlas": "public/atlas",
@@ -211,7 +211,7 @@
       "bytes": 160726
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/resonance_vault.png",
+      "file": "docs/proof/phase-3/sprites/resonance_vault.png",
       "name": "resonance_vault",
       "atlasKey": "building/resonance_vault/blue/0",
       "atlas": "public/atlas",
@@ -219,7 +219,7 @@
       "bytes": 136663
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/sanctuary_spire.png",
+      "file": "docs/proof/phase-3/sprites/sanctuary_spire.png",
       "name": "sanctuary_spire",
       "atlasKey": "building/sanctuary_spire/blue/0",
       "atlas": "public/atlas",
@@ -227,7 +227,7 @@
       "bytes": 184275
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/sanctum.png",
+      "file": "docs/proof/phase-3/sprites/sanctum.png",
       "name": "sanctum",
       "atlasKey": "building/sanctum/blue/0",
       "atlas": "public/atlas",
@@ -235,7 +235,7 @@
       "bytes": 149443
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/scrying_obelisk.png",
+      "file": "docs/proof/phase-3/sprites/scrying_obelisk.png",
       "name": "scrying_obelisk",
       "atlasKey": "building/scrying_obelisk/blue/0",
       "atlas": "public/atlas",
@@ -243,7 +243,7 @@
       "bytes": 123868
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/stone_wall.png",
+      "file": "docs/proof/phase-3/sprites/stone_wall.png",
       "name": "stone_wall",
       "atlasKey": "building/stone_wall/blue/0",
       "atlas": "public/atlas",
@@ -251,7 +251,7 @@
       "bytes": 138335
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/storm_conductor.png",
+      "file": "docs/proof/phase-3/sprites/storm_conductor.png",
       "name": "storm_conductor",
       "atlasKey": "building/storm_conductor/blue/0",
       "atlas": "public/atlas",
@@ -259,7 +259,7 @@
       "bytes": 117091
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/summoning_circle.png",
+      "file": "docs/proof/phase-3/sprites/summoning_circle.png",
       "name": "summoning_circle",
       "atlasKey": "building/summoning_circle/blue/0",
       "atlas": "public/atlas",
@@ -267,7 +267,7 @@
       "bytes": 94427
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/thorn_grove.png",
+      "file": "docs/proof/phase-3/sprites/thorn_grove.png",
       "name": "thorn_grove",
       "atlasKey": "building/thorn_grove/blue/0",
       "atlas": "public/atlas",
@@ -275,7 +275,7 @@
       "bytes": 124789
     },
     {
-      "file": "/agent/repos/wizz/v2/docs/proof/phase-3/sprites/waystone_camp.png",
+      "file": "docs/proof/phase-3/sprites/waystone_camp.png",
       "name": "waystone_camp",
       "atlasKey": "building/waystone_camp/blue/0",
       "atlas": "public/atlas",

@@ -21,7 +21,43 @@ const TICK_BUDGET_MS = 50; // 20 Hz
 // REBUILD_PLAN §8 Phase 2). The gate below encodes what is actually achieved so a regression is
 // caught today, while the 1.5 ms goal stays open for Phase 3.
 const TARGET_MS_PER_TICK = 1.5;
-const ACHIEVED_CEILING_MS = 3.0;
+
+/**
+ * THE GATE IS A RATIO, NOT A WALL-CLOCK NUMBER.
+ *
+ * An absolute `msPerTick < 3.0` assertion passed locally (2.35 ms) and failed on GitHub's shared
+ * runner (4.95 ms) with no code change. That is a flaky test, not a regression — the runner is simply
+ * ~2x slower, and wall-clock on unspecified hardware cannot distinguish "the sim got slower" from "the
+ * machine is busy".
+ *
+ * So the gate measures a CALIBRATION loop of pure arithmetic on the same machine in the same process,
+ * then requires the simulation to stay within a fixed multiple of it. That ratio is stable across
+ * hardware because both sides scale together, and a genuine algorithmic regression still shows up
+ * immediately.
+ *
+ * The absolute ms/tick is still measured and printed for the record, and the plan's 1.5 ms target is
+ * still reported as met or missed — but neither is asserted against, because neither is a property of
+ * the code alone.
+ */
+// Measured 42-48 on the authoring machine across repeated runs (the ratio itself varies ~15% because
+// both the sim and the calibration loop are subject to the same scheduling noise). The ceiling is set
+// at roughly 2x the observed value: tight enough that a real regression — an O(n^2) pass, a lost
+// spatial-grid lookup — is caught, loose enough that a different CPU cannot produce a false failure.
+const MAX_TICKS_PER_CALIBRATION = 90;
+
+/** A fixed, allocation-free arithmetic workload used purely to characterise this machine's speed. */
+function calibrate(): number {
+  const t0 = performance.now();
+  let acc = 0;
+  for (let i = 0; i < 3_000_000; i++) {
+    acc = (acc + Math.imul(i, 2654435761)) | 0;
+    acc ^= acc >>> 13;
+  }
+  const t = performance.now() - t0;
+  // Keep the value observable so the loop cannot be optimised away.
+  if (acc === 123456789) console.log('calibration checksum', acc);
+  return Math.max(0.001, t);
+}
 
 function buildStressMatch() {
   const m = makeMatch({
@@ -114,9 +150,21 @@ describe('PHASE 2 GATE: sim performance', () => {
         `(v1 baseline at 187 entities was 6.995 ms/tick = 14.0%)`,
     );
 
+    // Characterise this machine, then assert the sim is within a fixed multiple of that baseline.
+    const calibrationMs = calibrate();
+    const ticksPerCalibration = elapsed / calibrationMs;
+    console.log(
+      `PERF calibration=${calibrationMs.toFixed(1)}ms ticksPerCalibration=${ticksPerCalibration.toFixed(1)} ` +
+        `ceiling=${MAX_TICKS_PER_CALIBRATION}`,
+    );
+
     expect(warmEntities).toBeGreaterThan(120);
-    // Assert the number we actually achieve, with headroom for CI variance.
-    expect(msPerTick).toBeLessThan(ACHIEVED_CEILING_MS);
+    // Machine-independent gate: work per simulated tick, normalised by measured hardware speed.
+    expect(
+      ticksPerCalibration,
+      `sim took ${ticksPerCalibration.toFixed(1)}x a calibration loop (ceiling ${MAX_TICKS_PER_CALIBRATION}); ` +
+        `raw ${msPerTick.toFixed(3)} ms/tick, calibration ${calibrationMs.toFixed(1)} ms`,
+    ).toBeLessThan(MAX_TICKS_PER_CALIBRATION);
     // And record whether the plan's target was met, without failing the build on it.
     console.log(
       msPerTick <= TARGET_MS_PER_TICK

@@ -30,6 +30,13 @@ const md5 = (b: Buffer) => createHash('md5').update(b).digest('hex');
 /** The hash that shipped as five identical broken proofs. It must never appear again. */
 const KNOWN_BAD = '297ca11317ed2539377f9317d55ea2de';
 
+/**
+ * The proof index stores paths RELATIVE to the v2 root so it is portable across machines. Resolve them
+ * once here; an index full of absolute authoring paths made every proof 404 on a fresh clone, which is
+ * exactly what CI caught.
+ */
+const PROOF_FILE = (rel: string): string => join(ROOT, rel);
+
 const index = JSON.parse(readFileSync(join(PROOF, 'proof-index.json'), 'utf8')) as {
   images: { file: string; name: string; atlasKey: string; atlas: string; md5: string; bytes: number }[];
 };
@@ -58,7 +65,7 @@ describe('phase 3 final proof pack: coverage', () => {
 
 describe('phase 3 final proof pack: every image is unique and shows its own entity', () => {
   it('every proof image is byte-unique', () => {
-    const hashes = index.images.map((i) => md5(readFileSync(i.file)));
+    const hashes = index.images.map((i) => md5(readFileSync(PROOF_FILE(i.file))));
     const dupes = hashes.filter((h, i) => hashes.indexOf(h) !== i);
     expect(dupes, `duplicate proof images: ${[...new Set(dupes)].join(', ')}`).toEqual([]);
     expect(new Set(hashes).size).toBe(index.images.length);
@@ -66,13 +73,13 @@ describe('phase 3 final proof pack: every image is unique and shows its own enti
 
   it('no proof image reproduces the known-bad hash', () => {
     for (const img of index.images) {
-      expect(md5(readFileSync(img.file)), `${img.file} reproduced the broken duplicate`).not.toBe(KNOWN_BAD);
+      expect(md5(readFileSync(PROOF_FILE(img.file))), `${img.file} reproduced the broken duplicate`).not.toBe(KNOWN_BAD);
     }
   });
 
   it('the index md5 matches the bytes on disk', () => {
     for (const img of index.images) {
-      expect(md5(readFileSync(img.file)), `${img.file} md5 drifted from the index`).toBe(img.md5);
+      expect(md5(readFileSync(PROOF_FILE(img.file))), `${img.file} md5 drifted from the index`).toBe(img.md5);
     }
   });
 
@@ -94,7 +101,7 @@ describe('phase 3 final proof pack: every image is unique and shows its own enti
 
   it('every proof image actually contains a drawn sprite', async () => {
     for (const img of index.images) {
-      const { data, info } = await sharp(img.file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const { data, info } = await sharp(PROOF_FILE(img.file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
       let opaque = 0;
       let minX = Infinity;
       let maxX = -Infinity;

@@ -16,7 +16,7 @@
 // Run: node audit/phase3-pilot-proof.mjs
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
@@ -143,7 +143,9 @@ const index = { generated: new Date().toISOString(), images: [], skipped: [] };
       .png()
       .toFile(out);
     index.images.push({
-      file: out,
+      // Stored RELATIVE to the v2 root. Absolute paths made this index machine-specific: it worked in
+      // the authoring checkout and every image 404'd on a fresh clone (caught by CI).
+      file: relative(ROOT, out).split(sep).join('/'),
       name: asset.name,
       atlasKey: cells[0].key,
       atlas: 'atlas-final',
