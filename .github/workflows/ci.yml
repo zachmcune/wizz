@@ -47,3 +47,45 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+  # ------------------------------------------------------------------ v2 (rebuild)
+  #
+  # The v2 rebuild has its own package.json, tsconfig, eslint config, vitest config and Vite build. It
+  # was NOT covered by the v1 jobs above, which means v2's ~400 tests and its production build were
+  # never verified in CI — they only ever ran locally. This job closes that gap.
+  #
+  # It builds as well as tests, because several v2 failures only surface in the production bundle:
+  # `gallery.html`, `styleguide.html` and `ui-proof.html` are separate Vite entries, and a missing
+  # entry or an unbundled `public/` asset succeeds in dev and 404s only when built.
+  v2:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: v2/package-lock.json
+
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint (includes the UI style rules: no hard-coded colours, no purple chrome)
+        run: npm run lint
+      - name: Unit and proof tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Assert every deployed entry and font exists in the build output
+        run: |
+          set -e
+          for f in dist/index.html dist/gallery.html dist/styleguide.html dist/ui-proof.html; do
+            test -f "$f" || { echo "missing build entry: $f"; exit 1; }
+          done
+          test -f dist/atlas-final/units.json || { echo "missing atlas manifest"; exit 1; }
+          ls dist/fonts/*.woff2 >/dev/null 2>&1 || { echo "missing self-hosted fonts"; exit 1; }
+          echo "all entries, atlas and fonts present"
