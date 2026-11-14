@@ -1,0 +1,408 @@
+/* SCREEN LAYOUTS — HUD, lobby, main menu.
+ *
+ * Layout only. Every colour, size and timing still comes from tokens; this file positions boxes and
+ * decides what collapses at which viewport.
+ *
+ * The single rule that governs all three: THE CONTENT IS THE BATTLEFIELD. Chrome sits at the edges in
+ * flat opaque plates so it never competes with or obscures the board. There is no full-screen tinted
+ * overlay, no blurred backdrop and no floating cards.
+ */
+
+/* ───────────────────────────────────────────────────────────────────────────── SCREEN ROOT */
+.mock {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    /* A faint engineered grid, not a gradient mesh. One subtle texture, drawn with two repeating
+     * linear-gradients at low alpha, which reads as graph paper rather than as a generated glow. */
+    repeating-linear-gradient(
+      to right,
+      var(--grid-line) 0 1px,
+      transparent 1px var(--grid-step)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-line) 0 1px,
+      transparent 1px var(--grid-step)
+    ),
+    var(--ink-950);
+  --grid-line: var(--grid-ink);
+  --grid-step: 48px;
+}
+
+:root {
+  --grid-line: var(--grid-ink);
+  --grid-step: 48px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── HUD */
+.mock--hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'top top'
+    'sel minimap'
+    'cmd cmd';
+  gap: var(--hud-pad);
+  padding: var(--hud-pad);
+}
+
+.hud__top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+}
+
+.hud__minimap {
+  grid-area: minimap;
+  align-self: start;
+  justify-self: end;
+  width: 190px;
+}
+
+.hud__selection {
+  grid-area: sel;
+  align-self: start;
+  justify-self: start;
+  width: 210px;
+}
+
+.hud__cmd {
+  grid-area: cmd;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.hud__zoom {
+  position: absolute;
+  right: var(--hud-pad);
+  bottom: calc(var(--hud-pad) + 64px);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.hud__hint {
+  position: absolute;
+  left: var(--hud-pad);
+  bottom: calc(var(--hud-pad) + 4px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+
+.mock-minimap {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  aspect-ratio: 6 / 4;
+}
+.mock-minimap__cell {
+  background: var(--ink-700);
+  box-shadow: inset 0 0 0 1px var(--ink-850);
+}
+.mock-minimap__cell:nth-child(7),
+.mock-minimap__cell:nth-child(13) {
+  background: var(--ink-600);
+}
+
+.mock-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 1px var(--ink-700);
+  margin-bottom: var(--space-4);
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── LOBBY */
+.mock--lobby {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  padding: var(--gutter);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-thick) solid var(--ink-600);
+}
+.page-head__title {
+  margin: 0;
+  font-size: calc(var(--text-3xl) * var(--text-scale));
+}
+
+.lobby {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: var(--gutter);
+  align-items: start;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.lobby__players,
+.lobby__settings {
+  min-height: 0;
+}
+
+.lobby__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border-hair) solid var(--ink-700);
+}
+
+.mock-maplist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.mock-mapcard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: left;
+  cursor: pointer;
+  background: var(--ink-800);
+  color: var(--bone-200);
+  border: 0;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.mock-mapcard.is-on {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500);
+}
+.mock-mapcard__name {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-lg) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  color: var(--bone-100);
+}
+.mock-mapcard__note {
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── MAIN MENU */
+.mock--menu {
+  display: grid;
+  grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gutter);
+  padding: calc(var(--gutter) * 2);
+}
+
+.menu__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.menu__title {
+  margin: 0;
+  font-size: calc(var(--text-4xl) * var(--text-scale));
+  max-width: 12ch;
+}
+
+.menu__blurb {
+  margin: 0;
+  max-width: 42ch;
+  font-size: calc(var(--text-md) * var(--text-scale));
+}
+
+.menu__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 320px;
+}
+
+.menu__meta {
+  gap: var(--space-4);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+
+/* The decorative composition: five rotated plates and a crystal sigil. Pure CSS, no image. */
+.menu__art {
+  position: relative;
+  align-self: stretch;
+  min-height: 220px;
+  overflow: hidden;
+}
+.menu__shard {
+  position: absolute;
+  background: var(--ink-800);
+  box-shadow: inset 0 0 0 1px var(--ink-600);
+  opacity: 0.9;
+}
+.menu__shard--0 {
+  width: 46%;
+  height: 62%;
+  right: 14%;
+  top: 8%;
+  transform: rotate(-8deg);
+  background: var(--ink-850);
+}
+.menu__shard--1 {
+  width: 30%;
+  height: 40%;
+  right: 2%;
+  top: 30%;
+  transform: rotate(12deg);
+}
+.menu__shard--2 {
+  width: 22%;
+  height: 30%;
+  right: 40%;
+  bottom: 4%;
+  transform: rotate(28deg);
+  background: var(--ink-900);
+}
+.menu__shard--3 {
+  width: 12%;
+  height: 54%;
+  right: 26%;
+  bottom: 0;
+  transform: rotate(-3deg);
+  background: var(--ink-700);
+}
+.menu__shard--4 {
+  width: 8%;
+  height: 22%;
+  right: 52%;
+  top: 6%;
+  transform: rotate(18deg);
+}
+.menu__sigil {
+  position: absolute;
+  right: 22%;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--copper-600);
+  --icon-stroke: 1;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── RESPONSIVE */
+/* COMPACT — 667x375 phone. The HUD minimap drops (it is not usable at 190px on a 375px-tall screen),
+ * the selection panel collapses to a single stat strip, and the lobby becomes one column. */
+[data-density='compact'] .mock--hud {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'top'
+    'sel'
+    'cmd';
+}
+[data-density='compact'] .hud__minimap {
+  display: none;
+}
+[data-density='compact'] .hud__selection {
+  width: auto;
+  justify-self: stretch;
+}
+[data-density='compact'] .hud__selection .panel__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+[data-density='compact'] .mock-portrait {
+  width: 42px;
+  margin-bottom: 0;
+  flex: 0 0 auto;
+}
+[data-density='compact'] .hud__cmd {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: var(--space-2);
+}
+[data-density='compact'] .hud__cmd .btn {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+/* On a 375px-tall screen the command bar shows ICONS ONLY — but only the label is removed. An earlier
+ * rule hid every `span` inside the button, which took the SVG's wrapper with it and left six blank
+ * buttons on the most important viewport. The label now has its own class so it can be removed alone. */
+[data-density='compact'] .hud__cmd .btn__label {
+  display: none;
+}
+[data-density='compact'] .hud__cmd .btn {
+  gap: 0;
+}
+[data-density='compact'] .hud__zoom {
+  bottom: calc(var(--hud-pad) + 52px);
+}
+[data-density='compact'] .hud__hint {
+  display: none;
+}
+
+[data-density='compact'] .mock--lobby {
+  padding: var(--space-4);
+  gap: var(--space-4);
+}
+[data-density='compact'] .page-head__title {
+  font-size: calc(var(--text-xl) * var(--text-scale));
+}
+[data-density='compact'] .lobby {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
+}
+[data-density='compact'] .lobby__players .panel__body {
+  padding: var(--space-3);
+}
+[data-density='compact'] .mock--menu {
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-5);
+  align-content: center;
+}
+[data-density='compact'] .menu__art {
+  display: none;
+}
+[data-density='compact'] .menu__title {
+  font-size: calc(var(--text-2xl) * var(--text-scale));
+}
+[data-density='compact'] .menu__actions {
+  max-width: none;
+}
+[data-density='compact'] .menu__blurb {
+  display: none;
+}
+
+/* ROOMY — 1920x1080. Wider panels, larger minimap, more air. */
+[data-density='roomy'] .hud__minimap {
+  width: 240px;
+}
+[data-density='roomy'] .hud__selection {
+  width: 250px;
+}
+[data-density='roomy'] .hud__cmd {
+  grid-template-columns: repeat(6, minmax(0, 150px));
+  justify-content: start;
+}
+[data-density='roomy'] .lobby {
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+}
+[data-density='roomy'] .mock--menu {
+  grid-template-columns: minmax(380px, 520px) minmax(0, 1fr);
+  padding: calc(var(--gutter) * 2.5);
+}

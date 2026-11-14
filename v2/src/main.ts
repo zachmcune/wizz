@@ -4,6 +4,9 @@
 // drives both sides (the real AI is Phase 5), the renderer draws it, and a minimal HUD shows the
 // numbers a reviewer needs to confirm the sim and renderer agree.
 
+import './ui/fonts.css';
+import './ui/tokens.css';
+import './ui/components.css';
 import './styles/boot.css';
 import { loadRegistry } from './data/loader';
 import type { Registry } from './data/registry';
@@ -14,6 +17,8 @@ import type { SimServices } from './sim/context';
 import { buildProgressOf, getHarvester, getProductionQueue } from './sim/capabilities';
 import { getPlayer } from './sim/queries';
 import { loadAtlas } from './render/atlas';
+import { MAX_UNITS_PER_PLAYER } from './core/constants';
+import { button, densityFor, el as kitEl, resource, setDensity } from './ui/kit';
 import type { LoadedAtlas } from './render/atlas';
 import { Renderer, teamIdForColor } from './render/renderer';
 import { TICK_MS } from './core/constants';
@@ -166,6 +171,13 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 async function boot(): Promise<void> {
   const host = document.getElementById('boot');
   if (!host) return;
+
+  // Density is resolved from the real viewport and re-applied on resize, so the whole UI rescales from
+  // one attribute rather than per-component media queries.
+  const applyDensity = (): void => setDensity(densityFor(window.innerWidth, window.innerHeight));
+  applyDensity();
+  window.addEventListener('resize', applyDensity);
+
   host.replaceChildren();
   host.className = 'game-shell';
 
@@ -203,20 +215,47 @@ async function boot(): Promise<void> {
   if (sanctum >= 0) renderer.camera.centerOn(state.entities.posX[sanctum]!, state.entities.posY[sanctum]!);
   renderer.camera.setZoom(1.15);
 
-  // HUD.
+  // ---- HUD, built from the design system.
+  //
+  // The resource bar is a real readout fed by the simulation, not a placeholder: mana and population
+  // are read from state each frame. The debug line stays available but visually subordinate.
   const hud = el('div', 'game-hud');
+
+  const bar = kitEl('div', 'hud-bar plate');
+  const manaRes = resource('mana', '0', 'Mana');
+  const supplyRes = resource('supply', '0 / 0', 'Units');
+  const manaValue = manaRes.querySelector('.res__value') as HTMLElement;
+  const supplyValue = supplyRes.querySelector('.res__value') as HTMLElement;
+  bar.append(manaRes, supplyRes);
+
   const stats = el('div', 'hud-stats');
-  const hint = el('div', 'hud-hint', 'drag / arrows to pan · wheel or +/− to zoom');
-  hud.append(stats, hint);
+
+  hud.append(bar, stats);
   host.appendChild(hud);
 
+  const hint = el('div', 'hud-hint plate', 'Drag to pan  ·  wheel or + / - to zoom');
+  hud.append(hint);
+
   const zoomRow = el('div', 'hud-zoom');
-  const zoomIn = el('button', 'hud-btn', '+');
-  const zoomOut = el('button', 'hud-btn', '−');
+  const zoomIn = button({ icon: 'zoom-in', label: 'Zoom in', iconOnly: true, size: 'sm' });
+  const zoomOut = button({ icon: 'zoom-out', label: 'Zoom out', iconOnly: true, size: 'sm' });
   zoomIn.addEventListener('click', () => renderer.camera.zoomBy(1.2));
   zoomOut.addEventListener('click', () => renderer.camera.zoomBy(1 / 1.2));
   zoomRow.append(zoomOut, zoomIn);
   host.appendChild(zoomRow);
+
+  // Keep the readouts in sync with the simulation.
+  const syncReadouts = (): void => {
+    const me = state.players[0];
+    if (!me) return;
+    const mana = Math.round(me.mana ?? 0);
+    manaValue.textContent = mana.toLocaleString('en-US').replace(/,/g, ' ');
+    let count = 0;
+    for (let i = 0; i < state.entities.count; i++) {
+      if (!state.entities.dead[i] && state.entities.kind[i] === 0 && state.entities.ownerIndex[i] === 0) count++;
+    }
+    supplyValue.textContent = `${count} / ${MAX_UNITS_PER_PLAYER}`;
+  };
 
   // ---- input: drag to pan, wheel to zoom
   let dragging = false;
@@ -283,7 +322,8 @@ async function boot(): Promise<void> {
     }
     if (steps > 0) {
       simMs = simMs * 0.8 + ((performance.now() - st) / steps) * 0.2;
-      renderer.sync(state);
+      syncReadouts();
+    renderer.sync(state);
     }
     const rT0 = performance.now();
     renderer.render(state, Math.min(1, acc / TICK_MS), new Set());

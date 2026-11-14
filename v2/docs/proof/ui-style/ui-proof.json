@@ -1,0 +1,142 @@
+{
+  "generated": "2026-11-14T19:28:59.026Z",
+  "base": "http://127.0.0.1:5341",
+  "shots": [
+    {
+      "viewport": "phone-667x375",
+      "screen": "hud",
+      "density": "compact",
+      "size": "667x375",
+      "bytes": 15619,
+      "md5": "b48fb9bc26cbca575129e83ae8933d66",
+      "drawnFraction": 0.653,
+      "purpleFraction": 0.00001
+    },
+    {
+      "viewport": "phone-667x375",
+      "screen": "lobby",
+      "density": "compact",
+      "size": "667x375",
+      "bytes": 20486,
+      "md5": "fd9966d1965b6ed8583ab6a0e47d6d00",
+      "drawnFraction": 0.805,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "phone-667x375",
+      "screen": "menu",
+      "density": "compact",
+      "size": "667x375",
+      "bytes": 14473,
+      "md5": "7415e816547329c19bc340c2f47088a8",
+      "drawnFraction": 0.318,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "phone-844x390",
+      "screen": "hud",
+      "density": "compact",
+      "size": "844x390",
+      "bytes": 16630,
+      "md5": "56df943edc1a73cbfcc872ee0d461553",
+      "drawnFraction": 0.629,
+      "purpleFraction": 0.00001
+    },
+    {
+      "viewport": "phone-844x390",
+      "screen": "lobby",
+      "density": "compact",
+      "size": "844x390",
+      "bytes": 21742,
+      "md5": "2f366ad9035eff69d2a4d2a34ed22bf0",
+      "drawnFraction": 0.814,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "phone-844x390",
+      "screen": "menu",
+      "density": "compact",
+      "size": "844x390",
+      "bytes": 15919,
+      "md5": "8b7bbe195506542d738eaf358be62498",
+      "drawnFraction": 0.306,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "chromebook-1366x768",
+      "screen": "hud",
+      "density": "regular",
+      "size": "1366x768",
+      "bytes": 38276,
+      "md5": "d3d0f3d795cf228000d773b18776500e",
+      "drawnFraction": 0.211,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "chromebook-1366x768",
+      "screen": "lobby",
+      "density": "regular",
+      "size": "1366x768",
+      "bytes": 44700,
+      "md5": "8fc70b3136861570d893563cd6ee4175",
+      "drawnFraction": 0.351,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "chromebook-1366x768",
+      "screen": "menu",
+      "density": "regular",
+      "size": "1366x768",
+      "bytes": 72003,
+      "md5": "2b06e716bcee634b485e0008128ebfff",
+      "drawnFraction": 0.291,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "desktop-1920x1080",
+      "screen": "hud",
+      "density": "roomy",
+      "size": "1920x1080",
+      "bytes": 57916,
+      "md5": "61c9a314bd2c630cef57c25f7a1f1479",
+      "drawnFraction": 0.153,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "desktop-1920x1080",
+      "screen": "lobby",
+      "density": "roomy",
+      "size": "1920x1080",
+      "bytes": 65775,
+      "md5": "8a2de3a19dca15d4e2d33fa8efae75d0",
+      "drawnFraction": 0.261,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "desktop-1920x1080",
+      "screen": "menu",
+      "density": "roomy",
+      "size": "1920x1080",
+      "bytes": 109222,
+      "md5": "6aacde254e29891bdcd16ecbe27f8300",
+      "drawnFraction": 0.281,
+      "purpleFraction": 0
+    },
+    {
+      "viewport": "styleguide-1920x1080",
+      "screen": "styleguide",
+      "size": "1920x1080",
+      "bytes": 601154,
+      "md5": "68f432e2e035d656f68f3232a45ba13a"
+    },
+    {
+      "viewport": "styleguide-667x375",
+      "screen": "styleguide",
+      "size": "667x375",
+      "bytes": 518880,
+      "md5": "afdd767afecadf57c1d753a1ab4bf8dc"
+    }
+  ],
+  "errors": [],
+  "purple": []
+}
