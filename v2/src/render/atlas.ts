@@ -63,12 +63,14 @@ async function loadOne(baseUrl: string, name: string): Promise<{ textures: Map<s
   return { textures, pivots, frames };
 }
 
-/** Load the pilot atlas from `atlas-pilot/`, which carries its pivots in the manifest. */
-export async function loadPilotAtlas(baseUrl = '/atlas-pilot/'): Promise<LoadedAtlas> {
-  return loadAtlas(baseUrl);
-}
-
-export async function loadAtlas(baseUrl = '/atlas/'): Promise<LoadedAtlas> {
+/**
+ * Load the shipping atlas.
+ *
+ * The default points at `atlas-final/`, which is the only atlas deployed with the game: the first-pass
+ * and pilot atlases are superseded and have been moved to `docs/proof/atlas-archive/` so they are kept
+ * as review evidence without being shipped to players.
+ */
+export async function loadAtlas(baseUrl = '/atlas-final/'): Promise<LoadedAtlas> {
   const [units, buildings] = await Promise.all([loadOne(baseUrl, 'units'), loadOne(baseUrl, 'buildings')]);
   const textures = new Map([...units.textures, ...buildings.textures]);
   const pivots = new Map([...units.pivots, ...buildings.pivots]);

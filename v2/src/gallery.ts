@@ -80,7 +80,7 @@ function card(title: string, note: string): HTMLElement {
 async function main(): Promise<void> {
   const host = document.getElementById('gallery');
   if (!host) return;
-  const [atlas, registry] = await Promise.all([loadAtlas('/atlas/'), Promise.resolve(loadRegistry())]);
+  const [atlas, registry] = await Promise.all([loadAtlas('/atlas-final/'), Promise.resolve(loadRegistry())]);
   host.replaceChildren();
 
   const header = document.createElement('header');

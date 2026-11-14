@@ -15,6 +15,16 @@ export const PAL = {
   rockLit: M({ color: [227, 210, 180], grain: 0.5, specular: 0.08, rim: 0.4, ao: 0.9 }),
   rockMoss: M({ color: [154, 190, 106], grain: 0.6, rim: 0.3, ao: 1.0 }),
 
+  // ------------------------------------------------------------------ chiselled golem stone
+  //
+  // The golem was reported as "soft and beige", and it was: `rock`/`rockLit` are a warm sandy beige
+  // that reads as sandstone and blends into the grass. These are a COLDER, darker, higher-contrast
+  // stone with more specular (so the chiselled facets catch hard highlights and the form reads as
+  // carved rather than rounded) and stronger occlusion (so the plate edges separate).
+  stoneDeep: M({ color: [92, 96, 104], grain: 0.62, specular: 0.14, rim: 0.4, ao: 1.15 }),
+  stone: M({ color: [138, 144, 154], grain: 0.66, specular: 0.2, rim: 0.46, ao: 1.1 }),
+  stoneLit: M({ color: [186, 194, 204], grain: 0.6, specular: 0.3, rim: 0.52, ao: 1.0 }),
+
   // ------------------------------------------------------------------ metal
   steelDeep: M({ color: [98, 105, 130], specular: 0.4, rim: 0.35, ao: 1.0 }),
   steel: M({ color: [156, 166, 194], specular: 0.5, rim: 0.45, ao: 0.95 }),

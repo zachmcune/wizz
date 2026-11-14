@@ -24,8 +24,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const OUT = join(ROOT, 'docs/proof/phase-3-pilot');
 const SPRITES = join(OUT, 'sprites');
-const ATLAS_NEW = join(ROOT, 'public/atlas-pilot');
-const ATLAS_OLD = join(ROOT, 'public/atlas');
+const ATLAS_NEW = join(ROOT, 'docs/proof/atlas-archive/pilot');
+const ATLAS_OLD = join(ROOT, 'docs/proof/atlas-archive/first-pass');
 
 mkdirSync(SPRITES, { recursive: true });
 

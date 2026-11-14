@@ -173,7 +173,7 @@ async function boot(): Promise<void> {
   const registry: Registry = loadRegistry();
   // Absolute path: `import.meta.env.BASE_URL` is './' here, which makes the request relative to the
   // current URL and resolves to the wrong place. Vite serves `public/` at the site root.
-  const atlas: LoadedAtlas = await loadAtlas('/atlas-pilot/');
+  const atlas: LoadedAtlas = await loadAtlas('/atlas-final/');
 
   const { state, services }: { state: GameState; services: SimServices } = initMatch(registry, {
     mapId: 'duel_glade',
@@ -317,21 +317,52 @@ async function boot(): Promise<void> {
   const spawnBattle = (perSide = 26): void => {
     const centreX = 2048;
     const centreY = 1320;
-    // Pilot art only: these are the assets under review.
-    const units = ['imp_swarmling', 'arcane_archer', 'stone_golem', 'storm_caster', 'wisp'];
+    // The full roster, so a massed-battle shot exercises every unit type rather than only the pilot
+    // five. Ordered so the mixes in each rank are deliberately varied.
+    const units = [
+      'stone_golem',
+      'imp_swarmling',
+      'arcane_archer',
+      'storm_caster',
+      'cinder_acolyte',
+      'thornling',
+      'wisp',
+      'grove_warden',
+      'mana_weaver',
+      'rift_familiar',
+      'rift_skimmer',
+      'siege_behemoth',
+      'obsidian_siege',
+      'waystone_wagon',
+    ];
     for (const [side, pid] of ['player0', 'player1'].entries()) {
       const sign = side === 0 ? -1 : 1;
       for (let i = 0; i < perSide; i++) {
         const defId = units[i % units.length]!;
-        const x = centreX + sign * (60 + (i % 5) * 26);
-        const y = centreY + (Math.floor(i / 5) - 2) * 34 + sign * 40;
+        /**
+         * FORMATION SPACING.
+         *
+         * The previous version used 5 ranks 26 world units apart, which is narrower than a Stone
+         * Golem is wide (32 units) once the 2.9x visual scale is applied — so the front rank physically
+         * overlapped the rank behind it and the fight rendered as one grey mass. Ranks are now 46
+         * units apart and files 44 apart, which clears the widest unit and leaves a visible gap of
+         * terrain between bodies.
+         */
+        const files = 4;
+        const rank = Math.floor(i / files);
+        const file = i % files;
+        const x = centreX + sign * (90 + rank * 46);
+        const y = centreY + (file - (files - 1) / 2) * 44 + sign * 30;
         stepSimulation(state, services, [
           { type: 'devSpawnUnit', playerId: pid, defId, x, y, count: 1 },
         ]);
       }
       // A couple of visible buildings at the fight so structures render in the shot too.
       stepSimulation(state, services, [
-        { type: 'devSpawnBuilding', playerId: pid, defId: 'arcane_sentry', x: centreX + sign * 260, y: centreY + sign * 120, complete: true },
+        { type: 'devSpawnBuilding', playerId: pid, defId: 'arcane_sentry', x: centreX + sign * 320, y: centreY + sign * 150, complete: true },
+      ]);
+      stepSimulation(state, services, [
+        { type: 'devSpawnBuilding', playerId: pid, defId: side === 0 ? 'sanctum' : 'obsidian_bastion', x: centreX + sign * 420, y: centreY - sign * 150, complete: true },
       ]);
     }
     // Order both sides to attack-move into each other.

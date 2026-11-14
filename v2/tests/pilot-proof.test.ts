@@ -20,7 +20,10 @@ import sharp from 'sharp';
 
 const ROOT = join(__dirname, '..');
 const PROOF = join(ROOT, 'docs/proof/phase-3-pilot');
-const ATLAS = join(ROOT, 'public/atlas-pilot');
+// The pilot atlas is superseded by `atlas-final` and has been MOVED out of `public/` so it is no
+// longer shipped, but it is kept as review evidence. This suite still verifies the pilot pack against
+// the bytes those proofs were actually generated from.
+const ATLAS = join(ROOT, 'docs/proof/atlas-archive/pilot');
 
 const md5 = (b: Buffer) => createHash('md5').update(b).digest('hex');
 

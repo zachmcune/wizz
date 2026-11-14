@@ -14,37 +14,9 @@
 //   stone_wall     a staggered stone barrier with visible blocks and a team banner
 //   mana_node      a crystal cluster erupting from rock
 
-import type { Assembly, Part, Shape } from './mesh2';
+import type { Assembly, Part } from './mesh2';
 import { PAL } from './palette2';
-
-type M = (typeof PAL)[keyof typeof PAL];
-
-function part(shape: Shape, pos: [number, number, number], material: M, extra: Partial<Part> = {}): Part {
-  return { shape, pos: { x: pos[0], y: pos[1], z: pos[2] }, material: material as never, ...extra };
-}
-
-/**
- * Bevelled box. ARGUMENT ORDER IS (width, depth, height) — width and depth are the footprint on the
- * ground plane, height is vertical. This order was chosen after a bug where an earlier version took
- * (w, h, d), which silently swapped height and depth at ~20 call sites and produced horizontal slabs
- * where vertical fins were intended ("flat panels jutting out at odd angles").
- */
-const bbox = (w: number, d: number, h: number, bevel = Math.min(w, d) * 0.14, taper?: number): Shape =>
-  taper === undefined
-    ? { kind: 'bevelBox', w, d, h, bevel }
-    : { kind: 'bevelBox', w, d, h, bevel, taper };
-const tube = (sections: [number, number, number, number][], sides = 8, caps = true): Shape => ({
-  kind: 'tube',
-  sections: sections.map(([x, y, z, r]) => ({ x, y, z, r })),
-  sides,
-  caps,
-});
-const cap = (r: number, len: number, sides = 10): Shape => ({ kind: 'capsule', r, len, sides });
-const plate = (w0: number, w1: number, h: number, thick: number): Shape => ({ kind: 'plate', w0, w1, h, thick });
-const sph = (r: number, seg = 10): Shape => ({ kind: 'sphere', r, seg });
-const cone = (r: number, h: number, sides = 9): Shape => ({ kind: 'cone', r, h, sides });
-const cyl = (r0: number, r1: number, h: number, sides = 12): Shape => ({ kind: 'cyl', r0, r1, h, sides });
-const prism = (r: number, h: number, sides: number): Shape => ({ kind: 'prism', r, h, sides });
+import { part, bbox, tube, cap, plate, sph, cone, cyl, prism, plinth } from './shapes';
 
 // ================================================================================================
 // WISP — a creature of light. No limbs; the read is a bright core inside a tapered teardrop with a
@@ -72,19 +44,25 @@ function wisp(): Assembly {
       ),
       // Inner core, brighter and slightly smaller, so the body reads as translucent.
       part(sph(4.0, 12), [0, 0, 10.0], PAL.crystalHot, { scale: { x: 1, y: 1, z: 1.25 } }),
-      // Tail: a thin taper trailing down and back.
+      // Tail: a LONG tapering streamer trailing down and BACK (+y). A wisp is nearly spherical, so
+      // the tail is the only thing that makes its facing legible; it has to be long enough to move the
+      // silhouette's centre of mass noticeably behind the body.
       part(
         tube(
           [
-            [0, 0, 3.6, 2.6],
-            [0, 1.2, 1.2, 1.6],
-            [0, 2.4, -1.6, 0.5],
+            [0, 0, 4.4, 2.8],
+            [0, 3.0, 0.4, 2.0],
+            [0, 6.2, -2.6, 1.1],
+            [0, 9.0, -4.8, 0.35],
           ],
           8,
         ),
         [0, 0, 0],
         PAL.crystalDeep,
       ),
+      // Two forward brow motes on the FRONT of the orb (which also reads as the "face" direction).
+      part(sph(1.35, 8), [-3.2, -5.2, 12.0], PAL.crystalHot),
+      part(sph(1.35, 8), [3.2, -5.2, 12.0], PAL.crystalHot),
       // Team-coloured collar ring, the ownership cue.
       part(prism(6.6, 1.3, 12), [0, 0, 9.4], PAL.runeTeam),
       // Three orbiting motes at different radii and heights.
@@ -102,46 +80,71 @@ function wisp(): Assembly {
 // compact body, with arms so long they nearly touch the ground.
 // ================================================================================================
 function impSwarmling(): Assembly {
+  // DESIGN: hunched biped. Big wedge head over a compact body, arms so long they nearly touch the
+  // ground, two swept horns.
+  //
+  // Zachary read this as "a box". The cause was that the hips, torso and head all sat on one vertical
+  // axis with similar widths, so the outline was a rectangle. Four changes fix it, all within the
+  // approved style:
+  //   * the torso LEANS FORWARD, stepping toward -y as it rises, so the chest overhangs the feet and
+  //     the side profile is a diagonal;
+  //   * the head is a WEDGE thrust forward of the chest rather than stacked on top of it;
+  //   * a spine ridge climbs the hunched back, breaking the top edge;
+  //   * shoulders are held WIDE and LOW, below the head.
   return {
     parts: [
-      // ---- legs: short, bent, digitigrade (thigh -> shin -> foot)
-      part(tube([[0, 0, 9.5, 2.4], [0.6, 0.4, 5.4, 1.9], [0.4, 1.4, 1.6, 1.5]], 7), [-3.4, 0.6, 0], PAL.hideDeep),
-      part(tube([[0, 0, 9.5, 2.4], [-0.6, 0.4, 5.4, 1.9], [-0.4, 1.4, 1.6, 1.5]], 7), [3.4, 0.6, 0], PAL.hideDeep),
-      part(bbox(3.6, 3.0, 6.0, 0.8), [-3.4, 2.0, 0.9], PAL.hideDeep),
-      part(bbox(3.6, 3.0, 6.0, 0.8), [3.4, 2.0, 0.9], PAL.hideDeep),
-      // ---- hips
-      part(bbox(8.4, 6.0, 5.2, 1.4, 0.9), [0, 0, 9.0], PAL.hide),
-      // ---- torso: barrel that leans forward, layered belly plate
-      part(tube([[0, 0, 10.5, 4.6], [0, 0.3, 14.0, 5.6], [0, 0.5, 17.6, 5.2]], 12), [0, 0, 0], PAL.hide),
-      part(plate(7.4, 6.0, 6.4, 1.2), [0, -4.4, 11.4], PAL.belly),
-      // ---- shoulders: rounded masses, wider than the torso (reads as hunched)
-      part(cap(3.2, 6.4, 10), [-5.6, 0.6, 17.2], PAL.hide, { rotZ: Math.PI / 2 }),
-      part(cap(3.2, 6.4, 10), [5.6, 0.6, 17.2], PAL.hide, { rotZ: Math.PI / 2 }),
-      // ---- arms: elbow bends outward, then forearm reaches down almost to the ground
-      part(tube([[-2.0, 0, 16.4, 2.5], [-5.4, 0.8, 11.6, 2.0], [-6.6, 2.4, 6.0, 1.7]], 7), [0, 0, 0], PAL.hide),
-      part(tube([[2.0, 0, 16.4, 2.5], [5.4, 0.8, 11.6, 2.0], [6.6, 2.4, 6.0, 1.7]], 7), [0, 0, 0], PAL.hide),
-      // claws: three small tapered plates per hand
-      ...[-1, 1].flatMap((s) =>
-        [-1, 0, 1].map((k) =>
-          part(plate(1.2, 0.25, 3.4, 0.9), [s * 6.6 + k * 1.3, 2.6, 4.6], PAL.boneDeep, { rotX: 0.25 }),
-        ),
+      // ---- legs: short, bent, digitigrade
+      part(tube([[0, 0, 9.0, 2.6], [0.8, 0.6, 5.0, 2.1], [0.4, 1.8, 1.4, 1.6]], 7), [-3.8, 0.6, 0], PAL.hideDeep),
+      part(tube([[0, 0, 9.0, 2.6], [-0.8, 0.6, 5.0, 2.1], [-0.4, 1.8, 1.4, 1.6]], 7), [3.8, 0.6, 0], PAL.hideDeep),
+      part(bbox(4.0, 5.6, 2.0, 0.8), [-3.8, -1.2, 0.9], PAL.hideDeep),
+      part(bbox(4.0, 5.6, 2.0, 0.8), [3.8, -1.2, 0.9], PAL.hideDeep),
+
+      // ---- hips, set BACK so the torso can lean over them
+      part(bbox(9.0, 7.0, 5.4, 1.4, 0.9), [0, 2.4, 8.8], PAL.hide),
+
+      // ---- torso: each section steps toward -y, so the body leans forward
+      part(tube([[0, 2.4, 10.0, 4.8], [0, 0.6, 13.6, 5.8], [0, -1.6, 17.0, 5.4]], 12), [0, 0, 0], PAL.hide),
+      part(plate(7.8, 6.6, 6.8, 1.2), [0, -5.4, 12.0], PAL.belly),
+
+      // ---- spine ridge: three plates climbing the hunched back, breaking the top edge
+      part(plate(2.8, 1.6, 3.0, 2.4), [0, 4.8, 15.4], PAL.hideDeep, { rotX: -0.5 }),
+      part(plate(3.2, 1.8, 3.6, 2.8), [0, 3.4, 17.4], PAL.hideDeep, { rotX: -0.42 }),
+      part(plate(2.6, 1.4, 2.8, 2.2), [0, 2.0, 18.8], PAL.hideDeep, { rotX: -0.34 }),
+
+      // ---- shoulders: wide and LOW, below the head
+      part(cap(3.4, 6.8, 10), [-6.2, 0.4, 16.4], PAL.hide, { rotZ: Math.PI / 2 }),
+      part(cap(3.4, 6.8, 10), [6.2, 0.4, 16.4], PAL.hide, { rotZ: Math.PI / 2 }),
+
+      // ---- arms: elbow out, forearm reaching almost to the ground
+      part(tube([[-2.2, 0, 15.8, 2.7], [-6.0, 0.6, 11.0, 2.1], [-7.4, 2.0, 5.4, 1.8]], 7), [0, 0, 0], PAL.hide),
+      part(tube([[2.2, 0, 15.8, 2.7], [6.0, 0.6, 11.0, 2.1], [7.4, 2.0, 5.4, 1.8]], 7), [0, 0, 0], PAL.hide),
+      ...[-1, 1].flatMap((si) =>
+        [-1, 0, 1].map((k) => part(plate(1.3, 0.3, 3.6, 0.9), [si * 7.4 + k * 1.4, 2.4, 3.8], PAL.boneDeep, { rotX: 0.3 })),
       ),
-      // ---- head: big relative to the body, wide brow, small jaw
-      part(bbox(9.0, 7.4, 7.2, 1.8, 0.92), [0, 1.6, 18.4], PAL.hide),
-      part(bbox(7.2, 3.0, 5.2, 1.2), [0, 3.6, 17.4], PAL.hideDeep),
-      // brow ridge
-      part(bbox(8.6, 1.8, 2.0, 0.6), [0, -2.6, 21.6], PAL.hideLit, { rotX: -0.16 }),
-      // ---- horns: swept back and up, the single strongest silhouette cue
-      part(tube([[0, 0, 0, 2.0], [-0.9, 1.6, 3.0, 1.3], [-1.7, 3.4, 5.4, 0.4]], 7), [-3.4, 1.2, 21.2], PAL.bone),
-      part(tube([[0, 0, 0, 2.0], [0.9, 1.6, 3.0, 1.3], [1.7, 3.4, 5.4, 0.4]], 7), [3.4, 1.2, 21.2], PAL.bone),
-      // ---- eyes: team-coloured, set under the brow
-      part(sph(1.35, 8), [-2.1, -3.4, 20.6], PAL.eyeTeam),
-      part(sph(1.35, 8), [2.1, -3.4, 20.6], PAL.eyeTeam),
-      // ---- team sash across the chest (plate stands vertically; no rotation needed)
-      part(plate(9.2, 7.6, 2.4, 1.0), [0, -4.6, 13.2], PAL.trimTeam),
-      part(bbox(9.0, 4.6, 1.4, 0.4), [0, 0, 9.4], PAL.leather),
+
+      // ---- head: a WEDGE thrust forward of the chest, wide brow, small jaw
+      part(bbox(9.4, 8.2, 6.8, 1.8, 0.82), [0, -3.4, 19.0], PAL.hide),
+      part(bbox(7.4, 3.4, 4.6, 1.2, 0.7), [0, -6.8, 17.8], PAL.hideDeep),
+      // brow ridge, angled down at the front for an angry read
+      part(bbox(9.0, 2.4, 2.0, 0.6), [0, -5.8, 22.0], PAL.hideLit, { rotX: -0.28 }),
+
+      // ---- horns: swept back and up, the strongest silhouette cue
+      part(tube([[0, 0, 0, 2.2], [-1.0, 1.8, 3.2, 1.4], [-1.9, 3.8, 5.8, 0.4]], 7), [-3.6, 0.6, 21.2], PAL.bone),
+      part(tube([[0, 0, 0, 2.2], [1.0, 1.8, 3.2, 1.4], [1.9, 3.8, 5.8, 0.4]], 7), [3.6, 0.6, 21.2], PAL.bone),
+
+      // ---- eyes under the brow
+      part(sph(1.4, 8), [-2.3, -6.2, 20.4], PAL.eyeTeam),
+      part(sph(1.4, 8), [2.3, -6.2, 20.4], PAL.eyeTeam),
+
+      // ---- TEAM MARKER: a broad chest sash, a belt, and a band on each horn. The imp is a large
+      //      warm-toned mass, so one thin strip disappeared at sprite size.
+      part(plate(10.4, 8.4, 4.2, 1.2), [0, -5.6, 11.4], PAL.trimTeam),
+      part(bbox(10.2, 6.6, 1.8, 0.5), [0, 1.6, 9.2], PAL.trimTeam),
+      part(prism(2.2, 1.2, 6), [-3.6, 0.6, 23.4], PAL.trimTeam),
+      part(prism(2.2, 1.2, 6), [3.6, 0.6, 23.4], PAL.trimTeam),
+
       // ---- tail
-      part(tube([[0, 0, 0, 1.9], [0, -3.0, -1.2, 1.3], [0, -6.2, -1.0, 0.4]], 7), [0, -3.4, 9.6], PAL.hideDeep),
+      part(tube([[0, 0, 0, 2.0], [0, -3.4, -1.4, 1.4], [0, -7.0, -1.2, 0.4]], 7), [0, 0.8, 9.4], PAL.hideDeep),
     ],
   };
 }
@@ -151,43 +154,68 @@ function impSwarmling(): Assembly {
 // side, plus a pointed hood.
 // ================================================================================================
 function arcaneArcher(): Assembly {
+  // DESIGN: upright, tall, narrow. The read is the BOW held clear of the body plus a pointed hood.
+  //
+  // Zachary read this as "a blob". The cause was that the hood, shoulders and robe were all roughly
+  // the same width, so the outline had no pinch. Fixed with three deliberate width changes down the
+  // body — broad hood, NARROW WAIST, flared hem — and by pushing the bow out to one side so the
+  // silhouette is asymmetric rather than a single lump. The drawing arm crosses the gap, which fills
+  // the negative space without closing the pinch.
   return {
     parts: [
-      // legs
-      part(tube([[0, 0, 10.0, 2.2], [0.2, 0, 5.0, 1.7], [0, 0, 1.2, 1.5]], 7), [-2.4, 0, 0], PAL.robeDeep),
-      part(tube([[0, 0, 10.0, 2.2], [-0.2, 0, 5.0, 1.7], [0, 0, 1.2, 1.5]], 7), [2.4, 0, 0], PAL.robeDeep),
-      part(bbox(3.4, 3.6, 6.4, 0.8), [-2.4, 1.0, 0.9], PAL.leather),
-      part(bbox(3.4, 3.6, 6.4, 0.8), [2.4, 1.0, 0.9], PAL.leather),
-      // robed torso: slim, with a clear waist — a barrel here reads as a ball, not a body
-      part(bbox(7.0, 5.2, 8.6, 1.6, 0.82), [0, 0, 10.4], PAL.robe),
-      // Skirt: WIDENS DOWNWARD from the waist to a flat hem. This is the silhouette cue that says
-      // "person in a robe" rather than "sphere with a head on it" — the hem must be a hard edge.
-      part(tube([[0, 0, 9.4, 3.2], [0, 0, 6.0, 4.6], [0, 0, 2.6, 5.2], [0, 0, 1.4, 5.2]], 12), [0, 0, 0], PAL.robeLit),
-      // hem band: darker ring at the very bottom, so the robe terminates cleanly on the ground
-      part(cyl(5.4, 5.4, 1.2, 12), [0, 0, 1.2], PAL.robeDeep),
-      // chest armour plate + team sash
-      part(bbox(6.2, 2.2, 4.6, 0.9), [0, -3.4, 15.0], PAL.steel),
-      part(plate(7.8, 6.4, 2.6, 1.0), [0, -4.2, 11.0], PAL.trimTeam),
-      // shoulders
-      part(cap(2.3, 4.6, 9), [-4.2, 0, 17.4], PAL.robeLit, { rotZ: Math.PI / 2 }),
-      part(cap(2.3, 4.6, 9), [4.2, 0, 17.4], PAL.robeLit, { rotZ: Math.PI / 2 }),
-      // head + pointed hood
-      part(sph(3.1, 10), [0, 0, 19.8], PAL.bone),
-      part(cone(3.6, 7.6, 9), [0, 0.3, 20.6], PAL.robeLit, { rotX: 0.14 }),
-      part(bbox(4.4, 1.2, 3.0, 0.5), [0, -2.4, 19.4], PAL.robeDeep),
-      // ---- the bow: a tall asymmetric arc on the left, made of three tapered segments
-      part(tube([[0, 0, -6.4, 0.55], [2.0, 0, 0, 0.9], [2.2, 0, 5.0, 0.75], [0, 0, 10.4, 0.45]], 7), [-6.4, 0, 12.6], PAL.wood),
-      // bow string: must span exactly between the two limb tips (local z -6.4 and +10.4 at x 0), or it
-      // renders as a stick floating beside the character
-      part(tube([[0, 0, -6.4, 0.14], [0, 0, 10.4, 0.14]], 4), [-6.4, 0, 12.6], PAL.bone),
-      // ---- quiver on the back
-      part(cyl(1.9, 1.7, 7.0, 8), [3.6, 3.0, 12.0], PAL.leather),
-      ...[-1, 0, 1].map((k) =>
-        part(cyl(0.22, 0.22, 4.4, 5), [3.6 + k * 1.1, 3.0, 18.4], PAL.woodLit, { rotZ: 0.1 * k }),
+      // ---- legs / boots
+      part(tube([[0, 0, 9.0, 2.2], [0.2, 0, 4.6, 1.7], [0, 0, 1.0, 1.5]], 7), [-2.4, 0, 0], PAL.robeDeep),
+      part(tube([[0, 0, 9.0, 2.2], [-0.2, 0, 4.6, 1.7], [0, 0, 1.0, 1.5]], 7), [2.4, 0, 0], PAL.robeDeep),
+      part(bbox(3.4, 4.2, 1.8, 0.7), [-2.4, -0.4, 0.6], PAL.leather),
+      part(bbox(3.4, 4.2, 1.8, 0.7), [2.4, -0.4, 0.6], PAL.leather),
+
+      // ---- HEM: wide and flat, the bottom of the hourglass
+      part(tube([[0, 0, 1.4, 5.0], [0, 0, 6.0, 4.3], [0, 0, 9.2, 3.4]], 14), [0, 0, 0], PAL.robeLit),
+      part(cyl(5.1, 5.1, 1.1, 14), [0, 0, 1.3], PAL.robeDeep),
+
+      // ---- WAIST: the pinch. This narrow section is what stops the figure reading as one mass.
+      part(bbox(4.4, 3.8, 4.0, 1.3, 0.86), [0, 0, 11.0], PAL.robe),
+      // TEAM MARKER: a full sash around the waist plus a hood band. The archer's robe and hood are
+      // both large violet masses, so a single narrow strip was invisible at sprite size.
+      part(cyl(4.9, 4.7, 2.2, 14), [0, 0, 10.6], PAL.trimTeam),
+      part(cyl(4.2, 3.4, 1.6, 10), [0, 0.2, 22.4], PAL.trimTeam),
+      part(bbox(4.4, 1.2, 1.4, 0.4), [0, -2.9, 13.4], PAL.trimTeam),
+
+      // ---- CHEST + SHOULDERS: broad again, so the top is the widest part after the hem
+      part(bbox(7.4, 5.6, 5.4, 1.8, 0.9), [0, 0, 14.2], PAL.robe),
+      part(bbox(6.2, 1.6, 4.4, 0.8), [0, -3.1, 14.6], PAL.steel),
+      part(cap(2.5, 5.0, 10), [-4.6, 0, 16.6], PAL.robeLit, { rotZ: Math.PI / 2 }),
+      part(cap(2.5, 5.0, 10), [4.6, 0, 16.6], PAL.robeLit, { rotZ: Math.PI / 2 }),
+
+      // ---- HOOD: a hard pointed cone, the top of the read
+      part(sph(2.9, 10), [0, -0.4, 18.8], PAL.bone),
+      part(cone(4.0, 8.2, 9), [0, 0.2, 19.4], PAL.robeLit, { rotX: 0.16 }),
+      part(bbox(4.6, 1.2, 2.6, 0.5), [0, -2.9, 18.8], PAL.robeDeep),
+      part(sph(0.85, 6), [-1.25, -3.1, 19.0], PAL.eyeTeam),
+      part(sph(0.85, 6), [1.25, -3.1, 19.0], PAL.eyeTeam),
+
+      // ---- BOW: pushed well clear of the torso on the left, so the outline is not a single lump
+      part(
+        tube(
+          [
+            [0, 0, -7.0, 0.6],
+            [2.4, 0, -1.0, 1.0],
+            [2.6, 0, 4.0, 0.85],
+            [0, 0, 10.0, 0.45],
+          ],
+          7,
+        ),
+        [-7.4, 0, 11.6],
+        PAL.wood,
       ),
-      // eyes
-      part(sph(0.9, 6), [-1.3, -2.6, 20.0], PAL.eyeTeam),
-      part(sph(0.9, 6), [1.3, -2.6, 20.0], PAL.eyeTeam),
+      // String spans exactly between the limb tips (local z -7.0 -> +10.0 at x 0).
+      part(tube([[0, 0, -7.0, 0.14], [0, 0, 10.0, 0.14]], 4), [-7.4, 0, 11.6], PAL.bone),
+      // Drawing arm reaching across to the string: also fills the gap between body and bow.
+      part(tube([[0, 0, 0, 1.5], [-3.0, -0.6, -4.2, 1.1], [-5.6, -1.0, -7.4, 0.85]], 8), [-1.6, 0, 16.0], PAL.robe),
+
+      // ---- QUIVER on the back (a facing cue: it is behind, with arrows above it)
+      part(cyl(1.9, 1.7, 7.0, 8), [3.2, 3.4, 11.6], PAL.leather),
+      ...[-1, 0, 1].map((k) => part(cyl(0.22, 0.22, 4.4, 5), [3.2 + k * 1.1, 3.4, 18.0], PAL.woodLit, { rotZ: 0.1 * k })),
     ],
   };
 }
@@ -199,66 +227,95 @@ function arcaneArcher(): Assembly {
 // ================================================================================================
 function stoneGolem(): Assembly {
   // DESIGN: three masses only — a huge left forearm, a huge right forearm, and a boulder torso
-  // between them. Everything else is subordinate. The previous attempt added knuckle ridges, brow
-  // bands, moss and a second torso block, which produced a noisy blob at sprite size. Detail that
-  // does not serve the big read is what makes low-poly art look unfinished.
+  // between them. Everything else is subordinate.
   //
-  // Proportions: shoulders wide, waist narrow, legs short and thick, head TINY.
+  // Two defects were fixed here after review, without changing the approved style:
+  //
+  //   "reads as soft and beige" — the stone was a warm sandy beige (`rock`/`rockLit`) that read as
+  //   sandstone and blended into the grass. It is now a COLDER, darker stone with harder specular and
+  //   stronger occlusion (`stone`/`stoneDeep`), and the torso is built from stacked angular PLATES
+  //   rather than one rounded block, so the form is chiselled rather than soft.
+  //
+  //   "facings 2/6 become an oblong slab" — the model was 31 wide by 14 deep, so from the side the
+  //   arms overlapped into a plank. The arms were pulled inward and the shoulders, fists and head
+  //   thrust FORWARD, taking depth to >= 55% of width. A side facing now shows a body with a chest
+  //   and a back, not a slab.
   const parts: Part[] = [];
 
   // ---- legs: two thick tapered columns, feet merged into the leg so there is no ankle seam
   for (const sx of [-1, 1] as const) {
     parts.push(
-      part(tube([[0, 0, 9.0, 4.6], [0.7 * sx, 0, 4.4, 4.0], [0.4 * sx, 0, 0.8, 4.4]], 10), [sx * 5.8, 0, 0], PAL.rockDeep),
+      part(tube([[0, 0, 9.0, 4.8], [0.7 * sx, 0, 4.4, 4.2], [0.4 * sx, 0, 1.0, 4.6]], 10), [sx * 6.4, 0, 0], PAL.stoneDeep),
     );
-    parts.push(part(bbox(7.0, 8.0, 4.0, 1.6), [sx * 5.8, 0, 0.8], PAL.rockDeep));
+    parts.push(part(bbox(7.4, 9.0, 3.2, 1.4), [sx * 6.4, 0, 1.0], PAL.stoneDeep));
+    // knee plate: an angular detail that survives to sprite size
+    parts.push(part(bbox(6.0, 6.4, 2.6, 1.0, 0.9), [sx * 6.4, -1.6, 5.6], PAL.stone));
   }
 
   // ---- hips
-  parts.push(part(bbox(15.0, 9.0, 5.6, 2.2, 0.94), [0, 0, 8.6], PAL.rock));
+  parts.push(part(bbox(16.0, 12.0, 5.6, 2.0, 0.94), [0, 0, 8.6], PAL.stone));
 
-  // ---- torso: one big boulder, wider than the hips, leaning slightly forward
-  parts.push(part(bbox(18.0, 11.0, 13.0, 3.0, 0.88), [0, -0.6, 13.4], PAL.rock));
-  // A single bright chest plane reads as a lit front face; no extra plates needed.
-  parts.push(part(bbox(11.0, 1.6, 7.0, 0.6), [0, -6.4, 17.4], PAL.rockLit));
+  // ---- torso: three stacked angular plates of decreasing width, so the form has steps in it rather
+  //      than reading as one smooth boulder
+  parts.push(part(bbox(19.0, 14.5, 6.0, 1.8, 0.92), [0, -0.6, 11.8], PAL.stone));
+  parts.push(part(bbox(20.5, 15.5, 6.4, 1.8, 0.88), [0, -0.9, 16.4], PAL.stone));
+  parts.push(part(bbox(17.0, 13.0, 4.6, 1.6, 0.9), [0, -1.0, 20.6], PAL.stoneLit));
 
-  // ---- shoulders: two boulders, clearly proud of the torso
-  parts.push(part(sph(6.0, 12), [-9.4, -0.4, 20.6], PAL.rockLit));
-  parts.push(part(sph(6.0, 12), [9.4, -0.4, 20.6], PAL.rockLit));
+  // ---- chest rune: one bold team shape, big enough to read at 20 px
+  parts.push(part(prism(4.6, 1.6, 6), [0, -8.6, 17.6], PAL.runeTeam, { rotX: Math.PI / 2 }));
 
-  // ---- arms: the defining feature. Upper arm short; forearm LONG and thicker than the upper arm,
-  //      hanging down past the knee. One tapered tube per arm, no elbow seam.
+  // ---- TEAM MARKER. The golem is the single largest unit body, so small team details vanish inside
+  //      it. Three bold team-tinted elements make ownership unmistakable in a pile: a wide rune band
+  //      across the chest, a pauldron stripe on each shoulder, and a crest on the head.
+  parts.push(part(bbox(15.0, 1.8, 3.2, 0.7), [0, -8.6, 13.4], PAL.runeTeam));
+  parts.push(part(bbox(15.0, 1.8, 2.4, 0.6), [0, -8.6, 20.8], PAL.trimTeam));
+  for (const sx of [-1, 1] as const) {
+    parts.push(part(bbox(7.4, 1.6, 2.0, 0.5), [sx * 9.4, -8.4, 25.6], PAL.trimTeam));
+  }
+  parts.push(part(bbox(3.4, 1.4, 1.4, 0.4), [0, -7.2, 25.4], PAL.trimTeam));
+  // glowing cracks: thin emissive slivers across the chest, for internal contrast at sprite size.
+  parts.push(part(bbox(0.9, 0.8, 7.0, 0.3), [-4.4, -8.8, 15.2], PAL.emberCore, { rotY: 0.22 }));
+  parts.push(part(bbox(0.7, 0.8, 5.0, 0.3), [5.2, -8.8, 14.0], PAL.emberDeep, { rotY: -0.28 }));
+
+  // ---- shoulders: two boulders, proud of the torso and thrust FORWARD so the profile has depth
+  for (const sx of [-1, 1] as const) {
+    parts.push(part(sph(6.6, 12), [sx * 9.4, -3.6, 20.6], PAL.stoneLit));
+    // flat chiselled cap on each shoulder: kills the "soft ball" read
+    parts.push(part(bbox(9.4, 10.0, 2.2, 1.0, 0.82), [sx * 9.4, -3.6, 25.0], PAL.stone, { rotZ: sx * 0.12 }));
+  }
+
+  // ---- arms: the defining feature. Forearm LONG and thicker than the upper arm, hanging past the
+  //      knee, and angled forward so the fists sit in front of the body.
   for (const sx of [-1, 1] as const) {
     parts.push(
       part(
         tube(
           [
-            [0, 0, 0, 3.2],
-            [sx * 1.4, 0, -4.0, 3.6],
-            [sx * 2.0, 0, -9.0, 3.9],
-            [sx * 2.0, 0, -12.6, 3.4],
+            [0, 0, 0, 3.4],
+            [sx * 0.6, -2.0, -4.2, 3.9],
+            [sx * 0.9, -3.4, -9.4, 4.3],
+            [sx * 0.9, -3.8, -13.0, 3.7],
           ],
           10,
         ),
-        [sx * 9.8, 0, 19.0],
-        PAL.rock,
+        [sx * 9.6, -2.2, 19.0],
+        PAL.stone,
       ),
     );
-    // fist: a single bevelled block, wider than the forearm
-    parts.push(part(bbox(7.6, 7.8, 7.6, 1.8), [sx * 11.8, 0, 3.4], PAL.rockDeep));
+    // fist: a wide bevelled block, thrust forward. The defining shape of the silhouette.
+    parts.push(part(bbox(9.2, 10.4, 8.2, 1.8), [sx * 10.4, -5.0, 3.4], PAL.stoneDeep));
+    // knuckle ridge
+    parts.push(part(bbox(9.4, 2.6, 2.0, 0.7), [sx * 10.4, -9.6, 6.2], PAL.stoneLit));
   }
 
-  // ---- head: TINY, sunk between the shoulders. This is what makes the mass read as a golem rather
-  //      than a person in armour.
-  parts.push(part(bbox(5.2, 4.6, 4.4, 1.2, 0.9), [0, -0.8, 25.8], PAL.rockDeep));
-  parts.push(part(sph(1.5, 8), [-1.5, -3.2, 27.0], PAL.eyeTeam));
-  parts.push(part(sph(1.5, 8), [1.5, -3.2, 27.0], PAL.eyeTeam));
-
-  // ---- team-colour chest rune: one bold shape, centred, big enough to read at 20 px
-  parts.push(part(prism(4.2, 1.4, 6), [0, -7.2, 20.0], PAL.runeTeam, { rotX: Math.PI / 2 }));
+  // ---- head: TINY, sunk between the shoulders and projecting FORWARD (which is also the facing cue)
+  parts.push(part(bbox(5.6, 5.4, 4.8, 1.2, 0.92), [0, -4.6, 24.6], PAL.stoneDeep));
+  parts.push(part(bbox(4.6, 1.2, 1.2, 0.4), [0, -7.0, 25.6], PAL.stoneLit));
+  parts.push(part(sph(1.6, 8), [-1.6, -6.8, 26.2], PAL.eyeTeam));
+  parts.push(part(sph(1.6, 8), [1.6, -6.8, 26.2], PAL.eyeTeam));
 
   // ---- moss: ONE patch, on one shoulder, asymmetric. Two patches read as noise.
-  parts.push(part(sph(4.4, 10), [-9.4, -3.0, 24.4], PAL.rockMoss, { scale: { x: 1.25, y: 1.0, z: 0.4 } }));
+  parts.push(part(sph(4.6, 10), [-10.2, -5.6, 24.6], PAL.rockMoss, { scale: { x: 1.25, y: 1.0, z: 0.4 } }));
 
   return { parts };
 }
@@ -284,8 +341,11 @@ function stormCaster(): Assembly {
       part(sph(0.95, 6), [-1.2, -2.4, 20.6], PAL.eyeTeam),
       part(sph(0.95, 6), [1.2, -2.4, 20.6], PAL.eyeTeam),
       // pointed hat
-      part(cone(4.4, 9.0, 9), [0, 0, 22.2], PAL.robeDeep, { rotX: 0.1 }),
-      part(prism(4.2, 0.9, 9), [0, 0, 23.0], PAL.trimTeam),
+      // The hat leans FORWARD and the crown ring sits with it, so the profile direction is readable.
+      part(cone(4.4, 9.0, 9), [0, -1.4, 22.2], PAL.robeDeep, { rotX: 0.32 }),
+      part(prism(4.2, 0.9, 9), [0, -1.4, 23.0], PAL.trimTeam, { rotX: 0.32 }),
+      // forward chest rune: the front face of the robe, which gives the body a clear "front"
+      part(bbox(5.0, 1.6, 3.4, 0.6), [0, -4.6, 14.6], PAL.trimTeam),
       // ---- staff: shaft planted at the caster's side and GRIPPED by a visible arm. Without the arm
       // the staff read as a separate object standing next to the unit.
       part(tube([[0, 0, 0, 0.8], [0.3, 0, 11.0, 0.66], [0.6, 0, 22.0, 0.5]], 7), [6.2, 0, 1.4], PAL.wood),
@@ -326,13 +386,6 @@ export const PILOT_UNITS: Record<string, Assembly> = {
 // ================================================================================================
 
 /** Shared plinth: a bevelled stone base every structure sits on. */
-function plinth(w: number, d: number, h = 3.0): Part[] {
-  return [
-    part(bbox(w + 4, d + 4, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
-    part(bbox(w + 1.5, d + 1.5, h, 1.4, 0.96), [0, 0, h * 0.36], PAL.rock),
-  ];
-}
-
 // ================================================================================================
 // SANCTUM — tiered command tower. The previous version collapsed into a "dome" because its tiers were
 // wide and closely stacked. Here each tier is markedly narrower with a visible setback ring between,
@@ -463,9 +516,13 @@ function stoneWall(): Assembly {
     );
   }
 
-  // team banner hanging on the front face, plus its pole (plate stands vertically already)
-  parts.push(part(cyl(0.5, 0.5, 13, 6), [0, -(WALL_D / 2 + 0.6), 1.8], PAL.woodLit));
-  parts.push(part(plate(5.4, 4.6, 8.0, 0.5), [0, -(WALL_D / 2 + 1.0), 6.0], PAL.bannerTeam));
+  // TEAM MARKER. The old banner sat behind the coping course on a wall only 5 units deep, so from the
+  // game camera it was fully occluded — a pixel diff of the four team renders measured 0.0% visible
+  // difference. The banner now hangs on the outward front face well BELOW the coping, pushed proud of
+  // the wall, and a team stripe runs along the coping so a marker is visible from any angle.
+  parts.push(part(cyl(0.55, 0.55, 10, 6), [0, -(WALL_D / 2 + 1.0), 1.8], PAL.woodLit));
+  parts.push(part(plate(7.0, 6.0, 10.0, 0.8), [0, -(WALL_D / 2 + 1.8), 4.4], PAL.bannerTeam));
+  parts.push(part(bbox(WALL_W - 2.5, 1.8, 1.8, 0.6), [0, -(WALL_D / 2 + 1.1), rows * blockH + 1.2], PAL.trimTeam));
 
   // moss creeping up one end
   parts.push(part(bbox(7.0, WALL_D + 1.4, 3.4, 0.8), [-11.0, 0, 1.6], PAL.rockMoss));

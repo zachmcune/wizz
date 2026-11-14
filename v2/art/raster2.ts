@@ -437,30 +437,41 @@ export function rasterise(asm: Assembly, opts: RasterOptions): RasterResult {
 /** Silhouette-derived outline: darkens the first ring outside the alpha shape. */
 function applyOutline(out: Uint8ClampedArray, w: number, h: number): void {
   const src = new Uint8ClampedArray(out);
+  // A TWO-pixel ring, not one. The atlas is authored at 128 px but drawn at ~31 px on a 667x375
+  // phone, so a 1 px outline shrinks to a quarter of a pixel and effectively disappears — which is
+  // why massed units merged into one grey pile. Two pixels survives the downscale as a visible dark
+  // edge, which is what keeps overlapping units separable.
+  const RING = 2;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
       if (src[i + 3]! > 40) continue;
       let near = false;
-      for (const [dx, dy] of [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ] as const) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        if (src[(ny * w + nx) * 4 + 3]! > 140) {
-          near = true;
-          break;
+      for (let r = 1; r <= RING && !near; r++) {
+        for (const [dx, dy] of [
+          [r, 0],
+          [-r, 0],
+          [0, r],
+          [0, -r],
+          [r, r],
+          [-r, r],
+          [r, -r],
+          [-r, -r],
+        ] as const) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          if (src[(ny * w + nx) * 4 + 3]! > 140) {
+            near = true;
+            break;
+          }
         }
       }
       if (!near) continue;
-      out[i] = 20;
-      out[i + 1] = 16;
-      out[i + 2] = 30;
-      out[i + 3] = 215;
+      out[i] = 18;
+      out[i + 1] = 14;
+      out[i + 2] = 26;
+      out[i + 3] = 235;
     }
   }
 }

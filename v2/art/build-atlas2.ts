@@ -15,7 +15,7 @@ import { buildTris, type Assembly } from './mesh2';
 import { TEAM_RAMP } from './palette';
 import { PILOT_UNITS, PILOT_BUILDINGS } from './pilot';
 
-const OUT = join(process.cwd(), 'public', 'atlas-pilot');
+const OUT = join(process.cwd(), 'docs/proof/atlas-archive/pilot');
 mkdirSync(OUT, { recursive: true });
 
 /**
