@@ -2,7 +2,7 @@
   "name": "arcane-dominion-v2",
   "private": true,
   "version": "2.0.0-phase1",
-  "description": "Arcane Dominion v2 — a separately built rebuild of the mobile-first 2.5D PWA RTS.",
+  "description": "Arcane Dominion v2 \u2014 a separately built rebuild of the mobile-first 2.5D PWA RTS.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate-data": "vitest run tests/data/validation.test.ts"
+    "validate-data": "vitest run tests/data/validation.test.ts",
+    "test:unit": "vitest run --exclude tests/sim/perf.test.ts"
   },
   "dependencies": {
     "pixi.js": "^8.23.0",

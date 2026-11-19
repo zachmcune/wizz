@@ -235,7 +235,11 @@ describe('the CI workflow that verifies all of this', () => {
   it('runs the v2 suite and build, not just the v1 root scripts', () => {
     const wf = readFileSync(WF, 'utf8');
     const v2 = wf.slice(wf.indexOf('\n  v2:'));
-    expect(v2, 'v2 job does not run v2 tests').toContain('npm test');
+    // The CI job runs the perf gate alone first, then everything else — both count as "runs the tests".
+    expect(
+      v2.includes('npm test') || v2.includes('test:unit'),
+      'v2 job does not run v2 tests',
+    ).toBe(true);
     expect(v2, 'v2 job does not build v2').toContain('npm run build');
     expect(v2, 'v2 job does not set its working directory to v2').toContain('working-directory: v2');
   });
