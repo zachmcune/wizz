@@ -72,12 +72,31 @@ jobs:
           cache-dependency-path: v2/package-lock.json
 
       - run: npm ci
+      - name: Install the Chromium the UI gates drive
+        run: npx playwright install --with-deps chromium
       - name: Typecheck
         run: npm run typecheck
       - name: "Lint (includes the UI style rules: no hard-coded colours, no purple chrome)"
         run: npm run lint
-      - name: Unit and proof tests
+      # The Phase 4 gates measure REAL rendered layout: HUD area, overlap between HUD zones, the Place
+      # button being topmost, .hud-cmd height, and unit separation. They need the app served, so Vite is
+      # started in the background and its port is handed to the tests through PROOF_BASE.
+      - name: Start the dev server
+        run: |
+          npx vite --host 127.0.0.1 --port 5343 --strictPort > /tmp/vite.log 2>&1 &
+          echo $! > /tmp/vite.pid
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:5343/app.html; then echo "vite up after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "vite failed to start"; cat /tmp/vite.log; exit 1
+      - name: Unit and proof tests (including the live UI gates)
         run: npm test
+        env:
+          PROOF_BASE: http://127.0.0.1:5343
+      - name: Stop the dev server
+        if: always()
+        run: kill "$(cat /tmp/vite.pid)" 2>/dev/null || true
       - name: Production build
         run: npm run build
       - name: Assert every deployed entry and font exists in the build output

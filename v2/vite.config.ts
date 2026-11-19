@@ -9,6 +9,7 @@ import { resolve } from 'node:path';
 //   gallery.html     the art review page (every sprite, all facings, all team colours)
 //   styleguide.html  the UI style reference (palette, type, components, states, icons, mockups)
 //   ui-proof.html    harness that mounts one screen at one density, for the proof captures
+//   app.html         the Phase 4 game UI
 // The gallery and the style guide are real deliverables for sign-off, not dev toys, so both are built
 // and deployed alongside the game rather than living only in the dev server.
 export default defineConfig({
@@ -26,6 +27,8 @@ export default defineConfig({
         styleguide: resolve(__dirname, 'styleguide.html'),
         // Proof harness: mounts one mockup at one density for the UI proof captures.
         uiproof: resolve(__dirname, 'ui-proof.html'),
+        // Phase 4 app: the real game UI (menu, lobby, match, sandbox, gallery).
+        app: resolve(__dirname, 'app.html'),
       },
     },
   },
