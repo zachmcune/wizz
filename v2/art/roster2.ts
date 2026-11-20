@@ -607,12 +607,14 @@ function scryingObelisk(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
   parts.push(part(prism(8.4, 34.0, 4), [0, 0, 2.6], PAL.violetDeep, { rotZ: Math.PI / 4 }));
   parts.push(part(prism(9.0, 1.4, 4), [0, 0, 4.0], PAL.brass, { rotZ: Math.PI / 4 }));
-  // TEAM MARKER: the monolith is a 4-sided prism 8.4 across, so a band "around" it at radius 6.6 was
-  // still buried inside the taper. These rings are deliberately OVERSIZED (radius 7.6 at the widest
-  // point, and a flared collar at the top) so they stand proud of the stone and are visible from above.
-  parts.push(part(cyl(8.2, 7.6, 3.0, 4), [0, 0, 14.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
-  parts.push(part(cyl(7.6, 7.0, 2.8, 4), [0, 0, 25.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
-  parts.push(part(cyl(7.4, 5.6, 2.4, 10), [0, 0, 34.0], PAL.trimTeam));
+  // TEAM MARKER: the monolith is a 4-sided prism with circumradius 8.4, so a band at radius 6.6 or even
+  // 8.2 sits INSIDE the stone and never shows. (The old comment claimed these rings were oversized; they
+  // were smaller than the prism they wrapped, which is why `scrying_obelisk` measured 1.0% visible team
+  // colour once the plinth stopped carrying a tinted slab.) These now clear the prism's circumradius and
+  // read as collars standing proud of the shaft from above.
+  parts.push(part(cyl(10.6, 10.0, 3.0, 4), [0, 0, 14.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(9.8, 9.2, 2.8, 4), [0, 0, 25.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(9.4, 7.2, 2.4, 10), [0, 0, 34.0], PAL.trimTeam));
   parts.push(part(bbox(1.6, 2.0, 20.0, 0.6), [0, -5.4, 8.0], PAL.crystalDeep));
   // the floating eye: two opposed cones forming an almond, with a hot iris
   for (const s of [-1, 1] as const) {
@@ -840,12 +842,13 @@ function thornGrove(): Assembly {
    * A low, square footing spans the full 2x2 footprint and gives the tendrils something to grow out of
    * that visibly meets the ground.
    *
-   * It is TEAM-TINTED moss rather than plain earth: the footing is now the largest surface on the model,
-   * and neutral earth made the grove read as unclaimed scenery. Ownership has to be legible at default
-   * zoom, and the ground the grove grows out of is the natural place to show it.
+   * It is now NEUTRAL EARTH with a thin team rim. Tinting the whole slab kept ownership readable but
+   * turned the grove's ground into a saturated pad that dominated the model — the ground a building
+   * stands on should read as ground, with the colour carried by a narrow inset band on top of it.
    */
-  parts.push(part(bbox(64.0, 64.0, 1.8, 2.0, 0.98), [0, 0, 0], PAL.runeTeam));
-  parts.push(part(cyl(28.0, 27.0, 1.4, 16), [0, 0, 1.6], PAL.rockMoss));
+  parts.push(part(bbox(64.0, 64.0, 1.8, 2.0, 0.98), [0, 0, 0], PAL.rockDeep));
+  parts.push(part(bbox(56.0, 56.0, 0.5, 1.4, 0.99), [0, 0, 1.8], PAL.trimTeam));
+  parts.push(part(cyl(28.0, 27.0, 1.4, 16), [0, 0, 2.1], PAL.rockMoss));
   // tangled body: overlapping flattened spheres, deliberately uneven
   for (const [x, y, z, r] of [
     [0, 0, 5.0, 7.4],

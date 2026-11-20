@@ -55,14 +55,24 @@ export const TILE_WORLD = 32;
 export function plinth(footprint: number, h = 3.0): Part[] {
   const w = footprint * TILE_WORLD;
   return [
-    // Lower course fills the footprint exactly, corner to corner.
-    part(bbox(w, w, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
     /**
-     * Upper course stepped in, so the foundation reads as two courses — and TEAM-TINTED, because it is
-     * the largest lit surface on a squat building. A neutral foundation of this size reads as unclaimed
-     * stone and swamps the small team bands higher up, so ownership becomes unreadable at default zoom.
+     * NEUTRAL STONE FOUNDATION, with the team colour as a THIN RIM.
+     *
+     * An earlier pass made the whole upper course team-tinted to keep ownership readable. Measured on
+     * screen, that turned the foundation into a large saturated slab — on a 2x2 tower the footing is the
+     * biggest single surface in the frame, so the building read as "a blue pad with a tower on it" rather
+     * than stone founded on the ground. Team colour is a marker, not a material.
+     *
+     * The structure is now: full-footprint stone footing, a stone step above it, and a narrow team rim
+     * inset from the edge. The rim is ~8% of the footing's area but sits proud where the key light hits,
+     * so it stays legible at default zoom while the ground contact stays stone-coloured.
      */
-    part(bbox(w - 2.5, w - 2.5, h, 1.4, 0.96), [0, 0, h * 0.36], PAL.trimTeam),
+    // Full footprint, corner to corner: this is what meets the tile edges.
+    part(bbox(w, w, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
+    // Stone step, so the foundation reads as two courses.
+    part(bbox(w - 2.5, w - 2.5, h * 0.9, 1.4, 0.96), [0, 0, h * 0.34], PAL.rock),
+    // Thin team rim, inset on the step's top face.
+    part(bbox(w - 6.0, w - 6.0, h * 0.24, 1.0, 0.99), [0, 0, h * 0.52], PAL.trimTeam),
   ];
 }
 
@@ -84,20 +94,21 @@ export function roundPlinth(footprint: number, h = 3.0): Part[] {
   const r = w / 2;
   return [
     /**
-     * Square footing: corner to corner on the footprint, so the base meets the tile edges.
+     * Square STONE footing, corner to corner on the footprint so the base meets the tile edges.
      *
-     * This course is TEAM-TINTED rather than plain rock. It is the largest single surface on a round
-     * tower — thousands of pixels of ground contact — so leaving it neutral made the whole building read
-     * as unclaimed stone and dropped the visible team-colour share on the round roster from ~4-7% to
-     * under 1%. A foundation course in the owner's colour is also just the correct read: it is how a
-     * player tells whose tower they are looking at from the default zoom.
+     * The team colour is a THIN RIM here, not the whole slab. Tinting the entire footing was the
+     * previous attempt at keeping ownership readable, and it produced exactly the complaint it earned:
+     * on a round tower the footing is the largest lit surface in frame, so the building read as a bright
+     * blue pad with a tower standing on it. Stone stays stone; the rim carries the colour.
      */
-    part(bbox(w, w, h * 0.45, 1.6, 0.96), [0, 0, 0], PAL.runeTeam),
-    // A rock band above it, so the team colour reads as a rim on a stone foundation rather than a plinth
-    // made of glowing metal.
-    part(bbox(w - 3.0, w - 3.0, h * 0.22, 1.4, 0.97), [0, 0, h * 0.44], PAL.rockDeep),
+    part(bbox(w, w, h * 0.45, 1.6, 0.96), [0, 0, 0], PAL.rockDeep),
+    // Stone step, so the foundation reads as two courses.
+    part(bbox(w - 3.0, w - 3.0, h * 0.34, 1.4, 0.97), [0, 0, h * 0.40], PAL.rock),
+    // Thin team rim on the step's top face: ~8% of the footing's area, and proud enough to catch the key
+    // light so the owner is readable at default zoom.
+    part(bbox(w - 7.0, w - 7.0, h * 0.2, 1.0, 0.99), [0, 0, h * 0.62], PAL.trimTeam),
     // Round drum above it, inscribed in the same square.
-    part(cyl(r - 1.0, r - 2.0, h, 12), [0, 0, h * 0.30], PAL.rock),
+    part(cyl(r - 2.0, r - 3.0, h, 12), [0, 0, h * 0.70], PAL.rock),
   ];
 }
 
