@@ -444,24 +444,55 @@ function arcaneGate(): Assembly {
  */
 function arcaneBunker(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
-  parts.push(part(cyl(17.0, 15.0, 9.0, 10), [0, 0, 2.2], PAL.rock));
-  parts.push(part(sph(15.4, 14), [0, 0, 11.0], PAL.violet, { scale: { x: 1.0, y: 1.0, z: 0.42 } }));
-  parts.push(part(cyl(11.0, 11.0, 1.0, 12), [0, 0, 15.4], PAL.violetDeep));
-  // firing slit with a team glow
-  parts.push(part(cyl(16.2, 16.2, 2.2, 12), [0, 0, 7.0], PAL.violetDeep));
-  // TEAM MARKER: a wide ring at the dome shoulder, where the top-down camera actually sees it (the
-  // old thin slit at z=7.4 measured 2.4% visible).
-  parts.push(part(cyl(15.8, 14.6, 2.6, 12), [0, 0, 12.4], PAL.trimTeam));
-  parts.push(part(cyl(16.6, 16.6, 0.9, 12), [0, 0, 7.4], PAL.runeTeam));
+  /**
+   * ARCANE BUNKER — SILHOUETTE: a squat armoured redoubt with a CRENELLATED PARAPET and a small watchturret.
+   *
+   * The bunker is legitimately the lowest-profile building in the roster — it is a shelter, not a tower — but it was
+   * measuring **aspect 0.33** as a smooth dome on a pad, i.e. a mound rather than a fortification. A bunker reads as a
+   * bunker because of its BATTLEMENTS and its firing slit, so those are now the dominant features: a square armoured
+   * block, merlons all round, and a stubby turret on one corner that breaks the flat roofline.
+   */
+  // Armoured block: square, not domed, so the corners read.
+  parts.push(part(bbox(30, 30, 14.0, 2.2, 0.9), [0, 0, 2.4], PAL.violetDeep));
+  parts.push(part(bbox(31.6, 31.6, 2.2, 0.9, 0.97), [0, 0, 16.2], PAL.violet));
+  /**
+   * CRENELLATIONS — eight merlons around the parapet.
+   *
+   * These are what make the silhouette read as a defended structure at phone zoom; they break the top edge into a
+   * repeating notch pattern that no other building in the roster has.
+   */
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const r = 13.6;
+    parts.push(
+      part(bbox(6.0, 5.0, 5.0, 0.9, 0.86), [Math.cos(a) * r, Math.sin(a) * r, 18.4], PAL.rockLit, {
+        rotZ: a,
+      }),
+    );
+  }
+  // Firing slit: a dark band with a team-lit inner line.
+  parts.push(part(bbox(27.0, 27.0, 3.0, 0.8), [0, 0, 8.0], PAL.rockDeep));
+  parts.push(part(bbox(28.4, 28.4, 1.2, 0.5), [0, 0, 8.6], PAL.runeTeam));
+  // Corner buttresses.
   for (const [sx, sy] of [
     [-1, -1],
     [1, -1],
     [-1, 1],
     [1, 1],
   ] as const) {
-    parts.push(part(bbox(6.0, 7.0, 7.0, 1.2, 0.8), [sx * 13.0, sy * 13.0, 2.4], PAL.rockLit));
+    parts.push(part(bbox(7.0, 8.0, 12.0, 1.2, 0.82), [sx * 13.0, sy * 13.0, 2.4], PAL.rockLit));
   }
-  parts.push(part(prism(2.6, 5.0, 6), [0, 0, 16.4], PAL.crystalHot));
+  /**
+   * WATCHTURRET on one corner — a small round tower that gives the building a single clear peak and breaks the
+   * symmetry of the parapet.
+   */
+  parts.push(part(cyl(5.6, 4.6, 24.0, 10), [12.0, -12.0, 6.0], PAL.rock));
+  parts.push(part(cyl(6.4, 6.4, 1.8, 10), [12.0, -12.0, 30.0], PAL.rockLit));
+  parts.push(part(cone(7.0, 7.0, 10), [12.0, -12.0, 31.8], PAL.violetDeep));
+  parts.push(part(prism(2.0, 5.0, 6), [12.0, -12.0, 38.4], PAL.crystalHot));
+  parts.push(part(bbox(3.0, 3.0, 2.0, 0.6), [12.0, -12.0, 12.0], PAL.runeTeam));
+  // Team ring at the dome shoulder.
+  parts.push(part(bbox(32.4, 32.4, 2.0, 0.6), [0, 0, 14.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -471,73 +502,160 @@ function arcaneBunker(): Assembly {
  */
 function attunementSpire(): Assembly {
   const parts: Part[] = [...roundPlinth(2, 3.0)];
-  parts.push(part(cyl(7.0, 4.0, 28.0, 10), [0, 0, 2.6], PAL.violet));
-  for (const z of [10.0, 18.0, 25.0]) {
-    parts.push(part(cyl(6.2, 5.6, 1.2, 10), [0, 0, z], PAL.brass));
+  /**
+   * ATTUNEMENT SPIRE — SILHOUETTE: a tapered PYLON carrying a large FLOATING CRYSTAL, with four intake vanes
+   * sweeping outward at the base.
+   *
+   * Zachary: "the Ley Conduit needs a pylon" — and this building needs to not be a plain cone. It is the mana
+   * harvester, so its shape is a crystal held aloft over a collection funnel. The vanes are what make it read as
+   * "gathering" rather than "pointing"; they also break the outline at the base, which is where the towers were all
+   * identical.
+   */
+  // Four intake vanes sweeping out and up, like a collector.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    parts.push(
+      part(
+        plate(9.0, 4.0, 12.0, 1.2),
+        [Math.cos(a) * 9.0, Math.sin(a) * 9.0, 4.0],
+        PAL.violetDeep,
+        { rotZ: a + Math.PI / 2, rotX: -0.35 },
+      ),
+    );
+    parts.push(part(cyl(1.0, 0.7, 7.0, 5), [Math.cos(a) * 6.0, Math.sin(a) * 6.0, 3.0], PAL.brass, { rotZ: Math.cos(a) * 0.4, rotX: Math.sin(a) * 0.4 }));
   }
-  // TEAM MARKER: high bands on the visible upper shaft, plus lit prong tips. The old single band sat
-  // low where the plinth occluded it (0.7% visible).
-  parts.push(part(cyl(5.4, 4.6, 2.2, 10), [0, 0, 20.4], PAL.runeTeam));
-  parts.push(part(cyl(4.6, 4.0, 1.8, 10), [0, 0, 26.0], PAL.trimTeam));
-  parts.push(part(bbox(13.4, 4.4, 2.2, 0.7), [0, 0, 29.2], PAL.trimTeam));
-  // the fork: three prongs
-  for (const [dx, tilt] of [
-    [-4.6, 0.32],
-    [0, 0],
-    [4.6, -0.32],
-  ] as const) {
-    parts.push(part(tube([[0, 0, 0, 1.5], [dx * 0.4, 0, 5.0, 1.2], [dx, 0, 10.0, 0.7]], 6), [0, 0, 29.4], PAL.violetLit, { rotZ: tilt }));
-    parts.push(part(sph(1.8, 9), [dx * 1.1, 0, 39.0], PAL.crystalHot));
+  // Tapered pylon.
+  parts.push(part(cyl(7.6, 3.4, 26.0, 8), [0, 0, 2.6], PAL.violet));
+  for (const z of [10.0, 18.0]) {
+    parts.push(part(cyl(6.2, 5.4, 1.4, 8), [0, 0, z], PAL.brass));
   }
-  parts.push(part(bbox(13.0, 4.0, 1.8, 0.7), [0, 0, 29.0], PAL.rockLit));
+  // The floating crystal: a large faceted shard held above the pylon by a visible gap, which is the read.
+  parts.push(part(prism(7.4, 13.0, 6), [0, 0, 34.0], PAL.crystal));
+  parts.push(part(prism(4.4, 7.0, 6), [0, 0, 44.0], PAL.crystalHot));
+  parts.push(part(prism(2.2, 3.4, 6), [0, 0, 50.0], PAL.crystalHot));
+  // Containment rings around the crystal.
+  parts.push(part(cyl(9.4, 9.4, 1.0, 12), [0, 0, 33.0], PAL.aether));
+  parts.push(part(cyl(7.0, 7.0, 0.9, 12), [0, 0, 40.0], PAL.aether));
+  // Team bands, high and wide.
+  parts.push(part(cyl(6.0, 5.2, 2.4, 8), [0, 0, 21.0], PAL.runeTeam));
+  parts.push(part(cyl(9.8, 9.8, 1.4, 12), [0, 0, 33.8], PAL.trimTeam));
   return { parts };
 }
 
 /**
- * RESONANCE VAULT — 2x2 upgrade. SILHOUETTE: a sealed CUBE with brass banding. In a roster of spires,
- * "the one that is just a heavy box" is itself the read.
+ * RESONANCE VAULT — 2x2 upgrade. SILHOUETTE: a VAULT — a heavy square keep with a buttressed arched door, a domed
+ * roof, and crystal stores stacked against its flanks.
+ *
+ * Zachary: "the Resonance Vault needs a sturdy vault or crystal store." Before, it was a plain cube with four corner
+ * posts, which measured IoU 0.888 against the Inferno Beacon (also a box) — a cube is the least identifiable shape in
+ * the roster.
+ *
+ * The identity now comes from the ARCH: a recessed doorway with a curved head, flanked by buttresses, which no other
+ * building has. The dome and the stacked crystals give it a skyline that is neither a flat box nor a spire.
  */
 function resonanceVault(): Assembly {
   const parts: Part[] = [...plinth(2, 2.8)];
-  parts.push(part(bbox(30, 30, 20.0, 3.0, 0.96), [0, 0, 2.6], PAL.violetDeep));
-  for (const [sx, sy] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ] as const) {
-    parts.push(part(bbox(4.6, 4.6, 21.0, 1.0), [sx * 13.0, sy * 13.0, 2.4], PAL.brass));
+  // Main keep, slightly tapered so it is not a literal cube.
+  parts.push(part(bbox(30, 30, 17.0, 3.0, 0.94), [0, 0, 2.6], PAL.violetDeep));
+  parts.push(part(bbox(31.0, 31.0, 1.6, 0.8), [0, 0, 19.6], PAL.brassDeep));
+  /**
+   * THE ARCHED DOOR — the identifying feature.
+   *
+   * A recessed dark opening with a semicircular head built from three stacked rings of decreasing width. It reads as
+   * a vault door from any angle and is unlike any other silhouette element in the roster.
+   */
+  parts.push(part(bbox(13.0, 1.6, 10.0, 0.8), [0, -15.6, 3.4], PAL.rockDeep));
+  parts.push(part(cyl(6.5, 6.5, 1.6, 12), [0, -15.6, 13.0], PAL.rockDeep, { rotX: Math.PI / 2 }));
+  parts.push(part(bbox(9.4, 1.2, 6.4, 0.6), [0, -16.2, 4.0], PAL.brass));
+  parts.push(part(prism(3.4, 1.0, 8), [0, -16.4, 8.0], PAL.runeTeam, { rotX: Math.PI / 2 }));
+  // Buttresses either side of the door, which widen the base exactly where the arch is.
+  for (const sx of [-1, 1] as const) {
+    parts.push(part(bbox(5.0, 6.0, 13.0, 1.0, 0.8), [sx * 12.0, -13.0, 3.0], PAL.rock));
   }
-  for (const z of [8.0, 15.0]) {
-    parts.push(part(bbox(31.0, 31.0, 2.0, 0.8), [0, 0, z], PAL.brassDeep));
+  // Domed roof.
+  parts.push(part(sph(15.0, 14), [0, 0, 22.0], PAL.violet, { scale: { x: 1, y: 1, z: 0.62 } }));
+  parts.push(part(cyl(3.4, 2.2, 9.0, 8), [0, 0, 30.0], PAL.brass));
+  parts.push(part(sph(3.0, 10), [0, 0, 40.0], PAL.crystalHot));
+  parts.push(part(prism(1.8, 5.0, 6), [0, 0, 44.0], PAL.crystal));
+  // Crystal stores: stacked shards leaning against the flanks, the "crystal store" read.
+  for (const sx of [-1, 1] as const) {
+    parts.push(part(prism(2.6, 11.0, 5), [sx * 15.4, 8.0, 3.0], PAL.crystal, { rotZ: sx * 0.22 }));
+    parts.push(part(prism(2.0, 7.6, 5), [sx * 12.6, 12.4, 3.0], PAL.crystalDeep, { rotZ: sx * 0.3 }));
   }
-  // TEAM MARKER: raised clear of the plinth skirt onto the front face, and widened into a band that
-  // wraps both visible sides. Measured at 0.2% visible before, because the old lock was occluded.
-  parts.push(part(bbox(11.0, 1.8, 11.0, 1.0), [0, -16.0, 15.0], PAL.rockLit));
-  parts.push(part(prism(5.0, 1.6, 6), [0, -16.8, 15.0], PAL.runeTeam, { rotX: Math.PI / 2 }));
-  parts.push(part(bbox(31.4, 31.4, 2.2, 0.7), [0, 0, 21.6], PAL.trimTeam));
-  parts.push(part(cone(20.0, 5.0, 4), [0, 0, 22.6], PAL.violet, { rotZ: Math.PI / 4 }));
-  parts.push(part(sph(2.8, 10), [0, 0, 27.6], PAL.crystalHot));
+  // Team band around the drum and across the arch.
+  parts.push(part(bbox(31.4, 31.4, 2.0, 0.6), [0, 0, 16.4], PAL.trimTeam));
   return { parts };
 }
 
 /**
- * LEY CONDUIT — 2x2 power. SILHOUETTE: a lattice mast with floating energy rings around it.
+ * LEY CONDUIT — 2x2 power. SILHOUETTE: a lattice PYLON — a wide A-frame tower with a crossarm at the top and
+ * insulators, the unmistakable shape of an electricity pylon.
+ *
+ * Zachary: "the Ley Conduit needs a pylon." It was a narrow mast with three floating rings, which is the same
+ * silhouette as every other thin tower in the roster (IoU 0.831 against the Arcane Bunker, itself a box).
+ *
+ * A pylon is a very specific shape: two legs splaying from a narrow waist to a wide foot, crossarms projecting
+ * horizontally, and a peak. That A-frame with outriggers appears nowhere else in the roster, and it says "power
+ * transmission" immediately.
  */
 function leyConduit(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
-  parts.push(part(bbox(9.0, 9.0, 22.0, 1.4, 0.5), [0, 0, 2.4], PAL.steelDeep));
-  for (const z of [8.0, 14.0, 20.0]) {
-    parts.push(part(bbox(11.0, 11.0, 1.2, 0.5), [0, 0, z], PAL.steel));
+  /**
+   * THE A-FRAME.
+   *
+   * Four legs, each a tapered tube running from a wide foot up to a narrow waist, then continuing to the peak. Built
+   * as tubes so the taper reads; the wide foot is what gives the pylon its triangular profile.
+   */
+  const FOOT = 13.0;
+  const WAIST = 4.2;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const fx = Math.cos(a) * FOOT;
+    const fy = Math.sin(a) * FOOT;
+    const wx = Math.cos(a) * WAIST;
+    const wy = Math.sin(a) * WAIST;
+    parts.push(
+      part(tube([[fx, fy, 0, 1.5], [wx, wy, 20.0, 1.0], [wx * 0.7, wy * 0.7, 34.0, 0.8]], 6), [0, 0, 2.4], PAL.steelDeep),
+    );
   }
-  parts.push(part(cyl(9.4, 9.4, 0.9, 14), [0, 0, 12.0], PAL.crystal));
-  parts.push(part(cyl(7.4, 7.4, 0.8, 14), [0, 0, 19.0], PAL.aether));
-  parts.push(part(cyl(5.4, 5.4, 0.7, 12), [0, 0, 25.0], PAL.crystalHot));
-  parts.push(part(sph(3.4, 12), [0, 0, 16.0], PAL.crystalHot));
-  parts.push(part(prism(4.2, 1.0, 10), [0, 0, 3.0], PAL.runeTeam));
-  for (let a = 0; a < 4; a++) {
-    const ang = (a / 4) * Math.PI * 2 + Math.PI / 4;
-    parts.push(part(tube([[0, 0, 8.0, 1.0], [Math.cos(ang) * 3.0, Math.sin(ang) * 3.0, 4.0, 0.8], [Math.cos(ang) * 6.4, Math.sin(ang) * 6.4, 0.4, 0.7]], 5), [0, 0, 2.4], PAL.steelDeep));
+  // Horizontal bracing rings at two heights, which is what makes lattice read.
+  for (const [z, r] of [
+    [9.0, 11.0],
+    [20.0, 4.6],
+    [28.0, 3.6],
+  ] as const) {
+    for (let i = 0; i < 4; i++) {
+      const a0 = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const a1 = ((i + 1) / 4) * Math.PI * 2 + Math.PI / 4;
+      parts.push(
+        part(
+          tube([[Math.cos(a0) * r, Math.sin(a0) * r, 0, 0.45], [Math.cos(a1) * r, Math.sin(a1) * r, 0, 0.45]], 4),
+          [0, 0, z],
+          PAL.steel,
+        ),
+      );
+    }
+  }
+  /**
+   * CROSSARMS — two horizontal beams projecting well beyond the tower, each carrying insulator stacks. These are
+   * the widest thing on the building and the reason a pylon is recognisable at any distance.
+   */
+  for (const [z, span] of [
+    [30.0, 15.0],
+    [24.0, 12.0],
+  ] as const) {
+    parts.push(part(bbox(span * 2, 2.4, 1.8, 0.6), [0, 0, z], PAL.steel));
+    for (const s of [-1, 1] as const) {
+      parts.push(part(cyl(1.5, 1.2, 3.4, 6), [s * span * 0.82, 0, z + 1.6], PAL.crystal, { rotZ: 0 }));
+      parts.push(part(sph(1.4, 8), [s * span * 0.82, 0, z + 3.6], PAL.crystalHot));
+    }
+  }
+  // Peak.
+  parts.push(part(cone(2.6, 7.0, 6), [0, 0, 34.0], PAL.steel));
+  parts.push(part(sph(1.8, 9), [0, 0, 41.6], PAL.crystalHot));
+  // Team bands on the crossarms, where they are widest and most visible.
+  for (const z of [23.0, 29.0]) {
+    parts.push(part(bbox(26.0, 2.8, 1.2, 0.5), [0, 0, z], PAL.runeTeam));
   }
   return { parts };
 }
@@ -548,20 +666,34 @@ function leyConduit(): Assembly {
  */
 function astralSpire(): Assembly {
   const parts: Part[] = [...roundPlinth(3, 3.6)];
-  parts.push(part(cyl(18.0, 16.0, 12.0, 14), [0, 0, 3.0], PAL.rock));
-  parts.push(part(cyl(14.0, 12.0, 12.0, 12), [0, 0, 15.0], PAL.violet));
-  parts.push(part(cyl(10.0, 8.4, 12.0, 12), [0, 0, 27.0], PAL.violetLit));
-  parts.push(part(cyl(6.4, 5.0, 10.0, 10), [0, 0, 39.0], PAL.violet));
+  parts.push(part(cyl(18.0, 16.0, 14.0, 14), [0, 0, 3.0], PAL.rock));
+  parts.push(part(cyl(14.0, 12.0, 16.0, 12), [0, 0, 17.0], PAL.violet));
+  parts.push(part(cyl(9.6, 7.6, 18.0, 12), [0, 0, 33.0], PAL.violetLit));
+  parts.push(part(cyl(5.4, 4.0, 16.0, 10), [0, 0, 51.0], PAL.violet));
+  parts.push(part(cyl(3.2, 2.4, 12.0, 8), [0, 0, 67.0], PAL.violetLit));
   // TEAM MARKER: the brass rings read as gold at every team, so the spire looked identical for all
   // four players (measured 1.4% visible). These are wide TEAM-coloured bands sitting where the camera
   // sees them, between the drums.
-  for (const z of [15.0, 27.0, 39.0]) {
-    parts.push(part(prism(15.6, 1.4, 12), [0, 0, z], PAL.brass));
+  for (const z of [17.0, 33.0, 51.0]) {
+    parts.push(part(prism(15.6, 1.6, 12), [0, 0, z], PAL.brass));
   }
-  parts.push(part(cyl(16.4, 15.2, 3.0, 14), [0, 0, 15.0], PAL.trimTeam));
-  parts.push(part(cyl(12.4, 11.4, 2.8, 12), [0, 0, 27.0], PAL.runeTeam));
-  parts.push(part(cyl(8.8, 7.8, 2.6, 12), [0, 0, 39.0], PAL.trimTeam));
-  parts.push(part(prism(4.4, 1.2, 8), [0, 0, 20.0], PAL.runeTeam));
+  parts.push(part(cyl(16.4, 15.2, 3.2, 14), [0, 0, 17.0], PAL.trimTeam));
+  parts.push(part(cyl(11.8, 10.8, 3.0, 12), [0, 0, 33.0], PAL.runeTeam));
+  parts.push(part(cyl(7.6, 6.8, 2.8, 12), [0, 0, 51.0], PAL.trimTeam));
+  parts.push(part(prism(4.4, 1.2, 8), [0, 0, 24.0], PAL.runeTeam));
+  /**
+   * THE STAR — a wide floating crystal above the spire tip, held clear by a visible gap.
+   *
+   * This is what makes the Astral Spire read as a superweapon rather than "the tallest tower": the silhouette ends in a
+   * detached, much wider form, which nothing else in the roster has.
+   */
+  parts.push(part(prism(11.0, 2.2, 8), [0, 0, 84.0], PAL.aether));
+  parts.push(part(prism(7.4, 9.0, 6), [0, 0, 88.0], PAL.crystalHot));
+  parts.push(part(prism(4.2, 5.0, 6), [0, 0, 94.0], PAL.crystalHot));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    parts.push(part(prism(1.8, 6.0, 5), [Math.cos(a) * 12.0, Math.sin(a) * 12.0, 85.0], PAL.crystal, { rotZ: a }));
+  }
   // the star
   parts.push(part(sph(6.6, 14), [0, 0, 56.0], PAL.crystalHot));
   parts.push(part(sph(3.4, 10), [0, 0, 56.0], PAL.eyeTeam));
@@ -585,24 +717,61 @@ function astralSpire(): Assembly {
  * The only structure with a long horizontal element.
  */
 function celestialCannon(): Assembly {
-  const parts: Part[] = [...plinth(3, 3.2)];
-  parts.push(part(cyl(19.0, 17.0, 9.0, 10), [0, 0, 2.6], PAL.rock));
-  parts.push(part(cyl(20.0, 20.0, 1.4, 10), [0, 0, 11.4], PAL.rockLit));
-  for (let a = 0; a < 4; a++) {
-    const ang = (a / 4) * Math.PI * 2 + Math.PI / 4;
-    parts.push(part(tube([[0, 0, 9.0, 1.8], [Math.cos(ang) * 7.0, Math.sin(ang) * 7.0, 4.0, 1.4], [Math.cos(ang) * 12.0, Math.sin(ang) * 12.0, 0.6, 1.2]], 6), [0, 0, 2.6], PAL.steelDeep));
-    parts.push(part(bbox(5.0, 5.0, 2.0, 0.8), [Math.cos(ang) * 13.0, Math.sin(ang) * 13.0, 1.2], PAL.steelDeep));
-  }
-  parts.push(part(bbox(20.0, 18.0, 11.0, 2.2, 0.9), [0, 0, 12.0], PAL.violet));
-  parts.push(part(prism(9.0, 1.2, 10), [0, 0, 23.4], PAL.runeTeam));
-  // the barrel: one massive tapered tube angled up and forward
-  parts.push(part(tube([[0, 0, 0, 5.0], [0, -10.0, 0.6, 4.2], [0, -20.0, 1.4, 3.6], [0, -27.0, 2.0, 3.2]], 12), [0, -1.0, 20.0], PAL.steel));
-  parts.push(part(cyl(3.6, 3.6, 2.0, 12), [0, -28.6, 22.4], PAL.brass));
-  parts.push(part(sph(2.8, 10), [0, -30.6, 22.6], PAL.crystalHot));
-  parts.push(part(bbox(9.0, 9.0, 9.0, 1.8), [0, -1.0, 20.0], PAL.steelDeep));
+  const parts: Part[] = [...plinth(3, 3.0)];
+  /**
+   * CELESTIAL CANNON — SILHOUETTE: a long BARREL projecting far beyond its own base, on a squat turret.
+   *
+   * Zachary: "towers need distinct weapon heads (frost crystal, flame brazier, storm coil, cannon barrel)." The
+   * previous version measured **IoU 0.974** against the Golem Forge and 0.953 against the Waystone Camp: it was a
+   * box with a short stub, and the barrel barely left the footprint, so nothing about the outline said "artillery".
+   *
+   * The identifying shape is now a barrel that overhangs the base by a third of its own width, mounted on a squat
+   * tapered turret with recoil rails beneath it. Nothing else in the roster has a horizontal projection that long.
+   */
+  /**
+   * A NARROW TURRET ON A WIDE PLINTH, WITH VISIBLE DAYLIGHT BETWEEN.
+   *
+   * The silhouette needs a WAIST. Every 3x3 building in the roster fills its full 96x96 base, so at normalised
+   * scale they all read as "a filled square with a different top" — which is why the cannon still measured 0.968
+   * against the Golem Forge even after its barrel was lengthened. Two slim legs carrying the turret above open
+   * ground create a distinctive H-shaped profile with holes a solid mass cannot have.
+   */
   for (const s of [-1, 1] as const) {
-    parts.push(part(cyl(1.6, 1.4, 12.0, 8), [s * 4.4, -10.0, 19.4], PAL.brass, { rotX: -Math.PI / 2 }));
+    parts.push(part(bbox(9.0, 14.0, 34.0, 1.4, 0.86), [s * 13.0, 2.0, 2.6], PAL.rockDeep));
   }
+  // The turret deck spans between the legs, above open space.
+  parts.push(part(bbox(38.0, 22.0, 4.0, 1.4, 0.94), [0, 2.0, 36.6], PAL.rockLit));
+  parts.push(part(bbox(30.0, 18.0, 3.0, 1.2, 0.9), [0, 2.0, 40.6], PAL.violet));
+  parts.push(part(prism(7.0, 1.2, 10), [0, 2.0, 43.6], PAL.runeTeam));
+
+  /**
+   * THE BARREL — the whole point of the building. Long, forward-projecting, tapering, with reinforcing rings and a
+   * flared muzzle. It reaches ~30 world units past the turret, which is what makes this silhouette unique.
+   */
+  parts.push(part(tube([[0, 0, 0, 5.6], [0, -12.0, 0.8, 4.8], [0, -24.0, 1.6, 4.2], [0, -32.0, 2.2, 3.8]], 12), [0, 1.0, 42.6], PAL.steel));
+  // Muzzle brake: a flared collar plus a slot, so the business end reads at phone zoom.
+  parts.push(part(cyl(5.6, 6.2, 2.6, 12), [0, -33.0, 42.6], PAL.brass));
+  parts.push(part(prism(4.4, 1.6, 12), [0, -34.6, 43.0], PAL.steelDeep));
+  parts.push(part(sph(2.4, 10), [0, -35.4, 43.2], PAL.crystalHot));
+  // Reinforcing rings along the barrel.
+  for (const [dy, dz] of [
+    [-8.0, 0.4],
+    [-18.0, 1.2],
+    [-26.0, 1.8],
+  ] as const) {
+    parts.push(part(cyl(4.6, 4.6, 1.6, 12), [0, dy, 40.0 + dz], PAL.brassDeep, { rotX: -Math.PI / 2 }));
+  }
+  // Breech block behind the barrel.
+  parts.push(part(bbox(11.0, 11.0, 11.0, 2.0), [0, 5.0, 39.6], PAL.steelDeep));
+  // Recoil rails: two long tubes running back under the barrel, which reinforce the horizontal read.
+  for (const s of [-1, 1] as const) {
+    parts.push(part(cyl(1.4, 1.2, 20.0, 8), [s * 4.8, -6.0, 38.0], PAL.brass, { rotX: -Math.PI / 2 }));
+  }
+  // Counterweight at the rear, so the mass is visibly balanced against the barrel.
+  parts.push(part(bbox(13.0, 7.0, 8.0, 1.6, 0.8), [0, 12.0, 34.0], PAL.ironOld));
+  // Team band across the turret and on the muzzle collar.
+  parts.push(part(bbox(31.0, 19.0, 1.8, 0.6), [0, 2.0, 38.4], PAL.trimTeam));
+  parts.push(part(cyl(6.0, 6.0, 1.2, 12), [0, -33.0, 43.8], PAL.runeTeam));
   return { parts };
 }
 
@@ -614,26 +783,42 @@ function celestialCannon(): Assembly {
  */
 function scryingObelisk(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
-  parts.push(part(prism(8.4, 34.0, 4), [0, 0, 2.6], PAL.violetDeep, { rotZ: Math.PI / 4 }));
-  parts.push(part(prism(9.0, 1.4, 4), [0, 0, 4.0], PAL.brass, { rotZ: Math.PI / 4 }));
-  // TEAM MARKER: the monolith is a 4-sided prism with circumradius 8.4, so a band at radius 6.6 or even
-  // 8.2 sits INSIDE the stone and never shows. (The old comment claimed these rings were oversized; they
-  // were smaller than the prism they wrapped, which is why `scrying_obelisk` measured 1.0% visible team
-  // colour once the plinth stopped carrying a tinted slab.) These now clear the prism's circumradius and
-  // read as collars standing proud of the shaft from above.
-  parts.push(part(cyl(10.6, 10.0, 3.0, 4), [0, 0, 14.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
-  parts.push(part(cyl(9.8, 9.2, 2.8, 4), [0, 0, 25.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
-  parts.push(part(cyl(9.4, 7.2, 2.4, 10), [0, 0, 34.0], PAL.trimTeam));
-  parts.push(part(bbox(1.6, 2.0, 20.0, 0.6), [0, -5.4, 8.0], PAL.crystalDeep));
-  // the floating eye: two opposed cones forming an almond, with a hot iris
+  /**
+   * SCRYING OBELISK — SILHOUETTE: a TALL NARROW MONOLITH carrying a large round LENS on a forked bracket, with a
+   * hooded lamp below it. It powers the minimap, so the shape is an eye looking outward.
+   *
+   * Zachary: "the Scrying Obelisk needs a tall obelisk with an eye or lens." It had an eye, but the shaft was a squat
+   * 4-sided prism with wide collars, and those collars matched the Ley Conduit's crossarm profile at 0.897 IoU — two
+   * buildings whose distinguishing feature was a horizontal band at a similar height.
+   *
+   * The monolith is now much TALLER and NARROWER (8 wide against 52 high, a 6.5:1 shaft), which by itself separates
+   * it from every other tower, and the lens is a large distinct disc rather than a small sphere.
+   */
+  // Tall, narrow, tapered monolith — deliberately the thinnest tall building in the roster.
+  parts.push(part(prism(5.0, 44.0, 4), [0, 0, 2.6], PAL.violetDeep, { rotZ: Math.PI / 4 }));
+  parts.push(part(prism(6.4, 2.2, 4), [0, 0, 4.0], PAL.brass, { rotZ: Math.PI / 4 }));
+  parts.push(part(prism(4.2, 6.0, 4), [0, 0, 46.6], PAL.violetLit, { rotZ: Math.PI / 4 }));
+  /**
+   * THE LENS — a wide disc held in a forked bracket above the shaft.
+   *
+   * Its diameter (17) is more than three times the shaft's, which gives the silhouette a distinctive
+   * "lollipop" head that no other tower has.
+   */
   for (const s of [-1, 1] as const) {
-    parts.push(part(cone(4.6, 4.2, 10), [0, 0, s * 2.0], PAL.violetLit, { rotX: (s * Math.PI) / 2, pos: { x: 0, y: 0, z: 38.0 } }));
+    parts.push(
+      part(tube([[s * 1.4, 0, 0, 1.0], [s * 4.6, 0, 4.0, 0.8], [s * 7.0, 0, 7.0, 0.6]], 5), [0, 0, 52.0], PAL.brass),
+    );
   }
-  parts.push(part(sph(2.8, 12), [0, -3.4, 38.0], PAL.eyeTeam));
-  parts.push(part(sph(1.4, 8), [0, -4.4, 38.0], PAL.crystalHot));
-  for (const s of [-1, 1] as const) {
-    parts.push(part(tube([[0, 0, 0, 0.9], [s * 2.0, 0, 2.6, 0.6], [s * 2.6, 0, 5.2, 0.35]], 5), [0, 0, 35.0], PAL.brass));
-  }
+  parts.push(part(cyl(8.6, 8.6, 1.6, 16), [0, 0, 61.0], PAL.brassDeep, { rotX: Math.PI / 2 }));
+  parts.push(part(cyl(7.4, 7.4, 1.4, 16), [0, 0, 61.0], PAL.crystal, { rotX: Math.PI / 2 }));
+  parts.push(part(sph(4.0, 12), [0, -1.6, 61.0], PAL.eyeTeam));
+  parts.push(part(sph(2.0, 10), [0, -3.4, 61.0], PAL.crystalHot));
+  // Hooded lamp on the shaft: a small lit recess, which reads as "active" at phone zoom.
+  parts.push(part(bbox(7.0, 1.6, 5.0, 0.6), [0, -5.4, 30.0], PAL.rockDeep));
+  parts.push(part(bbox(4.6, 1.2, 3.4, 0.5), [0, -6.0, 30.4], PAL.crystalHot));
+  // Team: slim collar bands, deliberately NARROW so they cannot read as crossarms.
+  parts.push(part(cyl(6.6, 6.2, 2.4, 4), [0, 0, 16.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(5.8, 5.4, 2.0, 4), [0, 0, 38.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
   return { parts };
 }
 
@@ -644,26 +829,49 @@ function scryingObelisk(): Assembly {
 function summoningCircle(): Assembly {
   const parts: Part[] = [];
   /**
-   * SQUARE STONE FOOTING, round ritual dais above it.
+   * SUMMONING CIRCLE — SILHOUETTE: a ring of TALL STANDING STONES around a glowing rune floor.
    *
-   * A circle cannot meet a square footprint: inscribed, it reaches only the edge midpoints, so its
-   * projected width is 1/sqrt(2) (70.7%) of the tile diamond and the whole building reads as a coin
-   * resting inside the tile rather than a foundation meeting the ground. The footing course is square
-   * and spans the full 2x2 footprint; the circle is then correctly inscribed on top of it.
+   * Zachary: "the Summoning Circle needs standing stones around a glowing rune ring." The previous version was a
+   * flat dais with eight 8-unit stubs, which measured **aspect 0.30** (three times as wide as it was tall) and an
+   * IoU of **1.000** against the Thorn Grove — the two buildings were literally the same silhouette. It read as a
+   * plate of stone, not as a place where something is summoned.
+   *
+   * The stones are now 26-34 units tall (taller than the 64-unit dais is wide is not possible on 2x2, but they are
+   * over half its width, which is enough to break the flat profile), uneven in height and lean so the ring reads as
+   * ancient rather than machined, and the rune floor glows between them.
    */
   parts.push(part(bbox(64.0, 64.0, 2.2, 1.6, 0.97), [0, 0, 0], PAL.rockDeep));
-  parts.push(part(cyl(30.0, 29.0, 1.0, 20), [0, 0, 2.2], PAL.rock));
-  parts.push(part(cyl(23.0, 23.0, 0.35, 20), [0, 0, 3.2], PAL.emberDeep));
-  parts.push(part(cyl(14.0, 14.0, 0.35, 20), [0, 0, 3.3], PAL.emberCore));
-  parts.push(part(cyl(25.0, 25.0, 0.2, 20), [0, 0, 3.4], PAL.runeTeam));
+  parts.push(part(cyl(30.0, 29.0, 1.2, 20), [0, 0, 2.2], PAL.rock));
+  // Glowing rune floor: two rings and a hot core, so the centre reads as active even at phone zoom.
+  parts.push(part(cyl(25.0, 25.0, 0.4, 20), [0, 0, 3.4], PAL.emberDeep));
+  parts.push(part(cyl(18.0, 18.0, 0.35, 20), [0, 0, 3.5], PAL.emberCore));
+  parts.push(part(cyl(9.0, 9.0, 0.3, 16), [0, 0, 3.6], PAL.crystalHot));
+  parts.push(part(cyl(22.0, 22.0, 0.22, 20), [0, 0, 3.7], PAL.runeTeam));
+  /**
+   * THE STANDING STONES.
+   *
+   * Eight slabs on a ring, each a tapered box leaning slightly outward, with heights deliberately uneven (26 to 34
+   * units) so the top edge is a broken skyline rather than a rim. A lit sigil caps each one, which is what carries
+   * the "ritual" read at small sizes.
+   */
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    const h = 8.0 + ((i * 5) % 4) * 1.4;
-    parts.push(part(bbox(3.4, 2.4, h, 0.7, 0.86), [Math.cos(a) * 14.6, Math.sin(a) * 14.6, 3.0], PAL.ironOld, { rotZ: a + Math.PI / 2 }));
-    parts.push(part(sph(1.2, 8), [Math.cos(a) * 14.6, Math.sin(a) * 14.6, 3.0 + h], PAL.emberCore));
+    const h = 26 + ((i * 7) % 5) * 2.0;
+    const lean = (((i % 3) - 1) * 0.05);
+    const x = Math.cos(a) * 23.0;
+    const y = Math.sin(a) * 23.0;
+    parts.push(
+      part(bbox(7.6, 5.0, h, 0.8, 0.72), [x, y, 3.4], PAL.ironOld, { rotZ: a + Math.PI / 2, rotX: lean }),
+    );
+    // Sigil notch near the top of each stone.
+    parts.push(part(bbox(3.6, 1.6, 3.0, 0.5), [x, y, 3.4 + h * 0.82], PAL.emberCore, { rotZ: a + Math.PI / 2 }));
+    parts.push(part(prism(1.5, 2.2, 6), [x, y, 3.4 + h + 1.0], PAL.crystalHot));
   }
-  parts.push(part(sph(3.6, 12), [0, 0, 11.0], PAL.emberCore));
-  parts.push(part(prism(2.0, 5.0, 6), [0, 0, 14.0], PAL.emberDeep));
+  // Central brazier column: the tallest element, so the building has one clear peak.
+  parts.push(part(cyl(6.4, 4.4, 12.0, 8), [0, 0, 3.4], PAL.stoneDeep));
+  parts.push(part(cyl(7.6, 5.0, 2.4, 8), [0, 0, 15.4], PAL.brassDeep));
+  parts.push(part(sph(4.6, 12), [0, 0, 19.6], PAL.emberCore));
+  parts.push(part(prism(2.6, 7.0, 6), [0, 0, 24.0], PAL.crystalHot));
   return { parts };
 }
 
@@ -742,23 +950,60 @@ function infernoBeacon(): Assembly {
  */
 function stormConductor(): Assembly {
   const parts: Part[] = [...roundPlinth(2, 2.8)];
-  parts.push(part(cyl(3.6, 2.2, 34.0, 8), [0, 0, 2.6], PAL.steelDeep));
-  for (const z of [10.0, 16.0, 22.0, 28.0]) {
-    parts.push(part(cyl(5.0, 5.0, 0.8, 8), [0, 0, z], PAL.steel));
+  /**
+   * STORM CONDUCTOR — SILHOUETTE: a mast wound with an open HELICAL COIL, with three lightning vanes splaying at
+   * the top.
+   *
+   * Zachary: "towers need distinct weapon heads (frost crystal, flame brazier, storm coil, cannon barrel)." It had a
+   * coil band and vanes, but they were small relative to a plain shaft, so its silhouette measured 0.869 against the
+   * Scrying Obelisk — both read as "narrow column".
+   *
+   * The coil is now the BODY of the building: a wide open helix standing clear of a slim mast, which gives the
+   * outline a distinctive repeating widening that no solid tower has. The vanes splay wide at the top like a tesla
+   * crown.
+   */
+  // Slim central mast.
+  parts.push(part(cyl(3.0, 2.2, 36.0, 8), [0, 0, 2.6], PAL.steelDeep));
+  /**
+   * THE HELIX — a stack of open rings of decreasing radius, each rotated slightly, reading as a wound coil.
+   *
+   * Built from ring tubes rather than solid discs so daylight shows through: that perforated profile is what makes
+   * this building unmistakable next to the solid obelisk.
+   */
+  const RINGS = 7;
+  for (let i = 0; i < RINGS; i++) {
+    const t = i / (RINGS - 1);
+    const r = 11.0 - t * 3.0;
+    const z = 6.0 + t * 22.0;
+    parts.push(part(cyl(r, r, 1.3, 14), [0, 0, z], i % 2 === 0 ? PAL.steel : PAL.brassDeep));
+    // Open the ring: a gap segment, so it does not read as a solid disc.
+    parts.push(part(bbox(r * 1.5, r * 0.5, 1.9, 0.4), [0, 0, z], PAL.steelDeep));
   }
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
-    parts.push(part(plate(7.0, 2.4, 1.0, 8.0), [Math.cos(a) * 4.4, Math.sin(a) * 4.4, 31.0], PAL.steel, { rotZ: a, rotY: -Math.PI / 2 }));
-  }
-  parts.push(part(sph(3.2, 12), [0, 0, 37.0], PAL.crystalHot));
-  // TEAM MARKER: high bands on the visible mast, where the old base ring was occluded (1.8%).
-  parts.push(part(cyl(4.4, 4.4, 2.4, 8), [0, 0, 24.0], PAL.trimTeam));
-  parts.push(part(cyl(4.0, 4.0, 2.0, 8), [0, 0, 30.0], PAL.runeTeam));
-  parts.push(part(prism(4.4, 1.4, 8), [0, 0, 4.0], PAL.runeTeam));
+  // Vertical connectors between the rings, reinforcing the cage read.
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    parts.push(part(tube([[0, 0, 0, 0.35], [Math.cos(a) * 4.0, Math.sin(a) * 4.0, -4.0, 0.3], [Math.cos(a) * 8.0, Math.sin(a) * 8.0, -8.0, 0.25]], 4), [0, 0, 14.0], PAL.brass));
+    parts.push(
+      part(tube([[Math.cos(a) * 10.6, Math.sin(a) * 10.6, 0, 0.5], [Math.cos(a) * 8.0, Math.sin(a) * 8.0, 22.0, 0.5]], 4), [0, 0, 6.0], PAL.steel),
+    );
   }
+  // Crown: three wide vanes splaying outward, plus the collector.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const d = (i / 3) * Math.PI * 2;
+    parts.push(
+      part(plate(10.0, 2.6, 1.0, 8.0), [Math.cos(a) * 8.5, Math.sin(a) * 8.5, 31.0], PAL.steel, {
+        rotZ: a,
+        rotY: -Math.PI / 2,
+        rotX: 0.5,
+      }),
+    );
+    void d;
+  }
+  parts.push(part(sph(3.6, 12), [0, 0, 36.0], PAL.crystalHot));
+  parts.push(part(prism(2.2, 5.0, 6), [0, 0, 40.0], PAL.aether));
+  // Team bands on two of the coil rings, where they catch the light.
+  parts.push(part(cyl(11.4, 11.4, 1.8, 14), [0, 0, 9.0], PAL.runeTeam));
+  parts.push(part(cyl(9.4, 9.4, 1.6, 14), [0, 0, 21.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -770,48 +1015,111 @@ function stormConductor(): Assembly {
  */
 function sanctuarySpire(): Assembly {
   const parts: Part[] = [...roundPlinth(2, 3.0)];
-  parts.push(part(cyl(8.0, 10.0, 22.0, 12), [0, 0, 2.8], PAL.rockLit));
-  parts.push(part(cyl(10.4, 10.4, 2.4, 12), [0, 0, 24.8], PAL.rock));
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    parts.push(part(bbox(3.2, 1.6, 8.0, 0.8, 0.9), [Math.cos(a) * 8.6, Math.sin(a) * 8.6, 15.0], PAL.violetDeep, { rotZ: a + Math.PI / 2 }));
+  /**
+   * SANCTUARY SPIRE — SILHOUETTE: a BELL TOWER — a square shaft that flares into a wide open BELFRY with visible
+   * bells, capped by a slender spire. It does not attack; it heals, so its shape is civic rather than martial.
+   *
+   * Zachary's note about distinct weapon heads applies in reverse here: this tower needs a distinct NON-weapon head.
+   * It was a smooth round shaft ending in a teardrop, which measured 0.897 against the Storm Conductor and 0.852
+   * against the Frost Spire — three towers that all read as "tapering column with something on top".
+   *
+   * The belfry is the identifier: a square room at the top with OPEN sides (so the silhouette has a notch at each
+   * corner) and two bells hanging in it. Nothing else in the roster has an open framed head.
+   */
+  // Square shaft, tapered, in two stages.
+  parts.push(part(bbox(20.0, 20.0, 16.0, 2.2, 0.8), [0, 0, 2.6], PAL.rock));
+  parts.push(part(bbox(16.0, 16.0, 14.0, 1.8, 0.84), [0, 0, 18.6], PAL.rockLit));
+  parts.push(part(bbox(20.4, 20.4, 1.8, 0.8), [0, 0, 18.0], PAL.brassDeep));
+  /**
+   * THE BELFRY — four corner posts carrying a roof slab, with open sides.
+   *
+   * Building it as posts-and-slab rather than a solid block is what creates the distinctive open head: the
+   * silhouette shows a gap between the shaft top and the roof, which no solid tower has.
+   */
+  for (const [sx, sy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ] as const) {
+    parts.push(part(bbox(4.2, 4.2, 12.0, 1.0, 0.9), [sx * 7.6, sy * 7.6, 32.6], PAL.rock));
   }
-  parts.push(part(sph(10.4, 14), [0, 0, 27.2], PAL.violet, { scale: { x: 1, y: 1, z: 0.72 } }));
-  parts.push(part(prism(10.6, 1.2, 12), [0, 0, 26.8], PAL.brass));
-  // the luminous teardrop
-  parts.push(part(tube([[0, 0, 0, 1.2], [0, 0, 2.6, 3.2], [0, 0, 6.0, 4.0], [0, 0, 9.4, 2.6], [0, 0, 12.0, 0.6]], 10), [0, 0, 33.0], PAL.crystalHot));
-  parts.push(part(sph(2.6, 10), [0, 0, 38.0], PAL.eyeTeam));
-  // TEAM MARKER: on the belfry, above the flare, where the camera sees it (was 1.8% at the base).
-  parts.push(part(cyl(9.4, 8.6, 2.4, 12), [0, 0, 21.6], PAL.trimTeam));
-  parts.push(part(cyl(10.8, 10.8, 1.6, 12), [0, 0, 26.2], PAL.runeTeam));
-  parts.push(part(prism(8.4, 1.0, 12), [0, 0, 8.0], PAL.runeTeam));
+  // Bells hanging inside the belfry.
+  for (const [bx, by] of [
+    [-4.0, 0],
+    [4.0, 0],
+  ] as const) {
+    parts.push(part(cyl(0.6, 0.6, 4.0, 4), [bx, by, 42.0], PAL.brass));
+    parts.push(part(sph(2.6, 10), [bx, by, 37.4], PAL.brassLit, { scale: { x: 1, y: 1, z: 1.3 } }));
+  }
+  // Roof slab, then a slender spire.
+  parts.push(part(bbox(19.0, 19.0, 2.4, 0.9, 0.96), [0, 0, 44.6], PAL.rockDeep));
+  parts.push(part(cone(8.0, 7.0, 4), [0, 0, 47.0], PAL.violetDeep, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(1.2, 0.6, 9.0, 6), [0, 0, 52.0], PAL.brass));
+  parts.push(part(sph(2.0, 10), [0, 0, 62.0], PAL.crystalHot));
+  // Team: bands at the shaft shoulder and under the belfry roof, where they are most visible.
+  parts.push(part(bbox(20.8, 20.8, 2.2, 0.7), [0, 0, 30.0], PAL.trimTeam));
+  parts.push(part(bbox(16.8, 16.8, 1.8, 0.6), [0, 0, 15.0], PAL.runeTeam));
   return { parts };
 }
 
 /**
- * GOLEM FORGE — 3x3 production. SILHOUETTE: a wide forge hall with a TALL chimney. The chimney is the
- * identifier; the glowing furnace mouth shows what it does.
+ * GOLEM FORGE — 3x3 production. SILHOUETTE: a tall CHIMNEY beside a wide forge hall, with a raised ANVIL block and a
+ * glowing furnace mouth.
+ *
+ * Zachary: "the Golem Forge needs an anvil or furnace with chimney and glow." It had a chimney already, but the
+ * outline still measured **IoU 0.974** against the Celestial Cannon — both were "a wide box with something vertical
+ * at one side". The fix is to make the forge's profile unmistakably asymmetric and stepped: a low wide hall on one
+ * side, a tall square chimney stack on the other, an anvil block raised above the roofline between them, and the
+ * furnace mouth glowing at ground level. No other building in the roster has that stepped, industrial outline.
  */
 function golemForge(): Assembly {
-  const parts: Part[] = [...plinth(3, 3.2)];
-  parts.push(part(bbox(34, 30, 16.0, 2.6, 0.94), [0, 0, 2.8], PAL.ironOld));
-  parts.push(part(bbox(36, 32, 2.4, 1.0, 0.98), [0, 0, 18.4], PAL.steelDeep));
-  // tall chimney
-  parts.push(part(cyl(5.4, 4.2, 30.0, 10), [-11.0, 8.0, 2.8], PAL.steelDeep));
-  parts.push(part(prism(6.2, 2.0, 10), [-11.0, 8.0, 32.0], PAL.steel));
-  parts.push(part(cyl(4.6, 4.6, 1.2, 10), [-11.0, 8.0, 20.0], PAL.brass));
-  // furnace mouth
-  parts.push(part(bbox(13.0, 2.0, 11.0, 1.0), [0, -15.6, 4.0], PAL.rockDeep));
-  parts.push(part(bbox(10.0, 1.4, 8.6, 0.6), [0, -16.4, 4.0], PAL.emberCore));
-  for (const s of [-1, 1] as const) {
-    parts.push(part(bbox(4.4, 6.0, 14.0, 1.0, 0.7), [s * 16.0, 0, 2.8], PAL.steelDeep));
+  const parts: Part[] = [...plinth(3, 3.0)];
+  /**
+   * THE HALL — deliberately low and offset, leaving the other half of the footprint for the chimney.
+   *
+   * Offsetting the masses is what breaks the "symmetric box" silhouette the cannon also had.
+   */
+  parts.push(part(bbox(26, 22, 15.0, 2.4, 0.94), [-8.0, 0, 2.6], PAL.ironOld));
+  parts.push(part(bbox(28, 24, 2.0, 0.9, 0.98), [-8.0, 0, 17.6], PAL.steelDeep));
+  // Mono-pitch roof over the hall: a slanted slab, so the roofline is a diagonal.
+  parts.push(part(bbox(25, 21, 1.6, 0.8, 0.9), [-8.0, 0, 19.6], PAL.steel, { rotZ: 0.14 }));
+
+  /**
+   * THE CHIMNEY STACK — square, tall, and capped with a flared crown. Square rather than round so it does not read
+   * as a spire; tapered slightly so it has a direction.
+   */
+  parts.push(part(bbox(12.0, 12.0, 56.0, 1.6, 0.86), [14.0, 4.0, 2.6], PAL.steelDeep));
+  parts.push(part(bbox(14.6, 14.6, 3.4, 0.8, 0.96), [14.0, 4.0, 56.4], PAL.steel));
+  parts.push(part(bbox(12.6, 12.6, 1.8, 0.6), [14.0, 4.0, 59.8], PAL.ironOld));
+  // Banded courses up the stack, which reads as masonry at phone zoom.
+  for (const z of [14.0, 28.0, 42.0, 53.0]) {
+    parts.push(part(bbox(12.8, 12.8, 1.5, 0.5), [14.0, 4.0, z], PAL.brassDeep));
   }
-  // TEAM MARKER: the forge is a huge iron mass, so one small banner was lost. A full rune band around
-  // the hall plus roof trim and two hanging banners make ownership legible.
-  parts.push(part(bbox(35.0, 31.0, 2.2, 0.7), [0, 0, 12.0], PAL.runeTeam));
-  parts.push(part(bbox(37.0, 33.0, 1.6, 0.6), [0, 0, 19.4], PAL.trimTeam));
-  parts.push(part(plate(7.0, 5.4, 9.0, 1.0), [0, -15.8, 6.0], PAL.bannerTeam));
-  parts.push(part(plate(6.0, 4.6, 8.0, 1.0), [-11.0, 8.0, 22.0], PAL.bannerTeam));
+  // Smoke glow just inside the crown.
+  parts.push(part(cyl(4.2, 3.6, 1.4, 8), [14.0, 4.0, 61.4], PAL.emberDeep));
+
+  /**
+   * THE ANVIL — a raised block on the hall's roof with a horn, the one element that says "this building makes
+   * things" rather than "this building is a box". It breaks the roofline at a point no other building in the roster
+   * breaks.
+   */
+  parts.push(part(bbox(9.0, 6.0, 2.4, 0.7), [-13.0, -3.0, 20.4], PAL.steelDeep));
+  parts.push(part(bbox(6.4, 4.6, 3.0, 0.8, 0.82), [-13.0, -3.0, 22.8], PAL.ironOld));
+  parts.push(part(cone(1.8, 4.2, 6), [-8.4, -3.0, 23.6], PAL.steel, { rotZ: -Math.PI / 2 }));
+  // A golem's half-finished arm resting against it, so the anvil has a purpose in the read.
+  parts.push(part(cyl(1.6, 1.2, 7.0, 6), [-13.0, 3.4, 21.0], PAL.stoneDeep, { rotZ: 0.5 }));
+
+  // Furnace mouth at ground level, glowing.
+  parts.push(part(bbox(12.0, 2.2, 9.0, 0.9), [-8.0, -11.4, 3.4], PAL.rockDeep));
+  parts.push(part(bbox(9.0, 1.6, 6.8, 0.6), [-8.0, -12.2, 3.6], PAL.emberCore));
+  parts.push(part(bbox(5.4, 1.2, 4.2, 0.5), [-8.0, -12.6, 3.8], PAL.crystalHot));
+
+  // Team: band on the hall, band on the stack, banner on the chimney face.
+  parts.push(part(bbox(27.0, 23.0, 2.0, 0.6), [-8.0, 0, 11.4], PAL.runeTeam));
+  parts.push(part(bbox(12.6, 12.6, 1.8, 0.6), [14.0, 4.0, 34.0], PAL.runeTeam));
+  parts.push(part(bbox(29.0, 25.0, 1.4, 0.5), [-8.0, 0, 18.4], PAL.trimTeam));
+  parts.push(part(plate(6.6, 5.0, 8.4, 1.0), [14.0, -3.0, 40.0], PAL.bannerTeam));
   return { parts };
 }
 
@@ -838,86 +1146,150 @@ export const EXTRA_BUILDINGS: Record<string, Assembly> = {
 };
 
 /**
- * THORN GROVE — 2x2 defence. SILHOUETTE: a low matted dome of vines bristling with thorns. The only
- * structure with an irregular, organic outline.
+ * THORN GROVE — 2x2 defence. SILHOUETTE: a cluster of TALL ROOT SPIKES erupting from a bed of vines, with
+ * grasping tendrils reaching outward. The only structure in the roster with a spiky, upward-splaying outline.
+ *
+ * Zachary's complaint applies here twice over: the old version was a flat mound (aspect **0.24**, i.e. four times
+ * wider than tall) and it measured **IoU 1.000** against the Summoning Circle — the two were the same silhouette.
+ * A "living barricade" has to look like something that grows up and out, so the shape is now vertical and jagged
+ * rather than domed.
  */
 function thornGrove(): Assembly {
   const parts: Part[] = [];
-  /**
-   * SQUARE EARTH FOOTING under the mound.
-   *
-   * Same reason as the summoning circle: a round mound is inscribed in its square footprint, reaching
-   * only 70.7% of the tile diamond, so the grove looked like it was hovering in the middle of its tiles.
-   * A low, square footing spans the full 2x2 footprint and gives the tendrils something to grow out of
-   * that visibly meets the ground.
-   *
-   * It is now NEUTRAL EARTH with a thin team rim. Tinting the whole slab kept ownership readable but
-   * turned the grove's ground into a saturated pad that dominated the model — the ground a building
-   * stands on should read as ground, with the colour carried by a narrow inset band on top of it.
-   */
   parts.push(part(bbox(64.0, 64.0, 1.8, 2.0, 0.98), [0, 0, 0], PAL.rockDeep));
   parts.push(part(bbox(56.0, 56.0, 0.5, 1.4, 0.99), [0, 0, 1.8], PAL.trimTeam));
   parts.push(part(cyl(28.0, 27.0, 1.4, 16), [0, 0, 2.1], PAL.rockMoss));
-  // tangled body: overlapping flattened spheres, deliberately uneven
+
+  /**
+   * THE ROOT SPIKES — the mass of the building.
+   *
+   * Six upward-tapering root spires of deliberately different heights (18 to 40 units) on a ring, each leaning
+   * outward. Uneven heights make the top edge a broken, organic skyline rather than a machined rim, which is what
+   * separates the grove from every geometric structure at a glance.
+   */
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.35;
+    const h = 18 + ((i * 11) % 5) * 5.0;
+    const x = Math.cos(a) * 15.0;
+    const y = Math.sin(a) * 15.0;
+    const lean = 0.16 + (i % 2) * 0.07;
+    parts.push(
+      part(cone(6.2, h, 6), [x, y, 3.0], i % 2 === 0 ? PAL.leafDeep : PAL.woodDeep, {
+        rotZ: Math.cos(a) * -lean,
+        rotX: Math.sin(a) * lean,
+      }),
+    );
+    // A lit thorn tip on the taller spires.
+    if (i % 2 === 0) parts.push(part(cone(1.5, 5.0, 5), [x * 1.14, y * 1.14, 3.0 + h * 0.86], PAL.leafLit));
+  }
+
+  // Tangled vine body filling the base between the spires, so it reads as one organism not six sticks.
   for (const [x, y, z, r] of [
-    [0, 0, 5.0, 7.4],
-    [-6.0, 2.0, 4.4, 5.4],
-    [6.2, 1.0, 4.6, 5.6],
-    [-2.0, -6.0, 4.8, 5.8],
-    [3.0, 6.0, 4.2, 5.2],
+    [0, 0, 7.0, 8.0],
+    [-7.0, 3.0, 5.6, 5.8],
+    [7.4, 1.2, 5.8, 6.0],
+    [-2.4, -7.4, 6.0, 6.2],
+    [3.4, 7.2, 5.4, 5.6],
   ] as const) {
-    parts.push(part(sph(r, 10), [x, y, z], PAL.leafDeep, { scale: { x: 1.2, y: 1.1, z: 0.62 } }));
+    parts.push(part(sph(r, 10), [x, y, z], PAL.leafDeep, { scale: { x: 1.15, y: 1.05, z: 0.8 } }));
   }
-  // second lighter layer, so it has depth instead of reading as one blob
-  parts.push(part(sph(6.4, 10), [-2.0, 1.0, 9.0], PAL.leaf, { scale: { x: 1.15, y: 1.0, z: 0.6 } }));
-  parts.push(part(sph(4.8, 10), [4.0, -2.4, 9.6], PAL.leafLit, { scale: { x: 1.1, y: 1.0, z: 0.55 } }));
-  // thorns projecting outward at varied angles
-  for (const [dx, dy, len, spread, r] of [
-    [-1.1, 0.0, 8.0, 4.0, 0.9],
-    [1.1, 0.2, 8.4, 4.6, 1.0],
-    [-0.6, 1.6, 6.4, 3.4, 0.75],
-    [0.6, -1.5, 6.6, 3.6, 0.8],
-    [0.0, 2.6, 7.0, 4.2, 0.9],
-    [0.2, -2.6, 7.4, 4.4, 0.95],
-  ] as const) {
-    parts.push(part(cone(r, len, 6), [dx * spread, dy * spread, 7.0], PAL.boneDeep, { rotZ: -dx * 1.1, rotX: dy * 1.1 }));
+
+  // Grasping tendrils: short curved tubes reaching outward and up. These break the ring silhouette.
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.9;
+    const r0 = 12.0;
+    const x0 = Math.cos(a) * r0;
+    const y0 = Math.sin(a) * r0;
+    parts.push(
+      part(
+        tube(
+          [
+            [0, 0, 0, 1.5],
+            [Math.cos(a) * 5.0, Math.sin(a) * 5.0, 6.0, 1.1],
+            [Math.cos(a) * 9.0, Math.sin(a) * 9.0, 13.0, 0.7],
+            [Math.cos(a) * 11.0, Math.sin(a) * 11.0, 19.0, 0.3],
+          ],
+          6,
+        ),
+        [x0, y0, 3.0],
+        PAL.leaf,
+      ),
+    );
   }
-  // team flower cluster at the crown
+
+  // Team blooms at the crown, where the camera sees them.
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2;
-    parts.push(part(sph(1.1, 8), [Math.cos(a) * 1.6, Math.sin(a) * 1.6, 12.6], PAL.trimTeam));
+    parts.push(part(sph(1.4, 8), [Math.cos(a) * 2.2, Math.sin(a) * 2.2, 20.0], PAL.trimTeam));
   }
-  parts.push(part(sph(1.4, 8), [0, 0, 13.0], PAL.eyeTeam));
+  parts.push(part(sph(1.8, 8), [0, 0, 21.0], PAL.eyeTeam));
   return { parts };
 }
 
 /**
- * WAYSTONE CAMP — 3x3 forward base. SILHOUETTE: a ring of TENTS around a standing stone. The only
- * structure made of cloth rather than stone.
+ * WAYSTONE CAMP — 3x3 forward base. SILHOUETTE: a cluster of CONICAL TENTS around a leaning standing stone, with a
+ * covered wagon at the edge.
+ *
+ * Zachary: "the Waystone Camp needs tents or a wagon." It had four small tents, but they were 15 units tall against a
+ * 96-unit base, so at normalised scale the building was a wide slab with pebbles on it — IoU 0.957 against the
+ * Golem Forge and 0.931 against the Celestial Cannon.
+ *
+ * The tents are now nearly twice as tall (26 units), of two clearly different sizes, and grouped so the skyline is a
+ * row of peaks rather than a scatter. The wagon adds a boxy counter-form and a wheel, and the standing stone is the
+ * single tall spike that identifies the building from across the map.
  */
 function waystoneCamp(): Assembly {
   const parts: Part[] = [...plinth(3, 2.4)];
   parts.push(part(cyl(20.0, 19.0, 1.6, 12), [0, 0, 2.2], PAL.rock));
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const x = Math.cos(a) * 12.0;
-    const y = Math.sin(a) * 12.0;
-    parts.push(part(cone(6.4, 15.0, 8), [x, y, 3.4], PAL.bannerTeam));
-    parts.push(part(cyl(0.5, 0.5, 4.0, 5), [x, y, 17.4], PAL.wood));
-    parts.push(part(sph(0.9, 6), [x, y, 21.0], PAL.trimTeam));
-    parts.push(part(bbox(2.4, 1.2, 4.6, 0.5, 0.7), [x * 1.16, y * 1.16, 3.6], PAL.woodDeep, { rotZ: a + Math.PI / 2 }));
+
+  /**
+   * TENTS — two sizes, deliberately arranged so their peaks form a jagged rank.
+   *
+   * A canvas tent is a cone with a ridge pole and a door flap; making the flap visible is what stops it reading as a
+   * generic cone at phone zoom.
+   */
+  const tents: [number, number, number][] = [
+    [-22.0, -12.0, 34.0],
+    [-8.0, -18.0, 30.0],
+    [-24.0, 8.0, 32.0],
+    [4.0, -16.0, 28.0],
+    [-12.0, 14.0, 26.0],
+  ];
+  for (const [x, y, h] of tents) {
+    parts.push(part(cone(8.0, h, 8), [x, y, 3.4], PAL.bannerTeam));
+    // Ridge pole and pennant.
+    parts.push(part(cyl(0.5, 0.45, 5.0, 5), [x, y, 3.4 + h * 0.9], PAL.wood));
+    parts.push(part(plate(3.4, 1.4, 3.4, 0.4), [x + 1.6, y, 3.4 + h * 0.9 + 2.6], PAL.trimTeam));
+    // Door flap: a dark wedge on the outward face.
+    parts.push(part(bbox(3.6, 1.0, 6.2, 0.5, 0.7), [x, y - 6.4, 4.6], PAL.woodDeep));
+    // Guy ropes, which read as structure rather than decoration.
+    for (const s of [-1, 1] as const) {
+      parts.push(part(cyl(0.35, 0.3, 9.0, 4), [x + s * 5.0, y - 3.0, 3.4], PAL.woodDeep, { rotZ: s * 0.5 }));
+    }
   }
-  // the standing stone at the centre
-  parts.push(part(prism(4.6, 26.0, 5), [0, 0, 3.0], PAL.rockLit, { rotZ: 0.4 }));
-  parts.push(part(sph(2.6, 10), [0, 0, 28.0], PAL.crystalHot));
-  parts.push(part(prism(4.8, 1.0, 5), [0, 0, 14.0], PAL.runeTeam, { rotZ: 0.4 }));
-  // campfire
-  parts.push(part(cyl(3.0, 2.4, 1.2, 10), [0, -7.0, 3.2], PAL.ironOld));
-  parts.push(part(sph(1.8, 9), [0, -7.0, 5.0], PAL.emberCore));
-  // low fence
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    parts.push(part(cyl(0.4, 0.35, 3.0, 5), [Math.cos(a) * 19.0, Math.sin(a) * 19.0, 2.4], PAL.woodDeep));
+
+  /**
+   * THE WAGON — a boxy counter-form against the tents' cones, with visible wheels.
+   */
+  parts.push(part(bbox(15.0, 8.0, 8.0, 1.4, 0.9), [15.0, 8.0, 6.0], PAL.wood));
+  parts.push(part(bbox(15.6, 8.6, 3.0, 0.9, 0.94), [15.0, 8.0, 13.6], PAL.woodDeep));
+  for (const [wx, wy] of [
+    [10.0, 4.6],
+    [20.0, 4.6],
+    [10.0, 11.4],
+    [20.0, 11.4],
+  ] as const) {
+    parts.push(part(cyl(2.6, 2.6, 1.2, 10), [wx, wy, 3.6], PAL.ironOld, { rotX: Math.PI / 2 }));
   }
+
+  /**
+   * THE STANDING STONE — tallest element, the landmark that identifies the camp.
+   */
+  parts.push(part(prism(3.6, 38.0, 5), [0, 0, 2.8], PAL.rockLit, { rotZ: 0.4 }));
+  parts.push(part(sph(2.6, 10), [0, 0, 41.4], PAL.crystalHot));
+  parts.push(part(prism(4.8, 1.2, 5), [0, 0, 30.0], PAL.runeTeam, { rotZ: 0.4 }));
+  // Campfire between the tents.
+  parts.push(part(cyl(3.2, 2.6, 1.2, 10), [-8.0, 8.0, 3.2], PAL.ironOld));
+  parts.push(part(sph(2.0, 9), [-8.0, 8.0, 5.4], PAL.emberCore));
   return { parts };
 }

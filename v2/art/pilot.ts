@@ -575,21 +575,47 @@ export const PILOT_BUILDINGS: Record<string, Assembly> = {
 };
 
 function frostSpire(): Assembly {
-  // A spire must be NARROW AND TALL. Measured at 34 wide x 36 tall this read as a pyramid, which is
-  // why it looked like the Sentry. Narrowed the base and raised the shard stack.
+  /**
+   * FROST SPIRE — SILHOUETTE: a SPLAYED CRYSTAL FORMATION, like a shard of ice growing out of the stone.
+   *
+   * Zachary: "towers need distinct weapon heads (frost crystal...)". It had a crystal stack, but the shards leaned IN
+   * toward a central shaft, so at silhouette level it was another narrow column — IoU 0.842 against the Storm
+   * Conductor, which is a helix of similar width.
+   *
+   * The shards now FAN OUTWARD from a low core, so the widest point of the building is near the TOP rather than the
+   * base. No other tower in the roster is wider at the top than at the foot; that inverted profile is the identifier.
+   */
   const parts: Part[] = [...plinth(2, 2.4)];
-  // stone footing
-  parts.push(part(cyl(8, 7, 8, 12), [0, 0, 2.4], PAL.rock));
-  parts.push(part(prism(8.4, 1.2, 12), [0, 0, 9.8], PAL.rockLit));
-  // Tall narrow shard stack: the central shard dominates and the satellites lean IN toward it.
-  parts.push(part(prism(4.6, 30, 6), [0, 0, 10.6], PAL.frostCore, { rotZ: 0.05 }));
-  parts.push(part(prism(3.0, 20, 6), [-4.2, 1.6, 11.0], PAL.crystal, { rotZ: 0.30 }));
-  parts.push(part(prism(2.8, 18, 6), [4.4, -1.2, 10.8], PAL.crystal, { rotZ: -0.28 }));
-  parts.push(part(prism(2.2, 13, 6), [1.0, 4.6, 12.0], PAL.crystal, { rotZ: -0.16 }));
-  parts.push(part(cone(2.0, 11.0, 7), [0, 0, 40.0], PAL.frostCore));
-  // halo ring near the top, not the middle
-  parts.push(part(prism(6.4, 0.8, 12), [0, 0, 30.0], PAL.frostCore));
-  // team band on the base
-  parts.push(part(prism(9.2, 1.2, 12), [0, 0, 6.4], PAL.runeTeam));
+  // Stone footing.
+  parts.push(part(cyl(8, 7, 7, 12), [0, 0, 2.4], PAL.rock));
+  parts.push(part(prism(8.4, 1.2, 12), [0, 0, 8.8], PAL.rockLit));
+  /**
+   * THE FAN — five shards radiating up and outward from a common root.
+   *
+   * Each shard's tip is further from the axis than its base, and the outer pair tilt hardest, so the formation opens
+   * like a hand. The tallest central shard keeps a single peak.
+   */
+  const shards: [number, number, number, number, number][] = [
+    // dx, dy, height, radius, lean
+    [0, 0, 40, 4.2, 0],
+    [-6.5, 1.5, 30, 3.2, 0.34],
+    [6.5, -1.0, 32, 3.4, -0.32],
+    [-10.5, -3.0, 21, 2.6, 0.55],
+    [10.0, 2.5, 23, 2.8, -0.52],
+  ];
+  for (const [dx, dy, h, r, lean] of shards) {
+    parts.push(
+      part(prism(r, h, 6), [dx * 0.45, dy * 0.45, 9.6], dx === 0 ? PAL.frostCore : PAL.crystal, {
+        rotZ: lean,
+      }),
+    );
+    // Bright tip on each shard.
+    parts.push(part(cone(r * 0.55, h * 0.22, 6), [dx * 0.95, dy * 0.95, 9.6 + h * 0.94], PAL.frostCore, { rotZ: lean }));
+  }
+  // A low, wide aura ring so the base is not a bare pad.
+  parts.push(part(prism(9.4, 0.9, 12), [0, 0, 6.6], PAL.frostCore));
+  // Team band on the footing, and a slim one at the shard root.
+  parts.push(part(prism(9.6, 1.4, 12), [0, 0, 5.4], PAL.runeTeam));
+  parts.push(part(prism(7.2, 1.0, 10), [0, 0, 11.0], PAL.trimTeam));
   return { parts };
 }
