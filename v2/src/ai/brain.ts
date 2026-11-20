@@ -51,21 +51,6 @@ export interface BrainMemory {
   enemyBuildingsLost: number;
 }
 
-/**
- * How long a remembered (ghost) building is trusted as an attack target.
- *
- * A REMEMBERED BASE IS NOT A STALE SIGHTING.
- *
- * This used to expire after 20 decision passes — about ten seconds — which meant an AI that had scouted the enemy base
- * forgot where it was almost immediately, set `enemyAnchor` back to null, and therefore never satisfied the attack
- * condition. Measured over an 18-minute AI-vs-AI match: 8 enemy buildings visible as ghosts, `live: 0`, `enemyAnchor:
- * null`, and zero waves sent. The match could not end because neither side ever marched anywhere.
- *
- * A building does not move. Once scouted, its position is valid until we observe that it is gone, so the ghost is trusted
- * for 90 passes (45 s at Hard's cadence). If the army arrives and finds nothing, the anchor is cleared by the
- * "wave spent" path and the scouts search again.
- */
-const GHOST_TRUST_TICKS = 90;
 
 /**
  * Hard ceiling on how long a wave stays "in flight", in DECISION passes.
@@ -211,14 +196,21 @@ export class AiBrain {
       this.memory.enemyAnchor = { x: liveEnemyBuilding.x, y: liveEnemyBuilding.y };
       this.memory.anchorAge = 0;
     } else if (ghost) {
-      // Ghosts are only worth chasing for a while; stale ones send armies to empty ground.
-      this.memory.anchorAge += 1;
-      if (this.memory.anchorAge <= GHOST_TRUST_TICKS) {
-        this.memory.enemyAnchor = { x: ghost.x, y: ghost.y };
-      } else {
-        // Only give up on a ghost once the scouts have had a chance to look somewhere else.
-        this.memory.enemyAnchor = null;
-      }
+      /**
+       * A SCOUTED BUILDING DOES NOT EXPIRE.
+       *
+       * `GHOST_TRUST_TICKS` was meant to stop an army chasing a building that had since been destroyed. But a building
+       * cannot move, and ghosts are pruned by the sim the moment their tile is re-seen and found empty — so the ghost
+       * list is already accurate. Expiring the anchor on a timer threw away knowledge the AI had legitimately earned:
+       * measured on seed 1035 at 28 sim-minutes, p1 had **23 army units and 4 known enemy buildings** while
+       * `enemyAnchor === null` and `attacking === false`, so it never attacked again and the match ran out the clock.
+       *
+       * The anchor now persists while a ghost exists. `passesWithoutProgress` still detects a grind, and the wave
+       * lifecycle still ends a wave that achieves nothing, so there is no risk of an army marching forever at rubble: it
+       * arrives, finds nothing, the sim prunes the ghost, and the search sweep takes over.
+       */
+      this.memory.enemyAnchor = { x: ghost.x, y: ghost.y };
+      this.memory.anchorAge = 0;
     } else if (per.enemyUnits.length >= 3) {
       /**
        * A REAL ARMY, not a stray unit.

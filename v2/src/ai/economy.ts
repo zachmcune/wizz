@@ -254,6 +254,15 @@ export function planEconomy(
       notes.push(`nowhere legal to rebuild ${def.id}`);
     } else if (def && per.mana < def.cost) {
       notes.push(`saving to rebuild ${def.id} (${Math.round(per.mana)}/${def.cost})`);
+      /**
+       * RESERVE THE WHOLE COST WHILE A REBUILD IS PENDING.
+       *
+       * Returning `reservedForBuild: 0` here left the military planner free to spend the bank, and it spent it
+       * continuously: measured on seeds 1035/1077, p1 bought an imp_swarmling (140) every ~40 seconds, so its bank
+       * oscillated 205-460 forever and never reached the 550 a summoning circle costs. Thirteen minutes of income, zero
+       * progress. The reserve makes the rebuild inevitable instead of merely intended.
+       */
+      return { commands, notes, blockedOnPlacement, reservedForBuild: Math.max(0, def.cost - per.mana) };
     }
   }
 
@@ -279,7 +288,20 @@ export function planEconomy(
   }
 
   // ------------------------------------------------------------------ 4. train harvesters
-  if (harvesterProducer && harvesters.length < wantedHarvesters && !pauseHarvesters) {
+  /**
+   * DO NOT BUY WORKERS WITH THE MONEY THAT IS SUPPOSED TO REBUILD THE PRODUCER.
+   *
+   * When the base has no unit producer, the only thing that matters is affording the replacement. Harvesters cost 200
+   * each, so topping workers up to the target (8) drains the bank below a summoning circle (550) every single time it
+   * approaches it. Measured on seeds 1035/1077, which ran the full 32 minutes without ending: p1's bank oscillated
+   * between **205 and 460** for thirteen straight minutes -- it had income (two wisps still hauling) and it was spending,
+   * but the cycle could never cross 550, so it never rebuilt a producer and therefore never had an army. It never
+   * attacked, and its opponent could not find it to finish the match.
+   *
+   * So while a rebuild is pending, workers are paused and every coin goes to the rebuild.
+   */
+  const rebuildPending = rebuildTarget !== null;
+  if (harvesterProducer && harvesters.length < wantedHarvesters && !pauseHarvesters && !rebuildPending) {
     const hDef = registry.buildings.get(harvesterProducer.defId);
     const unitId = hDef?.producesUnits?.find((u) => registry.units.get(u)?.isHarvester);
     const unit = unitId ? registry.units.get(unitId) : undefined;
