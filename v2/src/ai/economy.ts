@@ -208,19 +208,46 @@ export function planEconomy(
     (b) => b.buildProgress === undefined && registry.buildings.get(b.defId)?.isConstructionYard,
   );
   const hasProducer = producerList.length > 0;
-  const rebuildDefId = !hasYard ? 'sanctum' : !hasProducer ? 'summoning_circle' : null;
-  if (rebuildDefId !== null) {
-    const def = registry.buildings.get(rebuildDefId);
-    if (
-      def &&
-      per.mana >= def.cost &&
-      inProgressCount(per, rebuildDefId) === 0 &&
-      def.requires.every((r) => per.unlockedTech.has(r) || r === 'sanctum')
-    ) {
+  /**
+   * REBUILD, AND REBUILD THE PREREQUISITE CHAIN.
+   *
+   * Checking only the final building's requirements is not enough, because a razed base loses the whole chain. Measured on
+   * seed 1014 at 22 sim-minutes: p2 held **3800 mana** with two buildings standing (sanctum, ley_conduit) and four
+   * harvesters still hauling — a healthy economy — but every unit producer was gone. A summoning circle requires an
+   * attunement_spire, that spire had been destroyed, and the AI had no step that would ever rebuild one, so it kept
+   * banking mana it could not spend for the rest of the match.
+   *
+   * So walk the requirement tree and rebuild the deepest missing piece first: yard, then whatever the producer needs,
+   * then the producer itself. Each step is a legal, affordable building on its own, so this is a real recovery path.
+   */
+  const rebuildTarget = !hasYard ? 'sanctum' : !hasProducer ? 'summoning_circle' : null;
+  if (rebuildTarget !== null) {
+    /** The first def in the prerequisite chain that we do not currently have (or are not building). */
+    const missingPrerequisite = (defId: string, depth = 0): string | null => {
+      if (depth > 4) return null;
+      const def = registry.buildings.get(defId);
+      if (!def) return null;
+      for (const req of def.requires) {
+        if (req === 'sanctum' && !hasYard) return 'sanctum';
+        const standing =
+          per.myBuildings.some((b) => b.defId === req && b.buildProgress === undefined) || inProgressCount(per, req) > 0;
+        if (standing) continue;
+        // Recurse so a missing grandparent is rebuilt before the parent.
+        return missingPrerequisite(req, depth + 1) ?? req;
+      }
+      return null;
+    };
+    const toBuildId = missingPrerequisite(rebuildTarget) ?? rebuildTarget;
+    const def = registry.buildings.get(toBuildId);
+    if (def && per.mana >= def.cost && inProgressCount(per, toBuildId) === 0) {
       const spot = findBuildSpot(state, per, services, registry, def);
       if (spot) {
         commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
-        notes.push(`REBUILDING ${def.id} — ${hasYard ? 'every unit producer was destroyed' : 'the base lost its yard'}`);
+        notes.push(
+          toBuildId === rebuildTarget
+            ? `REBUILDING ${def.id} — ${hasYard ? 'every unit producer was destroyed' : 'the base lost its yard'}`
+            : `REBUILDING PREREQUISITE ${def.id} so ${rebuildTarget} can be rebuilt`,
+        );
         return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
       }
       blockedOnPlacement = true;
@@ -439,11 +466,23 @@ function overlapsOwn(per: Perception, registry: Registry, x: number, y: number, 
     // Cheap bounding rejection first.
     const reach = theirHalf + myHalf;
     if (Math.abs(b.x - x) >= reach || Math.abs(b.y - y) >= reach) continue;
-    // Tile-exact check.
+    /**
+     * TILE ORIGIN MUST MATCH THE SIM.
+     *
+     * The sim anchors a building's footprint at `floor((centre - footprint*TILE/2) / TILE)`, i.e. the footprint's
+     * top-left corner. This check previously derived it from the CENTRE (`floor(centre/TILE) - floor(footprint/2)`),
+     * which for an even footprint is off by one whenever the centre is not tile-aligned. The two disagreed often enough
+     * that the AI proposed a spot its own check passed and `canPlace` rejected as `blocked` — measured on seed 1014:
+     * a rebuild command every 21 ticks for 11 minutes, all rejected, while the AI held 3800 mana it could not spend.
+     */
+    const myTx = Math.floor((x - myHalf) / TILE);
+    const myTy = Math.floor((y - myHalf) / TILE);
+    const theirTx = Math.floor((b.x - theirHalf) / TILE);
+    const theirTy = Math.floor((b.y - theirHalf) / TILE);
     const mySet = new Set<string>();
-    for (let i = 0; i < mine.length; i += 2) mySet.add(`${Math.floor(x / TILE) + mine[i]!},${Math.floor(y / TILE) + mine[i + 1]!}`);
+    for (let i = 0; i < mine.length; i += 2) mySet.add(`${myTx + mine[i]!},${myTy + mine[i + 1]!}`);
     for (let i = 0; i < theirs.length; i += 2) {
-      if (mySet.has(`${Math.floor(b.x / TILE) + theirs[i]!},${Math.floor(b.y / TILE) + theirs[i + 1]!}`)) return true;
+      if (mySet.has(`${theirTx + theirs[i]!},${theirTy + theirs[i + 1]!}`)) return true;
     }
   }
   return false;
@@ -501,7 +540,17 @@ function legalSpot(
   y: number,
   def: BuildingDef,
 ): boolean {
-  const tx = Math.floor(x / TILE) - Math.floor(def.footprint / 2);
-  const ty = Math.floor(y / TILE) - Math.floor(def.footprint / 2);
+  /**
+   * ASK THE SIM. Do not re-derive legality.
+   *
+   * Every previous version of this function reimplemented the sim's placement rules approximately, and each
+   * approximation produced a spot the AI believed was legal and the sim rejected. Measured on seed 1014: a rebuild
+   * command every 21 ticks, every one rejected `blocked`, for eleven minutes, while the AI held 3800 mana. Using
+   * `nav.canPlace` — the same call `handleBuild` validates with — makes disagreement impossible by construction.
+   */
+  const half = (def.footprint * TILE) / 2;
+  const tx = Math.floor((x - half) / TILE);
+  const ty = Math.floor((y - half) / TILE);
+  if (!services.nav.canPlace(tx, ty, def.footprint)) return false;
   return canBuildNearBase(state, services, playerId, tx, ty, def.footprint);
 }
