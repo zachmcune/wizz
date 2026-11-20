@@ -129,6 +129,10 @@ bugs found and fixed:
 | **Sandbox rendered off-screen** | `mountSandbox` called `app.startMatch()`, which replaces the screen root — so two screens stacked and the sandbox rendered at **y=780 in a 768px window**, everything below clipped. It now renders into its own root and starts a sandbox match through a router action. Measured after: **0–768**, one screen, all 10 tabs. |
 | **Page titles and button labels clipped** | `.display` used `line-height: 1.15` and `.btn` used `1`; both made a line box smaller than the glyphs, so every h1 and every button reported `scrollHeight > clientHeight`. Now `1.3` and `1.35`. |
 | **Results screen left 226px dead** | The result grid did not fill a tall viewport. Now `justify-content: space-evenly` with a flexible grid; measured 12px margins at 768px. |
+| **Results screen was always empty when reached by playing** | The router tore the session down on navigation to `results`, so the scoreboard read a null state: zero rows, zeroed stats, and a renderer crash (`Cannot read properties of null (reading 'set')`) from rendering into a destroyed stage. `results` now keeps the session and stops the loop. Verified by surrendering a live match: 3 rows with real counts, 0 errors. |
+| **Results showed developer terms and raw ids** | "Ticks simulated", "Peak entities", "player0", lowercase "arcane", and "MAPDuel Glade" ran together. Now "Total units built", "Structures standing", the lobby display name, the faction's own name, and the map as a normal labelled row. |
+| **Deep-linked results was an empty table** | `?screen=results` with no session rendered an empty scoreboard that read as a bug. It now says no match has been played and offers a button to start one. |
+| **Sandbox standby bar misaligned** | No `display: flex`, so its prompt and button sat at different heights (y=306 vs y=302). |
 
 The pause card also gained four live readouts (time, mana, units, structures) so that screen reports
 where the match stands instead of being one button on an empty field.
@@ -151,6 +155,12 @@ truncation).
 | [`phase4-polish-flow.webm`](phase4-polish-flow.webm) | full flow: menu → lobby → match → research → pause → results |
 
 **37 screenshots, 0 purple in chrome, 0 page errors.**
+
+### CI on head `996e443`
+
+All five checks green: `quality`, `e2e`, `slow`, `Cloudflare Pages`, and `v2`.
+The v2 job ran **420 tests in 22 files** plus the isolated perf gate (3 tests), then the production
+build and the deployed-entry assertions.
 
 ---
 
