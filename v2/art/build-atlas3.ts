@@ -262,6 +262,8 @@ function renderTo(
     footprintWorld?: number;
     /** Anchor the pivot at z = 0 rather than at the lowest geometry (see the comment on `groundZ`). */
     anchorAtOrigin?: boolean;
+    /** Anchor at the ground-CONTACT point rather than the assembly origin. Used by units, not buildings. */
+    anchorAtContact?: boolean;
   } = {},
 ): BakeResult {
   const pitch = opts.pitch ?? PITCH;
@@ -346,8 +348,19 @@ function renderTo(
       if (sy > groundSy) groundSy = sy;
     }
   }
-  const anchorSx = groundCount > 0 ? groundSx / groundCount : 0;
-  const anchorSy = groundCount > 0 ? groundSy : 0;
+  const anchorSx = opts.anchorAtContact && groundCount > 0 ? groundSx / groundCount : 0;
+  /**
+   * BUILDINGS ANCHOR AT THEIR GROUND ORIGIN; UNITS ANCHOR AT THEIR CONTACT POINT.
+   *
+   * The contact-point rule was introduced for units, whose feet can be off-axis (a vehicle's four pads), and it is
+   * right there. Applied to buildings it is wrong: a building's plinth is a large slab, so the "lowest ground vertex"
+   * is its near bottom EDGE, not its centre. Anchoring there pushed the pivot 18px below the plinth's widest row and
+   * the building's base appeared to sit above its own footprint origin — the alignment gate caught it immediately
+   * once the redesigned buildings had taller bodies.
+   *
+   * `opts.anchorAtContact` selects the contact rule; buildings leave it off and keep the origin.
+   */
+  const anchorSy = opts.anchorAtContact && groundCount > 0 ? groundSy : 0;
   const originX = frame / 2 + (anchorSx - ((minX + maxX) / 2)) * scale;
   /**
    * HOVER CLEARANCE IS APPLIED TO THE PIVOT, IN SCREEN PIXELS.

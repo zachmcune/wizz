@@ -595,13 +595,21 @@ function frostSpire(): Assembly {
    * Each shard's tip is further from the axis than its base, and the outer pair tilt hardest, so the formation opens
    * like a hand. The tallest central shard keeps a single peak.
    */
+  /**
+   * Shard sizes are chosen so the TOP quarter of the silhouette is still wide.
+   *
+   * The defence gate requires a weapon head that breaks the roofline: an "inverted cone" is right for identity, but if
+   * the only thing reaching the top is one thin central spike the head still tapers to a point (it measured 21% of the
+   * widest row). The outer shards are therefore only slightly shorter than the central one, so the top band contains
+   * three thick shards rather than a needle.
+   */
   const shards: [number, number, number, number, number][] = [
     // dx, dy, height, radius, lean
-    [0, 0, 40, 4.2, 0],
-    [-6.5, 1.5, 30, 3.2, 0.34],
-    [6.5, -1.0, 32, 3.4, -0.32],
-    [-10.5, -3.0, 21, 2.6, 0.55],
-    [10.0, 2.5, 23, 2.8, -0.52],
+    [0, 0, 40, 4.6, 0],
+    [-7.5, 1.5, 36, 4.0, 0.30],
+    [7.5, -1.0, 37, 4.2, -0.28],
+    [-12.0, -3.0, 30, 3.4, 0.48],
+    [11.5, 2.5, 31, 3.6, -0.46],
   ];
   for (const [dx, dy, h, r, lean] of shards) {
     parts.push(

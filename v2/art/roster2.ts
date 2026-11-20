@@ -397,19 +397,32 @@ function arcaneNexus(): Assembly {
     const a = (i / SEG) * Math.PI * 2 + Math.PI / SEG;
     parts.push(part(prism(2.4, 1.0, 5), [Math.cos(a) * RING_R, Math.sin(a) * RING_R, 15.2], PAL.runeTeam, { rotZ: a }));
   }
-  parts.push(part(cyl(8.0, 7.4, 3.0, 12), [0, 0, 9.4], PAL.violetDeep));
-  parts.push(part(cyl(6.0, 5.2, 10.0, 12), [0, 0, 10.0], PAL.violet));
-  parts.push(part(prism(4.0, 13.0, 6), [0, 0, 18.0], PAL.crystal));
-  parts.push(part(sph(4.4, 12), [0, 0, 33.0], PAL.crystalHot));
+  /**
+   * A TALL CENTRAL SPIRE rising out of the ring, so the building is a ring PLUS a tower rather than a low ring.
+   *
+   * The nexus measured 0.811 against the Inferno Beacon and 0.793 against the Obsidian Bastion — both wide, low
+   * masses like itself. Making the centre the tallest element in the building separates it from every low box in
+   * the roster.
+   */
+  parts.push(part(cyl(8.0, 7.0, 5.0, 12), [0, 0, 9.4], PAL.violetDeep));
+  parts.push(part(cyl(6.4, 4.6, 26.0, 12), [0, 0, 14.0], PAL.violet));
+  parts.push(part(cyl(5.0, 3.6, 14.0, 10), [0, 0, 40.0], PAL.violetLit));
+  for (const z of [22.0, 34.0]) {
+    parts.push(part(cyl(6.2, 6.2, 1.8, 12), [0, 0, z], PAL.brass));
+  }
+  parts.push(part(prism(4.4, 12.0, 6), [0, 0, 46.0], PAL.crystal));
+  parts.push(part(sph(5.2, 12), [0, 0, 62.0], PAL.crystalHot));
+  parts.push(part(prism(8.4, 1.2, 10), [0, 0, 56.0], PAL.aether));
   for (const [sx, sy] of [
     [-1, -1],
     [1, -1],
     [-1, 1],
     [1, 1],
   ] as const) {
-    parts.push(part(cyl(2.4, 2.0, 17.0, 8), [sx * 15.0, sy * 15.0, 3.0], PAL.rockLit));
-    parts.push(part(sph(2.6, 9), [sx * 15.0, sy * 15.0, 21.4], PAL.crystalHot));
-    parts.push(part(prism(2.8, 0.8, 8), [sx * 15.0, sy * 15.0, 19.0], PAL.brass));
+    parts.push(part(cyl(2.4, 1.8, 26.0, 8), [sx * 15.0, sy * 15.0, 3.0], PAL.rockLit));
+    parts.push(part(prism(1.6, 7.0, 5), [sx * 15.0, sy * 15.0, 30.0], PAL.crystalHot));
+    parts.push(part(prism(2.8, 0.8, 8), [sx * 15.0, sy * 15.0, 26.0], PAL.brass));
+    parts.push(part(prism(3.0, 1.0, 8), [sx * 15.0, sy * 15.0, 12.0], PAL.runeTeam));
   }
   return { parts };
 }
@@ -492,7 +505,9 @@ function arcaneBunker(): Assembly {
   parts.push(part(prism(2.0, 5.0, 6), [12.0, -12.0, 38.4], PAL.crystalHot));
   parts.push(part(bbox(3.0, 3.0, 2.0, 0.6), [12.0, -12.0, 12.0], PAL.runeTeam));
   // Team ring at the dome shoulder.
-  parts.push(part(bbox(32.4, 32.4, 2.0, 0.6), [0, 0, 14.0], PAL.trimTeam));
+  parts.push(part(bbox(32.4, 32.4, 3.2, 0.6), [0, 0, 13.4], PAL.trimTeam));
+  parts.push(part(bbox(33.0, 33.0, 1.8, 0.5), [0, 0, 17.4], PAL.runeTeam));
+  parts.push(part(bbox(7.0, 7.0, 3.0, 0.6), [12.0, -12.0, 20.0], PAL.runeTeam));
   return { parts };
 }
 
@@ -516,12 +531,14 @@ function attunementSpire(): Assembly {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     parts.push(
       part(
-        plate(9.0, 4.0, 12.0, 1.2),
-        [Math.cos(a) * 9.0, Math.sin(a) * 9.0, 4.0],
+        plate(15.0, 6.0, 20.0, 1.4),
+        [Math.cos(a) * 12.0, Math.sin(a) * 12.0, 4.0],
         PAL.violetDeep,
-        { rotZ: a + Math.PI / 2, rotX: -0.35 },
+        { rotZ: a + Math.PI / 2, rotX: -0.42 },
       ),
     );
+    // A wide rim at the top of each vane, which is what makes the funnel read.
+    parts.push(part(cyl(3.0, 2.4, 2.6, 6), [Math.cos(a) * 17.0, Math.sin(a) * 17.0, 21.0], PAL.brass, { rotZ: a }));
     parts.push(part(cyl(1.0, 0.7, 7.0, 5), [Math.cos(a) * 6.0, Math.sin(a) * 6.0, 3.0], PAL.brass, { rotZ: Math.cos(a) * 0.4, rotX: Math.sin(a) * 0.4 }));
   }
   // Tapered pylon.
@@ -529,10 +546,17 @@ function attunementSpire(): Assembly {
   for (const z of [10.0, 18.0]) {
     parts.push(part(cyl(6.2, 5.4, 1.4, 8), [0, 0, z], PAL.brass));
   }
-  // The floating crystal: a large faceted shard held above the pylon by a visible gap, which is the read.
-  parts.push(part(prism(7.4, 13.0, 6), [0, 0, 34.0], PAL.crystal));
-  parts.push(part(prism(4.4, 7.0, 6), [0, 0, 44.0], PAL.crystalHot));
-  parts.push(part(prism(2.2, 3.4, 6), [0, 0, 50.0], PAL.crystalHot));
+  /**
+   * A SINGLE ROUND ORB, NOT A CRYSTAL STACK.
+   *
+   * The attunement spire and the frost spire were both crystal-topped and measured 0.733 — the two most similar
+   * remaining pair. A harvester's read is a collected sphere of mana; a defence's read is jagged ice. So this is one
+   * big smooth orb on a cradle, where the frost spire is five angular shards.
+   */
+  parts.push(part(cyl(6.0, 5.0, 2.4, 12), [0, 0, 31.0], PAL.brass));
+  parts.push(part(sph(9.0, 16), [0, 0, 41.0], PAL.crystalHot));
+  parts.push(part(sph(6.4, 14), [0, 0, 41.0], PAL.aether));
+  parts.push(part(sph(3.0, 10), [0, -3.0, 41.0], PAL.crystalHot));
   // Containment rings around the crystal.
   parts.push(part(cyl(9.4, 9.4, 1.0, 12), [0, 0, 33.0], PAL.aether));
   parts.push(part(cyl(7.0, 7.0, 0.9, 12), [0, 0, 40.0], PAL.aether));
@@ -655,8 +679,10 @@ function leyConduit(): Assembly {
   parts.push(part(sph(1.8, 9), [0, 0, 41.6], PAL.crystalHot));
   // Team bands on the crossarms, where they are widest and most visible.
   for (const z of [23.0, 29.0]) {
-    parts.push(part(bbox(26.0, 2.8, 1.2, 0.5), [0, 0, z], PAL.runeTeam));
+    parts.push(part(bbox(26.0, 3.6, 2.4, 0.5), [0, 0, z], PAL.runeTeam));
   }
+  // A wide team collar low on the frame, where the A-frame legs are widest and most visible.
+  parts.push(part(bbox(27.0, 27.0, 2.2, 0.6), [0, 0, 6.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -770,7 +796,8 @@ function celestialCannon(): Assembly {
   // Counterweight at the rear, so the mass is visibly balanced against the barrel.
   parts.push(part(bbox(13.0, 7.0, 8.0, 1.6, 0.8), [0, 12.0, 34.0], PAL.ironOld));
   // Team band across the turret and on the muzzle collar.
-  parts.push(part(bbox(31.0, 19.0, 1.8, 0.6), [0, 2.0, 38.4], PAL.trimTeam));
+  parts.push(part(bbox(31.0, 19.0, 3.0, 0.6), [0, 2.0, 37.8], PAL.trimTeam));
+  parts.push(part(bbox(31.6, 19.6, 1.6, 0.5), [0, 2.0, 41.8], PAL.runeTeam));
   parts.push(part(cyl(6.0, 6.0, 1.2, 12), [0, -33.0, 43.8], PAL.runeTeam));
   return { parts };
 }
@@ -817,8 +844,8 @@ function scryingObelisk(): Assembly {
   parts.push(part(bbox(7.0, 1.6, 5.0, 0.6), [0, -5.4, 30.0], PAL.rockDeep));
   parts.push(part(bbox(4.6, 1.2, 3.4, 0.5), [0, -6.0, 30.4], PAL.crystalHot));
   // Team: slim collar bands, deliberately NARROW so they cannot read as crossarms.
-  parts.push(part(cyl(6.6, 6.2, 2.4, 4), [0, 0, 16.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
-  parts.push(part(cyl(5.8, 5.4, 2.0, 4), [0, 0, 38.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(7.4, 7.0, 3.4, 4), [0, 0, 16.0], PAL.trimTeam, { rotZ: Math.PI / 4 }));
+  parts.push(part(cyl(6.4, 6.0, 2.8, 4), [0, 0, 38.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
   return { parts };
 }
 
@@ -881,28 +908,29 @@ function summoningCircle(): Assembly {
  */
 function obsidianBastion(): Assembly {
   const parts: Part[] = [...plinth(2, 2.8)];
-  parts.push(part(bbox(30, 30, 24.0, 2.4, 0.94), [0, 0, 2.6], PAL.ironOld));
+  parts.push(part(bbox(30, 30, 30.0, 2.4, 0.92), [0, 0, 2.6], PAL.ironOld));
   for (const [sx, sy] of [
     [-1, -1],
     [1, -1],
     [-1, 1],
     [1, 1],
   ] as const) {
-    parts.push(part(cyl(5.0, 4.6, 20.0, 8), [sx * 15.0, sy * 15.0, 2.6], PAL.steelDeep));
-    parts.push(part(cone(5.6, 6.0, 8), [sx * 15.0, sy * 15.0, 22.6], PAL.ironOld));
+    parts.push(part(cyl(5.0, 4.2, 34.0, 8), [sx * 15.0, sy * 15.0, 2.6], PAL.steelDeep));
+    parts.push(part(cone(6.2, 9.0, 8), [sx * 15.0, sy * 15.0, 36.0], PAL.ironOld));
+    parts.push(part(prism(1.4, 5.0, 5), [sx * 15.0, sy * 15.0, 44.0], PAL.crystalHot));
   }
   for (let i = -2; i <= 2; i++) {
-    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [i * 5.4, -14.0, 26.6], PAL.steel));
-    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [i * 5.4, 14.0, 26.6], PAL.steel));
+    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [i * 5.4, -14.0, 32.6], PAL.steel));
+    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [i * 5.4, 14.0, 32.6], PAL.steel));
   }
   for (let i = -1; i <= 1; i++) {
-    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [-14.0, i * 5.4, 26.6], PAL.steel));
-    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [14.0, i * 5.4, 26.6], PAL.steel));
+    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [-14.0, i * 5.4, 32.6], PAL.steel));
+    parts.push(part(bbox(3.2, 3.2, 3.4, 0.7), [14.0, i * 5.4, 32.6], PAL.steel));
   }
   // TEAM MARKER: this structure had NO team-tinted geometry at all, so both players' bastions looked
   // identical. Three bold elements fix it: a rune band around the keep, hanging banners on two faces,
   // and a lit ring under the brazier.
-  parts.push(bbox(31.6, 31.6, 2.6, 0.7) && part(bbox(31.6, 31.6, 2.4, 0.7), [0, 0, 20.6], PAL.trimTeam));
+  parts.push(bbox(31.6, 31.6, 2.6, 0.7) && part(bbox(31.6, 31.6, 2.4, 0.7), [0, 0, 26.6], PAL.trimTeam));
   parts.push(part(bbox(31.6, 31.6, 2.0, 0.6), [0, 0, 9.4], PAL.runeTeam));
   parts.push(part(plate(7.0, 5.4, 10.0, 1.0), [0, -15.6, 12.0], PAL.bannerTeam));
   parts.push(part(plate(7.0, 5.4, 10.0, 1.0), [0, 15.6, 12.0], PAL.bannerTeam));
@@ -973,7 +1001,8 @@ function stormConductor(): Assembly {
   const RINGS = 7;
   for (let i = 0; i < RINGS; i++) {
     const t = i / (RINGS - 1);
-    const r = 11.0 - t * 3.0;
+    // Rings WIDEN toward the top: an inverted cone of coils, which is the opposite profile to every other tower.
+    const r = 7.0 + t * 7.0;
     const z = 6.0 + t * 22.0;
     parts.push(part(cyl(r, r, 1.3, 14), [0, 0, z], i % 2 === 0 ? PAL.steel : PAL.brassDeep));
     // Open the ring: a gap segment, so it does not read as a solid disc.
@@ -987,23 +1016,29 @@ function stormConductor(): Assembly {
     );
   }
   // Crown: three wide vanes splaying outward, plus the collector.
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
-    const d = (i / 3) * Math.PI * 2;
+  /**
+   * A WIDE SPLAYED CROWN of six vanes, reaching well beyond the coil.
+   *
+   * The storm conductor measured 0.807 against the Thorn Grove and 0.799 against the Ley Conduit: with a narrower head
+   * it was just another tapered column. A crown that is the WIDEST part of the building inverts its profile and
+   * makes it unmistakable from above, which is the angle the game is played at.
+   */
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
     parts.push(
-      part(plate(10.0, 2.6, 1.0, 8.0), [Math.cos(a) * 8.5, Math.sin(a) * 8.5, 31.0], PAL.steel, {
+      part(plate(13.0, 2.4, 1.0, 9.0), [Math.cos(a) * 12.0, Math.sin(a) * 12.0, 33.0], PAL.steel, {
         rotZ: a,
         rotY: -Math.PI / 2,
-        rotX: 0.5,
+        rotX: 0.42,
       }),
     );
-    void d;
+    parts.push(part(sph(1.3, 8), [Math.cos(a) * 17.0, Math.sin(a) * 17.0, 36.0], PAL.crystalHot));
   }
   parts.push(part(sph(3.6, 12), [0, 0, 36.0], PAL.crystalHot));
   parts.push(part(prism(2.2, 5.0, 6), [0, 0, 40.0], PAL.aether));
   // Team bands on two of the coil rings, where they catch the light.
-  parts.push(part(cyl(11.4, 11.4, 1.8, 14), [0, 0, 9.0], PAL.runeTeam));
-  parts.push(part(cyl(9.4, 9.4, 1.6, 14), [0, 0, 21.0], PAL.trimTeam));
+  parts.push(part(cyl(8.4, 8.4, 1.8, 14), [0, 0, 9.0], PAL.runeTeam));
+  parts.push(part(cyl(12.4, 12.4, 1.6, 14), [0, 0, 24.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -1080,46 +1115,51 @@ function golemForge(): Assembly {
    *
    * Offsetting the masses is what breaks the "symmetric box" silhouette the cannon also had.
    */
-  parts.push(part(bbox(26, 22, 15.0, 2.4, 0.94), [-8.0, 0, 2.6], PAL.ironOld));
-  parts.push(part(bbox(28, 24, 2.0, 0.9, 0.98), [-8.0, 0, 17.6], PAL.steelDeep));
-  // Mono-pitch roof over the hall: a slanted slab, so the roofline is a diagonal.
-  parts.push(part(bbox(25, 21, 1.6, 0.8, 0.9), [-8.0, 0, 19.6], PAL.steel, { rotZ: 0.14 }));
+  /**
+   * TWO LOW WINGS flanking the chimney, which makes the profile a symmetric T rather than the cannon's asymmetric
+   * L. That flanking pair is the shape that finally separated this building from the Celestial Cannon.
+   */
+  for (const sx of [-1, 1] as const) {
+    parts.push(part(bbox(20, 18, 15.0, 2.2, 0.94), [sx * 20.0, 0, 2.6], PAL.ironOld));
+    parts.push(part(bbox(21, 19, 2.0, 0.9, 0.98), [sx * 20.0, 0, 17.6], PAL.steelDeep));
+    parts.push(part(bbox(19, 17, 1.6, 0.8, 0.9), [sx * 20.0, 0, 19.6], PAL.steel));
+    parts.push(part(bbox(21.0, 19.0, 2.0, 0.6), [sx * 20.0, 0, 11.4], PAL.runeTeam));
+  }
 
   /**
    * THE CHIMNEY STACK — square, tall, and capped with a flared crown. Square rather than round so it does not read
    * as a spire; tapered slightly so it has a direction.
    */
-  parts.push(part(bbox(12.0, 12.0, 56.0, 1.6, 0.86), [14.0, 4.0, 2.6], PAL.steelDeep));
-  parts.push(part(bbox(14.6, 14.6, 3.4, 0.8, 0.96), [14.0, 4.0, 56.4], PAL.steel));
-  parts.push(part(bbox(12.6, 12.6, 1.8, 0.6), [14.0, 4.0, 59.8], PAL.ironOld));
+  parts.push(part(bbox(13.0, 13.0, 56.0, 1.6, 0.86), [0, 2.0, 2.6], PAL.steelDeep));
+  parts.push(part(bbox(15.6, 15.6, 3.4, 0.8, 0.96), [0, 2.0, 56.4], PAL.steel));
+  parts.push(part(bbox(13.6, 13.6, 1.8, 0.6), [0, 2.0, 59.8], PAL.ironOld));
   // Banded courses up the stack, which reads as masonry at phone zoom.
   for (const z of [14.0, 28.0, 42.0, 53.0]) {
-    parts.push(part(bbox(12.8, 12.8, 1.5, 0.5), [14.0, 4.0, z], PAL.brassDeep));
+    parts.push(part(bbox(13.8, 13.8, 1.5, 0.5), [0, 2.0, z], PAL.brassDeep));
   }
   // Smoke glow just inside the crown.
-  parts.push(part(cyl(4.2, 3.6, 1.4, 8), [14.0, 4.0, 61.4], PAL.emberDeep));
+  parts.push(part(cyl(4.6, 4.0, 1.4, 8), [0, 2.0, 61.4], PAL.emberDeep));
 
   /**
    * THE ANVIL — a raised block on the hall's roof with a horn, the one element that says "this building makes
    * things" rather than "this building is a box". It breaks the roofline at a point no other building in the roster
    * breaks.
    */
-  parts.push(part(bbox(9.0, 6.0, 2.4, 0.7), [-13.0, -3.0, 20.4], PAL.steelDeep));
-  parts.push(part(bbox(6.4, 4.6, 3.0, 0.8, 0.82), [-13.0, -3.0, 22.8], PAL.ironOld));
-  parts.push(part(cone(1.8, 4.2, 6), [-8.4, -3.0, 23.6], PAL.steel, { rotZ: -Math.PI / 2 }));
-  // A golem's half-finished arm resting against it, so the anvil has a purpose in the read.
-  parts.push(part(cyl(1.6, 1.2, 7.0, 6), [-13.0, 3.4, 21.0], PAL.stoneDeep, { rotZ: 0.5 }));
+  parts.push(part(bbox(9.0, 6.0, 2.4, 0.7), [-20.0, -3.0, 20.4], PAL.steelDeep));
+  parts.push(part(bbox(6.4, 4.6, 3.0, 0.8, 0.82), [-20.0, -3.0, 22.8], PAL.ironOld));
+  parts.push(part(cone(1.8, 4.2, 6), [-15.4, -3.0, 23.6], PAL.steel, { rotZ: -Math.PI / 2 }));
+  parts.push(part(cyl(1.6, 1.2, 7.0, 6), [-20.0, 3.4, 21.0], PAL.stoneDeep, { rotZ: 0.5 }));
 
   // Furnace mouth at ground level, glowing.
-  parts.push(part(bbox(12.0, 2.2, 9.0, 0.9), [-8.0, -11.4, 3.4], PAL.rockDeep));
-  parts.push(part(bbox(9.0, 1.6, 6.8, 0.6), [-8.0, -12.2, 3.6], PAL.emberCore));
-  parts.push(part(bbox(5.4, 1.2, 4.2, 0.5), [-8.0, -12.6, 3.8], PAL.crystalHot));
+  parts.push(part(bbox(12.0, 2.2, 9.0, 0.9), [20.0, -9.4, 3.4], PAL.rockDeep));
+  parts.push(part(bbox(9.0, 1.6, 6.8, 0.6), [20.0, -10.2, 3.6], PAL.emberCore));
+  parts.push(part(bbox(5.4, 1.2, 4.2, 0.5), [20.0, -10.6, 3.8], PAL.crystalHot));
 
   // Team: band on the hall, band on the stack, banner on the chimney face.
-  parts.push(part(bbox(27.0, 23.0, 2.0, 0.6), [-8.0, 0, 11.4], PAL.runeTeam));
-  parts.push(part(bbox(12.6, 12.6, 1.8, 0.6), [14.0, 4.0, 34.0], PAL.runeTeam));
-  parts.push(part(bbox(29.0, 25.0, 1.4, 0.5), [-8.0, 0, 18.4], PAL.trimTeam));
-  parts.push(part(plate(6.6, 5.0, 8.4, 1.0), [14.0, -3.0, 40.0], PAL.bannerTeam));
+  
+  parts.push(part(bbox(13.6, 13.6, 1.8, 0.6), [0, 2.0, 34.0], PAL.runeTeam));
+  for (const sx of [-1, 1] as const) parts.push(part(bbox(21.0, 19.0, 1.4, 0.5), [sx * 20.0, 0, 18.4], PAL.trimTeam));
+  parts.push(part(plate(6.6, 5.0, 8.4, 1.0), [0, -5.0, 40.0], PAL.bannerTeam));
   return { parts };
 }
 
@@ -1167,12 +1207,14 @@ function thornGrove(): Assembly {
    * outward. Uneven heights make the top edge a broken, organic skyline rather than a machined rim, which is what
    * separates the grove from every geometric structure at a glance.
    */
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + 0.35;
-    const h = 18 + ((i * 11) % 5) * 5.0;
-    const x = Math.cos(a) * 15.0;
-    const y = Math.sin(a) * 15.0;
-    const lean = 0.16 + (i % 2) * 0.07;
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + 0.35;
+    // Nine shorter spikes at wildly varied heights and radii: an irregular sprawl rather than a symmetric crown.
+    const h = 12 + ((i * 13) % 7) * 3.4;
+    const rad = 11.0 + ((i * 5) % 4) * 3.0;
+    const x = Math.cos(a) * rad;
+    const y = Math.sin(a) * rad;
+    const lean = 0.22 + (i % 3) * 0.09;
     parts.push(
       part(cone(6.2, h, 6), [x, y, 3.0], i % 2 === 0 ? PAL.leafDeep : PAL.woodDeep, {
         rotZ: Math.cos(a) * -lean,
@@ -1285,8 +1327,8 @@ function waystoneCamp(): Assembly {
   /**
    * THE STANDING STONE — tallest element, the landmark that identifies the camp.
    */
-  parts.push(part(prism(3.6, 38.0, 5), [0, 0, 2.8], PAL.rockLit, { rotZ: 0.4 }));
-  parts.push(part(sph(2.6, 10), [0, 0, 41.4], PAL.crystalHot));
+  parts.push(part(prism(3.6, 46.0, 5), [0, 0, 2.8], PAL.rockLit, { rotZ: 0.4 }));
+  parts.push(part(sph(2.6, 10), [0, 0, 49.4], PAL.crystalHot));
   parts.push(part(prism(4.8, 1.2, 5), [0, 0, 30.0], PAL.runeTeam, { rotZ: 0.4 }));
   // Campfire between the tents.
   parts.push(part(cyl(3.2, 2.6, 1.2, 10), [-8.0, 8.0, 3.2], PAL.ironOld));
