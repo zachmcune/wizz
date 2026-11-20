@@ -82,7 +82,27 @@ export function stepSimulation(
   services.spatial.rebuild(state.entities);
 
   applyCommands(state, ctx, cmds);
-  if (aiHook && !state.ended) nextCommands.push(...aiHook(state, services));
+  /**
+   * AI COMMANDS ARE APPLIED IN THE SAME TICK.
+   *
+   * `AiHook` used to return its commands in `StepResult.nextCommands` for the caller to feed back on the
+   * next tick — except nothing ever read that field. Grep the whole repo: the only producer was this
+   * function and there was no consumer, so every command an AI produced was silently discarded. The
+   * headless harness and the browser match both drove the sim in a loop that dropped the return value.
+   *
+   * With the Phase 5 planners wired in, that showed up immediately as an AI that issued thousands of
+   * commands (its own counters incremented) while building nothing, training nothing and never attacking.
+   *
+   * Applying them here instead is both correct and simpler: the AI observes the state after the player's
+   * commands for this tick and acts within the same tick, so there is no hidden one-tick queue to plumb.
+   * `nextCommands` is kept on the result for callers that want to log a decision, but it is no longer the
+   * channel through which AI commands reach the world.
+   */
+  if (aiHook && !state.ended) {
+    const aiCommands = aiHook(state, services);
+    if (aiCommands.length > 0) applyCommands(state, ctx, aiCommands);
+    nextCommands.push(...aiCommands);
+  }
   productionSystem(state, ctx);
   morphSystem(state, ctx);
   movementSystem(state, ctx);

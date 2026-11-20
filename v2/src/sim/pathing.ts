@@ -176,11 +176,31 @@ function tryEscapeMove(
   candidates.sort((a, b) => a.cost - b.cost || a.dy - b.dy || a.dx - b.dx);
 
   for (const c of candidates) {
-    const nx = x + c.dx * speed * dt;
-    const ny = y + c.dy * speed * dt;
-    const slid = slidePosition(ctx, x, y, nx, ny, radius);
-    if (!slid) continue;
-    return { x: slid.x, y: slid.y, facing: Math.atan2(c.dy, c.dx) };
+    /**
+     * ESCAPE IN TILE-SIZED STEPS, NOT FRAME-SIZED ONES.
+     *
+     * `slidePosition` rejects a move if the destination's radius disc touches a blocked tile. When a unit is
+     * pressed against an obstacle, a one-frame step (`speed * dt`, ~1-3 world units) is still inside the
+     * blocked disc — so every candidate failed the slide and the unit never moved, even though the flow field
+     * said five neighbours were downhill. Measured symptom: a unit with nonzero velocity and a valid order
+     * moved **0 units in 10 seconds** while `tryEscapeMove` returned null every tick.
+     *
+     * Escaping needs to clear the obstacle, so the step is scaled up to a fraction of a tile (and never less
+     * than a frame's worth), which gets the unit's disc out of the blocked region in one move.
+     */
+    const stepLen = Math.max(speed * dt, TILE * 0.5);
+    const len = Math.hypot(c.dx, c.dy) || 1;
+    const nx = x + (c.dx / len) * stepLen;
+    const ny = y + (c.dy / len) * stepLen;
+    // Try the full escape step first, then progressively smaller ones so a tight gap is still passable.
+    for (const factor of [1, 0.6, 0.3]) {
+      const sx = x + ((nx - x) * factor);
+      const sy = y + ((ny - y) * factor);
+      const slid = slidePosition(ctx, x, y, sx, sy, radius);
+      if (slid && (Math.abs(slid.x - x) > 1e-6 || Math.abs(slid.y - y) > 1e-6)) {
+        return { x: slid.x, y: slid.y, facing: Math.atan2(c.dy, c.dx) };
+      }
+    }
   }
   return null;
 }

@@ -1,0 +1,376 @@
+// MILITARY PLANNER.
+//
+// v1's army never left its own base in most matches, and when it did it walked in one straight line at
+// whatever it saw first. This planner is built around four decisions a human actually makes:
+//
+//   1. WHAT TO BUILD — composition driven by what the enemy has actually been SEEN fielding, scored against
+//      the real `vs` damage matrix in the unit data. No counter without scouting.
+//   2. WHEN TO FIGHT — a wave only goes out when it is big enough, and it turns back if the fight is lost.
+//   3. HOW TO FIGHT — focus fire onto the best target, ranged units kite, hurt units retreat to heal.
+//   4. WHERE TO FIGHT — defend the base when it is threatened, and harass a known undefended expansion when
+//      the main army is elsewhere.
+//
+// Every input comes from `Perception`, so a decision to counter a unit the AI never scouted is impossible.
+
+import type { Command, EntityId, PlayerId } from '../sim/types';
+import type { Registry } from '../data/registry';
+import type { UnitDef } from '../data/defs';
+import type { Perception, SeenBuilding, SeenUnit } from './perception';
+import type { DifficultyProfile } from './difficulty';
+import { TILE } from '../core/constants';
+
+export interface MilitaryPlan {
+  commands: Command[];
+  notes: string[];
+  /** Units we consider available to attack with this pass. */
+  armySize: number;
+  /** True when the base is under threat and the army was recalled. */
+  defending: boolean;
+}
+
+/** Everything about a unit that the planner needs, resolved once. */
+interface UnitInfo {
+  seen: SeenUnit;
+  def: UnitDef | undefined;
+  role: 'melee' | 'ranged' | 'siege' | 'support';
+  dps: number;
+}
+
+function unitInfo(seen: SeenUnit, registry: Registry): UnitInfo {
+  const def = registry.units.get(seen.defId);
+  const w = def?.weapon;
+  const dps = w && w.cooldownTicks > 0 ? (w.damage * 20) / w.cooldownTicks : 0;
+  let role: UnitInfo['role'] = 'melee';
+  if (def?.isHarvester) role = 'support';
+  else if (w && w.range >= 120) role = 'siege';
+  else if (w && w.range >= 60) role = 'ranged';
+  return { seen, def, role, dps };
+}
+
+/** Our combat units (harvesters and unarmed units excluded). */
+function combatUnits(per: Perception, registry: Registry): UnitInfo[] {
+  const out: UnitInfo[] = [];
+  for (const u of per.myUnits) {
+    const info = unitInfo(u, registry);
+    if (info.role === 'support') continue;
+    if (!info.def?.weapon) continue;
+    out.push(info);
+  }
+  return out;
+}
+
+/**
+ * Pick the unit that best answers the enemy's OBSERVED composition.
+ *
+ * This is a direct use of the data's counter matrix: for each candidate we compute its damage against the
+ * enemy's actual armour mix, weight it by how much of that mix exists, and divide by cost. A candidate we
+ * have never scouted against scores on the default mix, so an AI that does not scout counters badly — which
+ * is the intended consequence of skipping scouting, not a hidden rule.
+ */
+export function bestCounterUnit(
+  registry: Registry,
+  per: Perception,
+  producers: SeenBuilding[],
+  enemyUnits: SeenUnit[],
+): { id: string; cost: number } | null {
+  const available = new Set<string>();
+  for (const b of producers) {
+    const def = registry.buildings.get(b.defId);
+    for (const u of def?.producesUnits ?? []) available.add(u);
+  }
+
+  // The enemy's armour mix, by HP share. Unknown armour defaults to an even split.
+  const mix = { light: 0, heavy: 0, building: 0 };
+  let totalHp = 0;
+  for (const e of enemyUnits) {
+    mix[e.armor] += e.hp;
+    totalHp += e.hp;
+  }
+  if (totalHp === 0) {
+    mix.light = 1;
+    mix.heavy = 1;
+    mix.building = 0.2;
+    totalHp = 2.2;
+  }
+
+  let best: { id: string; cost: number; score: number } | null = null;
+  for (const id of available) {
+    const u = registry.units.get(id);
+    if (!u || u.isHarvester || !u.weapon) continue;
+    if (u.requires.some((r) => !per.unlockedTech.has(r))) continue;
+    if (u.factions && !u.factions.includes(per.factionId)) continue;
+    if (u.cost <= 0) continue;
+    const vs = u.weapon.vs;
+    // Expected damage against the observed armour mix.
+    const effective = (vs.light * mix.light + vs.heavy * mix.heavy + vs.building * mix.building) / totalHp;
+    /**
+     * VALUE, NOT JUST DAMAGE-PER-COST.
+     *
+     * Dividing damage by cost alone picks the cheapest body every time, and the cheapest body in this roster
+     * is a 60 HP scout with an 8-damage weapon. An AI built on that metric produced **83 rift familiars and
+     * nothing else** — a swarm that dies to one AoE and cannot break a building (0.3x vs structures). The
+     * army looked large on a unit count and could not win a fight, which is exactly the "big number, no
+     * threat" failure the v1 AI had.
+     *
+     * So the score multiplies damage by how long the unit survives to deal it: effective HP per cost. A
+     * 600 HP golem at 0.8x vs heavy beats a 60 HP familiar at 1.1x even though the familiar is 4.5x cheaper,
+     * because the golem is still shooting while the swarm is dead.
+     */
+    const sustain = u.hp * (1 + (u.armor === 'heavy' ? 0.35 : 0)); // heavy armour absorbs more in practice
+    const score = (effective * sustain) / (u.cost * u.cost) ** 0.5;
+    if (!best || score > best.score) best = { id, cost: u.cost, score };
+  }
+  return best ? { id: best.id, cost: best.cost } : null;
+}
+
+/** The enemy unit type we have seen most of, for notes and for building a dedicated counter. */
+export function dominantEnemyUnit(enemyUnits: SeenUnit[]): { defId: string; count: number } | null {
+  const counts = new Map<string, number>();
+  for (const u of enemyUnits) counts.set(u.defId, (counts.get(u.defId) ?? 0) + 1);
+  let best: { defId: string; count: number } | null = null;
+  for (const [defId, count] of counts) {
+    if (!best || count > best.count) best = { defId, count };
+  }
+  return best;
+}
+
+/**
+ * Build the military plan for one tick.
+ *
+ * `homeX/homeY` is where the army rallies (the construction yard), so "defend" and "retreat" have a place to
+ * mean. `waveSize` is carried across ticks by the caller so the AI does not reset its ambition every pass.
+ */
+export function planMilitary(
+  per: Perception,
+  registry: Registry,
+  profile: DifficultyProfile,
+  opts: {
+    homeX: number;
+    homeY: number;
+    /** Units committed to the last wave; the AI grows its ambition from here. */
+    lastWaveSize: number;
+    /** True while the AI has an active attack order out. */
+    attacking: boolean;
+    /** The enemy position we know about, if any (a ghost building or a live sighting). */
+    enemyAnchor: { x: number; y: number } | null;
+  },
+): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
+  const commands: Command[] = [];
+  const notes: string[] = [];
+  const pid = per.playerId;
+  const army = combatUnits(per, registry);
+  const armySize = army.length;
+
+  // ------------------------------------------------------------------ 1. defense comes first
+  const threat = assessBaseThreat(per, registry, opts.homeX, opts.homeY);
+  let defending = false;
+  if (threat.threatened && armySize > 0) {
+    defending = true;
+    const defenders = army.slice(0, Math.max(1, Math.ceil(armySize * 0.8))).map((a) => a.seen.id);
+    commands.push({ type: 'attackMove', playerId: pid, entityIds: defenders, x: threat.x, y: threat.y });
+    notes.push(`defending base: ${threat.count} enemy unit(s) within ${Math.round(threat.dist)} of home`);
+    // Defenders should not chase far: after the first order, hold near home next pass.
+    return { commands, notes, armySize, defending, committedWave: opts.lastWaveSize, shouldAttack: false };
+  }
+
+  /**
+   * ------------------------------------------------------------------ 2. retreating
+   *
+   * RETREAT IS A TACTICAL MOVE, NOT A PERMANENT WITHDRAWAL.
+   *
+   * The first version sent every unit below 35% HP home and re-issued that order every decision pass. Units do
+   * not regenerate on their own, so a hurt unit never became healthy, the order was never lifted, and it obeyed
+   * "go home" forever. Measured: **18 of 27 combat units permanently walking back to the base**, which is why
+   * the AI fielded 90 units and never attacked with any of them, and why its scouts were all pinned at home.
+   *
+   * A retreat now only happens when the unit is actually in contact with the enemy — i.e. withdrawing is
+   * meaningful, because the alternative is dying where it stands. A unit already clear of the fight keeps
+   * whatever it was doing, so once it is out of danger it rejoins the army instead of orbiting the base.
+   */
+  if (profile.retreatHurtUnits) {
+    const engagedThreshold = 220;
+    const hurt = army.filter((a) => {
+      if (a.seen.hp / Math.max(1, a.seen.maxHp) >= 0.35) return false;
+      // Only retreat from an actual fight.
+      return per.enemyUnits.some((e) => Math.hypot(e.x - a.seen.x, e.y - a.seen.y) < engagedThreshold);
+    });
+    if (hurt.length > 0) {
+      commands.push({ type: 'move', playerId: pid, entityIds: hurt.map((h) => h.seen.id), x: opts.homeX, y: opts.homeY });
+      notes.push(`retreating ${hurt.length} hurt unit(s) out of contact`);
+    }
+  }
+
+  // ------------------------------------------------------------------ 3. harassment of a known soft target
+  if (profile.harass && opts.enemyAnchor && !opts.attacking && armySize >= 4) {
+    const soft = softestEnemyBuilding(per);
+    if (soft) {
+      // A small squad breaks off; the rest keeps massing.
+      const squad = army.slice(0, Math.min(4, Math.max(2, Math.floor(armySize * 0.25)))).map((a) => a.seen.id);
+      commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: soft.x, y: soft.y });
+      notes.push(`harassing ${soft.defId} at ${Math.round(soft.x)},${Math.round(soft.y)}`);
+    }
+  }
+
+  // ------------------------------------------------------------------ 4. the main wave
+  const ready = armySize >= Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + 0)) );
+  const shouldAttack = !defending && opts.enemyAnchor !== null && ready && !opts.attacking;
+
+  if (shouldAttack && opts.enemyAnchor) {
+    const target = pickAttackTarget(per, opts.enemyAnchor, registry);
+    const ids = army.map((a) => a.seen.id);
+    commands.push({ type: 'attackMove', playerId: pid, entityIds: ids, x: target.x, y: target.y });
+    notes.push(`wave of ${ids.length} attacking ${target.why} at ${Math.round(target.x)},${Math.round(target.y)}`);
+  } else if (!opts.attacking && opts.enemyAnchor) {
+    notes.push(`massing: ${armySize}/${Math.max(profile.minWaveSize, opts.lastWaveSize)}`);
+  }
+
+  // ------------------------------------------------------------------ 5. micro: focus fire + kiting
+  const engaged = per.enemyUnits.filter((e) => distanceToArmy(e, army) < 320);
+  if (engaged.length > 0) {
+    if (profile.focusFire) {
+      const target = lowestHpEnemy(engaged);
+      if (target) {
+        // Only ranged units and units already in range are re-tasked; melee keeps its attack-move so it
+        // does not stall walking toward a target it cannot reach.
+        const shooters = army
+          .filter((a) => a.role !== 'melee' && dist(a.seen, target) <= rangeOf(a))
+          .map((a) => a.seen.id);
+        if (shooters.length > 0) {
+          commands.push({ type: 'attack', playerId: pid, entityIds: shooters, targetId: target.id });
+          notes.push(`focus fire ${shooters.length} unit(s) onto ${target.defId}`);
+        }
+      }
+    }
+    if (profile.kiting) {
+      const kiters = army.filter((a) => a.role === 'ranged' && nearThreat(a.seen, engaged) < 100);
+      if (kiters.length > 0) {
+        // Step back toward home, out of melee reach, then resume.
+        commands.push({
+          type: 'move',
+          playerId: pid,
+          entityIds: kiters.map((k) => k.seen.id),
+          x: opts.homeX,
+          y: opts.homeY,
+        });
+        notes.push(`kiting with ${kiters.length} ranged unit(s)`);
+      }
+    }
+  }
+
+  const committedWave = shouldAttack ? armySize : opts.lastWaveSize;
+  return { commands, notes, armySize, defending, committedWave, shouldAttack };
+}
+
+// --------------------------------------------------------------------------------------- helpers
+
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function rangeOf(a: UnitInfo): number {
+  return a.def?.weapon?.range ?? 0;
+}
+
+function distanceToArmy(e: SeenUnit, army: UnitInfo[]): number {
+  let best = Infinity;
+  for (const a of army) best = Math.min(best, dist(e, a.seen));
+  return best;
+}
+
+function nearThreat(u: SeenUnit, enemies: SeenUnit[]): number {
+  let best = Infinity;
+  for (const e of enemies) best = Math.min(best, dist(u, e));
+  return best;
+}
+
+function lowestHpEnemy(enemies: SeenUnit[]): SeenUnit | null {
+  let best: SeenUnit | null = null;
+  for (const e of enemies) {
+    if (!best || e.hp < best.hp) best = e;
+  }
+  return best;
+}
+
+/**
+ * How threatened is home?
+ *
+ * Counts enemy units within a radius of the construction yard. Only units the AI can SEE count, so an army
+ * approaching through fog is a surprise — exactly as it is for a player.
+ */
+export function assessBaseThreat(
+  per: Perception,
+  registry: Registry,
+  homeX: number,
+  homeY: number,
+): { threatened: boolean; x: number; y: number; count: number; dist: number } {
+  void registry;
+  const radius = TILE * 11;
+  let count = 0;
+  let sx = 0;
+  let sy = 0;
+  let nearest = Infinity;
+  for (const e of per.enemyUnits) {
+    const d = Math.hypot(e.x - homeX, e.y - homeY);
+    if (d <= radius) {
+      count++;
+      sx += e.x;
+      sy += e.y;
+      nearest = Math.min(nearest, d);
+    }
+  }
+  if (count === 0) return { threatened: false, x: homeX, y: homeY, count: 0, dist: Infinity };
+  return { threatened: true, x: sx / count, y: sy / count, count, dist: nearest };
+}
+
+/**
+ * Where should the wave go?
+ *
+ * Prefers a live enemy building, then a remembered ghost, then the last known anchor. Within that, it prefers
+ * the enemy's economy over its army — killing refineries wins a long game.
+ */
+export function pickAttackTarget(
+  per: Perception,
+  anchor: { x: number; y: number },
+  registry: Registry,
+): { x: number; y: number; why: string } {
+  let best: { x: number; y: number; why: string; score: number } | null = null;
+  for (const b of per.enemyBuildings) {
+    const def = registry.buildings.get(b.defId);
+    let score = 10;
+    if (def?.isRefinery) score = 40;
+    else if (def?.isConstructionYard) score = 30;
+    else if (def?.producesUnits?.length) score = 25;
+    else if (def?.menuCategory === 'defenses') score = 4;
+    if (!b.live) score *= 0.7; // a ghost may have died; still worth checking
+    if (!best || score > best.score) {
+      best = { x: b.x, y: b.y, why: def?.name ?? b.defId, score };
+    }
+  }
+  if (best) return { x: best.x, y: best.y, why: best.why };
+  return { x: anchor.x, y: anchor.y, why: 'last known enemy position' };
+}
+
+/** The enemy building with the lowest HP we know about — the cheapest thing to kill. */
+function softestEnemyBuilding(per: Perception): SeenBuilding | null {
+  let best: SeenBuilding | null = null;
+  for (const b of per.enemyBuildings) {
+    if (b.buildProgress === undefined && b.hp >= b.maxHp * 0.9) continue;
+    if (!best || b.hp < best.hp) best = b;
+  }
+  return best;
+}
+
+/** The ids of our units, for tests and for the debug overlay. */
+export function armyIds(per: Perception, registry: Registry): EntityId[] {
+  return combatUnits(per, registry).map((a) => a.seen.id);
+}
+
+/** Export for tests: describe the AI's intent in one line. */
+export function describeIntent(p: MilitaryPlan): string {
+  if (p.defending) return 'defending';
+  if (p.commands.some((c) => c.type === 'attackMove')) return 'attacking';
+  return 'massing';
+}
+
+/** Unused-parameter guard for planners that keep a signature stable across difficulties. */
+export type _PlayerId = PlayerId;

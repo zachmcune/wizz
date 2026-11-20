@@ -42,21 +42,44 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
   const owner = store.ownerId(store.ownerIndex[unitSlot]!);
   let best = -1;
   let bestD = Infinity;
+  let yard = -1;
+  let yardD = Infinity;
   for (let slot = 0; slot < store.count; slot++) {
     if (store.dead[slot] || store.kind[slot] !== KIND_BUILDING) continue;
     if (store.ownerId(store.ownerIndex[slot]!) !== owner) continue;
-    const bdef = ctx.services.registry.buildings.get(store.extras[slot]!.defId);
-    if (!bdef?.isRefinery) continue;
-    if (store.extras[slot]!.caps.building && (store.extras[slot]!.caps.building as { buildProgress?: number }).buildProgress !== undefined) continue;
+    const ex = store.extras[slot]!;
+    const bdef = ctx.services.registry.buildings.get(ex.defId);
+    if (!bdef) continue;
+    if (ex.caps.building && (ex.caps.building as { buildProgress?: number }).buildProgress !== undefined) continue;
     const dx = store.posX[slot]! - store.posX[unitSlot]!;
     const dy = store.posY[slot]! - store.posY[unitSlot]!;
     const d = dx * dx + dy * dy;
-    if (d < bestD) {
-      bestD = d;
-      best = slot;
+    if (bdef.isRefinery) {
+      if (d < bestD) {
+        bestD = d;
+        best = slot;
+      }
+    } else if (bdef.isConstructionYard) {
+      /**
+       * THE CONSTRUCTION YARD IS A FALLBACK DROP-OFF.
+       *
+       * Without this, a harvester that filled before the player's first refinery existed went into `returning`,
+       * found no refinery, was pushed back to `harvesting`, and then had no room left to siphon — so it stood
+       * at the node, permanently full, for the rest of the match, and the player's income was zero forever.
+       * That is a genuine soft-lock, and it was reachable simply by taking one wisp off the starting node
+       * before building a refinery.
+       *
+       * Depositing at the yard is slower in practice (the yard is further from the nodes than a refinery the
+       * player placed deliberately), so refinery placement still matters — which is what keeps the §5.5
+       * decision about refinery distance intact.
+       */
+      if (d < yardD) {
+        yardD = d;
+        yard = slot;
+      }
     }
   }
-  return best;
+  return best >= 0 ? best : yard;
 }
 
 function nearestNode(state: GameState, unitSlot: number): number {
