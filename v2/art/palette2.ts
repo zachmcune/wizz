@@ -36,16 +36,32 @@ export const PAL = {
   brass: M({ color: [198, 152, 66], specular: 0.75, rim: 0.45, ao: 0.95 }),
   brassLit: M({ color: [240, 204, 118], specular: 0.85, rim: 0.5, ao: 0.9 }),
 
-  // ------------------------------------------------------------------ arcane structure (violet)
-  violetDeep: M({ color: [100, 76, 146], rim: 0.3, ao: 1.0 }),
-  violet: M({ color: [158, 117, 224], specular: 0.15, rim: 0.35, ao: 1.0 }),
-  violetLit: M({ color: [210, 166, 255], specular: 0.22, rim: 0.4, ao: 0.95 }),
+  /**
+   * ARCANE STRUCTURE — SLATE, not violet.
+   *
+   * Zachary, reviewing 277a26d: "the bigger buildings now show a lot of bright violet and lilac... which reads as the
+   * 'purple AI slop' look". Measured on that art the sanctum was 39% violet and the resonance vault 48%, because these
+   * three materials built its main mass.
+   *
+   * The names are kept (`violet*`) so the ~90 call sites do not have to change in the same commit as the palette, but the
+   * COLOURS are now cool blue-grey slate: the same value structure (deep / mid / lit) so the lighting still reads, at hue
+   * 210-215 instead of 260-270. Arcane character now comes from the energy accents, not from a purple body.
+   */
+  violetDeep: M({ color: [60, 70, 84], rim: 0.3, ao: 1.0 }),
+  violet: M({ color: [104, 118, 136], specular: 0.28, rim: 0.4, ao: 1.0 }),
+  violetLit: M({ color: [156, 170, 188], specular: 0.36, rim: 0.46, ao: 0.95 }),
 
   // ------------------------------------------------------------------ magic / crystal (team accents)
   crystal: M({ color: [120, 200, 255], teamTint: 0.4, emissive: 0.5, specular: 0.9, rim: 0.6, ao: 0.6 }),
   crystalHot: M({ color: [200, 244, 255], teamTint: 0.3, emissive: 0.9, specular: 0.95, rim: 0.7, ao: 0.4 }),
   crystalDeep: M({ color: [64, 112, 176], teamTint: 0.45, emissive: 0.22, specular: 0.6, rim: 0.45, ao: 0.8 }),
-  aether: M({ color: [186, 148, 255], teamTint: 0.5, emissive: 0.65, rim: 0.6, ao: 0.5 }),
+  /**
+   * AETHER — the arcane glow. Restrained TEAL, not lilac.
+   *
+   * This is the accent that keeps a slate building feeling magical: a desaturated teal at hue ~185, emissive, used for
+   * portals, cores and rune channels. Small areas only.
+   */
+  aether: M({ color: [128, 216, 208], teamTint: 0.3, emissive: 0.62, rim: 0.58, ao: 0.5 }),
   runeTeam: M({ color: [210, 220, 240], teamTint: 0.95, emissive: 0.55, rim: 0.4, ao: 0.7 }),
   emberCore: M({ color: [255, 176, 74], emissive: 0.95, rim: 0.5, ao: 0.4 }),
   emberDeep: M({ color: [214, 84, 40], emissive: 0.6, rim: 0.35, ao: 0.6 }),
@@ -58,9 +74,15 @@ export const PAL = {
   belly: M({ color: [245, 188, 144], grain: 0.3, rim: 0.3, ao: 0.95 }),
 
   // ------------------------------------------------------------------ cloth / robes
-  robeDeep: M({ color: [80, 66, 118], grain: 0.15, rim: 0.25, ao: 0.9 }),
-  robe: M({ color: [128, 102, 184], grain: 0.15, rim: 0.3, ao: 0.9 }),
-  robeLit: M({ color: [178, 146, 236], grain: 0.15, rim: 0.35, ao: 0.85 }),
+  /**
+   * ROBES — indigo-grey wool, not lilac.
+   *
+   * The caster units wore the same violet family as the buildings. Woollen cloth in a cool grey-blue keeps them readable
+   * against stone without the purple cast.
+   */
+  robeDeep: M({ color: [54, 62, 78], grain: 0.18, rim: 0.25, ao: 0.9 }),
+  robe: M({ color: [88, 100, 118], grain: 0.18, rim: 0.32, ao: 0.9 }),
+  robeLit: M({ color: [132, 146, 164], grain: 0.16, rim: 0.38, ao: 0.85 }),
   trimTeam: M({ color: [226, 230, 250], teamTint: 0.92, emissive: 0.25, rim: 0.4, ao: 0.8 }),
   bannerTeam: M({ color: [232, 236, 255], teamTint: 0.95, rim: 0.35, ao: 0.85 }),
   leather: M({ color: [146, 108, 68], grain: 0.45, specular: 0.18, rim: 0.3, ao: 1.0 }),

@@ -414,7 +414,7 @@ function sanctum(): Assembly {
    * The hall now rises from the tile edge, and the tower stands on its roof — so the base is a building you can see the
    * walls of, not a pad.
    */
-  parts.push(...hall(3, { height: 32, wall: 4.0, mat: PAL.rockLit, roof: PAL.violetDeep }));
+  parts.push(...hall(3, { height: 32, wall: 4.0, mat: PAL.rockLit, roof: PAL.rockDeep, profile: 'stepped' }));
   /**
    * Buttressed flanks, so the walls have vertical relief rather than reading as a smooth box.
    */
@@ -452,7 +452,7 @@ function arcaneSentry(): Assembly {
    * At aa5c5f6 this measured 100% vertical but **67%** flat: a thin mast on a plate, so the plate was most of the sprite.
    * The emplacement block now fills the footprint and the head sits on it.
    */
-  parts.push(...hall(1, { height: 20, wall: 3.6, mat: PAL.rock, roof: PAL.rockLit }));
+  parts.push(...hall(1, { height: 20, wall: 3.6, mat: PAL.rock, roof: PAL.rockLit, profile: 'peaked' }));
   // Emitter head: a ring of barrels around a glowing core.
   parts.push(part(cyl(10.0, 8.0, 8.0, 10), [0, 0, 21.0], PAL.violetDeep));
   parts.push(part(cyl(11.6, 11.6, 2.0, 10), [0, 0, 28.0], PAL.runeTeam));

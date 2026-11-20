@@ -1,0 +1,82 @@
+{
+  "crop50": {
+    "worst": {
+      "a": "ley_conduit",
+      "b": "resonance_vault",
+      "v": 0.6737804878048781
+    },
+    "overThreshold": 0,
+    "top": [
+      {
+        "a": "ley_conduit",
+        "b": "resonance_vault",
+        "v": 0.6737804878048781
+      },
+      {
+        "a": "resonance_vault",
+        "b": "storm_conductor",
+        "v": 0.6733749710848947
+      },
+      {
+        "a": "attunement_spire",
+        "b": "thorn_grove",
+        "v": 0.6691073919107392
+      },
+      {
+        "a": "obsidian_bastion",
+        "b": "waystone_camp",
+        "v": 0.6659186535764375
+      },
+      {
+        "a": "frost_spire",
+        "b": "resonance_vault",
+        "v": 0.6603358106248279
+      },
+      {
+        "a": "sanctuary_spire",
+        "b": "sanctum",
+        "v": 0.654300168634064
+      }
+    ]
+  },
+  "crop30": {
+    "worst": {
+      "a": "resonance_vault",
+      "b": "storm_conductor",
+      "v": 0.7621452621452621
+    },
+    "overThreshold": 3,
+    "top": [
+      {
+        "a": "resonance_vault",
+        "b": "storm_conductor",
+        "v": 0.7621452621452621
+      },
+      {
+        "a": "frost_spire",
+        "b": "resonance_vault",
+        "v": 0.7573632538569425
+      },
+      {
+        "a": "frost_spire",
+        "b": "storm_conductor",
+        "v": 0.7351837959489872
+      },
+      {
+        "a": "inferno_beacon",
+        "b": "sanctuary_spire",
+        "v": 0.7196796338672768
+      },
+      {
+        "a": "obsidian_bastion",
+        "b": "waystone_camp",
+        "v": 0.7190302225174361
+      },
+      {
+        "a": "golem_forge",
+        "b": "sanctum",
+        "v": 0.7177308851740203
+      }
+    ]
+  }
+}

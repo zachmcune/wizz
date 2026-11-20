@@ -94,9 +94,34 @@ export function plinth(footprint: number, _height = 3.0): Part[] {
  * The result is deliberately RA2-like: a squat mass with real volume occupying its whole tile, with the roof as the only
  * horizontal surface.
  */
+/**
+ * A HALL — walls rising from the footprint edge, with a roofline that VARIES.
+ *
+ * This is the structural answer to "the vertical mass has to fill the footprint", and the `profile` option is the answer to
+ * "less boxy". A plain extruded prism of walls fills the tile but still reads as a crate: measured row profiles at
+ * 277a26d showed the bunker and the bastion holding one constant width for their whole body height and then tapering, which
+ * is literally a box.
+ *
+ * Profiles:
+ *   • `stepped`  — the walls step inward in three setbacks, so the silhouette narrows in stages like a ziggurat.
+ *   • `tapered`  — the walls lean inward continuously, giving a truncated pyramid.
+ *   • `peaked`   — straight walls topped by a pitched roof, so the silhouette ends in a triangle rather than a bar.
+ *   • `flat`     — straight walls with a slab roof (the plainest option).
+ *
+ * Every profile keeps the base at the tile edge, so plan coverage and vertical mass are unaffected — only the shape above it
+ * changes.
+ */
 export function hall(
   footprint: number,
-  opts: { height?: number; wall?: number; mat?: M; roof?: M; roofThickness?: number; open?: boolean } = {},
+  opts: {
+    height?: number;
+    wall?: number;
+    mat?: M;
+    roof?: M;
+    roofThickness?: number;
+    open?: boolean;
+    profile?: 'flat' | 'stepped' | 'tapered' | 'peaked';
+  } = {},
 ): Part[] {
   const w = footprint * TILE_WORLD;
   const height = opts.height ?? 22;
@@ -104,52 +129,106 @@ export function hall(
   const mat = opts.mat ?? PAL.rock;
   const roof = opts.roof ?? PAL.rockLit;
   const t = opts.roofThickness ?? 2.2;
+  const profile = opts.profile ?? 'flat';
   const out: Part[] = [];
   const half = w / 2 - 0.6; // walls stand just inside the lip
-  /**
-   * FOUR WALLS, not a box.
-   *
-   * Built as separate slabs so the walls have visible thickness and relief at the corners; a single `bbox` reads as a
-   * solid block and the eye cannot tell it from a plinth.
-   */
-  const span = half * 2;
-  out.push(part(bbox(span, wall, height, 0.9, 0.95), [0, -half + wall / 2, 1.0], mat));
-  out.push(part(bbox(span, wall, height, 0.9, 0.95), [0, half - wall / 2, 1.0], mat));
-  out.push(part(bbox(wall, span - wall * 2, height, 0.9, 0.95), [-half + wall / 2, 0, 1.0], mat));
-  out.push(part(bbox(wall, span - wall * 2, height, 0.9, 0.95), [half - wall / 2, 0, 1.0], mat));
-  /**
-   * CORNER PIERS.
-   *
-   * Taller than the walls by a little, so the corners read and the roofline is not a clean rectangle — the detail that
-   * separates a building from an extruded prism at phone zoom.
-   */
-  for (const [sx, sy] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ] as const) {
-    out.push(part(bbox(wall * 1.7, wall * 1.7, height * 1.12, 0.8, 0.9), [sx * (half - wall * 0.85), sy * (half - wall * 0.85), 1.0], roof));
+
+  /** One rectangular shell of walls at a given half-width and height, based at `z`. */
+  const shell = (h: number, z: number, m: M, shrink = 0): void => {
+    const hh = half - shrink;
+    const span = hh * 2;
+    out.push(part(bbox(span, wall, h, 0.9, 0.95), [0, -hh + wall / 2, z], m));
+    out.push(part(bbox(span, wall, h, 0.9, 0.95), [0, hh - wall / 2, z], m));
+    out.push(part(bbox(wall, span - wall * 2, h, 0.9, 0.95), [-hh + wall / 2, 0, z], m));
+    out.push(part(bbox(wall, span - wall * 2, h, 0.9, 0.95), [hh - wall / 2, 0, z], m));
+  };
+
+  if (profile === 'stepped') {
+    /**
+     * Three setbacks. Each tier is shorter and inset further, so the row profile narrows in visible stages.
+     */
+    const shares = [0.46, 0.32, 0.22];
+    let z = 1.0;
+    for (let i = 0; i < shares.length; i++) {
+      const h = height * shares[i]!;
+      shell(h, z, i === 0 ? mat : roof, i * (w * 0.055));
+      // Cornice at each setback, which is what makes the step read rather than blend.
+      if (i < shares.length - 1) {
+        const hh = half - i * (w * 0.055);
+        out.push(part(bbox(hh * 2 + 2.0, hh * 2 + 2.0, 1.8, 0.8, 0.99), [0, 0, z + h - 0.6], PAL.rockDeep));
+      }
+      z += h;
+    }
+  } else if (profile === 'tapered') {
+    /**
+     * A continuous inward lean, built as four stacked courses so the taper is visible as a stepped slope rather than
+     * a single sheared prism.
+     */
+    const courses = 4;
+    const courseH = height / courses;
+    for (let i = 0; i < courses; i++) {
+      shell(courseH, 1.0 + i * courseH, i === 0 ? mat : roof, i * (w * 0.045));
+    }
+  } else {
+    // Straight walls (the base for `flat` and `peaked`).
+    shell(height, 1.0, mat);
   }
+
+  /**
+   * CORNER PIERS — taller than the walls, so the corners read and the roofline is not a clean rectangle.
+   */
+  if (profile !== 'stepped') {
+    for (const [sx, sy] of [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ] as const) {
+      out.push(
+        part(bbox(wall * 1.7, wall * 1.7, height * 1.12, 0.8, 0.9), [sx * (half - wall * 0.85), sy * (half - wall * 0.85), 1.0], roof),
+      );
+    }
+  }
+
   if (!opts.open) {
-    // Roof slab, slightly overhanging so it casts a shadow line on the walls.
-    out.push(part(bbox(span + 1.4, span + 1.4, t, 1.2, 0.99), [0, 0, 1.0 + height], roof));
+    if (profile === 'peaked') {
+      /**
+       * A PITCHED ROOF — a four-sided hip roof rising to a ridge. This turns a bar-topped box into a triangle, which is
+       * the single biggest change to a boxy silhouette.
+       */
+      const span = half * 2 + 1.4;
+      out.push(part(cone(span * 0.72, height * 0.42, 4), [0, 0, 1.0 + height], roof, { rotZ: Math.PI / 4 }));
+      out.push(part(bbox(3.0, 3.0, 3.0, 0.8), [0, 0, 1.0 + height + height * 0.42], PAL.brass));
+    } else {
+      // Roof slab, slightly overhanging so it casts a shadow line on the walls.
+      const shrink = profile === 'stepped' ? w * 0.11 : 0;
+      const rspan = (half - shrink) * 2 + 1.4;
+      out.push(part(bbox(rspan, rspan, t, 1.2, 0.99), [0, 0, 1.0 + height], roof));
+    }
   }
-  // Team band at eye height on the walls, clear of the ground-contact band the footing gate measures.
-  /**
-   * Team band HIGH on the walls.
-   *
-   * `art-footing` requires the lowest 30% of the sprite to be neutral stone, because team colour is a marker on the
-   * building and never a tint on the ground. At 62% of a short wall that band fell inside that zone; 0.86 puts it near the
-   * parapet, where it is also most visible.
-   */
+
   /**
    * Team band, sized from the body so a tall hall still shows >=3% team colour.
    *
-   * A fixed 1.8-unit band is a shrinking fraction as the walls grow — four buildings fell below the roster's 3% floor
-   * once their halls got tall. Scaling the band height with the wall keeps the share roughly constant.
+   * A fixed band is a shrinking fraction as the walls grow; scaling it with the wall keeps the share roughly constant.
+   * It sits at 78% of the wall height, above the ground-contact band `art-footing` measures.
    */
-  out.push(part(bbox(span + 1.6, span + 1.6, Math.max(2.4, height * 0.16), 0.7, 0.99), [0, 0, 1.0 + height * 0.78], PAL.runeTeam));
+  /**
+   * The team band hugs the wall it sits on, NOT the building's widest footprint.
+   *
+   * Sized from `half` (the foot of the walls) it was the widest element in a stepped or tapered building — measured 66px
+   * on a hall whose tiers were 40-58px — so it flattened the profile back into a box and hid the very steps the shape was
+   * built for. Sizing it from the tier it sits on lets the setback read.
+   */
+  const bandInset = profile === 'stepped' ? w * 0.085 : profile === 'tapered' ? w * 0.05 : 0;
+  const bandHalf = half - bandInset;
+  out.push(
+    part(
+      bbox(bandHalf * 2 + 1.2, bandHalf * 2 + 1.2, Math.max(2.4, height * 0.16), 0.7, 0.99),
+      [0, 0, 1.0 + height * 0.78],
+      PAL.runeTeam,
+    ),
+  );
   return out;
 }
 

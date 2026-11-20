@@ -391,7 +391,7 @@ function arcaneNexus(): Assembly {
    * At aa5c5f6 this measured 78% vertical but **42%** flat: the ring of segments stood on a plate and the plate showed
    * through. The hall walls now occupy the footprint and the ring sits on its roof as a parapet.
    */
-  parts.push(...hall(2, { height: 22, wall: 3.2, mat: PAL.rock, roof: PAL.rockLit }));
+  parts.push(...hall(2, { height: 22, wall: 3.2, mat: PAL.rock, roof: PAL.rockLit, profile: 'peaked' }));
   // Segment ring as a parapet around the roof edge.
   const SEG = 12;
   const RING_R = 24.0;
@@ -478,13 +478,19 @@ function arcaneBunker(): Assembly {
    * At aa5c5f6 this had **41%** vertical and **46%** flat: a dome on a plate. The hall walls now stand at the footprint
    * edge, so the building fills its tile and the only flat surface is the roof.
    */
-  parts.push(...hall(2, { height: 26, wall: 3.4, mat: PAL.violetDeep, roof: PAL.violet }));
+  parts.push(...hall(2, { height: 26, wall: 3.4, mat: PAL.rock, roof: PAL.rockLit, profile: 'stepped' }));
   /**
    * CRENELLATIONS around the parapet — the repeating notched top edge that reads as a defended structure.
    */
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    parts.push(part(bbox(7.4, 6.0, 6.0, 1.0, 0.86), [Math.cos(a) * 27.0, Math.sin(a) * 27.0, 27.5], PAL.rockLit, { rotZ: a }));
+    /**
+     * Merlons sit on the SECOND tier, which is inset — that is what lets the stepped profile read as steps.
+     *
+     * Placed on the outermost radius they set the silhouette's width for the whole body height, so the three tiers
+     * collapsed into one flat-sided box (measured: six consecutive rows at a constant 60-62px).
+     */
+    parts.push(part(bbox(6.2, 5.2, 5.4, 0.9, 0.86), [Math.cos(a) * 22.0, Math.sin(a) * 22.0, 24.5], PAL.rockLit, { rotZ: a }));
   }
   // Firing slit with a team-lit inner line, on the front wall.
   parts.push(part(bbox(40.0, 1.8, 4.0, 0.7), [0, -30.0, 12.0], PAL.rockDeep));
@@ -555,35 +561,58 @@ function attunementSpire(): Assembly {
 function resonanceVault(): Assembly {
   const parts: Part[] = [...plinth(2, 2.8)];
   /**
-   * RESONANCE VAULT — a heavy VAULT keep filling the tile, with a buttressed arched door, a domed roof and crystal stores.
+   * RESONANCE VAULT — an OCTAGONAL STEPPED ZIGGURAT.
    *
-   * At aa5c5f6 this measured 54% vertical and **50%** flat: a cube on a plate. The keep now rises from the tile edge and
-   * the dome caps it.
+   * This building was the least distinctive in the roster for two passes running, appearing in three of the four worst
+   * IoU pairs each time (as a hall with a dome, then as a round rotunda). Both shapes had close cousins: the dome looked
+   * like the thorn grove's mound, the drum like the attunement spire's.
+   *
+   * The silhouette that cannot be confused with anything else here is a ZIGGURAT: four octagonal tiers, each inset from
+   * the last, with alternating corner buttresses, ending in a small shrine. Nothing else in the roster is stepped in four
+   * octagonal stages, and the stacked-corner profile is unlike either a dome or a drum.
    */
-  parts.push(...hall(2, { height: 34, wall: 4.0, mat: PAL.violetDeep, roof: PAL.brassDeep }));
-  /**
-   * THE ARCHED DOOR — a recessed opening with a semicircular head, the identifying feature.
-   */
-  parts.push(part(bbox(18.0, 2.2, 15.0, 1.0), [0, -29.0, 2.0], PAL.rockDeep));
-  parts.push(part(cyl(9.0, 9.0, 2.2, 14), [0, -29.0, 17.0], PAL.rockDeep, { rotX: Math.PI / 2 }));
-  parts.push(part(bbox(13.0, 1.6, 9.0, 0.8), [0, -30.0, 3.0], PAL.brass));
-  parts.push(part(prism(4.6, 1.4, 8), [0, -30.4, 10.0], PAL.runeTeam, { rotX: Math.PI / 2 }));
-  /**
-   * THE DOME — a wide flattened sphere capping the keep, with a lantern spire.
-   */
-  parts.push(part(sph(30.0, 16), [0, 0, 36.0], PAL.violet, { scale: { x: 1, y: 1, z: 0.55 } }));
-  parts.push(part(cyl(5.0, 3.4, 8.0, 8), [0, 0, 50.0], PAL.brass));
-  parts.push(part(sph(4.0, 10), [0, 0, 60.0], PAL.crystalHot));
-  parts.push(part(prism(2.4, 7.0, 6), [0, 0, 66.0], PAL.crystal));
-  /**
-   * CRYSTAL STORES stacked against the flanks.
-   */
-  for (const sx of [-1, 1] as const) {
-    parts.push(part(prism(3.4, 15.0, 5), [sx * 29.0, 14.0, 2.0], PAL.crystal, { rotZ: sx * 0.22 }));
-    parts.push(part(prism(2.6, 10.0, 5), [sx * 24.0, 20.0, 2.0], PAL.crystalDeep, { rotZ: sx * 0.3 }));
+  const TIERS = 4;
+  const baseH = 15;
+  for (let i = 0; i < TIERS; i++) {
+    const r = 30.0 - i * 6.2;
+    const h = baseH - i * 1.6;
+    const z = 1.3 + i * baseH;
+    parts.push(part(cyl(r, r * 0.97, h, 8), [0, 0, z], i % 2 === 0 ? PAL.rock : PAL.rockLit));
+    // Cornice on every tier, so the steps read as distinct storeys.
+    parts.push(part(cyl(r + 1.8, r + 1.8, 1.8, 8), [0, 0, z + h - 0.7], PAL.brassDeep));
+    /**
+     * CORNER BUTTRESSES on alternating tiers — the vertical detail that stops a stepped cone reading as smooth.
+     */
+    if (i < TIERS - 1) {
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+        parts.push(
+          part(bbox(3.6, 6.0, h * 0.9, 0.8, 0.85), [Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86, z], PAL.rock, { rotZ: a }),
+        );
+      }
+    }
   }
+  /**
+   * THE SHRINE at the summit, with the vault's crystal inside it — a small open square frame, not a dome.
+   */
+  const topZ = 1.3 + TIERS * baseH;
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    parts.push(part(bbox(3.2, 3.2, 12.0, 0.7, 0.9), [sx * 5.4, sy * 5.4, topZ], PAL.rockLit));
+  }
+  parts.push(part(bbox(15.0, 15.0, 2.4, 0.9, 0.99), [0, 0, topZ + 12.0], PAL.brass));
+  parts.push(part(prism(4.0, 14.0, 6), [0, 0, topZ + 3.0], PAL.crystalHot));
+  /**
+   * THE ARCHED DOOR at the base, on the front face.
+   */
+  parts.push(part(bbox(15.0, 2.4, 11.0, 1.0), [0, -29.0, 2.0], PAL.rockDeep));
+  parts.push(part(cyl(7.5, 7.5, 2.4, 12), [0, -29.0, 13.0], PAL.rockDeep, { rotX: Math.PI / 2 }));
+  // Team band around tier two, high and wide.
+  parts.push(part(cyl(25.6, 25.6, 4.4, 8), [0, 0, 1.3 + baseH + 4.0], PAL.runeTeam));
   return { parts };
 }
+
+
+
 
 
 /**
@@ -606,7 +635,7 @@ function leyConduit(): Assembly {
    * legs stood on a plate and left the whole tile showing between them. The transformer house now fills the footprint
    * and the pylon rises from its roof, so the tile is building rather than stone.
    */
-  parts.push(...hall(2, { height: 24, wall: 3.2, mat: PAL.ironOld, roof: PAL.steelDeep }));
+  parts.push(...hall(2, { height: 24, wall: 3.2, mat: PAL.ironOld, roof: PAL.steelDeep, profile: 'tapered' }));
   /**
    * THE PYLON — four legs converging to a waist, then bracing rings and crossarms with insulators.
    */
@@ -639,6 +668,16 @@ function leyConduit(): Assembly {
   }
   parts.push(part(cone(2.8, 9.0, 6), [0, 0, 62.0], PAL.steel));
   parts.push(part(sph(2.0, 9), [0, 0, 72.0], PAL.crystalHot));
+  /**
+   * Team bands on BOTH crossarms plus the pylon waist.
+   *
+   * One thin band on the upper crossarm measured 2.3% against the roster's 3% floor; the crossarms are the widest visible
+   * elements on a lattice tower, so banding both and the waist gets there without tinting the legs.
+   */
+  for (const [zz, sspan] of [[60.0, 38.0], [52.0, 30.0]] as const) {
+    parts.push(part(bbox(sspan, 4.2, 4.2, 0.6), [0, 0, zz], PAL.runeTeam));
+  }
+  parts.push(part(bbox(20.0, 20.0, 4.0, 0.7, 0.99), [0, 0, 30.0], PAL.runeTeam));
   return { parts };
 }
 
@@ -696,7 +735,7 @@ function celestialCannon(): Assembly {
    * Now the emplacement itself is a walled bastion at the tile edge (the `hall` calls), so the building occupies its
    * footprint, and the turret and barrel sit on its roof.
    */
-  parts.push(...hall(3, { height: 56, wall: 3.6, mat: PAL.rock, roof: PAL.rockLit }));
+  parts.push(...hall(3, { height: 56, wall: 3.6, mat: PAL.rock, roof: PAL.rockLit, profile: 'stepped' }));
   // Corbelled parapet, so the roofline is not a clean rectangle.
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     parts.push(part(bbox(9.0, 9.0, 18.0, 1.4, 0.86), [sx * 34.0, sy * 34.0, 57.0], PAL.rock));
@@ -739,13 +778,15 @@ function scryingObelisk(): Assembly {
    * plate was most of what the player saw. The plinth hall now fills the footprint at the tile edge, and the obelisk rises
    * from its roof.
    */
-  parts.push(...hall(2, { height: 22, wall: 3.4, mat: PAL.violetDeep, roof: PAL.rockLit }));
+  parts.push(...hall(2, { height: 22, wall: 3.4, mat: PAL.rock, roof: PAL.rockLit, profile: 'tapered' }));
   /**
    * THE SHAFT — tall, narrow, four-sided, the thinnest tall element in the roster.
    */
   parts.push(part(prism(8.0, 60.0, 4), [0, 0, 23.0], PAL.violetDeep, { rotZ: Math.PI / 4 }));
   parts.push(part(prism(9.6, 2.6, 4), [0, 0, 24.0], PAL.brass, { rotZ: Math.PI / 4 }));
   parts.push(part(prism(6.6, 8.0, 4), [0, 0, 81.0], PAL.violetLit, { rotZ: Math.PI / 4 }));
+  // Team collar on the shaft, clear of the plinth hall.
+  parts.push(part(prism(11.0, 8.0, 4), [0, 0, 34.0], PAL.runeTeam, { rotZ: Math.PI / 4 }));
   /**
    * THE LENS — a wide disc in a forked bracket above the shaft; more than three times the shaft's width, giving the
    * silhouette its distinctive head.
@@ -846,27 +887,37 @@ function obsidianBastion(): Assembly {
    * At aa5c5f6 this measured 88% vertical but **33%** flat: the keep stood on a plate that showed around it. The keep
    * walls now rise from the tile edge, with crenellations and spires on the corners.
    */
-  parts.push(...hall(2, { height: 40, wall: 4.2, mat: PAL.ironOld, roof: PAL.steelDeep }));
+  parts.push(...hall(2, { height: 44, wall: 4.2, mat: PAL.ironOld, roof: PAL.steelDeep, profile: 'stepped' }));
   /**
    * FOUR CORNER SPIRES, taller than the keep — the gothic silhouette.
    */
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    parts.push(part(cyl(7.0, 6.0, 46.0, 8), [sx * 26.0, sy * 26.0, 2.0], PAL.steelDeep));
-    parts.push(part(cone(8.6, 13.0, 8), [sx * 26.0, sy * 26.0, 48.0], PAL.ironOld));
-    parts.push(part(prism(2.0, 7.0, 5), [sx * 26.0, sy * 26.0, 60.0], PAL.crystalHot));
+    parts.push(part(cyl(7.0, 6.0, 50.0, 8), [sx * 26.0, sy * 26.0, 2.0], PAL.steelDeep));
+    parts.push(part(cone(8.6, 14.0, 8), [sx * 26.0, sy * 26.0, 52.0], PAL.ironOld));
+    parts.push(part(prism(2.0, 8.0, 5), [sx * 26.0, sy * 26.0, 65.0], PAL.crystalHot));
   }
   /**
    * CRENELLATIONS along the parapet between the spires.
    */
   for (const oy of [-27, 27]) {
-    for (let i = -2; i <= 2; i++) parts.push(part(bbox(4.4, 4.4, 4.6, 0.8), [i * 9.6, oy, 42.0], PAL.steel));
+    for (let i = -2; i <= 2; i++) parts.push(part(bbox(4.4, 4.4, 4.8, 0.8), [i * 9.6, oy, 45.0], PAL.steel));
   }
   for (const ox of [-27, 27]) {
-    for (let i = -1; i <= 1; i++) parts.push(part(bbox(4.4, 4.4, 4.6, 0.8), [ox, i * 9.6, 42.0], PAL.steel));
+    for (let i = -1; i <= 1; i++) parts.push(part(bbox(4.4, 4.4, 4.8, 0.8), [ox, i * 9.6, 45.0], PAL.steel));
   }
+  /**
+   * MACHICOLATED OVERHANG — a projecting gallery under the parapet.
+   *
+   * This is the detail that stops a keep from reading as a plain box: the wall steps OUT before the crenellations, so the
+   * silhouette has a notch at the top of the wall where the light breaks.
+   */
+  parts.push(part(bbox(66.0, 66.0, 3.4, 1.0, 0.97), [0, 0, 43.0], PAL.rockLit));
+  // Team band on the projecting gallery — the widest ring on the building.
+  parts.push(part(bbox(67.0, 67.0, 2.6, 0.7, 0.99), [0, 0, 47.0], PAL.runeTeam));
+  parts.push(part(bbox(62.0, 62.0, 2.0, 0.8, 0.99), [0, 0, 40.0], PAL.rockDeep));
   // Banners on two faces.
-  parts.push(part(plate(9.0, 7.0, 13.0, 1.2), [0, -29.0, 20.0], PAL.bannerTeam));
-  parts.push(part(plate(9.0, 7.0, 13.0, 1.2), [0, 29.0, 20.0], PAL.bannerTeam));
+  parts.push(part(plate(9.0, 7.0, 15.0, 1.2), [0, -29.0, 22.0], PAL.bannerTeam));
+  parts.push(part(plate(9.0, 7.0, 15.0, 1.2), [0, 29.0, 22.0], PAL.bannerTeam));
   return { parts };
 }
 
@@ -878,32 +929,52 @@ function obsidianBastion(): Assembly {
 function infernoBeacon(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
   /**
-   * INFERNO BEACON — an iron BRAZIER on a stone furnace hall that fills the tile.
+   * INFERNO BEACON — a SQUARE FURNACE TOWER with a stepped brick stack, not a round drum.
    *
-   * At aa5c5f6 this measured 86% vertical but **30%** flat: the cage stood on a plate that showed around it. The furnace
-   * hall now occupies the footprint and the brazier rises from its roof.
+   * Zachary: "vary the profiles on purpose: tall and thin versus squat and wide, domes versus spikes versus peaked roofs,
+   * open frameworks versus solid masses". This and the storm conductor were both round cylinders at 0.698 IoU — the same
+   * plan and a similar profile.
+   *
+   * The beacon is now the only SQUARE stepped tower in the roster: a brick base, a narrower furnace storey with arched
+   * fire ports, a tapering chimney with visible courses, and a crenellated crown. Square versus round is legible at any
+   * zoom.
    */
-  parts.push(...hall(2, { height: 24, wall: 3.4, mat: PAL.ironOld, roof: PAL.steel }));
+  // Brick base, nearly the full tile.
+  parts.push(part(bbox(56.0, 56.0, 26.0, 2.4, 0.95), [0, 0, 1.3], PAL.rock));
+  parts.push(part(bbox(58.0, 58.0, 2.0, 0.9, 0.99), [0, 0, 27.3], PAL.rockDeep));
   /**
-   * THE BRAZIER — a wide iron bowl with a ring of bars and fire burning up through them.
+   * ARCHED FIRE PORTS around the furnace storey — the "this is a furnace" read, and a shape no other building has.
    */
-  parts.push(part(cyl(17.0, 14.0, 9.0, 14), [0, 0, 25.0], PAL.ironOld));
-  parts.push(part(prism(18.0, 1.6, 14), [0, 0, 34.0], PAL.steel));
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    parts.push(part(cyl(1.5, 1.2, 52.0, 5), [Math.cos(a) * 15.0, Math.sin(a) * 15.0, 35.0], PAL.steelDeep));
+  for (const [px, py] of [[0, -29], [0, 29]] as const) {
+    for (const off of [-13, 13]) {
+      const x = px === 0 ? off : px;
+      const y = py;
+      parts.push(part(bbox(9.0, 1.8, 10.0, 0.8), [x, y, 4.0], PAL.rockDeep));
+      parts.push(part(cyl(4.5, 4.5, 1.8, 10), [x, y, 14.0], PAL.rockDeep, { rotX: Math.PI / 2 }));
+      parts.push(part(bbox(6.4, 1.4, 6.0, 0.6), [x, y, 4.6], PAL.emberCore));
+    }
   }
-  for (const z of [44.0, 56.0, 68.0]) {
-    parts.push(part(cyl(20.0, 20.0, 1.3, 14), [0, 0, z], PAL.steelDeep));
+  /**
+   * THE FURNACE STOREY — a narrower square drum with a chamfered top, then the chimney.
+   */
+  parts.push(part(bbox(38.0, 38.0, 22.0, 2.4, 0.92), [0, 0, 29.3], PAL.ironOld));
+  parts.push(part(cone(26.0, 9.0, 4), [0, 0, 51.3], PAL.ironOld, { rotZ: Math.PI / 4 }));
+  /**
+   * THE CHIMNEY — square, with visible courses and a flared crown.
+   */
+  parts.push(part(bbox(18.0, 18.0, 44.0, 1.6, 0.86), [0, 0, 58.0], PAL.rock));
+  for (const z of [66.0, 78.0, 90.0]) {
+    parts.push(part(bbox(19.4, 19.4, 2.2, 0.7), [0, 0, z], PAL.brassDeep));
   }
-  // Fire column.
-  parts.push(part(sph(12.0, 14), [0, 0, 44.0], PAL.emberCore));
-  parts.push(part(cone(9.0, 30.0, 9), [0, 0, 56.0], PAL.emberCore));
-  parts.push(part(cone(4.4, 18.0, 7), [0, 0, 78.0], PAL.crystalHot));
-  parts.push(part(cone(21.0, 10.0, 12), [0, 0, 74.0], PAL.ironOld));
-  parts.push(part(cyl(21.4, 20.0, 2.6, 14), [0, 0, 70.0], PAL.trimTeam));
+  parts.push(part(bbox(22.0, 22.0, 3.4, 0.9, 0.96), [0, 0, 102.0], PAL.ironOld));
+  // Fire column rising out of the crown.
+  parts.push(part(cone(7.0, 18.0, 8), [0, 0, 105.0], PAL.emberCore));
+  parts.push(part(cone(3.4, 10.0, 6), [0, 0, 119.0], PAL.crystalHot));
+  // Team band on the furnace storey, high and wide.
+  parts.push(part(bbox(39.0, 39.0, 3.0, 0.7), [0, 0, 44.0], PAL.runeTeam));
   return { parts };
 }
+
 
 
 /**
@@ -958,10 +1029,12 @@ function sanctuarySpire(): Assembly {
    * At aa5c5f6 this measured 72% vertical and **34%** flat. The base hall now fills the tile, so the tower is a building
    * rather than a mast on a plate.
    */
-  parts.push(...hall(2, { height: 24, wall: 3.4, mat: PAL.rock, roof: PAL.rockLit }));
+  parts.push(...hall(2, { height: 24, wall: 3.4, mat: PAL.rock, roof: PAL.rockLit, profile: 'tapered' }));
   // Square shaft, tapered, in two stages.
   parts.push(part(bbox(32.0, 32.0, 24.0, 2.4, 0.82), [0, 0, 25.0], PAL.rock));
   parts.push(part(bbox(26.0, 26.0, 20.0, 2.0, 0.86), [0, 0, 49.0], PAL.rockLit));
+  // Team band on the shaft, above the base hall where it is not occluded.
+  parts.push(part(bbox(34.0, 34.0, 4.4, 0.8, 0.99), [0, 0, 40.0], PAL.runeTeam));
   parts.push(part(bbox(33.0, 33.0, 2.2, 0.9), [0, 0, 49.0], PAL.brassDeep));
   /**
    * THE BELFRY — four corner posts carrying a roof slab, open at the sides, with bells hanging inside.
@@ -1004,7 +1077,7 @@ function golemForge(): Assembly {
    * The hall now rises from the tile edge via `hall()`, so the walls are the footprint, and the chimney and anvil sit on
    * its roof where the camera reads them.
    */
-  parts.push(...hall(3, { height: 46, wall: 3.8, mat: PAL.ironOld, roof: PAL.steelDeep }));
+  parts.push(...hall(3, { height: 46, wall: 3.8, mat: PAL.ironOld, roof: PAL.steelDeep, profile: 'stepped' }));
   /**
    * THE CHIMNEY — square, tall, capped with a flared crown. Square rather than round so it does not read as a spire.
    */
