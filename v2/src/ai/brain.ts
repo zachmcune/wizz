@@ -68,10 +68,14 @@ export interface BrainMemory {
 const GHOST_TRUST_TICKS = 90;
 
 /**
- * Hard ceiling on how long a wave stays "in flight".
+ * Hard ceiling on how long a wave stays "in flight", in DECISION passes.
  *
- * Two minutes at any cadence: long enough to cross the map, fight, and come back; short enough that a wave that neither
- * wins nor dies still hands control back so the next one can launch.
+ * This is counted in `decide()`, not in `tick()`. It used to be incremented every simulation tick while being documented
+ * as passes, so `120` expired in six seconds instead of two minutes and every wave was cancelled mid-march. Measured proof
+ * of the old behaviour: `waveAge` reached **15600** in a 13-minute match, which is one increment per tick at 20 Hz.
+ *
+ * Two minutes at Normal's 1 s cadence: long enough to cross the map, fight, and come back; short enough that a wave that
+ * neither wins nor dies still hands control back so the next one can launch.
  */
 const WAVE_MAX_PASSES = 120;
 
@@ -82,6 +86,22 @@ const WAVE_MAX_PASSES = 120;
  * and the counter resets. Reaching it means a genuine grind at the unit cap.
  */
 const STALEMATE_PASSES = 90;
+
+/**
+ * Hard escalation deadline, in sim seconds.
+ *
+ * The stalemate counter can only fire while both sides still have something to spend — and the map does NOT: duel_glade
+ * authors 127,000 mana but `manaNodeCapacity` clamps every node to 12,000 (a v1 parity constant), so the whole match
+ * economy is 75,000 mana and both AI economies are mined dry at minute 15. Measured: from minute 15 to minute 30 both
+ * players sat frozen at 47 entities and 95 mana, producing nothing, because there was nothing left to mine and neither
+ * would commit the army it already had.
+ *
+ * So termination needs a bound that does not depend on income. Past this point both sides treat the match as decided and
+ * commit everything they have — no wave-size gate, no retreat, no saving. It is a sim-time constant rather than a
+ * wall-clock one so replays stay deterministic, and it sits above the 20-minute target so a healthy match always ends on
+ * its own merits first.
+ */
+const DESPERATION_SECONDS = 20 * 60;
 
 export interface BrainTickResult {
   commands: Command[];
@@ -145,21 +165,26 @@ export class AiBrain {
 
     if (per.defeated) return { commands: [], notes: ['defeated'], perception: per };
 
-    /**
-     * STALEMATE DETECTION.
-     *
-     * Progress is an enemy building disappearing. Two AIs that both sit at the 90-unit cap trade waves forever without
-     * either side making progress — measured on two of four seeds, both locked at 90 units and 11 buildings after 32
-     * sim-minutes with no winner. When nothing has changed for long enough, the AI stops trading and commits everything.
-     */
-    const enemyAlive = per.enemyBuildings.filter((b) => b.live || b.hp < b.maxHp).length;
-    if (enemyAlive < this.memory.enemyBuildingsLost) {
-      this.memory.passesWithoutProgress = 0;
-    } else {
-      this.memory.passesWithoutProgress += 1;
-    }
-    this.memory.enemyBuildingsLost = Math.max(this.memory.enemyBuildingsLost, enemyAlive);
 
+
+    // First tick of the match: choose the opening variant from the seed.
+    if (this.variantSeed !== state.seed) {
+      this.variantSeed = state.seed;
+      let h = (state.seed >>> 0) ^ 0x9e3779b9;
+      for (let i = 0; i < this.playerId.length; i++) h = Math.imul(h ^ this.playerId.charCodeAt(i), 0x85ebca6b) >>> 0;
+      this.openingVariant = h % 3;
+    }
+
+    if (this.memory.cooldown > 0) {
+      this.memory.cooldown -= 1;
+      return { commands: [], notes: [], perception: per };
+    }
+    this.memory.cooldown = this.profile.decisionInterval;
+
+    return this.decide(state, per);
+  }
+
+  private decide(state: import('../sim/types').GameState, per: Perception): BrainTickResult {
     // Track contact for the "stalled" assertions.
     if (per.enemyUnits.length > 0 || per.enemyBuildings.some((b) => b.live)) {
       this.memory.ticksSinceContact = 0;
@@ -213,24 +238,30 @@ export class AiBrain {
       this.memory.anchorAge = 0;
     }
 
-    // First tick of the match: choose the opening variant from the seed.
-    if (this.variantSeed !== state.seed) {
-      this.variantSeed = state.seed;
-      let h = (state.seed >>> 0) ^ 0x9e3779b9;
-      for (let i = 0; i < this.playerId.length; i++) h = Math.imul(h ^ this.playerId.charCodeAt(i), 0x85ebca6b) >>> 0;
-      this.openingVariant = h % 3;
+    /**
+     * STALEMATE DETECTION.
+     *
+     * Progress is an enemy building disappearing. Two AIs that both sit at the 90-unit cap trade waves forever without
+     * either side making progress — measured on two of four seeds, both locked at 90 units and 11 buildings after 32
+     * sim-minutes with no winner. When nothing has changed for long enough, the AI stops trading and commits everything.
+     */
+    /**
+     * Count remembered buildings, NOT `live || damaged`.
+     *
+     * The previous expression only counted buildings currently in sight or already hurt. The moment a scout walked away
+     * and the ghost expired, that count fell to 0 — below the high-water mark — which reset the counter on the very
+     * next pass. Measured consequence: an AI pinned at 22 of 43 army for 30 minutes with `passesWithoutProgress === 0`
+     * and zero waves, i.e. the breaker could never fire. Ghosts persist in `per.enemyBuildings` until the sim prunes
+     * them, so their count is stable across vision loss and is the right progress signal.
+     */
+    const enemyAlive = per.enemyBuildings.length;
+    if (enemyAlive < this.memory.enemyBuildingsLost) {
+      this.memory.passesWithoutProgress = 0;
+    } else {
+      this.memory.passesWithoutProgress += 1;
     }
+    this.memory.enemyBuildingsLost = Math.max(this.memory.enemyBuildingsLost, enemyAlive);
 
-    if (this.memory.cooldown > 0) {
-      this.memory.cooldown -= 1;
-      return { commands: [], notes: [], perception: per };
-    }
-    this.memory.cooldown = this.profile.decisionInterval;
-
-    return this.decide(state, per);
-  }
-
-  private decide(state: import('../sim/types').GameState, per: Perception): BrainTickResult {
     const commands: Command[] = [];
     const notes: string[] = [];
     const pid = per.playerId;
@@ -273,7 +304,9 @@ export class AiBrain {
        * `planMilitary` uses this to drop the wave-size gate and skip the retreat logic, so a stalemated AI throws its whole
        * army at the enemy base instead of exchanging equal waves at the unit cap forever.
        */
-      allIn: this.memory.passesWithoutProgress >= STALEMATE_PASSES,
+      allIn:
+        this.memory.passesWithoutProgress >= STALEMATE_PASSES ||
+        elapsedSeconds >= DESPERATION_SECONDS,
       enemyAnchor: this.memory.enemyAnchor,
     });
     commands.push(...mil.commands);

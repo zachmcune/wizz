@@ -11,7 +11,6 @@
 // Usage:
 //   npx vite-node audit/ai-tournament-parallel.ts --seeds 12 --minutes 35 --json out.json [--jobs 4]
 import { spawn } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Difficulty, MatchResult, MatchupSummary, PlayerSpec } from './ai-tournament';
 
@@ -115,60 +114,4 @@ export function summarise(label: string, a: Difficulty, b: Difficulty, results: 
   };
 }
 
-// ------------------------------------------------------------------------------------------------ CLI
-const argv = process.argv.slice(2);
-const argOf = (name: string, dflt: number): number => {
-  const i = argv.indexOf(`--${name}`);
-  return i >= 0 ? Number(argv[i + 1]) : dflt;
-};
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const count = argOf('seeds', 12);
-  const maxMinutes = argOf('minutes', 35);
-  const concurrency = argOf('jobs', 4);
-  const seeds = Array.from({ length: count }, (_, i) => 1000 + i * 7);
-  const outIdx = argv.indexOf('--json');
-  const out = outIdx >= 0 ? argv[outIdx + 1] : undefined;
-
-  const matchups: [Difficulty, Difficulty][] = [
-    ['hard', 'normal'],
-    ['normal', 'easy'],
-    ['hard', 'easy'],
-    ['normal', 'normal'],
-  ];
-
-  const started = Date.now();
-  const summaries: MatchupSummary[] = [];
-  const allResults: Record<string, MatchResult[]> = {};
-
-  for (const [a, b] of matchups) {
-    const jobs: Job[] = seeds.map((seed) => ({
-      seed,
-      maxMinutes,
-      players: [
-        { id: 'p1', difficulty: a, team: 0, faction: 'arcane', startIndex: 0 },
-        { id: 'p2', difficulty: b, team: 1, faction: 'arcane', startIndex: 1 },
-      ],
-    }));
-    let lastLogged = 0;
-    const results = await runPool(jobs, concurrency, (done, total) => {
-      if (done === total || done - lastLogged >= 4) {
-        lastLogged = done;
-        console.log(`  ${a} vs ${b}: ${done}/${total} matches`);
-      }
-    });
-    const s = summarise(`${a} vs ${b}`, a, b, results);
-    summaries.push(s);
-    allResults[s.label] = results;
-    console.log(
-      `${s.label.padEnd(18)} A ${s.winsA} - ${s.winsB} B  draws ${s.draws}  unfinished ${s.unfinished}` +
-        `  winRateA ${(s.winRateA * 100).toFixed(0)}%  median ${s.medianMinutes} min  worstNoSpend ${s.worstNoSpendSeconds}s`,
-    );
-  }
-
-  console.log(`\ntotal wall time ${((Date.now() - started) / 60000).toFixed(1)} min across ${concurrency} workers`);
-  if (out) {
-    writeFileSync(out, JSON.stringify({ summaries, results: allResults }, null, 2));
-    console.log(`wrote ${out}`);
-  }
-}
+// The CLI lives in `ai-tournament-cli.ts`; this module is a pure library so tests can import it.

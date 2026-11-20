@@ -269,6 +269,34 @@ export function planMilitary(
     notes.push(`wave of ${ids.length} attacking ${target.why} at ${Math.round(target.x)},${Math.round(target.y)}`);
   } else if (!opts.attacking && opts.enemyAnchor) {
     notes.push(`massing: ${armySize}/${Math.max(profile.minWaveSize, opts.lastWaveSize)}`);
+  } else if (opts.attacking && opts.enemyAnchor) {
+    /**
+     * KEEP A WAVE MOVING — this is the "no idle armies" requirement, and it was the real reason matches never ended.
+     *
+     * A wave was a ONE-SHOT order: `attackMove` was issued once, and when the units arrived they went idle with an empty
+     * order queue and simply stood there. Measured on a 20-minute match: **44 of 72 units idle with no orders**, the
+     * closest only 257 world units from an enemy building — but the enemy building was NOT in sight, so `acquireTarget`
+     * (which requires `isVisibleTo`) found nothing and the unit had no reason to move. Zero unit deaths and zero
+     * building damage across the whole match, because the army was parked just outside vision forever.
+     *
+     * Re-issuing the order for idle units only is the correct fix rather than re-ordering the whole army each pass:
+     *   • units still marching keep their path (re-ordering restarts pathing every pass, and an earlier version of this
+     *     code stalled exploration exactly that way);
+     *   • units that arrived and have nothing to shoot are precisely the ones that need to close the last stretch;
+     *   • a unit actively fighting has an order, so it is left alone.
+     */
+    const idle = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
+    if (idle.length > 0) {
+      const target = pickAttackTarget(per, opts.enemyAnchor, registry);
+      commands.push({
+        type: 'attackMove',
+        playerId: pid,
+        entityIds: idle.map((a) => a.seen.id),
+        x: target.x,
+        y: target.y,
+      });
+      notes.push(`re-tasking ${idle.length} idle unit(s) to close on ${target.why}`);
+    }
   }
 
   // ------------------------------------------------------------------ 5. micro: focus fire + kiting
