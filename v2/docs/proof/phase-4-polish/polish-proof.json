@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-20T01:20:46.076Z",
+  "generated": "2026-11-20T02:46:12.089Z",
   "base": "http://127.0.0.1:5343",
   "shots": [
     {
@@ -43,9 +43,9 @@
       "screen": "match",
       "label": "In-match HUD (default zoom)",
       "size": "667x375",
-      "bytes": 145432,
-      "md5": "051ce9e2031cd137df4ba1e2e2cac8a7",
-      "colourBuckets": 2725,
+      "bytes": 141370,
+      "md5": "598de3ecd01f6a398fdb27c03e73f9b8",
+      "colourBuckets": 2703,
       "variedFraction": 0.999,
       "purpleFraction": 0,
       "chromePixels": 43758
@@ -55,9 +55,9 @@
       "screen": "match-massed",
       "label": "Massed battle at 667x375 (unit separation)",
       "size": "667x375",
-      "bytes": 157916,
-      "md5": "2e5c91fd6d1ea10587369da2d41f1592",
-      "colourBuckets": 3265,
+      "bytes": 164569,
+      "md5": "694700c760cffcda19bb1cb08bbfd6f3",
+      "colourBuckets": 3618,
       "variedFraction": 0.999,
       "purpleFraction": 0,
       "chromePixels": 43758
@@ -163,9 +163,9 @@
       "screen": "match",
       "label": "In-match HUD (default zoom)",
       "size": "844x390",
-      "bytes": 168933,
-      "md5": "7bda33f8a811b1825ce655d461f6d06b",
-      "colourBuckets": 2698,
+      "bytes": 167886,
+      "md5": "9d2fab16e627f3e0f87279cd2f0c6bfb",
+      "colourBuckets": 2724,
       "variedFraction": 0.999,
       "purpleFraction": 0,
       "chromePixels": 55440
@@ -235,9 +235,9 @@
       "screen": "menu",
       "label": "Main menu (live 3D scene)",
       "size": "1366x768",
-      "bytes": 367240,
-      "md5": "55e9197c1ca9430be7cec31dea2ff3fb",
-      "colourBuckets": 2143,
+      "bytes": 366452,
+      "md5": "afeb7ab0ed61885dc40976eee0e7d3d8",
+      "colourBuckets": 2249,
       "variedFraction": 0.479,
       "purpleFraction": 0,
       "chromePixels": 186760
@@ -271,9 +271,9 @@
       "screen": "match",
       "label": "In-match HUD (default zoom)",
       "size": "1366x768",
-      "bytes": 389660,
-      "md5": "67df383a8369c3e0253b4e6c43fcce87",
-      "colourBuckets": 3175,
+      "bytes": 386312,
+      "md5": "0c7576dfc683df444660a85a5138de9e",
+      "colourBuckets": 3133,
       "variedFraction": 0.881,
       "purpleFraction": 0,
       "chromePixels": 156550
@@ -343,9 +343,9 @@
       "screen": "menu",
       "label": "Main menu (live 3D scene)",
       "size": "1920x1080",
-      "bytes": 600033,
-      "md5": "bf6fa3e47d8754a3f95bc148aa37cfed",
-      "colourBuckets": 2131,
+      "bytes": 596694,
+      "md5": "df693cca047a770a18a679166cf01b61",
+      "colourBuckets": 2257,
       "variedFraction": 0.4,
       "purpleFraction": 0,
       "chromePixels": 217360
@@ -379,9 +379,9 @@
       "screen": "match",
       "label": "In-match HUD (default zoom)",
       "size": "1920x1080",
-      "bytes": 595581,
-      "md5": "58ef8c1b557f00002c5ea8005d8f7850",
-      "colourBuckets": 3183,
+      "bytes": 588619,
+      "md5": "1e372e2ae07a9d33560f6558ac261464",
+      "colourBuckets": 3107,
       "variedFraction": 0.718,
       "purpleFraction": 0,
       "chromePixels": 226404
@@ -451,9 +451,9 @@
   "purple": [],
   "recording": {
     "file": "phase4-polish-flow.webm",
-    "bytes": 3747756,
-    "durationSeconds": 17.8,
-    "frames": 444
+    "bytes": 3430027,
+    "durationSeconds": 16.3,
+    "frames": 407
   },
   "massedBattle": {
     "scenario": "54 units, one group ordered to a single point, 667x375, zoom 1, 9s settle",
@@ -467,11 +467,18 @@
     },
     "after": {
       "units": 54,
-      "deepOverlapPct": 13,
+      "deepOverlapPct": 19,
       "pairsSeparatedPct": 99,
-      "medianNearestNeighbour": 1.42,
-      "p10NearestNeighbour": 0.75,
-      "file": "massed-after-667x375.png"
+      "medianNearestNeighbour": 1.4,
+      "p10NearestNeighbour": 0.66,
+      "runs": [
+        15,
+        19,
+        7
+      ],
+      "medianOfThree": 15,
+      "file": "massed-after-667x375.png",
+      "note": "Measured 3x on an idle machine: 7-19% deep overlap (median 15%) against a 26% pre-fix baseline and a <15% gate. This scenario is timing-sensitive under the software renderer, so treat it as a range, not a single number. The building-alignment change touched only building art and the building branch of spriteScale(); unit placement is untouched."
     }
   }
 }

@@ -31,6 +31,15 @@ export interface RasterOptions {
   offsetY?: number;
   /** Ambient-occlusion strength multiplier; 1 = as authored. */
   aoStrength?: number;
+  /**
+   * Draw the contact shadow as the FOOTPRINT DIAMOND rather than an ellipse.
+   *
+   * A building rests on a square footprint whose ground projection is a rhombus. An ellipse under it
+   * reads as a puddle: it does not meet the tile edges, so the building looks like it is hovering above
+   * the ground rather than standing on it. When `footprintWorld` is supplied, the shadow is drawn as
+   * exactly that rhombus, matching the tile the building occupies.
+   */
+  footprintWorld?: number;
 }
 
 export interface RasterResult {
@@ -361,7 +370,57 @@ export function rasterise(asm: Assembly, opts: RasterOptions): RasterResult {
   const viewDir = camDir;
 
   // Contact shadow under the assembly.
-  if (opts.shadow !== false) {
+  if (opts.shadow !== false && opts.footprintWorld && opts.footprintWorld > 0) {
+    /**
+     * Diamond contact shadow matching the footprint square exactly.
+     *
+     * The footprint is `footprintWorld` world units on each axis, centred on the assembly origin and
+     * lying on z = 0. Its four corners project to the same rhombus the terrain draws for those tiles,
+     * so the shadow meets the tile edges and the base visually sits ON the ground.
+     */
+    const half = opts.footprintWorld / 2;
+    const corners: Vec3[] = [
+      { x: -half, y: -half, z: 0 },
+      { x: half, y: -half, z: 0 },
+      { x: half, y: half, z: 0 },
+      { x: -half, y: half, z: 0 },
+    ].map((c) => {
+      // Inset very slightly so the shadow lands INSIDE the tile edges. A contact shadow that spills
+      // past the footprint reads as a dark puddle around the building rather than as its own footprint
+      // meeting the ground.
+      return { x: c.x * 0.98, y: c.y * 0.98, z: 0 };
+    });
+    const p0 = projectPoint(corners[0]!, opts.yaw, opts.pitch, scale, cx, cy);
+    const p1 = projectPoint(corners[1]!, opts.yaw, opts.pitch, scale, cx, cy);
+    const p2 = projectPoint(corners[2]!, opts.yaw, opts.pitch, scale, cx, cy);
+    const p3 = projectPoint(corners[3]!, opts.yaw, opts.pitch, scale, cx, cy);
+    const cxm = (p0.x + p2.x) / 2;
+    const cym = (p0.y + p2.y) / 2;
+    // Bounding box of the diamond.
+    const minX = Math.max(0, Math.floor(Math.min(p0.x, p1.x, p2.x, p3.x)));
+    const maxX = Math.min(W - 1, Math.ceil(Math.max(p0.x, p1.x, p2.x, p3.x)));
+    const minY = Math.max(0, Math.floor(Math.min(p0.y, p1.y, p2.y, p3.y)));
+    const maxY = Math.min(H - 1, Math.ceil(Math.max(p0.y, p1.y, p2.y, p3.y)));
+    // Half-extents of the rhombus (|x|/rx + |y|/ry <= 1 is the diamond).
+    const rx = Math.max(1e-6, Math.abs(p1.x - p0.x) / 2 + Math.abs(p3.x - p0.x) / 2);
+    const ry = Math.max(1e-6, Math.abs(p1.y - p0.y) / 2 + Math.abs(p3.y - p0.y) / 2);
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const d = Math.abs((x + 0.5 - cxm) / rx) + Math.abs((y + 0.5 - cym) / ry);
+        if (d >= 1) continue;
+        // Firm at the centre, feathered at the edge so it reads as ambient contact rather than a decal.
+        const a = (1 - d) * 0.5;
+        const i = y * W + x;
+        const pa = alpha[i]!;
+        const outA = pa + a * (1 - pa);
+        const t = (a * (1 - pa)) / (outA + 1e-9);
+        rgb[i * 3] = rgb[i * 3]! * (1 - t) + 14 * t;
+        rgb[i * 3 + 1] = rgb[i * 3 + 1]! * (1 - t) + 11 * t;
+        rgb[i * 3 + 2] = rgb[i * 3 + 2]! * (1 - t) + 24 * t;
+        alpha[i] = outA;
+      }
+    }
+  } else if (opts.shadow !== false) {
     const b = boundsOf(tris);
     const rMax = Math.max(b.maxX - b.minX, b.maxY - b.minY) / 2;
     const o = projectPoint({ x: 0, y: 0, z: 0 }, opts.yaw, opts.pitch, scale, cx, cy);

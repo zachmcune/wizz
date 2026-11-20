@@ -269,10 +269,20 @@ export class Renderer {
     const frame = this.atlas?.frames.get(frameKey);
     if (!frame) return 1;
     if (kind === KIND_BUILDING) {
-      const def = this.registry.buildings.get(defId);
-      if (!def) return 1;
-      const worldW = def.footprint * 32 * 0.5 + def.footprint * 32 * 0.5;
-      return worldW / frame.w;
+      /**
+       * BUILDINGS DRAW AT 1:1 WITH THE PROJECTION.
+       *
+       * The atlas now bakes each building so that its base spans exactly `footprint * TILE` projected
+       * pixels, under the same camera the terrain uses (see `art/build-atlas3.ts`). One projected
+       * pixel is therefore one world unit at zoom 1, so the sprite is drawn at scale 1 and the
+       * renderer's own `projectGround` places it.
+       *
+       * The previous rule computed `footprint * 32` and divided by the frame width — which re-applied a
+       * footprint-derived scale to art that was already sized by its bounding box. Buildings came out at
+       * an arbitrary size relative to their tiles, which is why they read as props sitting inside a
+       * diamond rather than foundations filling it.
+       */
+      return 1;
     }
     const def = this.registry.units.get(defId);
     if (!def) return 1;

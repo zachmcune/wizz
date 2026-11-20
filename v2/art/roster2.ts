@@ -375,7 +375,7 @@ export const EXTRA_UNITS: Record<string, Assembly> = {
  * circle so it reads as a circle from every facing, with the crystal well rising through the middle.
  */
 function arcaneNexus(): Assembly {
-  const parts: Part[] = [...plinth(40, 40, 3.0)];
+  const parts: Part[] = [...plinth(2, 3.0)];
   parts.push(part(cyl(20, 18, 7.0, 8), [0, 0, 2.6], PAL.rock));
   parts.push(part(cyl(19, 19, 1.2, 8), [0, 0, 9.4], PAL.rockLit));
   const RING_R = 13.0;
@@ -411,7 +411,7 @@ function arcaneNexus(): Assembly {
  * The only structure with a hole, so it is unmistakable even as a 40 px build-menu icon.
  */
 function arcaneGate(): Assembly {
-  const parts: Part[] = [...plinth(26, 26, 2.4)];
+  const parts: Part[] = [...plinth(1, 2.4)];
   for (const s of [-1, 1] as const) {
     parts.push(part(bbox(4.6, 8.0, 22.0, 1.2, 0.88), [s * 7.6, 0, 2.4], PAL.violet));
     parts.push(part(bbox(5.4, 9.0, 2.4, 0.9), [s * 7.6, 0, 23.0], PAL.brass));
@@ -434,7 +434,7 @@ function arcaneGate(): Assembly {
  * with no vertical element at all.
  */
 function arcaneBunker(): Assembly {
-  const parts: Part[] = [...plinth(38, 38, 2.6)];
+  const parts: Part[] = [...plinth(2, 2.6)];
   parts.push(part(cyl(17.0, 15.0, 9.0, 10), [0, 0, 2.2], PAL.rock));
   parts.push(part(sph(15.4, 14), [0, 0, 11.0], PAL.violet, { scale: { x: 1.0, y: 1.0, z: 0.42 } }));
   parts.push(part(cyl(11.0, 11.0, 1.0, 12), [0, 0, 15.4], PAL.violetDeep));
@@ -461,7 +461,7 @@ function arcaneBunker(): Assembly {
  * Nothing else in the roster has a forked top.
  */
 function attunementSpire(): Assembly {
-  const parts: Part[] = [...roundPlinth(16, 3.0)];
+  const parts: Part[] = [...roundPlinth(2, 3.0)];
   parts.push(part(cyl(7.0, 4.0, 28.0, 10), [0, 0, 2.6], PAL.violet));
   for (const z of [10.0, 18.0, 25.0]) {
     parts.push(part(cyl(6.2, 5.6, 1.2, 10), [0, 0, z], PAL.brass));
@@ -489,7 +489,7 @@ function attunementSpire(): Assembly {
  * "the one that is just a heavy box" is itself the read.
  */
 function resonanceVault(): Assembly {
-  const parts: Part[] = [...plinth(38, 38, 2.8)];
+  const parts: Part[] = [...plinth(2, 2.8)];
   parts.push(part(bbox(30, 30, 20.0, 3.0, 0.96), [0, 0, 2.6], PAL.violetDeep));
   for (const [sx, sy] of [
     [-1, -1],
@@ -516,7 +516,7 @@ function resonanceVault(): Assembly {
  * LEY CONDUIT — 2x2 power. SILHOUETTE: a lattice mast with floating energy rings around it.
  */
 function leyConduit(): Assembly {
-  const parts: Part[] = [...plinth(32, 32, 2.6)];
+  const parts: Part[] = [...plinth(2, 2.6)];
   parts.push(part(bbox(9.0, 9.0, 22.0, 1.4, 0.5), [0, 0, 2.4], PAL.steelDeep));
   for (const z of [8.0, 14.0, 20.0]) {
     parts.push(part(bbox(11.0, 11.0, 1.2, 0.5), [0, 0, z], PAL.steel));
@@ -538,7 +538,7 @@ function leyConduit(): Assembly {
  * floating star. Deliberately the maximum height in the game.
  */
 function astralSpire(): Assembly {
-  const parts: Part[] = [...roundPlinth(22, 3.6)];
+  const parts: Part[] = [...roundPlinth(3, 3.6)];
   parts.push(part(cyl(18.0, 16.0, 12.0, 14), [0, 0, 3.0], PAL.rock));
   parts.push(part(cyl(14.0, 12.0, 12.0, 12), [0, 0, 15.0], PAL.violet));
   parts.push(part(cyl(10.0, 8.4, 12.0, 12), [0, 0, 27.0], PAL.violetLit));
@@ -576,7 +576,7 @@ function astralSpire(): Assembly {
  * The only structure with a long horizontal element.
  */
 function celestialCannon(): Assembly {
-  const parts: Part[] = [...plinth(44, 44, 3.2)];
+  const parts: Part[] = [...plinth(3, 3.2)];
   parts.push(part(cyl(19.0, 17.0, 9.0, 10), [0, 0, 2.6], PAL.rock));
   parts.push(part(cyl(20.0, 20.0, 1.4, 10), [0, 0, 11.4], PAL.rockLit));
   for (let a = 0; a < 4; a++) {
@@ -604,7 +604,7 @@ function celestialCannon(): Assembly {
  * Rebuilt as a clean tapered monolith with a real floating iris.
  */
 function scryingObelisk(): Assembly {
-  const parts: Part[] = [...plinth(26, 26, 2.6)];
+  const parts: Part[] = [...plinth(2, 2.6)];
   parts.push(part(prism(8.4, 34.0, 4), [0, 0, 2.6], PAL.violetDeep, { rotZ: Math.PI / 4 }));
   parts.push(part(prism(9.0, 1.4, 4), [0, 0, 4.0], PAL.brass, { rotZ: Math.PI / 4 }));
   // TEAM MARKER: the monolith is a 4-sided prism 8.4 across, so a band "around" it at radius 6.6 was
@@ -632,11 +632,19 @@ function scryingObelisk(): Assembly {
  */
 function summoningCircle(): Assembly {
   const parts: Part[] = [];
-  parts.push(part(cyl(19.0, 18.0, 2.6, 16), [0, 0, 0.2], PAL.rockDeep));
-  parts.push(part(cyl(17.0, 17.0, 0.8, 16), [0, 0, 2.8], PAL.rock));
-  parts.push(part(cyl(14.0, 14.0, 0.35, 16), [0, 0, 3.5], PAL.emberDeep));
-  parts.push(part(cyl(9.0, 9.0, 0.35, 16), [0, 0, 3.6], PAL.emberCore));
-  parts.push(part(cyl(15.0, 15.0, 0.2, 16), [0, 0, 3.7], PAL.runeTeam));
+  /**
+   * SQUARE STONE FOOTING, round ritual dais above it.
+   *
+   * A circle cannot meet a square footprint: inscribed, it reaches only the edge midpoints, so its
+   * projected width is 1/sqrt(2) (70.7%) of the tile diamond and the whole building reads as a coin
+   * resting inside the tile rather than a foundation meeting the ground. The footing course is square
+   * and spans the full 2x2 footprint; the circle is then correctly inscribed on top of it.
+   */
+  parts.push(part(bbox(64.0, 64.0, 2.2, 1.6, 0.97), [0, 0, 0], PAL.rockDeep));
+  parts.push(part(cyl(30.0, 29.0, 1.0, 20), [0, 0, 2.2], PAL.rock));
+  parts.push(part(cyl(23.0, 23.0, 0.35, 20), [0, 0, 3.2], PAL.emberDeep));
+  parts.push(part(cyl(14.0, 14.0, 0.35, 20), [0, 0, 3.3], PAL.emberCore));
+  parts.push(part(cyl(25.0, 25.0, 0.2, 20), [0, 0, 3.4], PAL.runeTeam));
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     const h = 8.0 + ((i * 5) % 4) * 1.4;
@@ -653,7 +661,7 @@ function summoningCircle(): Assembly {
  * angles — the deliberate opposite of the Arcane spires.
  */
 function obsidianBastion(): Assembly {
-  const parts: Part[] = [...plinth(38, 38, 2.8)];
+  const parts: Part[] = [...plinth(2, 2.8)];
   parts.push(part(bbox(30, 30, 24.0, 2.4, 0.94), [0, 0, 2.6], PAL.ironOld));
   for (const [sx, sy] of [
     [-1, -1],
@@ -695,7 +703,7 @@ function obsidianBastion(): Assembly {
  * see through.
  */
 function infernoBeacon(): Assembly {
-  const parts: Part[] = [...plinth(30, 30, 2.6)];
+  const parts: Part[] = [...plinth(2, 2.6)];
   parts.push(part(cyl(11.0, 9.0, 7.0, 10), [0, 0, 2.6], PAL.ironOld));
   parts.push(part(prism(11.6, 1.2, 10), [0, 0, 9.0], PAL.steel));
   // fire inside the cage
@@ -722,7 +730,7 @@ function infernoBeacon(): Assembly {
  * STORM CONDUCTOR — 2x2 power. SILHOUETTE: a tall mast with three angled lightning vanes.
  */
 function stormConductor(): Assembly {
-  const parts: Part[] = [...roundPlinth(15, 2.8)];
+  const parts: Part[] = [...roundPlinth(2, 2.8)];
   parts.push(part(cyl(3.6, 2.2, 34.0, 8), [0, 0, 2.6], PAL.steelDeep));
   for (const z of [10.0, 16.0, 22.0, 28.0]) {
     parts.push(part(cyl(5.0, 5.0, 0.8, 8), [0, 0, z], PAL.steel));
@@ -750,7 +758,7 @@ function stormConductor(): Assembly {
  * Spire by having one top element instead of a fork.
  */
 function sanctuarySpire(): Assembly {
-  const parts: Part[] = [...roundPlinth(16, 3.0)];
+  const parts: Part[] = [...roundPlinth(2, 3.0)];
   parts.push(part(cyl(8.0, 10.0, 22.0, 12), [0, 0, 2.8], PAL.rockLit));
   parts.push(part(cyl(10.4, 10.4, 2.4, 12), [0, 0, 24.8], PAL.rock));
   for (let i = 0; i < 4; i++) {
@@ -774,7 +782,7 @@ function sanctuarySpire(): Assembly {
  * identifier; the glowing furnace mouth shows what it does.
  */
 function golemForge(): Assembly {
-  const parts: Part[] = [...plinth(44, 44, 3.2)];
+  const parts: Part[] = [...plinth(3, 3.2)];
   parts.push(part(bbox(34, 30, 16.0, 2.6, 0.94), [0, 0, 2.8], PAL.ironOld));
   parts.push(part(bbox(36, 32, 2.4, 1.0, 0.98), [0, 0, 18.4], PAL.steelDeep));
   // tall chimney
@@ -824,6 +832,20 @@ export const EXTRA_BUILDINGS: Record<string, Assembly> = {
  */
 function thornGrove(): Assembly {
   const parts: Part[] = [];
+  /**
+   * SQUARE EARTH FOOTING under the mound.
+   *
+   * Same reason as the summoning circle: a round mound is inscribed in its square footprint, reaching
+   * only 70.7% of the tile diamond, so the grove looked like it was hovering in the middle of its tiles.
+   * A low, square footing spans the full 2x2 footprint and gives the tendrils something to grow out of
+   * that visibly meets the ground.
+   *
+   * It is TEAM-TINTED moss rather than plain earth: the footing is now the largest surface on the model,
+   * and neutral earth made the grove read as unclaimed scenery. Ownership has to be legible at default
+   * zoom, and the ground the grove grows out of is the natural place to show it.
+   */
+  parts.push(part(bbox(64.0, 64.0, 1.8, 2.0, 0.98), [0, 0, 0], PAL.runeTeam));
+  parts.push(part(cyl(28.0, 27.0, 1.4, 16), [0, 0, 1.6], PAL.rockMoss));
   // tangled body: overlapping flattened spheres, deliberately uneven
   for (const [x, y, z, r] of [
     [0, 0, 5.0, 7.4],
@@ -862,7 +884,7 @@ function thornGrove(): Assembly {
  * structure made of cloth rather than stone.
  */
 function waystoneCamp(): Assembly {
-  const parts: Part[] = [...plinth(42, 42, 2.4)];
+  const parts: Part[] = [...plinth(3, 2.4)];
   parts.push(part(cyl(20.0, 19.0, 1.6, 12), [0, 0, 2.2], PAL.rock));
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;

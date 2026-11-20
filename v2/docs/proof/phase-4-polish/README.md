@@ -144,6 +144,105 @@ truncation).
 
 ---
 
+## (5) Buildings looked tilted and floating, not resting on the grid
+
+> *"The main building doesn't read as actually sitting flat because of how it's angled. Make sure all
+> other buildings aren't like that either."*
+
+### What was actually wrong — three faults, measured not guessed
+
+The obvious explanation (a rotated sprite) turned out to be **false**: the live sprite has
+`rotation: 0`, `angle: 0`, `scale: 1.0`. Reading the real transform out of the renderer:
+
+```
+sanctum   scale {x:1, y:1}   rotation 0   angle 0
+          anchor {x:0.5, y:0.5756572649418834}   <- the computed ground origin
+          position {x:0, y:216}                  <- the projected ground point
+```
+
+So the tilt came from **how the atlas was baked**, not from how it was drawn. Three separate faults
+compounded:
+
+1. **Wrong camera.** Buildings were baked at yaw `0.62` rad (35.5°) / pitch `0.5` rad (28.6°), while the
+   terrain projects at yaw 45° / pitch 60°. Under the terrain's projection a square base *is* a 2:1
+   diamond; at 35.5° it comes out a parallelogram rotated ~9.5° off it. That is the "angled" look.
+2. **Wrong pivot.** `bake()` wrote `pivotX: 0.5, pivotY: 0.85` into the manifest while the computed
+   values went to a `pivots.json` the loader never read. Every building was anchored 85% down its frame
+   instead of at its own ground origin — it hung below the ground plane instead of standing on it. The
+   manifest now carries **22 distinct pivot values** instead of one constant.
+3. **Per-building scale that broke 1:1 with the terrain.** `buildingScaleFor()` resized each building so
+   its base's projected width equalled its footprint diamond. That is right for a square plinth and
+   wrong for everything else, because a round plinth is an inscribed circle: its projected width is
+   geometrically only `1/sqrt(2)` (70.7%) of the diamond. Forcing it to 100% scaled those towers up
+   **1.41x**, making them physically larger than the tiles they stand on. And because the contact shadow
+   is computed in *world* units, the inflated scale dragged the shadow with it:
+   **24–38% wider than the footprint** — a dark puddle around the tile, which is exactly the "hovering"
+   read.
+
+### The fixes
+
+- Bake every building at `TERRAIN_MATCH_YAW = π/4`, `TERRAIN_MATCH_PITCH = π/3`, and the single constant
+  `TERRAIN_MATCH_SCALE = √½` — the only scale at which one world unit is one projected pixel. Constants
+  live in [`art/bake-camera.ts`](../../../art/bake-camera.ts) so the test can import them without
+  triggering the bake.
+- Read the real pivot into the manifest instead of a constant; the renderer anchors on it (scale 1).
+- Fix round bases in **geometry, not scale**: `roundPlinth` now lays a square footing course exactly on
+  the footprint with the round drum stepping in above it. `summoning_circle`, `thorn_grove`, `stone_wall`
+  and `mana_node` got footing courses for the same reason.
+- Make those foundation courses **team-tinted**. They are now the largest lit surface on a round tower,
+  and leaving them neutral made ownership unreadable at default zoom (round-roster team-colour share fell
+  from ~4–7% to under 1%). Team tint on the ground contact is also the correct read.
+
+### Measured result — every building, from the baked pixels
+
+Body width vs footprint diamond, measured from the atlas raster (alpha > 200), and contact-shadow width
+(alpha > 8):
+
+| | before | after |
+|---|---|---|
+| Body / diamond, all 21 buildings | 0.75–1.06 | **0.94–1.06** |
+| Contact shadow / diamond, round bases | **1.27–1.38** (spilling) | **≤ 1.06** (on the footprint) |
+| Buildings failing | 8 | **0** (`stone_wall` is thin by design; its shadow is 28px inside its 32px tile) |
+
+The residual `1.02–1.06` is the 2px outline drawn outside the base, not overshoot.
+
+In-match, at the tightest viewport, the drawn diamond measures **145×73 px** against an expected
+**144×72** — a 1px antialias difference, aspect **1.99** where the terrain is **2.00**.
+
+### Automated gate — 112 assertions, and proven to catch the bug
+
+[`tests/building-alignment.test.ts`](../../../tests/building-alignment.test.ts) projects each building's
+base corners through the same projection the terrain uses and asserts they land on its footprint tile
+corners within 6px. It then goes further, because a world-space test alone **missed** fault 3: it reads
+the **baked atlas pixels** and asserts
+
+- the drawn base spans its diamond (0.94–1.06),
+- the contact shadow never exceeds the footprint,
+- the base edge runs at the diamond's **2:1 slope**, measured by tracing the edge and least-squares
+  fitting `dx/dy` — the direct "no rotation against the grid" check,
+- the manifest records the constant terrain bake scale for every building.
+
+Each of these was verified by **reintroducing the bug**:
+
+- old yaw `0.62` → slope test fails with measured slopes **1.40–2.46** (want 2.00)
+- per-building scale → fails by name: *"arcane_bunker was baked at a per-building scale, not the
+  terrain's: expected 0.679 to be close to 0.707"*
+- undersized round base → *"sanctum: base is 48.0px wide, tile diamond is 96.0px"*
+
+### Proof artifacts
+
+| Artifact | Contents |
+|---|---|
+| [`buildings-on-footprints.png`](buildings-on-footprints.png) | **every building drawn on its own footprint diamond** — cyan silhouette, magenta corner rings, magenta centre dot |
+| [`building-overlays/`](building-overlays/) | the same, one 21-file set for close inspection |
+| [`align-grid-phone.png`](align-grid-phone.png) · [`-phone-landscape-wide`](align-grid-phone-landscape-wide.png) · [`-chromebook`](align-grid-chromebook.png) · [`-desktop`](align-grid-desktop.png) | **in-match at all 4 viewports**, with the projected footprint diamond drawn over the live render |
+| [`align-inmatch-phone.png`](align-inmatch-phone.png) · [`-phone-landscape-wide`](align-inmatch-phone-landscape-wide.png) · [`-chromebook`](align-inmatch-chromebook.png) · [`-desktop`](align-inmatch-desktop.png) | the same matches with no overlay, for the clean read |
+
+All 8 buildings spawned at every viewport, **0 page errors**. Measured independently from the overlay
+pixels: every building's footprint centre offset from its diamond centre is **0.0 px**.
+
+---
+
 ## Proof
 
 | Artifact | Contents |
@@ -153,6 +252,9 @@ truncation).
 | [`before/`](before/) | the `03d138a` captures used as the baseline, including the independently measured massed frame |
 | [`polish-proof.json`](polish-proof.json) | per-capture md5, colour buckets, purple fraction, HUD metrics, and the massed before/after numbers |
 | [`phase4-polish-flow.webm`](phase4-polish-flow.webm) | full flow: menu → lobby → match → research → pause → results |
+| [`align-inmatch-*.png`](align-inmatch-desktop.png) | **building alignment**: in-match at all 4 viewports |
+| [`align-grid-*.png`](align-grid-desktop.png) | **building alignment**: the same shots with each footprint diamond drawn over the live render |
+| [`buildings-on-footprints.png`](buildings-on-footprints.png) | **building alignment**: every building on its own outline |
 
 **37 screenshots, 0 purple in chrome, 0 page errors.**
 

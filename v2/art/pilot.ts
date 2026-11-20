@@ -392,7 +392,7 @@ export const PILOT_UNITS: Record<string, Assembly> = {
 // and four buttress fins run up the corners to give vertical structure.
 // ================================================================================================
 function sanctum(): Assembly {
-  const parts: Part[] = [...plinth(44, 44, 3.4)];
+  const parts: Part[] = [...plinth(3, 3.4)];
   // base block
   parts.push(part(bbox(40, 40, 10, 2.4, 0.9), [0, 0, 3.0], PAL.rock));
   parts.push(part(bbox(42, 42, 2.0, 0.8, 0.98), [0, 0, 12.4], PAL.rockLit));
@@ -444,7 +444,7 @@ function sanctum(): Assembly {
 // one has three angled legs meeting a bevelled pivot, with the crystals growing out of it.
 // ================================================================================================
 function arcaneSentry(): Assembly {
-  const parts: Part[] = [...plinth(24, 24, 2.2)];
+  const parts: Part[] = [...plinth(1, 2.2)];
   // three legs, splayed
   for (const a of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) {
     const dx = Math.cos(a) * 6.0;
@@ -480,13 +480,15 @@ function stoneWall(): Assembly {
   // NOTE on arguments: `bbox(width, depth, height)`. An earlier version passed the wall's thickness in
   // the height slot, producing 11-unit-deep blocks that were only 4.6 tall — a flat slab lying down.
   const parts: Part[] = [];
-  const WALL_W = 30;
+  // Exactly one tile wide, so the wall's base meets its footprint edges on the long axis.
+  const WALL_W = 32;
   const WALL_D = 5.0; // thin: this is a barrier, not a bunker
   const blockH = 4.4;
   const rows = 4;
 
-  // footing
-  parts.push(part(bbox(WALL_W + 2, WALL_D + 2.4, 1.8, 0.6), [0, 0, 0], PAL.rockDeep));
+  // Footing spans exactly the footprint width. The wall is deliberately THIN in depth (it is a barrier,
+  // not a bunker), so only the long axis fills the tile.
+  parts.push(part(bbox(WALL_W, WALL_D + 2.4, 1.8, 0.6), [0, 0, 0], PAL.rockDeep));
 
   for (let r = 0; r < rows; r++) {
     const count = r === rows - 1 ? 3 : 4;
@@ -564,7 +566,7 @@ export const PILOT_BUILDINGS: Record<string, Assembly> = {
 function frostSpire(): Assembly {
   // A spire must be NARROW AND TALL. Measured at 34 wide x 36 tall this read as a pyramid, which is
   // why it looked like the Sentry. Narrowed the base and raised the shard stack.
-  const parts: Part[] = [...plinth(26, 26, 2.4)];
+  const parts: Part[] = [...plinth(2, 2.4)];
   // stone footing
   parts.push(part(cyl(8, 7, 8, 12), [0, 0, 2.4], PAL.rock));
   parts.push(part(prism(8.4, 1.2, 12), [0, 0, 9.8], PAL.rockLit));

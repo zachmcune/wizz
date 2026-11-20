@@ -36,19 +36,68 @@ export const cone = (r: number, h: number, sides = 9): Shape => ({ kind: 'cone',
 export const cyl = (r0: number, r1: number, h: number, sides = 12): Shape => ({ kind: 'cyl', r0, r1, h, sides });
 export const prism = (r: number, h: number, sides: number): Shape => ({ kind: 'prism', r, h, sides });
 
-/** A square plinth under a building: two stepped courses, wider at the bottom. */
-export function plinth(w: number, d: number, h = 3.0): Part[] {
+/** World units per footprint tile. Mirrors `TILE` in `core/constants.ts`. */
+export const TILE_WORLD = 32;
+
+/**
+ * A plinth that fills its footprint EXACTLY.
+ *
+ * `footprint` is in TILES, matching the building definition, and the lower course spans exactly
+ * `footprint * TILE` world units — the same square the terrain draws for those tiles. The upper course
+ * is inset, which is what makes the plinth read as a stepped foundation rather than a single slab.
+ *
+ * Why the signature changed: the old `plinth(w, d)` was called with hand-picked numbers like
+ * `plinth(44, 44)` and then padded by +4, and those numbers bore no fixed relationship to the building's
+ * declared footprint. A 2x2 building (64 world units) might get a 48-unit plinth: only 75% of its own
+ * footprint, leaving the base visually floating inside the tile diamond. Deriving the size from the
+ * footprint makes the mismatch impossible.
+ */
+export function plinth(footprint: number, h = 3.0): Part[] {
+  const w = footprint * TILE_WORLD;
   return [
-    part(bbox(w + 4, d + 4, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
-    part(bbox(w + 1.5, d + 1.5, h, 1.4, 0.96), [0, 0, h * 0.36], PAL.rock),
+    // Lower course fills the footprint exactly, corner to corner.
+    part(bbox(w, w, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
+    /**
+     * Upper course stepped in, so the foundation reads as two courses — and TEAM-TINTED, because it is
+     * the largest lit surface on a squat building. A neutral foundation of this size reads as unclaimed
+     * stone and swamps the small team bands higher up, so ownership becomes unreadable at default zoom.
+     */
+    part(bbox(w - 2.5, w - 2.5, h, 1.4, 0.96), [0, 0, h * 0.36], PAL.trimTeam),
   ];
 }
 
-/** A round plinth for towers and spires. */
-export function roundPlinth(r: number, h = 3.0): Part[] {
+/**
+ * A round plinth that still RESTS ON ITS FULL FOOTPRINT.
+ *
+ * A circle cannot fill a square footprint: inscribed, it reaches only the edge midpoints, so its
+ * projected width is `1/sqrt(2)` (70.7%) of the tile diamond's. That is geometrically correct art, but
+ * it leaves the tower reading as a coin sitting inside the tile rather than a building founded on it —
+ * and the earlier code "fixed" that by scaling the whole tower up 1.41x, which made it physically larger
+ * than the tiles it occupies and pushed its contact shadow 24-38% past the footprint.
+ *
+ * The honest fix is in the GEOMETRY, not the scale: a square footing course laid exactly on the
+ * footprint, with the round drum stepping in above it. The tower stays round, the base meets all four
+ * tile edges, and the shadow lands on the footprint because the bake scale is the terrain's.
+ */
+export function roundPlinth(footprint: number, h = 3.0): Part[] {
+  const w = footprint * TILE_WORLD;
+  const r = w / 2;
   return [
-    part(cyl(r + 2.0, r + 1.0, h * 0.6, 12), [0, 0, 0], PAL.rockDeep),
-    part(cyl(r + 0.6, r, h, 12), [0, 0, h * 0.34], PAL.rock),
+    /**
+     * Square footing: corner to corner on the footprint, so the base meets the tile edges.
+     *
+     * This course is TEAM-TINTED rather than plain rock. It is the largest single surface on a round
+     * tower — thousands of pixels of ground contact — so leaving it neutral made the whole building read
+     * as unclaimed stone and dropped the visible team-colour share on the round roster from ~4-7% to
+     * under 1%. A foundation course in the owner's colour is also just the correct read: it is how a
+     * player tells whose tower they are looking at from the default zoom.
+     */
+    part(bbox(w, w, h * 0.45, 1.6, 0.96), [0, 0, 0], PAL.runeTeam),
+    // A rock band above it, so the team colour reads as a rim on a stone foundation rather than a plinth
+    // made of glowing metal.
+    part(bbox(w - 3.0, w - 3.0, h * 0.22, 1.4, 0.97), [0, 0, h * 0.44], PAL.rockDeep),
+    // Round drum above it, inscribed in the same square.
+    part(cyl(r - 1.0, r - 2.0, h, 12), [0, 0, h * 0.30], PAL.rock),
   ];
 }
 
