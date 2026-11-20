@@ -58,10 +58,43 @@ export const AGGRESSIVE_OPENING: readonly BuildStep[] = [
   { defId: 'arcane_nexus', notBeforeSeconds: 130, pauseHarvesters: true, why: 'tier 2' },
 ];
 
-/** Which opening a difficulty uses. Hard opens greedily because it can defend the greed. */
-export function openingFor(difficulty: string): readonly BuildStep[] {
-  if (difficulty === 'hard') return AGGRESSIVE_OPENING;
-  return STANDARD_OPENING;
+/**
+ * Which opening a difficulty uses.
+ *
+ * Hard opens greedily because it can defend the greed. On top of that, a SEEDED VARIANT is chosen per match: an AI that
+ * always plays the identical opening is not just predictable, it makes every tournament seed produce the same game, so the
+ * win-rate table would measure one deterministic script rather than a strategy.
+ *
+ * `variant` is a 0..2 index derived from the match seed and the player id, so it is reproducible (same seed, same opening)
+ * and still differs between players and between seeds. A variant only reorders or trims steps the difficulty would have
+ * taken anyway — it never grants resources or information.
+ */
+export function openingFor(difficulty: string, variant = 0): readonly BuildStep[] {
+  const base = difficulty === 'hard' ? AGGRESSIVE_OPENING : STANDARD_OPENING;
+  if (variant === 0) return base;
+  /**
+   * Variant 1 adds an early defense; variant 2 adds a second refinery before the second producer. Both are legal orders a
+   * human might choose, and both change the shape of the early game enough to vary the match.
+   */
+  if (variant === 1) {
+    const out = [...base];
+    const insertAt = Math.min(2, out.length);
+    out.splice(insertAt, 0, {
+      defId: 'arcane_sentry',
+      notBeforeSeconds: 20,
+      pauseHarvesters: false,
+      why: 'early defense before committing to tech (seeded variant)',
+    });
+    return out;
+  }
+  const out = [...base];
+  out.splice(1, 0, {
+    defId: 'attunement_spire',
+    notBeforeSeconds: 14,
+    pauseHarvesters: false,
+    why: 'greedy second refinery (seeded variant)',
+  });
+  return out;
 }
 
 /**

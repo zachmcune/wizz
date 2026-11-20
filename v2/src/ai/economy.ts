@@ -77,6 +77,13 @@ export function planEconomy(
   profile: DifficultyProfile,
   difficultyId: string,
   elapsedSeconds: number,
+  /**
+   * Which seeded opening variant to play.
+   *
+   * Chosen per match from the seed and player id at brain construction. It only selects between legal build orders, so it
+   * cannot grant an advantage — but it does stop every tournament seed from being the same deterministic game.
+   */
+  openingVariant = 0,
 ): EconomyPlan {
   const commands: Command[] = [];
   const notes: string[] = [];
@@ -151,7 +158,7 @@ export function planEconomy(
   });
 
   // ------------------------------------------------------------------ 3. build order
-  const opening = openingFor(difficultyId);
+  const opening = openingFor(difficultyId, openingVariant);
   const built = new Map<string, number>();
   for (const b of per.myBuildings) {
     if (b.buildProgress === undefined) built.set(b.defId, (built.get(b.defId) ?? 0) + 1);
@@ -432,8 +439,8 @@ export function cheapestCombatUnit(
 }
 
 /** Export for tests: the set of building ids an opening needs, in order. */
-export function openingIds(difficultyId: string): string[] {
-  return openingFor(difficultyId).map((s) => s.defId);
+export function openingIds(difficultyId: string, variant = 0): string[] {
+  return openingFor(difficultyId, variant).map((s) => s.defId);
 }
 
 /**

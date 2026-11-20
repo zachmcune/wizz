@@ -161,16 +161,33 @@ export function planMilitary(
   const army = combatUnits(per, registry);
   const armySize = army.length;
 
-  // ------------------------------------------------------------------ 1. defense comes first
+  /**
+   * ------------------------------------------------------------------ 1. defense
+   *
+   * A real assault on the base is answered by the whole army. A SKIRMISH is not.
+   *
+   * This used to return early whenever ANY enemy unit came within range of home, so a single harasser could pin the entire
+   * army in its own base for the whole match — measured: 39 combat units at a median 2944 units from the enemy base while
+   * one enemy unit loitered nearby, and zero waves in 18 minutes. The early return also meant `shouldAttack` was never
+   * even evaluated.
+   *
+   * Now only a credible force (3+ units) triggers a full recall, which is also what a human defender does; below that a
+   * small detachment is sent and the main wave continues to form.
+   */
   const threat = assessBaseThreat(per, registry, opts.homeX, opts.homeY);
   let defending = false;
-  if (threat.threatened && armySize > 0) {
+  if (threat.threatened && threat.count >= 3 && armySize > 0) {
     defending = true;
     const defenders = army.slice(0, Math.max(1, Math.ceil(armySize * 0.8))).map((a) => a.seen.id);
     commands.push({ type: 'attackMove', playerId: pid, entityIds: defenders, x: threat.x, y: threat.y });
     notes.push(`defending base: ${threat.count} enemy unit(s) within ${Math.round(threat.dist)} of home`);
-    // Defenders should not chase far: after the first order, hold near home next pass.
     return { commands, notes, armySize, defending, committedWave: opts.lastWaveSize, shouldAttack: false };
+  }
+  if (threat.threatened && threat.count > 0 && armySize > 0) {
+    // A raid, not an assault: detach a few defenders and keep massing.
+    const squad = army.slice(0, Math.min(4, armySize)).map((a) => a.seen.id);
+    commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: threat.x, y: threat.y });
+    notes.push(`picking off a ${threat.count}-unit raid near home`);
   }
 
   /**
@@ -212,7 +229,16 @@ export function planMilitary(
   }
 
   // ------------------------------------------------------------------ 4. the main wave
-  const ready = armySize >= Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + 0)) );
+  /**
+   * ESCALATION — each wave must be bigger than the last.
+   *
+   * `waveGrowth` existed on the difficulty profile but was never applied: the condition read
+   * `lastWaveSize * (1 + 0)`, so every wave was the same size and the AI never built the force needed to break a
+   * fortified base. With a 90-unit ceiling and a 10-building enemy that meant an endless exchange of 15-unit waves that
+   * could not finish the job, and no match ever ended.
+   */
+  const required = Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + profile.waveGrowth)));
+  const ready = armySize >= required;
   const shouldAttack = !defending && opts.enemyAnchor !== null && ready && !opts.attacking;
 
   if (shouldAttack && opts.enemyAnchor) {

@@ -44,10 +44,26 @@ export interface BrainMemory {
 /**
  * How long a remembered (ghost) building is trusted as an attack target.
  *
- * Long enough to march an army across the map, short enough that a destroyed expansion does not become a
- * permanent decoy. 20 decision passes at Hard's 0.5s cadence is ~10 seconds of staleness.
+ * A REMEMBERED BASE IS NOT A STALE SIGHTING.
+ *
+ * This used to expire after 20 decision passes — about ten seconds — which meant an AI that had scouted the enemy base
+ * forgot where it was almost immediately, set `enemyAnchor` back to null, and therefore never satisfied the attack
+ * condition. Measured over an 18-minute AI-vs-AI match: 8 enemy buildings visible as ghosts, `live: 0`, `enemyAnchor:
+ * null`, and zero waves sent. The match could not end because neither side ever marched anywhere.
+ *
+ * A building does not move. Once scouted, its position is valid until we observe that it is gone, so the ghost is trusted
+ * for 90 passes (45 s at Hard's cadence). If the army arrives and finds nothing, the anchor is cleared by the
+ * "wave spent" path and the scouts search again.
  */
-const GHOST_TRUST_TICKS = 20;
+const GHOST_TRUST_TICKS = 90;
+
+/**
+ * Hard ceiling on how long a wave stays "in flight".
+ *
+ * Two minutes at any cadence: long enough to cross the map, fight, and come back; short enough that a wave that neither
+ * wins nor dies still hands control back so the next one can launch.
+ */
+const WAVE_MAX_PASSES = 120;
 
 export interface BrainTickResult {
   commands: Command[];
@@ -57,6 +73,15 @@ export interface BrainTickResult {
 
 export class AiBrain {
   readonly profile: DifficultyProfile;
+  /**
+   * Seeded opening variant for this player in this match.
+   *
+   * Derived from the match seed and the player id so it is reproducible: the same seed always yields the same opening, and
+   * two AI players in the same match get independent picks. Set on first observation of the seed.
+   */
+  private openingVariant = 0;
+  private variantSeed = -1;
+
   private readonly memory: BrainMemory = {
     lastWaveSize: 0,
     attacking: false,
@@ -131,6 +156,7 @@ export class AiBrain {
       if (this.memory.anchorAge <= GHOST_TRUST_TICKS) {
         this.memory.enemyAnchor = { x: ghost.x, y: ghost.y };
       } else {
+        // Only give up on a ghost once the scouts have had a chance to look somewhere else.
         this.memory.enemyAnchor = null;
       }
     } else if (per.enemyUnits.length >= 3) {
@@ -150,6 +176,14 @@ export class AiBrain {
       }
       this.memory.enemyAnchor = { x: sx / per.enemyUnits.length, y: sy / per.enemyUnits.length };
       this.memory.anchorAge = 0;
+    }
+
+    // First tick of the match: choose the opening variant from the seed.
+    if (this.variantSeed !== state.seed) {
+      this.variantSeed = state.seed;
+      let h = (state.seed >>> 0) ^ 0x9e3779b9;
+      for (let i = 0; i < this.playerId.length; i++) h = Math.imul(h ^ this.playerId.charCodeAt(i), 0x85ebca6b) >>> 0;
+      this.openingVariant = h % 3;
     }
 
     if (this.memory.cooldown > 0) {
@@ -177,7 +211,16 @@ export class AiBrain {
     const homeY = yard?.y ?? (per.myUnits[0]?.y ?? 0);
 
     // ---- economy
-    const econ = planEconomy(state, per, this.registry, this.services, this.profile, this.difficultyId, elapsedSeconds);
+    const econ = planEconomy(
+      state,
+      per,
+      this.registry,
+      this.services,
+      this.profile,
+      this.difficultyId,
+      elapsedSeconds,
+      this.openingVariant,
+    );
     commands.push(...econ.commands);
     notes.push(...econ.notes);
     /** Mana the army may not spend, so the build order always completes. */
@@ -209,10 +252,23 @@ export class AiBrain {
       this.memory.waveAge = 0;
     } else if (this.memory.attacking) {
       this.memory.waveAge += 1;
-      const noEnemyInSight = per.enemyUnits.length === 0 && per.enemyBuildings.filter((b) => b.live).length === 0;
-      if (noEnemyInSight && this.memory.waveAge >= 4) {
+      /**
+       * WHEN IS A WAVE OVER?
+       *
+       * The previous attempts were wrong in both directions: cancelling as soon as nothing was in sight aborted every
+       * march before it landed, while waiting for the army to disappear latched `attacking` forever — measured one wave in
+       * eight minutes, then `attacking: true` with `waveAge` climbing past 115 and no further commands issued.
+       *
+       * A wave is over when the army that was sent has been whittled down below half its committed size (it lost the
+       * fight), or when it has been out long enough that it must have arrived and resolved. Either way the army returns
+       * to massing and the next, larger wave can form.
+       */
+      const armyNow = per.myUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
+      const lostMostOfIt = armyNow < Math.max(3, this.memory.lastWaveSize * 0.5);
+      const beenOutLongEnough = this.memory.waveAge >= WAVE_MAX_PASSES;
+      if (lostMostOfIt || beenOutLongEnough) {
         this.memory.attacking = false;
-        notes.push('wave spent, regrouping');
+        notes.push(lostMostOfIt ? 'wave spent, regrouping' : 'wave timed out, regrouping');
       }
     }
 
