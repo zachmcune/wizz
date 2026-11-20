@@ -138,8 +138,19 @@ export function slidePosition(
         };
 
   if (!blocked(nx, ny)) return { x: nx, y: ny };
-  if (!blocked(nx, y)) return { x: nx, y };
-  if (!blocked(x, ny)) return { x, y: ny };
+  /**
+   * AXIS SLIDES MUST ACTUALLY MOVE.
+   *
+   * `blocked(nx, y)` says the destination is legal — but with a purely vertical steer (`nx === x`) the result is the
+   * unit's CURRENT position, so the caller is told `moved: true` while the coordinates never change. Measured on a
+   * harvester wedged against a cliff at (578.4, 503.2): 100 ticks of movement produced **0 units of displacement**, the
+   * harvest order stayed queued forever, its carry stayed 0, and the player's income was exactly zero for the last 11
+   * minutes of the match. The player's whole economy was two stuck wisps.
+   *
+   * A slide that does not change position is not a slide, so each axis is only accepted when it genuinely moved.
+   */
+  if (!blocked(nx, y) && Math.abs(nx - x) > 1e-9) return { x: nx, y };
+  if (!blocked(x, ny) && Math.abs(ny - y) > 1e-9) return { x, y: ny };
   return null;
 }
 

@@ -186,10 +186,53 @@ export function planEconomy(
     break;
   }
 
+  /**
+   * REBUILD WHEN THE BASE HAS BEEN STRIPPED.
+   *
+   * The openings above assume the starting base survives: none of them contains a sanctum step, because the player begins
+   * with one. That is wrong the moment it is destroyed. Measured on seed 1035 at 14 sim-minutes, after a successful raid:
+   *
+   *   buildings: sanctum, ley_conduit, summoning_circle   (no construction yard, no producer)
+   *   mana: 220, harvesters: 2 (still working), income: 0
+   *
+   * The AI had a working economy and a bank, but every producer had been destroyed, so it could never train again. It sat
+   * at exactly 220 mana for the last 11 minutes of the match and only "ended" when the winner finally walked over. The bank
+   * under the cheapest unit cost is what the stall metric flags as `longestNoSpendSeconds`.
+   *
+   * This branch takes priority over the opening: with no construction yard there is no way to build anything at all, and
+   * with no unit producer the army can never be replaced. Both are cheap enough to be reachable — a sanctum costs 0 and a
+   * summoning circle 550 — so this is a genuine recovery path rather than a token gesture.
+   */
+  let blockedOnPlacement = false;
+  const hasYard = per.myBuildings.some(
+    (b) => b.buildProgress === undefined && registry.buildings.get(b.defId)?.isConstructionYard,
+  );
+  const hasProducer = producerList.length > 0;
+  const rebuildDefId = !hasYard ? 'sanctum' : !hasProducer ? 'summoning_circle' : null;
+  if (rebuildDefId !== null) {
+    const def = registry.buildings.get(rebuildDefId);
+    if (
+      def &&
+      per.mana >= def.cost &&
+      inProgressCount(per, rebuildDefId) === 0 &&
+      def.requires.every((r) => per.unlockedTech.has(r) || r === 'sanctum')
+    ) {
+      const spot = findBuildSpot(state, per, services, registry, def);
+      if (spot) {
+        commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
+        notes.push(`REBUILDING ${def.id} — ${hasYard ? 'every unit producer was destroyed' : 'the base lost its yard'}`);
+        return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+      }
+      blockedOnPlacement = true;
+      notes.push(`nowhere legal to rebuild ${def.id}`);
+    } else if (def && per.mana < def.cost) {
+      notes.push(`saving to rebuild ${def.id} (${Math.round(per.mana)}/${def.cost})`);
+    }
+  }
+
   const pauseHarvesters = activeStep?.pauseHarvesters === true && per.mana >= (registry.buildings.get(activeStep.defId)?.cost ?? 0);
 
   // Build the active step if it is due and affordable.
-  let blockedOnPlacement = false;
   if (activeStep && elapsedSeconds >= activeStep.notBeforeSeconds) {
     const def = registry.buildings.get(activeStep.defId);
     const affordable = def !== undefined && per.mana >= def.cost;
