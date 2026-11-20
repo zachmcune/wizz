@@ -667,7 +667,11 @@
 }
 .research-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  /* The tech tree takes what it can; the unlock panel is capped. The panel used to claim a flat
+   * 300-400px at every density above `compact`, which left a 1024x600 Chromebook only **564px** of
+   * graph viewport for a 1180px-wide tree — three of five tier columns were cut mid-word ("every tower")
+   * with nothing on screen to say the row scrolls. It is now proportional and allowed to shrink. */
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
   gap: var(--gutter);
   min-height: 0;
   flex: 1 1 auto;
@@ -679,11 +683,41 @@
   overflow: auto;
   min-height: 0;
   height: 100%;
+  /**
+   * A SCROLLABLE AREA MUST LOOK SCROLLABLE.
+   *
+   * With `auto` overflow and no affordance the user sees five columns and no sign that two more exist
+   * off-screen — the reported "Doctrine is clipped, 'every tower' cut off" experience. A visible track
+   * plus a subtle inset edge makes the hidden content discoverable. The real fix is that the graph now
+   * fits (columns are fluid, see `.research-graph`), so this is the safety net for very narrow screens.
+   */
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-600) transparent;
+  overscroll-behavior-x: contain;
+}
+.research-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.research-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-600);
+  border-radius: 4px;
 }
 .research-graph {
   display: grid;
-  grid-template-columns: repeat(var(--tiers, 5), minmax(230px, 1fr));
-  gap: var(--space-3);
+  /**
+   * FLUID TIER COLUMNS, NOT FIXED ONES.
+   *
+   * These were `minmax(230px, 1fr)` — a 230px floor. Five tiers therefore demanded 1150px plus gaps, so
+   * any graph viewport under that cut the last columns off mid-sentence. The floor is now small enough
+   * that all five tiers fit inside the viewport at every supported size, and the cards reflow internally
+   * instead of the row overflowing. The tree is a fixed five-tier pipeline, so showing all of it at once
+   * is the correct read; there is no horizontal content to hunt for.
+   *
+   * `--tier-min` is set from the real viewport width by the screen, so the floor adapts rather than
+   * being guessed here.
+   */
+  grid-template-columns: repeat(var(--tiers, 5), minmax(var(--tier-min, 108px), 1fr));
+  gap: var(--space-2);
   align-items: start;
   padding: var(--space-3);
   min-height: min-content;
@@ -766,6 +800,16 @@
   font-weight: var(--weight-semibold);
   color: var(--bone-100);
   line-height: var(--leading-snug);
+  /**
+   * WRAP AT WORD BOUNDARIES, NEVER MID-WORD.
+   *
+   * `overflow-wrap: anywhere` stopped the label overflowing its card but broke words in half —
+   * "Resonanc / e", "Astral Attuneme / nt" — which reads worse than the original bug. Normal wrapping
+   * plus `hyphens: auto` breaks at syllables (with a hyphen) only when a word genuinely cannot fit, and
+   * the column keeps its own text inside its own card.
+   */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .research-node__desc {
   margin: 0;
@@ -896,7 +940,27 @@
   grid-template-rows: minmax(0, 1fr) auto;
 }
 [data-density='compact'] .research-graph {
-  grid-template-columns: repeat(var(--tiers, 5), minmax(190px, 1fr));
+  /* The tier floor is measured from the real viewport by the screen (`--tier-min`) so all five tiers
+   * fit on a phone. This rule used to pin 190px, which forced a 972px row into a 651px viewport and cut
+   * the last two columns off. */
+  grid-template-columns: repeat(var(--tiers, 5), minmax(var(--tier-min, 100px), 1fr));
+  gap: var(--space-1);
+}
+/* A ~119px column fits a card, not a headline: shrink the node title and card padding so names wrap at
+ * word boundaries instead of breaking mid-syllable. */
+[data-density='compact'] .research-node {
+  padding: var(--space-1) var(--space-2);
+  gap: var(--space-1);
+}
+[data-density='compact'] .research-node__name {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+[data-density='compact'] .research-node__desc {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+[data-density='compact'] .research-node__icon {
+  width: 18px;
+  height: 18px;
 }
 [data-density='compact'] .research-unlocks {
   max-height: 34%;

@@ -173,8 +173,11 @@
 }
 .hud-cmd__grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* Six command cells plus a dedicated column for the zoom pair. The zoom cluster is a real grid child
+   * (see hud.ts), so it must have a tracker reserved or it wraps onto a second row. */
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
   gap: var(--space-2);
+  align-items: center;
 }
 .hud-cmd__grid .btn {
   min-height: 30px;
@@ -232,13 +235,18 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── zoom */
+/* A GRID CELL, not an overlay. It reserved `auto auto` trackers in the command grid but was previously
+ * taken out of flow by `position:absolute` and pinned to the band's bottom-right, where it covered the
+ * Research button. It is now a normal flex row inside its own grid column, so no z-order can hide a
+ * command. */
 .hud-zoom {
-  position: absolute;
-  right: var(--space-3);
-  bottom: 2px;
-  z-index: 2;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
+  grid-area: auto;
+  justify-self: end;
+  align-self: center;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── toast */
@@ -333,9 +341,10 @@
   gap: var(--space-1);
 }
 [data-density='compact'] .hud-cmd__grid {
-  /* Six commands + the zoom pair share one row. */
+  /* Six commands + the zoom pair share one row: six fluid cells, then the two square zoom buttons. */
   grid-template-columns: repeat(6, minmax(0, 1fr)) auto auto;
   gap: 2px;
+  align-items: center;
 }
 /* `min-height` on the base rule (44px, there so the bar can never collapse to 0 like v1's `.cmd-card`)
  * beats a plain `height`. The compact tier must override the MINIMUM, not just the height — that is why
@@ -556,6 +565,6 @@
   width: 180px;
 }
 [data-density='roomy'] .hud-cmd__grid {
-  grid-template-columns: repeat(6, minmax(0, 140px));
+  grid-template-columns: repeat(6, minmax(0, 140px)) auto;
   justify-content: start;
 }

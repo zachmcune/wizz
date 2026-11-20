@@ -183,12 +183,42 @@ describe('phase 4: no HUD elements overlap at any viewport', () => {
             for (let j = i + 1; j < entries.length; j++) {
               const a = entries[i]!;
               const b = entries[j]!;
-              // Containment is deliberate in this layout (the selection segment lives inside the top
-              // bar to save a whole band of height), so only unrelated zones count as collisions.
+              // Containment is deliberate for ZONE frames (the selection segment lives inside the top
+              // bar to save a band of height), so those pairs are skipped.
               if (a.node.contains(b.node) || b.node.contains(a.node)) continue;
               const ix = Math.min(a.r.x + a.r.w, b.r.x + b.r.w) - Math.max(a.r.x, b.r.x);
               const iy = Math.min(a.r.y + a.r.h, b.r.y + b.r.h) - Math.max(a.r.y, b.r.y);
               if (ix > 1 && iy > 1) overlaps.push(`${a.sel} / ${b.sel} = ${Math.round(ix)}x${Math.round(iy)}`);
+            }
+          }
+          /**
+           * CONTROLS INSIDE A ZONE MUST NOT COVER EACH OTHER.
+           *
+           * The zone-frame pass above cannot see this: it skips any pair where one node contains the
+           * other, and every control in the command band is a DESCENDANT of `.hud-cmd`. That blind spot
+           * is exactly how the zoom cluster came to sit on top of the Research button — 54x25px on phone
+           * — while this gate stayed green. So the same intersection test is re-run over every
+           * INTERACTIVE element, ignoring ancestry entirely: a button that covers another button is a
+           * bug no matter how the DOM is nested.
+           */
+          const CONTROL = 'button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
+          const controls: { name: string; node: Element; r: Rect }[] = [];
+          for (const e of document.querySelectorAll(CONTROL)) {
+            const b = e.getBoundingClientRect();
+            if (b.width <= 0 || b.height <= 0) continue;
+            const cs = getComputedStyle(e);
+            if (cs.visibility === 'hidden' || cs.display === 'none' || cs.pointerEvents === 'none') continue;
+            const label = e.getAttribute('aria-label') ?? (e.textContent ?? '').trim().slice(0, 24) ?? e.className;
+            controls.push({ name: `${e.className || e.tagName}:${label}`, node: e, r: { x: b.left, y: b.top, w: b.width, h: b.height } });
+          }
+          for (let i = 0; i < controls.length; i++) {
+            for (let j = i + 1; j < controls.length; j++) {
+              const a = controls[i]!;
+              const b = controls[j]!;
+              if (a.node.contains(b.node) || b.node.contains(a.node)) continue;
+              const ix = Math.min(a.r.x + a.r.w, b.r.x + b.r.w) - Math.max(a.r.x, b.r.x);
+              const iy = Math.min(a.r.y + a.r.h, b.r.y + b.r.h) - Math.max(a.r.y, b.r.y);
+              if (ix > 1 && iy > 1) overlaps.push(`control ${a.name} / ${b.name} = ${Math.round(ix)}x${Math.round(iy)}`);
             }
           }
           // Nothing may overflow the viewport either.
@@ -197,11 +227,15 @@ describe('phase 4: no HUD elements overlap at any viewport', () => {
           const outside = entries
             .filter((e) => e.r.x < -0.5 || e.r.y < -0.5 || e.r.x + e.r.w > vw + 0.5 || e.r.y + e.r.h > vh + 0.5)
             .map((e) => e.sel);
-          return { overlaps, outside: [...new Set(outside)] };
+          const controlsOutside = controls
+            .filter((e) => e.r.x < -0.5 || e.r.y < -0.5 || e.r.x + e.r.w > vw + 0.5 || e.r.y + e.r.h > vh + 0.5)
+            .map((e) => `control ${e.name}`);
+          return { overlaps, outside: [...new Set(outside)], controlsOutside: [...new Set(controlsOutside)] };
         }, );
 
         for (const o of res.overlaps) failures.push(`${vp.name}: overlap ${o}`);
         for (const o of res.outside) failures.push(`${vp.name}: ${o} overflows the viewport`);
+        for (const o of res.controlsOutside) failures.push(`${vp.name}: ${o} overflows the viewport`);
         await page.close();
       }
     } finally {
@@ -726,6 +760,20 @@ describe('phase 4 polish: HUD layout invariants at all four viewports', () => {
                       `(${Math.round(r.top - ar.top)}..${Math.round(r.bottom - ar.bottom)})`,
                   );
                 }
+                /**
+                 * HORIZONTAL CLIPPING IS CHECKED TOO.
+                 *
+                 * The vertical test alone missed the reported research-tree bug: the fourth tier column
+                 * sat 380px outside a `.research-scroll` that clips on both axes, so "every tower" was
+                 * cut off mid-sentence and nothing here noticed. A box that clips is a box that clips in
+                 * BOTH directions — checking only one axis means an entire class of layout bug passes.
+                 */
+                if (r.width > 0 && (r.left < ar.left - 1 || r.right > ar.right + 1)) {
+                  outside.push(
+                    `"${text.slice(0, 18)}" is clipped horizontally by ${String(ancestor.className).split(' ')[0]} ` +
+                      `(${Math.round(r.left - ar.left)}..${Math.round(r.right - ar.right)})`,
+                  );
+                }
               }
               ancestor = ancestor.parentElement;
             }
@@ -846,4 +894,104 @@ describe('phase 4 polish: every screen is geometrically clean', () => {
     }
     expect(failures, failures.join('\n')).toEqual([]);
   }, 400_000);
+});
+
+describe('phase 4 polish: the research tree fits its viewport', () => {
+  /**
+   * THE REPORTED BUG.
+   *
+   * On a 1024x600 Chromebook the fifth-tier column ("Doctrine") was cut at the right edge with its text
+   * — "every tower..." — sliced mid-sentence. `?screen=research` is not a route (the tree is an overlay
+   * opened from the HUD), so the whole-screen cleanliness pass above never rendered it, and the HUD
+   * clipping pass only walked `.hud`. The tree therefore had no layout coverage at all.
+   *
+   * The gate opens the real overlay on a live match and asserts the tree actually fits: no tier column
+   * may extend past the graph's scroll viewport, and no node text may be horizontally clipped by it.
+   */
+  it.skipIf(!available)('every tier column is fully visible, with no text cut at the edge', async () => {
+    const browser = await chromium!.launch({
+      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    });
+    const failures: string[] = [];
+    try {
+      for (const vp of VIEWPORTS) {
+        const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1 });
+        await page.goto(`${BASE}/app.html?screen=match`, { waitUntil: 'networkidle' });
+        await page
+          .waitForFunction(() => (window as unknown as { __app?: unknown }).__app !== undefined, null, { timeout: 30000 });
+        await page.waitForTimeout(700);
+        await page.evaluate(() => {
+          const w = window as unknown as { __app: { openResearchTree: () => void } };
+          w.__app.openResearchTree();
+        });
+        await page.waitForTimeout(600);
+
+        const res = await page.evaluate(() => {
+          const scroll = document.querySelector('.research-scroll') as HTMLElement | null;
+          if (!scroll) return { error: 'research overlay did not open', cut: [] as string[], clipped: [] as string[], over: [] as string[] };
+          const sr = scroll.getBoundingClientRect();
+          const cut: string[] = [];
+          /**
+           * THE TREE MUST FIT — NO ESCAPE HATCH.
+           *
+           * An earlier version of this check allowed overhanging columns whenever the row happened to be
+           * scrollable. That made it useless: it passed with the original 190px-floor bug restored,
+           * because a scrollbar was present the whole time. A bug where content is cut off is not fixed
+           * by the presence of a scrollbar, so the rule is now absolute.
+           *
+           * It is achievable, which is what makes it a fair requirement: the tier floor is 100px and
+           * five tiers need `5*100 + 4*4 + 24 = 540px`, which every supported viewport exceeds (the
+           * narrowest is 667px). If a viewport ever appears that genuinely cannot fit five legible tiers,
+           * this test should fail and force that decision to be made explicitly rather than silently.
+           */
+          for (const col of document.querySelectorAll('.research-col')) {
+            const r = col.getBoundingClientRect();
+            const name = col.querySelector('.research-col__name')?.textContent ?? '?';
+            if (r.right > sr.right + 1) {
+              cut.push(`${name} extends ${Math.round(r.right - sr.right)}px past the graph viewport`);
+            }
+          }
+          /**
+           * NO TEXT MAY BE SLICED AT THE VIEWPORT EDGE.
+           *
+           * This is the actual "every tower…" symptom: a text box straddling the visible edge reads as a
+           * half-word.
+           */
+          const clipped: string[] = [];
+          for (const el of scroll.querySelectorAll('*')) {
+            if (el.children.length > 0) continue;
+            const text = (el.textContent ?? '').trim();
+            if (!text) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0) continue;
+            const straddlesR = r.left < sr.right && r.right > sr.right + 1;
+            const straddlesL = r.left < sr.left - 1 && r.right > sr.left;
+            if (straddlesR || straddlesL) {
+              clipped.push(`"${text.slice(0, 20)}" is sliced at the graph edge`);
+            }
+            // Own box must never crop its own text, in either axis.
+            if (el.scrollWidth > el.clientWidth + 1) {
+              clipped.push(`"${text.slice(0, 20)}" overflows its own box horizontally`);
+            }
+          }
+          const over: string[] = [];
+          for (const col of document.querySelectorAll('.research-col')) {
+            const r = col.getBoundingClientRect();
+            if (r.right > window.innerWidth + 1) over.push('column past the window edge');
+          }
+          const fits = scroll.scrollWidth <= scroll.clientWidth + 1;
+          return { error: null, cut, clipped, over, fits };
+        });
+
+        if (res.error) failures.push(`${vp.name}: ${res.error}`);
+        for (const c of res.cut) failures.push(`${vp.name}: ${c}`);
+        for (const c of res.clipped) failures.push(`${vp.name}: ${c}`);
+        for (const o of res.over ?? []) failures.push(`${vp.name}: ${o}`);
+        await page.close();
+      }
+    } finally {
+      await browser.close();
+    }
+    expect(failures, failures.join('\n')).toEqual([]);
+  }, 180_000);
 });

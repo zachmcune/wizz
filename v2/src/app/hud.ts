@@ -146,8 +146,19 @@ export class Hud {
     );
 
     // ---- zoom widget
-    // The zoom pair lives inside the command grid on the phone (it is a camera command, and it keeps
-    // the HUD to two bands) and is positioned by the grid at every density.
+    /**
+     * THE ZOOM PAIR IS A GRID CELL, NOT AN OVERLAY.
+     *
+     * It is appended to the command grid ONCE and never re-parented. An earlier version appended it to
+     * `cmdGrid` and then also to `cmd`, and `append` MOVES a node — so the widget silently left the grid
+     * and became an absolutely-positioned child of the band, pinned to `right: 6px; bottom: 2px`. It then
+     * floated straight over the last command button: measured **54x25px of overlap with Research on
+     * phone** and 68x32 on desktop, at every viewport. The grid's reserved `auto auto` tracker for it was
+     * never filled, so the six command cells also stretched to the full width.
+     *
+     * Keeping it in the grid means layout, not z-order, decides where it goes — it occupies its own
+     * column and cannot cover a button.
+     */
     const zoom = el('div', 'hud-zoom');
     const zIn = button({ icon: 'zoom-in', label: 'Zoom in', iconOnly: true, size: 'sm', onClick: () => this.ctrl.camera.zoomBy(1.2) });
     const zOut = button({ icon: 'zoom-out', label: 'Zoom out', iconOnly: true, size: 'sm', onClick: () => this.ctrl.camera.zoomBy(1 / 1.2) });
@@ -157,8 +168,9 @@ export class Hud {
     // ---- toast for rejections
     this.noticeEl = el('div', 'hud-toast');
 
-    // Hint and zoom live INSIDE the command band: no extra row, no dead strip under the bar.
-    cmd.append(hint, zoom);
+    // The hint is the only absolutely-positioned child of the band, and it is non-interactive, so it can
+    // never steal a click. It is hidden outright at compact density.
+    cmd.append(hint);
     this.root.append(top, mm, cmd, this.noticeEl);
     this.renderSelection();
     this.renderPanel();

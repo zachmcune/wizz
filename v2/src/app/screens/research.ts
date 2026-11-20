@@ -39,6 +39,8 @@ interface ResearchNode {
 const TIER_NAMES = ['Foundations', 'Discipline', 'Specialisation', 'Doctrine', 'Mastery'] as const;
 
 export function mountResearchTree(app: App, onClose?: () => void): { root: HTMLElement; destroy: () => void } {
+  /** Teardown hooks (the resize observer that re-fits the tier columns). */
+  const cleanups: (() => void)[] = [];
   const registry = app.registry;
   const state = app.session?.state ?? null;
   const myIndex = state ? state.players.findIndex((p) => p.controller === 'human') : 0;
@@ -88,6 +90,34 @@ export function mountResearchTree(app: App, onClose?: () => void): { root: HTMLE
   const scroll = el('div', 'research-scroll');
   const graph = el('div', 'research-graph');
   graph.style.setProperty('--tiers', String(maxTier));
+  /**
+   * Size the tier floor from the space the graph ACTUALLY has.
+   *
+   * A fixed floor per column cannot know how wide the graph viewport will be, which is how five 230px
+   * columns ended up demanding 1180px inside a 564px viewport and cutting "Doctrine" in half. Measuring
+   * the scroll box and dividing by the tier count guarantees all five tiers fit; a hard minimum keeps the
+   * cards legible, and only below that (a very narrow phone) does the row scroll — with a visible
+   * scrollbar. Re-measured on resize, so rotating a device re-fits rather than leaving stale columns.
+   */
+  const setTierMin = (): void => {
+    const avail = scroll.clientWidth || window.innerWidth;
+    const compact = document.documentElement.dataset.density === 'compact' || document.body.dataset.density === 'compact';
+    const gap = compact ? 4 : 8; // --space-1 at compact, --space-2 above
+    const pad = 24; // graph padding, both sides
+    const perfitting = Math.floor((avail - pad - gap * (maxTier - 1)) / maxTier);
+    /**
+     * 100px floor. Below that a card's padding and a two-word label stop fitting, so the row scrolls
+     * rather than being crammed — but at 667px (the narrowest supported viewport) five tiers come out at
+     * ~119px each, which clears the floor, so the phone FITS the whole tree instead of hiding columns.
+     */
+    graph.style.setProperty('--tier-min', `${Math.max(100, perfitting)}px`);
+  };
+  setTierMin();
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => setTierMin());
+    ro.observe(scroll);
+    cleanups.push(() => ro.disconnect());
+  }
 
   for (const tier of tiers) {
     const col = el('section', 'research-col');
@@ -243,5 +273,10 @@ export function mountResearchTree(app: App, onClose?: () => void): { root: HTMLE
   body.append(tree.root, unlockPanel.root);
   root.append(head, body);
 
-  return { root, destroy: () => {} };
+  return {
+    root,
+    destroy: () => {
+      for (const fn of cleanups) fn();
+    },
+  };
 }

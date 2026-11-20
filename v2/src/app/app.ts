@@ -48,6 +48,7 @@ export class App {
   private hud: Hud | null = null;
   private hudHost: HTMLElement | null = null;
   private researchOverlay: HTMLElement | null = null;
+  private researchDestroy: (() => void) | null = null;
 
   constructor(root: HTMLElement, deps: AppDeps) {
     this.root = root;
@@ -280,12 +281,16 @@ export class App {
   openResearchTree(): void {
     if (this.researchOverlay) return;
     const tree = mountResearchTree(this, () => this.closeResearchTree());
+    this.researchDestroy = tree.destroy;
     this.researchOverlay = el('div', 'screen screen--research-overlay');
     this.researchOverlay.append(tree.root);
     this.root.append(this.researchOverlay);
   }
 
   closeResearchTree(): void {
+    // Release the resize observer with the overlay, or every open/close leaks one.
+    this.researchDestroy?.();
+    this.researchDestroy = null;
     this.researchOverlay?.remove();
     this.researchOverlay = null;
   }
