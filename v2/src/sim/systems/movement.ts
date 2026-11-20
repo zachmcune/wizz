@@ -295,6 +295,8 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       makePathContext(nav, ctx.services.flow, state.relations, owner, flying),
       { x: store.posX[slot]!, y: store.posY[slot]! },
       { x: goalX, y: goalY },
+      // One flow field per ORDER, not per unit: the formation slot only varies the final approach.
+      { x: order.x, y: order.y },
     );
     let moveX = baseSteer.x * speed + sepX * speed * SEP_BLEND;
     let moveY = baseSteer.y * speed + sepY * speed * SEP_BLEND;

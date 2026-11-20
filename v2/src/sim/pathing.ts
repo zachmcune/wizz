@@ -81,6 +81,16 @@ export function steerToGoal(
   ctx: PathContext,
   pos: { x: number; y: number },
   goal: { x: number; y: number },
+  /**
+   * The tile to build the FLOW FIELD for, when it differs from the exact goal.
+   *
+   * Formation offsets give every unit in a group its own goal a few tiles apart, and the flow field is cached per goal
+   * TILE. Measured on the 225-entity stress match: the cache sat pinned at its 48-entry maximum on every tick, so
+   * almost every unit lookup missed and ran a full-map BFS — 48 x 11,264-tile searches per tick, 553 ms/tick instead of
+   * ~12. Passing the group's shared order point as the field goal collapses 180 distinct fields into one, while the
+   * exact goal still governs the final approach through the direct-steer fallbacks below.
+   */
+  fieldGoal?: { x: number; y: number },
 ): { x: number; y: number } {
   const { nav, flow } = ctx;
   const dx = goal.x - pos.x;
@@ -90,8 +100,9 @@ export function steerToGoal(
   if (ctx.air) return normalize(dx, dy);
 
   const block = tileBlocked(ctx);
-  const goalTx = Math.floor(goal.x / TILE);
-  const goalTy = Math.floor(goal.y / TILE);
+  const fieldAt = fieldGoal ?? goal;
+  const goalTx = Math.floor(fieldAt.x / TILE);
+  const goalTy = Math.floor(fieldAt.y / TILE);
   const field = flow.getFor(nav, goalTx, goalTy, ctx.unitOwner, block);
 
   let steer = sampleFlow(field, nav, pos.x, pos.y);
