@@ -44,18 +44,27 @@ const mote = (r: number): Shape => ({ kind: 'sphere', r, seg: 5 });
 
 // ------------------------------------------------------------------------------------- units
 
-/** Wisp — a floating teardrop of light with three orbiting motes. No legs: it hovers. */
+/**
+ * Wisp — a floating teardrop of light with three orbiting motes. No legs: it hovers.
+ *
+ * THE HOVER GAP IS DELIBERATE AND MEASURED.
+ *
+ * The body starts at z = 11, not at the floor. With the terrain's 60-degree pitch that lifts the lowest pixel
+ * clear of the ground plane by ~9 bake pixels, which survives the downscale to a phone as an unmistakable gap —
+ * the player can see it flies. An earlier version started the teardrop at z = 4.6, which projected to barely one
+ * pixel above the ground and read as a broken walker standing in its own shadow.
+ */
 function wisp(): Assembly {
   return {
     parts: [
-      part(sph(5.2, 8), [0, 0, 13], MAT.crystalHot, { scale: { x: 1, y: 1, z: 1.35 } }),
-      part(cone(5.0, 7.0, 8), [0, 0, 4.6], MAT.crystal, { rotX: Math.PI }),
-      part(sph(2.4), [0, 0, 21.5], MAT.crystalHot),
-      part(mote(1.5), [6.4, 0, 15], MAT.aether),
-      part(mote(1.5), [-4.2, 4.9, 11], MAT.aether),
-      part(mote(1.2), [-3.4, -5.2, 18], MAT.aether),
+      part(sph(5.2, 8), [0, 0, 34], MAT.crystalHot, { scale: { x: 1, y: 1, z: 1.35 } }),
+      part(cone(5.0, 7.0, 8), [0, 0, 25.6], MAT.crystal, { rotX: Math.PI }),
+      part(sph(2.4), [0, 0, 42.5], MAT.crystalHot),
+      part(mote(1.5), [6.4, 0, 36], MAT.aether),
+      part(mote(1.5), [-4.2, 4.9, 32], MAT.aether),
+      part(mote(1.2), [-3.4, -5.2, 39], MAT.aether),
       // Team-coloured core ring, so the owner is obvious at a glance.
-      part(prism(6.6, 1.1, 8), [0, 0, 13.4], MAT.runeViolet, { rotZ: 0.2 }),
+      part(prism(6.6, 1.1, 8), [0, 0, 34.4], MAT.runeViolet, { rotZ: 0.2 }),
     ],
   };
 }

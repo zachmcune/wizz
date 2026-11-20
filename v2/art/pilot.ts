@@ -30,12 +30,19 @@ function wisp(): Assembly {
       part(
         tube(
           [
-            [0, 0, 2.0, 1.2],
-            [0, 0, 4.5, 4.6],
-            [0, 0, 8.5, 6.2],
-            [0, 0, 12.5, 6.0],
-            [0, 0, 16.0, 3.8],
-            [0, 0, 18.5, 1.4],
+            /**
+             * THE HOVER GAP IS AUTHORED HERE, AT THE BOTTOM OF THE TEARDROP.
+             *
+             * The body starts at z = 14 rather than 2. Combined with the bake's enforced `HOVER_CLEARANCE_PX` this
+             * gives the wisp a gap the player can actually see on a phone — the difference between "it flies" and
+             * "it is a broken walker standing in its own shadow", which is what a 2-unit tip looked like.
+             */
+            [0, 0, 14.0, 1.2],
+            [0, 0, 16.5, 4.6],
+            [0, 0, 20.5, 6.2],
+            [0, 0, 24.5, 6.0],
+            [0, 0, 28.0, 3.8],
+            [0, 0, 30.5, 1.4],
           ],
           12,
         ),
@@ -50,10 +57,14 @@ function wisp(): Assembly {
       part(
         tube(
           [
-            [0, 0, 4.4, 2.8],
-            [0, 3.0, 0.4, 2.0],
-            [0, 6.2, -2.6, 1.1],
-            [0, 9.0, -4.8, 0.35],
+            /**
+             * The tail trails BEHIND and slightly BELOW the body, but it must not reach the ground: a wisp is a
+             * flyer, and a tail touching the floor made it read as standing in a puddle. Lifted with the body.
+             */
+            [0, 0, 20.4, 2.8],
+            [0, 3.0, 16.4, 2.0],
+            [0, 6.2, 13.4, 1.1],
+            [0, 9.0, 11.2, 0.35],
           ],
           8,
         ),

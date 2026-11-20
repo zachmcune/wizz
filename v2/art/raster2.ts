@@ -40,6 +40,22 @@ export interface RasterOptions {
    * exactly that rhombus, matching the tile the building occupies.
    */
   footprintWorld?: number;
+  /**
+   * Horizontal offset, in OUTPUT pixels, applied ONLY to the contact shadow.
+   *
+   * A unit whose feet are not symmetric about its own origin (the golem's stance is offset to one side) needs its
+   * shadow under the FEET rather than under the origin, or the shadow appears to slide sideways as the unit turns.
+   */
+  shadowOffsetX?: number;
+  /**
+   * Vertical offset, in OUTPUT pixels, applied ONLY to the contact shadow.
+   *
+   * Used by hovering units: their pivot is lifted so the body floats, but the shadow belongs on the ground plane
+   * the lifted pivot represents — which is further down the frame than the sprite's own projected origin. Without
+   * this the shadow stayed at the mesh origin and sat 25px ABOVE the pivot, i.e. floating in mid-air behind the
+   * saucer.
+   */
+  shadowOffsetY?: number;
 }
 
 export interface RasterResult {
@@ -390,10 +406,11 @@ export function rasterise(asm: Assembly, opts: RasterOptions): RasterResult {
       // meeting the ground.
       return { x: c.x * 0.98, y: c.y * 0.98, z: 0 };
     });
-    const p0 = projectPoint(corners[0]!, opts.yaw, opts.pitch, scale, cx, cy);
-    const p1 = projectPoint(corners[1]!, opts.yaw, opts.pitch, scale, cx, cy);
-    const p2 = projectPoint(corners[2]!, opts.yaw, opts.pitch, scale, cx, cy);
-    const p3 = projectPoint(corners[3]!, opts.yaw, opts.pitch, scale, cx, cy);
+    const shadowShift = (opts.shadowOffsetY ?? 0) * ss;
+    const p0 = projectPoint(corners[0]!, opts.yaw, opts.pitch, scale, cx, cy + shadowShift);
+    const p1 = projectPoint(corners[1]!, opts.yaw, opts.pitch, scale, cx, cy + shadowShift);
+    const p2 = projectPoint(corners[2]!, opts.yaw, opts.pitch, scale, cx, cy + shadowShift);
+    const p3 = projectPoint(corners[3]!, opts.yaw, opts.pitch, scale, cx, cy + shadowShift);
     const cxm = (p0.x + p2.x) / 2;
     const cym = (p0.y + p2.y) / 2;
     // Bounding box of the diamond.
@@ -409,7 +426,7 @@ export function rasterise(asm: Assembly, opts: RasterOptions): RasterResult {
         const d = Math.abs((x + 0.5 - cxm) / rx) + Math.abs((y + 0.5 - cym) / ry);
         if (d >= 1) continue;
         // Firm at the centre, feathered at the edge so it reads as ambient contact rather than a decal.
-        const a = (1 - d) * 0.5;
+        const a = (1 - d) * 0.62;
         const i = y * W + x;
         const pa = alpha[i]!;
         const outA = pa + a * (1 - pa);
@@ -423,7 +440,16 @@ export function rasterise(asm: Assembly, opts: RasterOptions): RasterResult {
   } else if (opts.shadow !== false) {
     const b = boundsOf(tris);
     const rMax = Math.max(b.maxX - b.minX, b.maxY - b.minY) / 2;
-    const o = projectPoint({ x: 0, y: 0, z: 0 }, opts.yaw, opts.pitch, scale, cx, cy);
+    // The ellipse branch is what UNITS use; the offset must apply here too or a hovering unit's shadow stays at
+    // the mesh origin while its pivot has been lifted, leaving the shadow floating above the ground plane.
+    const o = projectPoint(
+      { x: 0, y: 0, z: 0 },
+      opts.yaw,
+      opts.pitch,
+      scale,
+      cx + (opts.shadowOffsetX ?? 0) * ss,
+      cy + (opts.shadowOffsetY ?? 0) * ss,
+    );
     const rx = rMax * 1.1 * scale;
     const ry = rMax * 0.38 * scale;
     for (let y = Math.max(0, Math.floor(o.y - ry)); y <= Math.min(H - 1, Math.ceil(o.y + ry)); y++) {

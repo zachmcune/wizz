@@ -68,6 +68,53 @@ export { TERRAIN_MATCH_PITCH, TERRAIN_MATCH_SCALE, TERRAIN_MATCH_YAW, TILE };
 
 interface F { page: number; x: number; y: number; w: number; h: number; pivotX: number; pivotY: number }
 
+/**
+ * Projected centre of the geometry that touches the ground.
+ *
+ * The shadow ellipse is drawn at the assembly origin by default; offsetting it to this point keeps it under the
+ * feet for a model whose stance is not centred on its own origin.
+ */
+function groundContactCentre(tris: import('./mesh2').Tri[], yaw: number, pitch: number): { x: number; y: number } {
+  let minZ = Infinity;
+  for (const t of tris) for (const p of [t.a, t.b, t.c]) if (p.z < minZ) minZ = p.z;
+  const cyw = Math.cos(yaw);
+  const syw = Math.sin(yaw);
+  const cp = Math.cos(pitch);
+  const sp = Math.sin(pitch);
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (const t of tris) {
+    for (const p of [t.a, t.b, t.c]) {
+      if (p.z > minZ + 1.5) continue;
+      const x = p.x * cyw - p.y * syw;
+      const y = p.x * syw + p.y * cyw;
+      sx += x;
+      sy += y * cp - p.z * sp;
+      n++;
+    }
+  }
+  return n > 0 ? { x: sx / n, y: sy / n } : { x: 0, y: 0 };
+}
+
+/** Units whose art is authored to hover, so the bake can give them a smaller ground shadow. */
+const HOVER_UNITS = new Set(['wisp', 'rift_skimmer']);
+
+/**
+ * Screen-pixel gap held between a hovering unit's lowest pixel and the ground plane.
+ *
+ * Expressed in BAKED pixels (the atlas is authored at 128px and drawn at roughly 31px on a 667x375 phone, so this
+ * is ~3-4 device pixels of visible daylight — enough to read as flight rather than as a broken walker).
+ */
+const HOVER_CLEARANCE_PX = 14;
+
+/** Unit definitions, so a bake can read the collision radius. */
+const REGISTRY_UNITS = new Map<string, { radius: number }>();
+for (const f of readdirSync(join(process.cwd(), 'data', 'units'))) {
+  const j = JSON.parse(readFileSync(join(process.cwd(), 'data', 'units', f), 'utf8')) as { id: string; radius: number };
+  REGISTRY_UNITS.set(j.id, { radius: j.radius });
+}
+
 /** Building definitions, so a bake can read the declared footprint in tiles. */
 const REGISTRY_BUILDINGS = new Map<string, { footprint: number }>();
 for (const f of readdirSync(join(process.cwd(), 'data', 'buildings'))) {
@@ -208,7 +255,14 @@ function renderTo(
   frame: number,
   yaw: number,
   team: [number, number, number],
-  opts: { pitch?: number; fixedScale?: number; contactShadow?: boolean; footprintWorld?: number } = {},
+  opts: {
+    pitch?: number;
+    fixedScale?: number;
+    contactShadow?: boolean;
+    footprintWorld?: number;
+    /** Anchor the pivot at z = 0 rather than at the lowest geometry (see the comment on `groundZ`). */
+    anchorAtOrigin?: boolean;
+  } = {},
 ): BakeResult {
   const pitch = opts.pitch ?? PITCH;
   const tris = buildTris(asm);
@@ -221,6 +275,16 @@ function renderTo(
     minX = Math.min(minX, sx); maxX = Math.max(maxX, sx);
     minY = Math.min(minY, sy); maxY = Math.max(maxY, sy);
   }
+  /**
+   * A HOVERING UNIT'S FRAME MUST INCLUDE THE GROUND IT IS ABOVE.
+   *
+   * The frame is centred on the mesh's own bounds, which for a hovering wisp is a teardrop floating in space — no
+   * ground reference at all. Anchoring the pivot at z = 0 then simply shifted the pivot down to the body, and the
+   * authored clearance vanished (measured: body bottom only 0.9px above the pivot, i.e. the gap was gone).
+   *
+   * Extending the vertical bounds down to the projected z = 0 plane gives the frame a real floor, so the gap exists
+   * inside the sprite and the shadow has somewhere to sit.
+   */
   const extent = Math.max(maxX - minX, maxY - minY);
   const scale = opts.fixedScale ?? (frame * 0.9) / Math.max(1, extent);
   const img = rasterise(asm, {
@@ -238,9 +302,75 @@ function renderTo(
     shadow: opts.contactShadow ?? true,
     footprintWorld: opts.footprintWorld,
   });
-  // Pivot is where the assembly's ground origin landed, as a fraction of the frame.
-  const originX = frame / 2 + (0 - ((minX + maxX) / 2)) * scale;
-  const originY = frame / 2 + (0 - ((minY + maxY) / 2)) * scale;
+  /**
+   * PIVOT = WHERE THE FEET ACTUALLY TOUCH THE GROUND, not the assembly's origin.
+   *
+   * For a building or a humanoid standing on the origin those are the same point, and (0,0,0) was correct. But a
+   * wide vehicle's contact patches are offset from its origin: the Obsidian Siege's four feet sit at y = +-9.4, so
+   * the lowest geometry projects BELOW the origin. Anchoring on (0,0,0) then lifted the vehicle by that offset —
+   * measured 4.6-7.7px, and worse across facings as the projection rotated — which is exactly the "golem is not on
+   * the ground" read.
+   *
+   * So the pivot is the ground-contact point of the base geometry: the lowest `minY` (screen) among vertices within
+   * a small epsilon of the assembly's minimum z, i.e. whatever is actually standing on the floor. That makes
+   * "lowest opaque pixel == pivot" true by construction for every shape, at every facing.
+   */
+  /**
+   * A HOVERING UNIT ANCHORS AT THE GROUND PLANE (z = 0), NOT AT ITS LOWEST GEOMETRY.
+   *
+   * Ground-contact anchoring is right for a walker: its feet are the contact point. But a wisp has no feet — its
+   * lowest geometry is the tip of a teardrop that is meant to be a visible gap above the floor. Anchoring on that
+   * tip would pin the wisp to the ground and destroy the only cue that it flies.
+   *
+   * `opts.anchorAtOrigin` keeps the anchor at z=0 for those units, so the authored gap survives into the sprite
+   * and the shadow is drawn on the ground beneath them.
+   */
+  let groundZ = Infinity;
+  if (opts.anchorAtOrigin) {
+    // Pretend the ground plane is at z = 0 for this bake.
+    groundZ = 0;
+  } else {
+    for (const t of tris) for (const p of [t.a, t.b, t.c]) if (p.z < groundZ) groundZ = p.z;
+  }
+  let groundSx = 0;
+  let groundSy = -Infinity;
+  let groundCount = 0;
+  for (const t of tris) {
+    for (const p of [t.a, t.b, t.c]) {
+      if (p.z > groundZ + 1.0) continue;
+      const x = p.x * cyw - p.y * syw;
+      const y = p.x * syw + p.y * cyw;
+      const sy = y * cp - p.z * sp;
+      groundSx += x;
+      groundCount++;
+      if (sy > groundSy) groundSy = sy;
+    }
+  }
+  const anchorSx = groundCount > 0 ? groundSx / groundCount : 0;
+  const anchorSy = groundCount > 0 ? groundSy : 0;
+  const originX = frame / 2 + (anchorSx - ((minX + maxX) / 2)) * scale;
+  /**
+   * HOVER CLEARANCE IS APPLIED TO THE PIVOT, IN SCREEN PIXELS.
+   *
+   * A hovering unit's pivot is the GROUND PLANE under it, not its own lowest pixel. Pushing the pivot down by
+   * `HOVER_CLEARANCE_PX` means the sprite draws with its body that far above the sim position — a real gap the
+   * player can see — while the contact shadow (drawn from `footprintWorld` at the origin) lands correctly on the
+   * ground beneath it.
+   *
+   * Expressed in bake pixels on purpose: "does it read as flying" is a question about the rendered sprite, and
+   * trusting the mesh's own geometry gave no reliable gap (a wisp's teardrop tip projects to within 2px of the
+   * ground plane even though it is authored 25 world units up).
+   */
+  /**
+   * The lift moves the PIVOT DOWN in the frame, which draws the sprite HIGHER on screen — a larger y pivot means
+   * the anchor is lower in the image, so the art above it appears lifted relative to the sim position. That is the
+   * effect we want for the body.
+   *
+   * The shadow is drawn at the mesh origin, which does NOT move, so it ends up above the lifted pivot by exactly
+   * the clearance. That is the correct world position (the ground under the unit) and the test asserts it.
+   */
+  const hoverLift = opts.anchorAtOrigin ? HOVER_CLEARANCE_PX : 0;
+  const originY = frame / 2 + (anchorSy - ((minY + maxY) / 2)) * scale + hoverLift;
   return { rgba: img.rgba, pivotX: originX / frame, pivotY: originY / frame, w: frame, h: frame, scale, originX, originY };
 }
 
@@ -350,9 +480,98 @@ async function main(): Promise<void> {
     for (const team of TEAM_RAMP) {
       for (let f = 0; f < UNIT_FACINGS; f++) {
         const yaw = (f / UNIT_FACINGS) * Math.PI * 2;
-        const r = renderTo(asm, UNIT_FRAME, yaw, team.color);
+        /**
+         * UNITS ARE BAKED WITH THE TERRAIN CAMERA, LIKE BUILDINGS.
+         *
+         * These used to be baked with `PITCH` (0.5 rad = 28.6deg) while the terrain draws at 60deg. A unit is
+         * mostly vertical, so the wrong pitch did not distort its silhouette enough to notice in isolation — but
+         * it moved the ground contact: feet authored against a shallow pitch project to a different screen
+         * offset than the ground plane does, so a golem's feet sat a few pixels off its own shadow and it read as
+         * hovering. Zachary spotted exactly that.
+         *
+         * The units now share `TERRAIN_MATCH_*` with the buildings, so one camera describes the whole world.
+         */
+        /**
+         * Grounded units get a contact shadow; hoverers get a SMALLER one on the ground plane.
+         *
+         * `footprintWorld` drives the diamond/ellipse shadow in the rasteriser. Passing the unit's collision
+         * diameter keeps the shadow in proportion to the body, and the hover units scale it down so the shadow
+         * reads as "above the ground" rather than "touching it".
+         */
+        /**
+         * SIZE THE SHADOW FROM THE ART'S OWN WIDTH, NOT THE COLLISION RADIUS.
+         *
+         * Collision radius is a gameplay number tuned tiny so 90 units fit in a fight (an Imp is 8 units). Using
+         * it for the shadow made the ellipse smaller than the drawn body, so a wide silhouette like the Storm
+         * Caster's robe covered it completely — measured: **zero visible shadow pixels**, i.e. the unit read as
+         * having no ground contact at all. Scaling from the geometry's own X extent guarantees the shadow is at
+         * least as wide as what is standing on it.
+         */
+        /**
+         * The shadow tracks the FEET, not the widest part of the figure.
+         *
+         * Using the full art bounds overshot: an archer's bow and quiver make its silhouette much wider than where it
+         * stands, so the shadow came out at 167% of the body and read as a puddle. The geometry within the lowest
+         * couple of world units is what is actually in contact, and its extent is the honest shadow size.
+         */
+        const groundTris = buildTris(asm);
+        let gMinZ = Infinity;
+        for (const t of groundTris) for (const p of [t.a, t.b, t.c]) if (p.z < gMinZ) gMinZ = p.z;
+        let gMinX = Infinity;
+        let gMaxX = -Infinity;
+        let gMinY = Infinity;
+        let gMaxY = -Infinity;
+        for (const t of groundTris) {
+          for (const p of [t.a, t.b, t.c]) {
+            if (p.z > gMinZ + 1.5) continue;
+            if (p.x < gMinX) gMinX = p.x;
+            if (p.x > gMaxX) gMaxX = p.x;
+            if (p.y < gMinY) gMinY = p.y;
+            if (p.y > gMaxY) gMaxY = p.y;
+          }
+        }
+        const footSpan = Math.max(gMaxX - gMinX, gMaxY - gMinY);
+        /**
+         * SHADOW DIAMETER — derived from the unit's own silhouette.
+         *
+         * The shadow must be visible around the feet yet never wider than the body. Neither obvious reference
+         * works on its own: the collision radius is a gameplay number far smaller than the art (90 units must fit
+         * in one fight), and the foot span is tiny for a figure on two legs (an archer's stance is a few units
+         * across, giving a 2px sliver of shadow that the legs then cover completely).
+         *
+         * A fraction of the SILHOUETTE satisfies both: 0.55 leaves a visible rim either side of even a narrow
+         * stance, and stays comfortably inside the body so it cannot read as a puddle.
+         */
+        const bodyBounds = boundsOf(groundTris);
+        const fullW = Math.max(bodyBounds.maxX - bodyBounds.minX, bodyBounds.maxY - bodyBounds.minY);
+        /**
+ * Shadow diameter.
+ *
+ * Three references, each wrong alone: the collision radius is far smaller than the art; the foot span is tiny
+ * for two-legged figures; the full silhouette is too wide for a figure with outstretched arms or a bow. The
+ * largest of `silhouette * 0.42` (a rim either side without becoming a puddle) and the collision diameter (a
+ * floor, so nothing ends up with a pinprick) works across the roster.
+ */
+const collide = Math.max(fullW * 0.42, (REGISTRY_UNITS.get(id)?.radius ?? 8) * 2.2, footSpan * 1.05);
+        /**
+         * The shadow is centred on the FEET, not the assembly origin.
+         *
+         * A golem's stance is not symmetric about its own origin, so a shadow pinned to the origin slid 7px sideways
+         * as the model turned — visibly detached from the feet at some facings. `footCentre` is the mean of the
+         * ground-contact vertices, projected, so the ellipse tracks wherever the unit actually stands.
+         */
+        const footCentre = groundContactCentre(groundTris, yaw, TERRAIN_MATCH_PITCH);
+        const r = renderTo(asm, UNIT_FRAME, yaw, team.color, {
+          pitch: TERRAIN_MATCH_PITCH,
+          fixedScale: TERRAIN_MATCH_SCALE,
+          contactShadow: true,
+          footprintWorld: HOVER_UNITS.has(id) ? collide * 0.6 : collide,
+          anchorAtOrigin: HOVER_UNITS.has(id),
+          shadowOffsetX: footCentre.x * TERRAIN_MATCH_SCALE,
+          shadowOffsetY: footCentre.y * TERRAIN_MATCH_SCALE,
+        });
         const key = `unit/${id}/${team.id}/${f}`;
-        unitItems.push({ key, data: r.rgba, size: UNIT_FRAME, pivotX: r.pivotX, pivotY: r.pivotY });
+        unitItems.push({ key, data: r.rgba, size: UNIT_FRAME, pivotX: r.pivotX, pivotY: r.pivotY, scale: r.scale });
         pivots[key] = { x: r.pivotX, y: r.pivotY };
       }
     }
@@ -360,31 +579,15 @@ async function main(): Promise<void> {
   await bake('units', unitItems, 2048);
 
   /**
-   * BUILDINGS ARE BAKED WITH THE TERRAIN'S OWN CAMERA.
-   *
-   * Three separate faults made buildings look tilted and floating, and all three are fixed here:
-   *
-   *   1. WRONG CAMERA. Baked at yaw 0.62 / pitch 0.5 while the terrain projects at yaw 45deg /
-   *      pitch 60deg, so a square base came out as a parallelogram rotated ~9.5deg off its tile.
-   *      Now baked with `TERRAIN_MATCH_YAW` / `TERRAIN_MATCH_PITCH`.
-   *
-   *   2. WRONG PIVOT. `bake()` hard-coded 0.5/0.85 into the manifest, so the ground origin was never
-   *      where the art's base actually is. The computed pivot is now carried into the manifest.
-   *
-   *   3. WRONG SCALE. Frames were scaled to fit their own bounding box, so a building's base filled
-   *      only 47-69% of its declared footprint (thorn_grove 29%) and each one sat as an island inside
-   *      its tile diamond. The scale is now derived from the declared footprint, so `footprint` tiles
-   *      of world space map to exactly `floor(footprint * TILE) * scale` pixels of base.
+   * BUILDINGS ARE BAKED WITH THE TERRAIN'S OWN CAMERA — see the long note in `bake()` and in
+   * `bake-camera.ts`. Buildings read their footprint from the registry so a base fills its tiles exactly.
    */
   const bItems: Item[] = [];
   for (const [id, asm] of Object.entries(ROSTER_BUILDINGS)) {
-    // `mana_node` is a MAP RESOURCE drawn as a structure — it is in the atlas but has no building
-    // definition, so it gets a 1x1 footprint.
     const def = REGISTRY_BUILDINGS.get(id) ?? { footprint: 1 };
     if (!REGISTRY_BUILDINGS.has(id) && id !== 'mana_node') {
       throw new Error(`no building def for ${id}`);
     }
-    // Frame must be large enough to hold the footprint plus the tallest structure in it.
     const frame = buildingFrameSize(asm, def.footprint);
     const fit = buildingScaleFor(asm, def.footprint, frame);
     for (const team of TEAM_RAMP) {

@@ -82,22 +82,31 @@ function riftFamiliar(): Assembly {
  * Built from a different primitive family from the Familiar (rings, not plates) so the two flyers
  * cannot be confused even in silhouette.
  */
+/**
+ * RIFT SKIMMER — a flying saucer. HOVERS, and must read as flying.
+ *
+ * Its hull starts at z = 22 rather than z = 7. A grounded-anchor saucer sat right on its own shadow and looked
+ * like a dropped plate; the deliberate clearance plus the smaller shadow is what makes "this one flies" legible at
+ * phone zoom. The dorsal fin is kept because it breaks the disc silhouette, which is the only way a saucer reads as
+ * a unit rather than a marker.
+ */
 function riftSkimmer(): Assembly {
   const parts: Part[] = [];
+  const LIFT = 15; // hover clearance, in world units
   // saucer hull: three stacked discs, widest in the middle
-  parts.push(part(cyl(4.0, 8.2, 2.4, 16), [0, 0, 7.0], PAL.robeDeep));
-  parts.push(part(cyl(8.2, 8.2, 2.2, 16), [0, 0, 9.4], PAL.robe));
-  parts.push(part(cyl(8.2, 4.4, 2.2, 16), [0, 0, 11.6], PAL.robeLit));
+  parts.push(part(cyl(4.0, 8.2, 2.4, 16), [0, 0, 7.0 + LIFT], PAL.robeDeep));
+  parts.push(part(cyl(8.2, 8.2, 2.2, 16), [0, 0, 9.4 + LIFT], PAL.robe));
+  parts.push(part(cyl(8.2, 4.4, 2.2, 16), [0, 0, 11.6 + LIFT], PAL.robeLit));
   // team ring around the rim
-  parts.push(part(cyl(8.8, 8.8, 1.6, 16), [0, 0, 9.6], PAL.runeTeam));
+  parts.push(part(cyl(8.8, 8.8, 1.6, 16), [0, 0, 9.6 + LIFT], PAL.runeTeam));
   // dorsal fin: the vertical spike that makes the profile unmistakable
-  parts.push(part(plate(9.0, 2.0, 0.8, 7.0), [0, 3.0, 12.6], PAL.robeDeep, { rotX: 0.42 }));
-  parts.push(part(prism(1.4, 2.0, 5), [0, -1.4, 14.2], PAL.crystalHot));
+  parts.push(part(plate(9.0, 2.0, 0.8, 7.0), [0, 3.0, 12.6 + LIFT], PAL.robeDeep, { rotX: 0.42 }));
+  parts.push(part(prism(1.4, 2.0, 5), [0, -1.4, 14.2 + LIFT], PAL.crystalHot));
   // underslung weapon pods
-  parts.push(part(sph(2.0, 9), [-6.2, -1.2, 7.4], PAL.steel));
-  parts.push(part(sph(2.0, 9), [6.2, -1.2, 7.4], PAL.steel));
-  parts.push(part(cone(1.3, 3.0, 7), [-6.2, -3.4, 6.6], PAL.crystal, { rotX: -Math.PI / 2 }));
-  parts.push(part(cone(1.3, 3.0, 7), [6.2, -3.4, 6.6], PAL.crystal, { rotX: -Math.PI / 2 }));
+  parts.push(part(sph(2.0, 9), [-6.2, -1.2, 7.4 + LIFT], PAL.steel));
+  parts.push(part(sph(2.0, 9), [6.2, -1.2, 7.4 + LIFT], PAL.steel));
+  parts.push(part(cone(1.3, 3.0, 7), [-6.2, -3.4, 6.6 + LIFT], PAL.crystal, { rotX: -Math.PI / 2 }));
+  parts.push(part(cone(1.3, 3.0, 7), [6.2, -3.4, 6.6 + LIFT], PAL.crystal, { rotX: -Math.PI / 2 }));
   return { parts };
 }
 
