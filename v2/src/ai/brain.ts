@@ -308,6 +308,25 @@ export class AiBrain {
         this.memory.passesWithoutProgress >= STALEMATE_PASSES ||
         elapsedSeconds >= DESPERATION_SECONDS,
       enemyAnchor: this.memory.enemyAnchor,
+      /**
+       * WHERE TO GO WHEN WE KNOW OF NO ENEMY BUILDING AT ALL.
+       *
+       * This is the last real non-termination cause, and it is a scouting failure rather than a combat one. Measured on
+       * seed 1014: after 26 sim-minutes `per.enemyBuildings` was EMPTY — p1 had never once seen an enemy structure — so
+       * `pickAttackTarget` fell through to "last known enemy position", which was a stale sighting of a mobile unit in
+       * open ground at (3350, 1836). The army marched there, arrived, went idle with no orders, and the re-task loop sent
+       * it to the same empty spot again: notes read `re-tasking 8 idle unit(s) to close on last known enemy position`
+       * forever, 38 units idle, enemy buildings at FULL health 8900/8900, and zero building damage in the whole match.
+       *
+       * The fix is to send the army to unexplored ground instead. `nextUnexplored` reads only `exploredTiles`, which is
+       * the acting player's own revealed map, so this stays fog-legal — the AI is not peeking at where the base is, it is
+       * sweeping the map with its army because it does not know. Farthest-first, so the army crosses the map toward the
+       * far corner where an RTS start position actually is.
+       *
+       * Keyed on "no enemy BUILDING known", not "no anchor": the stall case had a perfectly good anchor — a stale sighting
+       * of a mobile unit — which is exactly what made it a phantom destination.
+       */
+      searchTarget: per.enemyBuildings.length === 0 ? nextUnexplored(per) : null,
     });
     commands.push(...mil.commands);
     notes.push(...mil.notes);

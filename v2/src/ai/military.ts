@@ -155,6 +155,13 @@ export function planMilitary(
     enemyAnchor: { x: number; y: number } | null;
     /** True when the AI has stopped making progress and should commit everything. */
     allIn?: boolean;
+    /**
+     * Where to march when no enemy building is known at all.
+     *
+     * Derived from the player's own explored map, so it is fog-legal. Without it the army chases the last sighting of a
+     * mobile unit, arrives at empty ground, and stands there — see the note in `brain.ts` for the measured 26-minute stall.
+     */
+    searchTarget?: { x: number; y: number } | null;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
   const commands: Command[] = [];
@@ -260,6 +267,34 @@ export function planMilitary(
    * `!defending` here was the last of three separate blockers that stopped any AI from ever attacking while an enemy
    * stack sat near its base. Defending is now a detachment (above), so the rest of the army is free to march.
    */
+  /**
+   * SEARCH SWEEP — the army advances across unexplored ground when it knows of no enemy building.
+   *
+   * This takes precedence over the normal wave logic, because with no known structure every "attack" is a march to a
+   * phantom position that resolves to nothing (see `searchTarget` in the options). The army is what does the looking: it
+   * covers ground far faster than one wisp scout, and arriving somewhere is what reveals it.
+   *
+   * Idle-only re-tasking, for the same reason as the wave re-task below: re-ordering units that are already marching
+   * restarts their path every pass and they never arrive.
+   */
+  const searching = opts.searchTarget !== null && opts.searchTarget !== undefined && per.enemyBuildings.length === 0;
+  if (searching) {
+    const idleForSearch = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
+    if (idleForSearch.length > 0) {
+      commands.push({
+        type: 'attackMove',
+        playerId: pid,
+        entityIds: idleForSearch.map((a) => a.seen.id),
+        x: opts.searchTarget!.x,
+        y: opts.searchTarget!.y,
+      });
+      notes.push(
+        `searching: ${idleForSearch.length} unit(s) sweeping unexplored ground at ` +
+          `${Math.round(opts.searchTarget!.x)},${Math.round(opts.searchTarget!.y)}`,
+      );
+    }
+  }
+
   const shouldAttack = opts.enemyAnchor !== null && ready && !opts.attacking;
 
   if (shouldAttack && opts.enemyAnchor) {
@@ -269,7 +304,7 @@ export function planMilitary(
     notes.push(`wave of ${ids.length} attacking ${target.why} at ${Math.round(target.x)},${Math.round(target.y)}`);
   } else if (!opts.attacking && opts.enemyAnchor) {
     notes.push(`massing: ${armySize}/${Math.max(profile.minWaveSize, opts.lastWaveSize)}`);
-  } else if (opts.attacking && opts.enemyAnchor) {
+  } else if (opts.attacking && opts.enemyAnchor && !searching) {
     /**
      * KEEP A WAVE MOVING — this is the "no idle armies" requirement, and it was the real reason matches never ended.
      *
