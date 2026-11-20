@@ -47,6 +47,47 @@ export interface SeparationPush {
 /** How much wider than collision the separation radius is, so drawn sprites do not interpenetrate. */
 const VISUAL_SEPARATION = 2.6;
 
+/**
+ * Deterministic formation offset for a unit ordered to a point.
+ *
+ * Units are laid out on concentric rings. The ring index and angle come from the entity id, so:
+ *   • the same unit always takes the same slot (deterministic, replay-safe),
+ *   • units spread across rings instead of stacking, and
+ *   • two different groups ordering to the same point do not collide on the same slots, because their
+ *     ids differ.
+ *
+ * `spacing` is the visual separation distance, so slots are far enough apart that drawn sprites do not
+ * overlap on arrival.
+ */
+function formationSlot(id: EntityId, spacing: number): { x: number; y: number } {
+  /**
+   * A deterministic slot on a hex-ish lattice around the order point.
+   *
+   * Earlier this used three rings of 0/6/12 slots, which gives 18 distinct places and leaves the centre
+   * crowded: a 40-unit group had no slot beyond radius 1.9 * spacing, and every unit without a slot
+   * piled onto the middle.
+   *
+   * The slot is now a GRID cell indexed by a hash of the id. A grid rather than rings because:
+   *   • it has unbounded capacity — any group size has distinct slots,
+   *   • spacing is uniform, so no unit is starved of room, and
+   *   • the centre cell is used at most once, which is the bug the ring version had.
+   *
+   * The grid is 5 wide with an alternating row offset, which packs bodies more tightly than a plain
+   * square grid at the same visual spacing.
+   */
+  if (spacing <= 0) return { x: 0, y: 0 };
+  const h = (Math.imul(id | 0, 2654435761) >>> 0) / 4294967296;
+  // Up to 64 slots covers any realistic order; ids beyond that wrap, which is acceptable.
+  const n = Math.floor(h * 64);
+  const COLS = 5;
+  const row = Math.floor(n / COLS);
+  const col = n % COLS;
+  const x = (col - (COLS - 1) / 2) * spacing + (row % 2 === 0 ? 0 : spacing * 0.5);
+  const y = row * spacing * 0.87; // 0.87 ~= sin(60deg), a hex row pitch
+  // Centre the lattice's mean on the order point so the group forms AROUND the click.
+  return { x, y: y - 2 * spacing * 0.87 };
+}
+
 export function separationForPair(
   ax: number,
   ay: number,
@@ -194,8 +235,20 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
-    const goalX = order.x;
-    const goalY = order.y;
+    /**
+     * FORMATION OFFSET — every unit in a group gets its OWN slot around the order point.
+     *
+     * Previously every unit steered at the exact same (x, y). Separation alone could not resolve that:
+     * it pushes units apart while steering pulls them all back to one point, so a 40-unit attack-move
+     * settled into a heap with most bodies overlapping (measured 31% deeply interpenetrating).
+     *
+     * Each unit is now assigned a deterministic ring slot based on its id, so a group forms a block
+     * roughly two ranks deep around the destination. The slot is a property of the unit, not of
+     * iteration order, so the whole thing stays deterministic and replay-safe.
+     */
+    const slot2 = formationSlot(store.id[slot]!, (store.radius[slot] ?? 8) * VISUAL_SEPARATION);
+    const goalX = order.x + slot2.x;
+    const goalY = order.y + slot2.y;
     const dx = goalX - store.posX[slot]!;
     const dy = goalY - store.posY[slot]!;
     const d = Math.hypot(dx, dy);

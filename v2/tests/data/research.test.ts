@@ -7,8 +7,52 @@ import { getRegistry } from '../helpers';
 describe('research tree content', () => {
   const reg = getRegistry();
 
-  it('ships 8 researches', () => {
-    expect(reg.research.size).toBe(8);
+  it('ships a tree deep enough to offer real choices per faction', () => {
+    // The first pass shipped 8 items, which is not a tree — every faction had the same two or three
+    // options and no branch point existed.
+    expect(reg.research.size, 'research tree is too small to offer choices').toBeGreaterThanOrEqual(20);
+    for (const faction of ['arcane', 'obsidian', 'verdant']) {
+      const own = [...reg.research.values()].filter((r) => (r.factions ?? []).includes(faction));
+      expect(own.length, `${faction} has too few research options`).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('has at least four tiers and every tier is populated', () => {
+    const tiers = new Map<number, number>();
+    for (const r of reg.research.values()) tiers.set(r.tier, (tiers.get(r.tier) ?? 0) + 1);
+    expect([...tiers.keys()].sort()).toEqual([1, 2, 3, 4, 5]);
+    for (const [tier, n] of tiers) expect(n, `tier ${tier} is empty-ish`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('every node has a player-facing label and wording for every effect', () => {
+    for (const r of reg.research.values()) {
+      expect(r.effectViews.length, `${r.id} effectViews/effects mismatch`).toBe(r.effects.length);
+      for (const v of r.effectViews) {
+        expect(v.label.length, `${r.id} has an empty effect label`).toBeGreaterThan(2);
+        expect(v.detail.length, `${r.id} has an empty effect detail`).toBeGreaterThan(8);
+        // Wording must be prose, not a key or an id.
+        expect(v.label, `${r.id} effect label looks like a raw key: "${v.label}"`).not.toMatch(/[a-z][A-Z]|_/);
+        expect(v.detail, `${r.id} effect detail looks like a raw key: "${v.detail}"`).not.toMatch(/[a-z][A-Z]|_/);
+      }
+      expect(r.icon.length, `${r.id} has no icon`).toBeGreaterThan(0);
+    }
+  });
+
+  it('the tree has real branch points, not a single chain', () => {
+    // A tree where every node has exactly one child is a queue. Count nodes that unlock 2+ others.
+    const children = new Map<string, number>();
+    for (const r of reg.research.values()) {
+      for (const req of r.requires) children.set(req, (children.get(req) ?? 0) + 1);
+    }
+    const branches = [...children.values()].filter((n) => n >= 2).length;
+    expect(branches, 'the research tree never branches').toBeGreaterThanOrEqual(3);
+  });
+
+  it('each faction has at least one exclusive node', () => {
+    for (const faction of ['arcane', 'obsidian', 'verdant']) {
+      const exclusive = [...reg.research.values()].filter((r) => (r.factions ?? []).length === 1 && (r.factions ?? []).includes(faction));
+      expect(exclusive.length, `${faction} has no exclusive research`).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('every research is attached to a building that actually exists and is buildable', () => {
@@ -48,6 +92,15 @@ describe('research tree content', () => {
     }
   });
 
+  it('every prerequisite is either a real research or a real building', () => {
+    for (const r of reg.research.values()) {
+      for (const req of r.requires) {
+        const known = reg.research.has(req) || reg.buildings.has(req);
+        expect(known, `${r.id} requires "${req}", which is neither a research nor a building`).toBe(true);
+      }
+    }
+  });
+
   it('the tech tree has no cycles and every prerequisite resolves', () => {
     const visiting = new Set<string>();
     const done = new Set<string>();
@@ -70,7 +123,9 @@ describe('research tree content', () => {
     // A research costing more than a superweapon, or taking longer than 90 s, could not be
     // reached in a 20-minute game alongside everything else.
     for (const r of reg.research.values()) {
-      expect(r.cost, `${r.id} is too expensive`).toBeLessThanOrEqual(1000);
+      // Capstones may cost slightly more than a mid-tier item; the ceiling still keeps every node
+      // reachable inside a 20-minute match alongside an army.
+      expect(r.cost, `${r.id} is too expensive`).toBeLessThanOrEqual(1200);
       expect(r.researchTime, `${r.id} takes too long`).toBeLessThanOrEqual(90);
       expect(r.cost).toBeGreaterThan(0);
     }

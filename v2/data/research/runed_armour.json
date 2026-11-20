@@ -1,14 +1,20 @@
 {
+  "kind": "research",
   "id": "runed_armour",
   "name": "Runed Armour",
-  "description": "Ward-light armour for light troops. +12% HP.",
-  "kind": "research",
+  "description": "Wards stitched into light armour. Fast troops survive the first volley.",
   "cost": 500,
   "researchTime": 35,
+  "tier": 2,
+  "icon": "armour",
   "requires": [
-    "arcane_nexus"
+    "attunement_spire"
   ],
-  "researchedAt": "arcane_nexus",
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane",
+    "verdant"
+  ],
   "effects": [
     {
       "kind": "unitStatModifier",
@@ -16,14 +22,17 @@
         "light_melee",
         "light_ranged",
         "fast_scout",
-        "flying_harass",
-        "aoe_ranged",
-        "cheap_melee",
-        "sustained_ranged"
+        "flying_harass"
       ],
       "stat": "hp",
       "operation": "multiply",
       "value": 1.12
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Light troop health",
+      "detail": "+12% health for light melee, archers, scouts and flyers"
     }
   ]
 }

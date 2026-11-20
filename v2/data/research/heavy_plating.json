@@ -1,14 +1,20 @@
 {
+  "kind": "research",
   "id": "heavy_plating",
   "name": "Heavy Plating",
-  "description": "Reinforce heavy constructs. +15% HP.",
-  "kind": "research",
+  "description": "Slabs of ward-iron bolted to the heaviest frames. Slow to build, hard to break.",
   "cost": 600,
-  "researchTime": 40,
+  "researchTime": 42,
+  "tier": 2,
+  "icon": "armour",
   "requires": [
-    "arcane_nexus"
+    "attunement_spire"
   ],
-  "researchedAt": "arcane_nexus",
+  "researchedAt": "golem_forge",
+  "factions": [
+    "arcane",
+    "obsidian"
+  ],
   "effects": [
     {
       "kind": "unitStatModifier",
@@ -21,6 +27,12 @@
       "stat": "hp",
       "operation": "multiply",
       "value": 1.15
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Heavy troop health",
+      "detail": "+15% health for golems, siege engines, mobile HQ and armoured infantry"
     }
   ]
 }

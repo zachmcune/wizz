@@ -25,19 +25,28 @@
   min-height: 0;
   z-index: var(--z-hud);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  /* `auto` rows everywhere: each band is exactly as tall as its content. The gap between the top band
-   * and the command bar is empty space belonging to the BOARD, not to a HUD element. A `1fr` spacer row
-   * would make the spacer part of the HUD box and inflate the measured area (this is what produced 74%
-   * on Chromebook). */
-  /* `auto` everywhere except the last spacer row, which takes the slack; that keeps the hint row at its
-   * content height (18px) instead of stretching it into a 150px block that inflated the HUD area. */
-  grid-template-rows: auto auto auto 1fr;
+  /* ONE column: every band spans the full width. The minimap is a band of its own, aligned right, rather
+   * than a grid column that would squeeze the top bar. */
+  grid-template-columns: minmax(0, 1fr);
+  /**
+   * THE COMMAND BAR IS PINNED TO THE BOTTOM EDGE — THE SLACK ROW IS BETWEEN THE BANDS, NOT BELOW THEM.
+   *
+   * An earlier version put the command bar in row 2 and a `1fr` spacer in row 4. That made the bar float
+   * under the top bar with 565px of dead space below it on Chromebook (measured: bar at y=131-203 of a
+   * 768px viewport). RTS commands belong at the bottom edge, where the hand and eye already are.
+   *
+   * Now the spacer sits in the MIDDLE: top band, slack, command band, footer band. The command bar can
+   * only ever be as far from the bottom as the footer row is tall (18px).
+   *
+   * The slack row is deliberately NOT a HUD element's box, so it does not inflate the measured HUD area —
+   * see the area test, which unions element rects rather than grid rows.
+   */
+  grid-template-rows: auto auto 1fr auto;
   grid-template-areas:
-    'top   mm'
-    'cmd   cmd'
-    'hint  zoom'
-    '.     .';
+    'top'
+    'mm'
+    '.'
+    'cmd';
   align-content: start;
   gap: var(--space-3);
   padding: var(--space-3);
@@ -135,7 +144,7 @@
   grid-area: mm;
   align-self: start;
   justify-self: end;
-  width: 120px;
+  width: 150px;
 }
 .hud-minimap__head {
   padding: var(--space-2) var(--space-3);
@@ -152,10 +161,12 @@
 /* ───────────────────────────────────────────────────────────────────────────── command bar */
 .hud-cmd {
   grid-area: cmd;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-2) 20px;
+  /* Anchored to the bottom of its track, so the bar hugs the bottom edge. */
   align-self: end;
   /* Explicit min-height so the bar can never collapse to 0 (the v1 `.cmd-card` bug). */
   min-height: 44px;
@@ -201,10 +212,15 @@
 
 /* ───────────────────────────────────────────────────────────────────────────── hint row */
 /* Its own grid row: it cannot overlap the command bar or anything else. */
+/* The hint and the zoom pair live INSIDE the command band's row as absolutely-positioned children of
+ * that band — not as their own grid row. Their own row would leave an 18-30px strip under the command
+ * bar, which is exactly the dead band this pass is removing. */
 .hud-hint {
-  grid-area: hint;
-  align-self: end;
-  height: 18px;
+  position: absolute;
+  left: var(--space-3);
+  bottom: 2px;
+  z-index: 2;
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -217,9 +233,10 @@
 
 /* ───────────────────────────────────────────────────────────────────────────── zoom */
 .hud-zoom {
-  grid-area: zoom;
-  justify-self: end;
-  align-self: center;
+  position: absolute;
+  right: var(--space-3);
+  bottom: 2px;
+  z-index: 2;
   display: flex;
   gap: var(--space-2);
 }
@@ -324,11 +341,12 @@
  * beats a plain `height`. The compact tier must override the MINIMUM, not just the height — that is why
  * an earlier attempt measured 44px no matter what height was set. */
 [data-density='compact'] .hud-cmd {
-  padding: 2px;
-  height: 32px;
-  max-height: 32px;
-  min-height: 32px;
-  overflow: hidden;
+  /* 30px: the command band plus an 18px footer row is what keeps the total under 18%. */
+  padding: 1px 2px 16px;
+  height: 28px;
+  max-height: 28px;
+  min-height: 28px;
+  overflow: visible;
 }
 [data-density='compact'] .hud-cmd__grid .btn {
   min-height: 26px;
@@ -346,36 +364,105 @@
 }
 /* The top band is CAPPED, not merely min-height: the 18% budget assumes ~34px, and an uncapped band
  * grew to 54px because the selection segment's own content set the height. */
+/**
+ * PHONE TOP BAND.
+ *
+ * This was capped at 34px while its contents needed 46px, so the selection's "HP 2000 / 2000" clipped
+ * at the top — the reported bug. The cap is now 40px (measured requirement: 38px) and every child is
+ * explicitly sized to fit inside it rather than relying on overflow:hidden to crop.
+ */
+/**
+ * PHONE TOP BAND — 38px, sized from measurement.
+ *
+ * Constraints that must hold TOGETHER:
+ *   • content must fit (38px was the measured requirement after the health readout became one line);
+ *   • the whole HUD must stay under 18% of a 667x375 screen.
+ *
+ * 38 + 30 (command band) = 68px of full-width band = 18.0% of 375px. Going to 40px pushed the total to
+ * 19.1%, which failed the area gate; going back to 34px clipped the health text. 38 is the value that
+ * satisfies both, and the two tests now hold each other honest.
+ */
 [data-density='compact'] .hud-top {
-  padding: 2px var(--space-2);
+  padding: 1px var(--space-2);
   gap: var(--space-2);
-  height: 34px;
-  max-height: 34px;
-  overflow: hidden;
+  height: 38px;
+  max-height: 38px;
+  min-height: 38px;
+  align-items: center;
+  overflow: visible;
 }
+/* The segment fills the band and its children are laid out to fit, not cropped. */
 [data-density='compact'] .hud-select {
-  height: 30px;
-  overflow: hidden;
+  height: 34px;
+  overflow: visible;
 }
 [data-density='compact'] .hud-select__body {
-  height: 30px;
+  height: 34px;
+  align-items: center;
 }
 [data-density='compact'] .hud-select__stats {
-  height: 28px;
+  height: 32px;
   justify-content: center;
+  gap: 2px;
 }
 [data-density='compact'] .hud-select__portrait {
   display: none;
 }
+/**
+ * PHONE: THE HEALTH READOUT IS ONE LINE.
+ *
+ * The stats block is a vertical stack — `[HP label + value]` above `[gauge]` — which needs ~46px inside
+ * a 40px band and clipped the value at the top, exactly as reported. On compact it becomes a single
+ * horizontal line: "HP 2000/2000" then the bar, both centred in the band.
+ */
+[data-density='compact'] .hud-select__stats {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: visible;
+}
+[data-density='compact'] .hud-select__stats > .row {
+  gap: var(--space-2);
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+[data-density='compact'] .hud-select__stats > .row .eyebrow {
+  display: none; /* the gauge's own aria-label carries "Health" */
+}
+[data-density='compact'] .hud-select__hp {
+  flex: 1 1 auto;
+  min-width: 36px;
+  height: 10px;
+}
+[data-density='compact'] .hud-select__hp .gauge {
+  height: 6px;
+}
+[data-density='compact'] .hud-select__stats .num {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: 1;
+  white-space: nowrap;
+}
 [data-density='compact'] .hud-select {
   gap: var(--space-2);
 }
 [data-density='compact'] .hud-select__body {
   gap: var(--space-2);
 }
+/* 3px of horizontal overflow remained here: the stat line's intrinsic width slightly exceeded the
+ * segment's. `min-width: 0` plus `flex-shrink` lets it fit rather than overflow its own box. */
 [data-density='compact'] .hud-select__stats {
-  flex: 0 1 78px;
-  min-width: 56px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+}
+[data-density='compact'] .hud-select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+[data-density='compact'] .hud-select__body {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 [data-density='compact'] .hud-select__head {
   padding-right: var(--space-2);
@@ -465,8 +552,8 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── ROOMY */
-[data-density='roomy'] .hud {
-  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) minmax(0, 240px);
+[data-density='roomy'] .hud-minimap {
+  width: 180px;
 }
 [data-density='roomy'] .hud-cmd__grid {
   grid-template-columns: repeat(6, minmax(0, 140px));

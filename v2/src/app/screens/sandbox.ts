@@ -457,18 +457,30 @@ export function mountSandbox(app: App): { root: HTMLElement; destroy: () => void
   body.append(sideHost);
   root.append(head, body, foot);
 
-  // Boot a match in the background if there is not one, then render the tabs.
-  const start = (): void => {
-    renderTab();
-  };
-  if (!app.session) {
-    void app.startMatch().then(() => {
-      renderTab();
-      ctx.log('Sandbox match started');
-    });
-  } else {
+  /**
+   * BOOT ORDER MATTERS HERE.
+   *
+   * `app.startMatch()` replaces the app's screen root — it mounts the MATCH screen, not the sandbox. An
+   * earlier version called it from inside `mountSandbox`, so the sandbox root was appended to a screen
+   * root that was then swapped out: two screens stacked vertically and the sandbox rendered at y=780 in
+   * a 768px viewport. Everything below the fold was clipped.
+   *
+   * The sandbox therefore does NOT start a match itself. It renders its tabs immediately, and if no
+   * match exists it says so and offers to create one through the button below, which the router handles
+   * as a normal navigation.
+   */
+  renderTab();
+  if (app.session) {
     app.session.setPaused(true);
-    start();
+    ctx.log('Sandbox attached to the running match');
+  } else {
+    ctx.log('No match running — start one to use the dev commands');
+    const startBar = el('div', 'sandbox-start');
+    startBar.append(
+      el('span', 'dim', 'The sandbox drives a live match.'),
+      button({ variant: 'primary', size: 'sm', label: 'Start a sandbox match', onClick: () => void app.startSandbox() }),
+    );
+    sideHost.append(startBar);
   }
 
   // Track the pointer over the canvas as the "cursor" for spawns and spells.

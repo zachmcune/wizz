@@ -1,0 +1,39 @@
+{
+  "kind": "research",
+  "id": "drilled_ranks",
+  "name": "Drilled Ranks",
+  "description": "Infantry drill in tight formation, closing ground faster without losing cohesion.",
+  "cost": 480,
+  "researchTime": 38,
+  "tier": 3,
+  "icon": "move",
+  "requires": [
+    "runed_armour"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "light_melee",
+        "cheap_melee",
+        "heavy_melee",
+        "armoured_melee"
+      ],
+      "stat": "speed",
+      "operation": "multiply",
+      "value": 1.1
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Infantry speed",
+      "detail": "+10% movement speed for all melee troops"
+    }
+  ]
+}

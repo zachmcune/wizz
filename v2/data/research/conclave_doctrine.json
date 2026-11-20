@@ -1,0 +1,35 @@
+{
+  "kind": "research",
+  "id": "conclave_doctrine",
+  "name": "Conclave Doctrine",
+  "description": "Every caster in the conclave shares one battle-plan, and every shot lands together.",
+  "cost": 1000,
+  "researchTime": 72,
+  "tier": 5,
+  "icon": "flag",
+  "requires": [
+    "storm_attunement"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "aoe_ranged",
+        "sustained_ranged"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.12
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Caster damage",
+      "detail": "+12% damage for Storm Casters and Grove Wardens"
+    }
+  ]
+}

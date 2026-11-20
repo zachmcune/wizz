@@ -1,14 +1,20 @@
 {
+  "kind": "research",
   "id": "focused_bolts",
   "name": "Focused Bolts",
-  "description": "Hone ranged attacks. +10% damage for ranged troops.",
-  "kind": "research",
+  "description": "Archers and casters learn to concentrate their aim on a single point of weakness.",
   "cost": 650,
-  "researchTime": 40,
+  "researchTime": 48,
+  "tier": 3,
+  "icon": "bow",
   "requires": [
-    "arcane_nexus"
+    "runed_armour"
   ],
-  "researchedAt": "arcane_nexus",
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane",
+    "verdant"
+  ],
   "effects": [
     {
       "kind": "unitStatModifier",
@@ -21,6 +27,12 @@
       "stat": "damage",
       "operation": "multiply",
       "value": 1.1
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Ranged damage",
+      "detail": "+10% damage for archers, casters and harass flyers"
     }
   ]
 }

@@ -157,7 +157,9 @@ export class Hud {
     // ---- toast for rejections
     this.noticeEl = el('div', 'hud-toast');
 
-    this.root.append(top, mm, cmd, hint, this.noticeEl);
+    // Hint and zoom live INSIDE the command band: no extra row, no dead strip under the bar.
+    cmd.append(hint, zoom);
+    this.root.append(top, mm, cmd, this.noticeEl);
     this.renderSelection();
     this.renderPanel();
   }

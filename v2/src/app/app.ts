@@ -146,6 +146,28 @@ export class App {
    * Async because the renderer needs a WebGL context and the atlas is already loaded; the caller
    * (`lobby`) awaits it so a failure can be shown on the lobby rather than silently doing nothing.
    */
+  /**
+   * Start a match in sandbox mode and land ON the sandbox screen.
+   *
+   * `startMatch()` navigates to the match screen, which is right for the lobby but wrong for the
+   * sandbox — it would drop the player out of the dev tools they just opened.
+   */
+  async startSandbox(): Promise<void> {
+    this.state.lobby.sandbox = true;
+    await this.startMatch();
+    // `startMatch` installed the live match; re-mount the sandbox so it wraps that match.
+    this.current?.destroy?.();
+    this.current = null;
+    this.screenRoot.replaceChildren();
+    const s = mountSandbox(this);
+    this.current = s;
+    this.screenRoot.append(s.root);
+    this.state.screen = 'sandbox';
+    const url = new URL(window.location.href);
+    url.searchParams.set('screen', 'sandbox');
+    window.history.replaceState(null, '', url.toString());
+  }
+
   async startMatch(): Promise<void> {
     this.state.screen = 'match';
     this.current?.destroy?.();

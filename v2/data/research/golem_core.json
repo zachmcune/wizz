@@ -1,0 +1,47 @@
+{
+  "kind": "research",
+  "id": "golem_core",
+  "name": "Golem Core",
+  "description": "A hotter core burns in every golem chest, and its legs carry the weight more easily.",
+  "cost": 950,
+  "researchTime": 62,
+  "tier": 4,
+  "icon": "armour",
+  "requires": [
+    "heavy_plating"
+  ],
+  "researchedAt": "golem_forge",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "stone_golem"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.2
+    },
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "stone_golem"
+      ],
+      "stat": "speed",
+      "operation": "multiply",
+      "value": 1.1
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Golem health",
+      "detail": "+20% health for Stone Golems"
+    },
+    {
+      "label": "Golem speed",
+      "detail": "+10% movement speed for Stone Golems"
+    }
+  ]
+}

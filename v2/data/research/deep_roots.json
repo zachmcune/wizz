@@ -1,0 +1,34 @@
+{
+  "kind": "research",
+  "id": "deep_roots",
+  "name": "Deep Roots",
+  "description": "Thornlings sink deeper into the soil, drawing strength from the grove itself.",
+  "cost": 780,
+  "researchTime": 52,
+  "tier": 4,
+  "icon": "research",
+  "requires": [
+    "runed_armour"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "thornling"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.22
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Thornling health",
+      "detail": "+22% health for Thornlings"
+    }
+  ]
+}

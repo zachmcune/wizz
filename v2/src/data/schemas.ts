@@ -195,6 +195,25 @@ const researchEffectSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/**
+ * Presentation metadata for a research node.
+ *
+ * The UI must never render a raw id or a camelCase key, so every string it shows lives in the data:
+ *
+ *   • `label`   the human name of the effect, e.g. "Harvest yield" — never `siphonPerSecond`.
+ *   • `detail`  a plain-language sentence, e.g. "+8% mana per second from harvesters".
+ *   • `tier`    which column the node sits in (1-based). The tree layout reads this directly rather than
+ *               inferring depth from `requires`, so the authored shape is the rendered shape.
+ *   • `icon`    which glyph the card uses, chosen from the UI's fixed icon set.
+ *
+ * Required on purpose: an item without a player-facing label cannot be rendered without a raw id
+ * leaking, so the schema rejects it rather than letting the UI fall back to `String(effect.stat)`.
+ */
+export const researchEffectViewSchema = z.object({
+  label: z.string().min(1),
+  detail: z.string().min(1),
+});
+
 export const researchSchema = z
   .object({
     id: z.string().min(1),
@@ -206,7 +225,22 @@ export const researchSchema = z
     requires: z.array(z.string()),
     researchedAt: z.string().min(1),
     factions: factionsField,
+    /** 1-based column in the research tree. */
+    tier: z.number().int().min(1).max(5),
+    /** Icon name from the UI glyph set (`src/ui/icons.ts`). */
+    icon: z.string().min(1),
     effects: z.array(researchEffectSchema).min(1),
+    /** One entry per effect, in the same order, carrying the player-facing wording. */
+    effectViews: z.array(researchEffectViewSchema).min(1),
+  })
+  .refine((r) => r.effectViews.length === r.effects.length, {
+    // Every effect needs wording or the UI would have to invent a label from raw keys.
+    message: 'effectViews must have exactly one entry per effect',
+    path: ['effectViews'],
+  })
+  .refine((r) => !/[_A-Z]/.test(r.name) || /[A-Z]/.test(r.name[0] ?? ''), {
+    message: 'research name must be player-facing words, not an id',
+    path: ['name'],
   })
   .refine((r) => r.effects.some((e) => e.kind !== 'unitStatModifier' || e.unitIds !== undefined || e.roles !== undefined), {
     // A unitStatModifier with neither unitIds nor roles silently applies to nothing; that is a

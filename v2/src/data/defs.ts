@@ -231,7 +231,18 @@ export interface ResearchDef {
   researchedAt: string;
   /** Faction that may research this. Omitted = every faction. */
   factions?: string[];
+  /** 1-based column in the research tree. The rendered layout reads this directly. */
+  tier: number;
+  /** Icon name from the UI glyph set. */
+  icon: string;
   effects: ResearchEffect[];
+  /**
+   * Player-facing wording, one entry per effect, in the same order.
+   *
+   * The UI renders these strings and never formats `effect.stat`, which is how raw keys like
+   * "siphonPerSecond x1.08" used to reach the screen.
+   */
+  effectViews: { label: string; detail: string }[];
 }
 
 export type SpellEffect =

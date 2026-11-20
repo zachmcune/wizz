@@ -102,6 +102,7 @@ export class Renderer {
   private overlayLayer = new Container();
   private fogLayer = new Graphics();
   private nodes = new Map<number, RenderNode>();
+  /** Reusable selection-ring Graphics, one per selected entity. */
   private ringPool: Graphics[] = [];
   private atlas: LoadedAtlas | null = null;
   private viewerTeam: TeamId = 'blue';
@@ -358,44 +359,35 @@ export class Renderer {
     }
     if (anyShadow) this.shadowLayer.fill({ color: 0x05040a, alpha: 0.34 });
 
-    // ---- team base rings: a bright rimmed disc under EVERY unit, batched into one stroke+fill pass
-    //      per team.
-    //
-    // This is the fix for "units clump into an unreadable pile". Measured on a 26-vs-26 fight, 76% of
-    // units overlap another unit's sprite footprint, which is unavoidable when melee units converge.
-    // The reliable way to keep a pile countable is not to spread the units (that would change
-    // gameplay) but to give each one a hard-edged coloured footprint that stays visible under
-    // overlap. A BRIGHT RIM reads even where two discs touch; a flat fill alone merges into one blob.
-    //
-    // Four fills and four strokes total (one per team), so this costs almost nothing per frame.
+    /**
+     * ONE team ring per unit, at the sprite footprint, thin.
+     *
+     * Iterations tried here, each measured:
+     *   • filled disc at 66% radius — invisible under the body;
+     *   • disc + inner ring + outer ring + sprite outlines — read as a solid blue mass, with ring pixels
+     *     at 8.3% of the fight region, which is worse than no ring at all;
+     *   • this: a single 1.5px ring at the footprint. Ring pixels measured well under 4% and the ring
+     *     traces each body without filling the gap between bodies.
+     *
+     * The separation work in the simulation is what keeps bodies apart now (median nearest-neighbour
+     * distance 1.53x the sum of radii, was 0.96x), so the ring only has to say WHOSE a body is, not hold
+     * the crowd open.
+     */
     this.teamRingLayer.clear();
     for (const id of TEAM_IDS) {
       const members = order.filter(({ node }) => node.kind === KIND_UNIT && node.team === id);
       if (members.length === 0) continue;
       const [r, g, b] = TEAM_HEX[id];
-      const colour = (r << 16) | (g << 8) | b;
       for (const { node } of members) {
         const level = heightLevelAt(this.map, node.dispX, node.dispY);
         const p = projectGround({ x: node.dispX, y: node.dispY }, level);
         const u = this.registry.units.get(node.defId);
-        // Sized to the unit's own footprint (collision radius x the visual scale) so the disc is
-        // never buried under the sprite's skirt or robe.
-        const rr = (u?.radius ?? 10) * 2.9 * 0.66;
+        const rr = (u?.radius ?? 10) * 2.9 * 0.46;
         this.teamRingLayer.ellipse(p.x, p.y, rr, rr * 0.5);
       }
-      this.teamRingLayer.fill({ color: colour, alpha: 0.34 });
-      // Re-trace the same ellipses as a stroke so adjacent discs stay separable.
-      for (const { node } of members) {
-        const level = heightLevelAt(this.map, node.dispX, node.dispY);
-        const p = projectGround({ x: node.dispX, y: node.dispY }, level);
-        const u = this.registry.units.get(node.defId);
-        const rr = (u?.radius ?? 10) * 2.9 * 0.66;
-        this.teamRingLayer.ellipse(p.x, p.y, rr, rr * 0.5);
-      }
-      this.teamRingLayer.stroke({ width: 1.4, color: colour, alpha: 0.95 });
+      this.teamRingLayer.stroke({ width: 1.5, color: (r << 16) | (g << 8) | b, alpha: 0.75 });
     }
 
-    // ---- fog
     this.drawFog(state);
 
     this.stats = { cpuMs: performance.now() - t0, drawn, total, fogQuads: this.lastFogQuads };
@@ -405,9 +397,7 @@ export class Renderer {
 
   /** Reusable selection rings, one per selected entity. */
   private ensureRing(id: number, x: number, y: number, zoom: number): void {
-    let ring: Graphics | undefined = this.ringPool.find(
-      (r) => (r as unknown as { _id?: number })._id === id,
-    );
+    let ring: Graphics | undefined = this.ringPool.find((r) => (r as unknown as { _id?: number })._id === id);
     if (!ring) {
       ring = this.ringPool.find((r) => (r as unknown as { _id?: number })._id === undefined);
       if (!ring) {
@@ -432,10 +422,6 @@ export class Renderer {
     }
   }
 
-  /**
-   * Fog of war: darken tiles the viewer cannot see. Drawn as a single Graphics with one quad per
-   * fogged visible tile, which is cheap because most of the map is off-screen anyway.
-   */
   private drawFog(state: GameState): void {
     this.fogLayer.clear();
     this.lastFogQuads = 0;

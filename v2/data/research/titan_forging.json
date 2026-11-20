@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "titan_forging",
+  "name": "Titan Forging",
+  "description": "The forge learns to cast a frame that walks. Siege engines arrive already armoured.",
+  "cost": 1100,
+  "researchTime": 75,
+  "tier": 5,
+  "icon": "shield",
+  "requires": [
+    "golem_core",
+    "smouldering_fury"
+  ],
+  "researchedAt": "golem_forge",
+  "factions": [
+    "arcane",
+    "obsidian"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "siege"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.18
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Siege durability",
+      "detail": "+18% health for siege engines"
+    }
+  ]
+}
