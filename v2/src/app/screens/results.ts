@@ -1,5 +1,6 @@
 // RESULTS — who won, why, and what to do next. Reads the real end state from the session.
 import type { App } from '../app';
+import type { GameState } from '../../sim/types';
 import { button, el, gauge, panel, rule } from '../../ui/kit';
 
 export function mountResults(app: App): { root: HTMLElement; destroy: () => void } {
@@ -29,6 +30,8 @@ export function mountResults(app: App): { root: HTMLElement; destroy: () => void
   // ---- scoreboard
   const board = panel({ title: 'Scoreboard', accent: true });
   const table = el('div', 'results-table');
+
+
   const header = el('div', 'results-row results-row--head');
   header.append(
     el('span', 'eyebrow', 'Player'),
@@ -51,10 +54,12 @@ export function mountResults(app: App): { root: HTMLElement; destroy: () => void
       const nameCell = el('span', 'results-name');
       const bar = el('span', 'results-name__bar');
       bar.style.background = p.color;
-      nameCell.append(bar, el('span', undefined, p.id === ctrl?.me ? `${p.id} (you)` : p.id));
+      // Display name first, raw id never: `player0` is an internal identifier.
+      const displayName = ctrl?.session.config.players.find((lp) => lp.id === p.id)?.name ?? 'Player';
+      nameCell.append(bar, el('span', undefined, displayName));
       row.append(
         nameCell,
-        el('span', 'dim', p.factionId ?? '—'),
+        el('span', 'dim', factionName(app, p.factionId)),
         el('span', 'num', String(units)),
         el('span', 'num dim', String(Math.max(0, units))),
         el('span', `badge${p.team === winnerTeam ? ' badge--ok' : ''}`, p.team === winnerTeam ? 'Winner' : 'Defeated'),
@@ -62,19 +67,36 @@ export function mountResults(app: App): { root: HTMLElement; destroy: () => void
       table.append(row);
     }
   }
-  board.body.append(table);
+  if (st) board.body.append(table);
 
-  // ---- stats
+  // ---- stats. Player-facing terms only: "Ticks simulated" is an engine detail, not something a player
+  // should ever be shown.
   const stats = panel({ title: 'Match stats' });
   const t = ctrl ? ctrl.elapsedSeconds : 0;
+  const mapDef = st ? app.registry.maps.get(st.mapId) : undefined;
   stats.body.append(
     statRow('Duration', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`),
-    statRow('Ticks simulated', String(st?.tick ?? 0)),
-    statRow('Peak entities', String(st ? st.entities.count : 0)),
+    statRow('Total units built', String(unitsSeen(st))),
+    statRow('Structures standing', String(structuresSeen(st))),
     rule(),
-    el('span', 'eyebrow', 'Map'),
-    el('span', 'muted', st?.mapId ?? '—'),
+    statRow('Map', mapDef?.name ?? 'Unknown'),
   );
+
+  /**
+   * Deep-linked without a match (`?screen=results`).
+   *
+   * There is no session to report on, so the screen says so and offers the obvious action rather than
+   * rendering an empty table with zeroed stats — which reads as a bug.
+   */
+  if (!st) {
+    const empty = el('div', 'results-empty');
+    empty.append(
+      el('p', 'muted', 'No match has been played yet in this session.'),
+      button({ variant: 'primary', label: 'Set up a skirmish', icon: 'flag', onClick: () => app.go('lobby') }),
+    );
+    board.body.append(empty);
+    stats.body.append(el('p', 'dim', 'Stats appear after a match.'));
+  }
 
   body.append(board.root, stats.root);
 
@@ -91,6 +113,29 @@ export function mountResults(app: App): { root: HTMLElement; destroy: () => void
   ctrl?.setPaused(true);
 
   return { root, destroy: () => {} };
+}
+
+/** Player-facing faction name from a faction id. */
+function factionName(app: App, id: string | undefined): string {
+  if (!id) return '—';
+  const f = app.registry.factions.get(id) as unknown as { name?: string } | undefined;
+  return f?.name ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Every unit currently alive across all players. */
+function unitsSeen(st: GameState | null): number {
+  if (!st) return 0;
+  let n = 0;
+  for (let i = 0; i < st.entities.count; i++) if (!st.entities.dead[i] && st.entities.kind[i] === 0) n++;
+  return n;
+}
+
+/** Every standing structure across all players. */
+function structuresSeen(st: GameState | null): number {
+  if (!st) return 0;
+  let n = 0;
+  for (let i = 0; i < st.entities.count; i++) if (!st.entities.dead[i] && st.entities.kind[i] === 1) n++;
+  return n;
 }
 
 function statRow(label: string, value: string): HTMLElement {

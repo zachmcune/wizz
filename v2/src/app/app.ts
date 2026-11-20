@@ -97,15 +97,28 @@ export class App {
 
   /** Navigate to a screen. Tears down the previous one and any match it owned. */
   go(screen: ScreenId): void {
-    // Leaving the match tears down the renderer, which frees the WebGL context. Not doing this leaks a
-    // context per match and Chromium starts dropping the oldest ones.
-    const leavingMatch = this.current !== null && this.state.screen === 'match' && screen !== 'pause';
+    /**
+     * Which navigations tear the match down.
+     *
+     * `pause` keeps it (it is an overlay). `results` ALSO keeps it: the results screen reads the final
+     * GameState to build its scoreboard, so destroying the session there left every panel empty and
+     * zeroed — the scoreboard rendered as a bug. The loop is stopped via `setPaused(true)` instead, and
+     * the renderer lives until the player leaves results entirely.
+     *
+     * Every other destination (menu, lobby, settings, gallery, sandbox) frees the WebGL context;
+     * without that a context leaks per match and Chromium starts dropping the oldest ones.
+     */
+    const keepsSession = screen === 'pause' || screen === 'results';
+    const leavingMatch = this.current !== null && this.state.screen === 'match' && !keepsSession;
     if (leavingMatch) this.teardownMatch();
+    if (screen === 'results' && this.match) this.match.stop();
 
+    // Set the destination BEFORE destroying the old screen: the outgoing screen's destroy callback reads
+    // `state.screen` to decide whether the session must survive this transition.
+    this.state.screen = screen;
     this.current?.destroy?.();
     this.current = null;
     this.screenRoot.replaceChildren();
-    this.state.screen = screen;
 
     const s = this.buildScreen(screen);
     this.current = s;
@@ -225,7 +238,16 @@ export class App {
     this.selectFirstOwned();
 
     // Re-bind the router's notion of the current screen to this live one.
-    this.current = { root: host, destroy: () => this.teardownMatch() };
+    // The match screen's teardown must NOT destroy a session that a following screen still needs. When
+    // the router is navigating to `results` or `pause`, `go()` handles the lifecycle; this callback only
+    // frees the renderer when the match screen is genuinely being replaced.
+    this.current = {
+      root: host,
+      destroy: () => {
+        if (this.state.screen === 'results' || this.state.screen === 'pause') return;
+        this.teardownMatch();
+      },
+    };
   }
 
   private liveMatchScreen(): Screen {
@@ -445,7 +467,16 @@ export class App {
     this.screenRoot.append(host);
     this.state.screen = 'match';
     this.match.setPaused(false);
-    this.current = { root: host, destroy: () => this.teardownMatch() };
+    // The match screen's teardown must NOT destroy a session that a following screen still needs. When
+    // the router is navigating to `results` or `pause`, `go()` handles the lifecycle; this callback only
+    // frees the renderer when the match screen is genuinely being replaced.
+    this.current = {
+      root: host,
+      destroy: () => {
+        if (this.state.screen === 'results' || this.state.screen === 'pause') return;
+        this.teardownMatch();
+      },
+    };
     const url = new URL(window.location.href);
     url.searchParams.set('screen', 'match');
     window.history.replaceState(null, '', url.toString());
