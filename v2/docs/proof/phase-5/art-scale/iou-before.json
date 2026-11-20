@@ -1,0 +1,82 @@
+{
+  "crop50": {
+    "worst": {
+      "a": "attunement_spire",
+      "b": "resonance_vault",
+      "v": 0.6768109729961423
+    },
+    "overThreshold": 0,
+    "top": [
+      {
+        "a": "attunement_spire",
+        "b": "resonance_vault",
+        "v": 0.6768109729961423
+      },
+      {
+        "a": "ley_conduit",
+        "b": "resonance_vault",
+        "v": 0.6705298013245033
+      },
+      {
+        "a": "ley_conduit",
+        "b": "storm_conductor",
+        "v": 0.6666666666666666
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.6520562770562771
+      },
+      {
+        "a": "attunement_spire",
+        "b": "ley_conduit",
+        "v": 0.6487671232876713
+      },
+      {
+        "a": "attunement_spire",
+        "b": "frost_spire",
+        "v": 0.6461341033044594
+      }
+    ]
+  },
+  "crop30": {
+    "worst": {
+      "a": "attunement_spire",
+      "b": "frost_spire",
+      "v": 0.7654075546719682
+    },
+    "overThreshold": 10,
+    "top": [
+      {
+        "a": "attunement_spire",
+        "b": "frost_spire",
+        "v": 0.7654075546719682
+      },
+      {
+        "a": "arcane_gate",
+        "b": "arcane_sentry",
+        "v": 0.7597073719752392
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.7592056268100952
+      },
+      {
+        "a": "attunement_spire",
+        "b": "resonance_vault",
+        "v": 0.7564348828275067
+      },
+      {
+        "a": "resonance_vault",
+        "b": "storm_conductor",
+        "v": 0.7454545454545455
+      },
+      {
+        "a": "inferno_beacon",
+        "b": "ley_conduit",
+        "v": 0.7438692098092643
+      }
+    ]
+  }
+}

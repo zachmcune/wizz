@@ -13,7 +13,7 @@
 // (the top third is what the player identifies), and a TEAM MARKER that is never buried.
 import type { Assembly, Part } from './mesh2';
 import { PAL } from './palette2';
-import { part, bbox, tube, plate, sph, cone, cyl, prism, plinth, roundPlinth } from './shapes';
+import { part, bbox, tube, plate, sph, cone, cyl, prism, plinth, roundPlinth, bodyBlock } from './shapes';
 
 // ================================================================================================
 // UNITS
@@ -434,20 +434,27 @@ function arcaneNexus(): Assembly {
  */
 function arcaneGate(): Assembly {
   const parts: Part[] = [...plinth(1, 2.4)];
+  /**
+   * A TALL, WIDE ARCH — its hole is the identifier, so it has to be the dominant feature.
+   *
+   * `arcane_gate` and `arcane_sentry` are both 1x1, so the shared full-footprint base course is proportionally huge on
+   * them and their silhouettes converged to 0.716 IoU. Making the gate's arch substantially taller and wider restores the
+   * gap between the two: one is a doorway you can see through, the other is a solid post.
+   */
   for (const s of [-1, 1] as const) {
-    parts.push(part(bbox(4.6, 8.0, 22.0, 1.2, 0.88), [s * 7.6, 0, 2.4], PAL.violet));
-    parts.push(part(bbox(5.4, 9.0, 2.4, 0.9), [s * 7.6, 0, 23.0], PAL.brass));
-    parts.push(part(prism(3.4, 1.0, 8), [s * 7.6, 0, 12.0], PAL.runeTeam));
+    parts.push(part(bbox(5.2, 8.0, 34.0, 1.2, 0.88), [s * 8.2, 0, 1.3], PAL.violet));
+    parts.push(part(bbox(6.0, 9.0, 2.6, 0.9), [s * 8.2, 0, 35.3], PAL.brass));
+    parts.push(part(prism(3.6, 1.0, 8), [s * 8.2, 0, 14.0], PAL.runeTeam));
   }
-  // the arch, built from stepped segments so the hole is real
+  // The arch span, built from stepped segments so the hole is real.
   const SEG = 7;
   for (let i = 0; i < SEG; i++) {
     const a = Math.PI * (i / (SEG - 1));
-    parts.push(part(bbox(4.4, 6.0, 3.2, 0.8), [Math.cos(a) * 7.6, 0, 25.0 + Math.sin(a) * 5.4], PAL.violet, { rotZ: -(a - Math.PI / 2) }));
+    parts.push(part(bbox(5.0, 6.0, 3.6, 0.8), [Math.cos(a) * 8.2, 0, 37.0 + Math.sin(a) * 6.2], PAL.violet, { rotZ: -(a - Math.PI / 2) }));
   }
   // the portal surface, INSIDE the arch
-  parts.push(part(plate(9.6, 9.6, 15.0, 1.0), [0, -0.6, 3.4], PAL.aether));
-  parts.push(part(sph(3.0, 10), [0, -1.4, 11.0], PAL.crystalHot, { scale: { x: 1.4, y: 1, z: 1.5 } }));
+  parts.push(part(plate(11.0, 11.0, 26.0, 1.0), [0, -0.6, 2.4], PAL.aether));
+  parts.push(part(sph(3.4, 10), [0, -1.4, 16.0], PAL.crystalHot, { scale: { x: 1.4, y: 1, z: 1.5 } }));
   return { parts };
 }
 
@@ -531,14 +538,14 @@ function attunementSpire(): Assembly {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     parts.push(
       part(
-        plate(15.0, 6.0, 20.0, 1.4),
-        [Math.cos(a) * 12.0, Math.sin(a) * 12.0, 4.0],
+        plate(24.0, 7.0, 26.0, 1.6),
+        [Math.cos(a) * 16.0, Math.sin(a) * 16.0, 4.0],
         PAL.violetDeep,
         { rotZ: a + Math.PI / 2, rotX: -0.42 },
       ),
     );
     // A wide rim at the top of each vane, which is what makes the funnel read.
-    parts.push(part(cyl(3.0, 2.4, 2.6, 6), [Math.cos(a) * 17.0, Math.sin(a) * 17.0, 21.0], PAL.brass, { rotZ: a }));
+    parts.push(part(cyl(4.4, 3.4, 3.4, 6), [Math.cos(a) * 23.0, Math.sin(a) * 23.0, 26.0], PAL.brass, { rotZ: a }));
     parts.push(part(cyl(1.0, 0.7, 7.0, 5), [Math.cos(a) * 6.0, Math.sin(a) * 6.0, 3.0], PAL.brass, { rotZ: Math.cos(a) * 0.4, rotX: Math.sin(a) * 0.4 }));
   }
   // Tapered pylon.
@@ -867,8 +874,18 @@ function summoningCircle(): Assembly {
    * over half its width, which is enough to break the flat profile), uneven in height and lean so the ring reads as
    * ancient rather than machined, and the rune floor glows between them.
    */
-  parts.push(part(bbox(64.0, 64.0, 2.2, 1.6, 0.97), [0, 0, 0], PAL.rockDeep));
-  parts.push(part(cyl(30.0, 29.0, 1.2, 20), [0, 0, 2.2], PAL.rock));
+  parts.push(part(bbox(64.0, 64.0, 1.3, 1.2, 0.97), [0, 0, 0], PAL.rockDeep));
+  /**
+   * A RAISED STONE DRUM the ritual is performed on — 12 units tall, nearly the full footprint.
+   *
+   * The circle measured 60% structure share with a 1.2-unit dais; the rune floor and standing stones were the only
+   * building there was, floating over stone. The drum gives it mass and lifts the ring to where the camera sees it.
+   */
+  parts.push(part(cyl(31.2, 29.5, 26.0, 20), [0, 0, 1.3], PAL.rock));
+  parts.push(part(cyl(28.0, 27.0, 1.8, 20), [0, 0, 27.0], PAL.rockLit));
+  // Team band high on the drum, above the ground-contact band the footing gate measures.
+  parts.push(part(cyl(30.2, 29.6, 4.2, 20), [0, 0, 21.0], PAL.runeTeam));
+  parts.push(part(cyl(29.4, 29.0, 3.4, 20), [0, 0, 12.0], PAL.trimTeam));
   // Glowing rune floor: two rings and a hot core, so the centre reads as active even at phone zoom.
   parts.push(part(cyl(25.0, 25.0, 0.4, 20), [0, 0, 3.4], PAL.emberDeep));
   parts.push(part(cyl(18.0, 18.0, 0.35, 20), [0, 0, 3.5], PAL.emberCore));
@@ -881,18 +898,25 @@ function summoningCircle(): Assembly {
    * units) so the top edge is a broken skyline rather than a rim. A lit sigil caps each one, which is what carries
    * the "ritual" read at small sizes.
    */
+  /**
+   * The stones stand ON the raised drum, so they must be tall enough to clear it and still form the crown.
+   *
+   * With an 18-unit drum the previous 26-34 unit stones left only a few units proud of it, and the building's silhouette
+   * became "a cylinder" — it then confused itself with the Inferno Beacon and the Thorn Grove at 0.74-0.81 IoU. Raising
+   * the stones restores the ring of standing stones as the top half of the shape.
+   */
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    const h = 26 + ((i * 7) % 5) * 2.0;
+    const h = 34 + ((i * 7) % 5) * 3.0;
     const lean = (((i % 3) - 1) * 0.05);
-    const x = Math.cos(a) * 23.0;
-    const y = Math.sin(a) * 23.0;
+    const x = Math.cos(a) * 24.0;
+    const y = Math.sin(a) * 24.0;
     parts.push(
       part(bbox(7.6, 5.0, h, 0.8, 0.72), [x, y, 3.4], PAL.ironOld, { rotZ: a + Math.PI / 2, rotX: lean }),
     );
     // Sigil notch near the top of each stone.
-    parts.push(part(bbox(3.6, 1.6, 3.0, 0.5), [x, y, 3.4 + h * 0.82], PAL.emberCore, { rotZ: a + Math.PI / 2 }));
-    parts.push(part(prism(1.5, 2.2, 6), [x, y, 3.4 + h + 1.0], PAL.crystalHot));
+    parts.push(part(bbox(3.6, 1.6, 3.0, 0.5), [x, y, 27.0 + h * 0.82], PAL.emberCore, { rotZ: a + Math.PI / 2 }));
+    parts.push(part(prism(1.5, 2.2, 6), [x, y, 27.0 + h + 1.0], PAL.crystalHot));
   }
   // Central brazier column: the tallest element, so the building has one clear peak.
   parts.push(part(cyl(6.4, 4.4, 12.0, 8), [0, 0, 3.4], PAL.stoneDeep));
@@ -951,25 +975,39 @@ function obsidianBastion(): Assembly {
  */
 function infernoBeacon(): Assembly {
   const parts: Part[] = [...plinth(2, 2.6)];
-  parts.push(part(cyl(11.0, 9.0, 7.0, 10), [0, 0, 2.6], PAL.ironOld));
-  parts.push(part(prism(11.6, 1.2, 10), [0, 0, 9.0], PAL.steel));
-  // fire inside the cage
-  parts.push(part(sph(5.4, 12), [0, 0, 19.0], PAL.emberCore));
-  parts.push(part(cone(3.4, 9.0, 7), [0, 0, 24.0], PAL.emberCore));
-  // vertical iron bars, open between them
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    parts.push(part(cyl(0.7, 0.6, 18.0, 5), [Math.cos(a) * 7.4, Math.sin(a) * 7.4, 10.0], PAL.steelDeep));
+  /**
+   * INFERNO BEACON — SILHOUETTE: a tall IRON BRAZIER CAGE, nearly as wide as its footprint, with fire burning up
+   * through it.
+   *
+   * Zachary named this as one of the three worst: at head 2177768 the cage was r=11 in a 64-unit footprint (34% of the
+   * width) on a 4-unit stone slab, so 44% of the sprite was foundation and the "building" was a small pot on a plate.
+   *
+   * The cage now spans r=26 of the footprint and stands 30 units tall, so the brazier IS the building. The bars, rings
+   * and roof cone are kept — that shape is its identity — but scaled up to fill the tile.
+   */
+  // Iron bowl, nearly full width.
+  parts.push(part(cyl(20.0, 17.0, 9.0, 14), [0, 0, 1.3], PAL.ironOld));
+  parts.push(part(prism(27.0, 1.6, 14), [0, 0, 10.3], PAL.steel));
+  /**
+   * THE CAGE — bars all the way around at full width, so the silhouette is a wide open lattice rather than a solid
+   * drum. The gaps are what let the fire read.
+   */
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    parts.push(part(cyl(1.2, 1.0, 40.0, 5), [Math.cos(a) * 18.0, Math.sin(a) * 18.0, 11.0], PAL.steelDeep));
   }
-  for (const z of [13.0, 20.0, 27.0]) {
-    parts.push(part(cyl(7.8, 7.8, 0.8, 12), [0, 0, z], PAL.steelDeep));
+  for (const z of [16.0, 24.0, 32.0]) {
+    parts.push(part(cyl(19.0, 19.0, 1.2, 14), [0, 0, z], PAL.steelDeep));
   }
-  parts.push(part(cone(8.4, 6.0, 10), [0, 0, 27.6], PAL.ironOld));
-  // TEAM MARKER: a wide lit ring at the cage shoulder plus a band on the roof cone, both visible from
-  // the game camera.
-  parts.push(part(cyl(8.4, 8.4, 2.0, 12), [0, 0, 27.0], PAL.trimTeam));
-  parts.push(part(cyl(6.6, 5.0, 1.8, 10), [0, 0, 31.4], PAL.runeTeam));
-  parts.push(part(cyl(11.4, 11.4, 1.0, 10), [0, 0, 5.4], PAL.runeTeam));
+  // Fire column rising through the cage.
+  parts.push(part(sph(11.0, 14), [0, 0, 22.0], PAL.emberCore));
+  parts.push(part(cone(8.4, 30.0, 9), [0, 0, 34.0], PAL.emberCore));
+  parts.push(part(cone(4.0, 18.0, 7), [0, 0, 52.0], PAL.crystalHot));
+  // Roof cone, capped at the top of the cage.
+  parts.push(part(cone(20.0, 9.0, 12), [0, 0, 46.0], PAL.ironOld));
+  // Team rings at the bowl and the cage shoulder.
+  parts.push(part(cyl(20.6, 20.6, 2.6, 14), [0, 0, 8.0], PAL.runeTeam));
+  parts.push(part(cyl(20.2, 18.0, 2.4, 12), [0, 0, 42.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -1037,8 +1075,8 @@ function stormConductor(): Assembly {
   parts.push(part(sph(3.6, 12), [0, 0, 36.0], PAL.crystalHot));
   parts.push(part(prism(2.2, 5.0, 6), [0, 0, 40.0], PAL.aether));
   // Team bands on two of the coil rings, where they catch the light.
-  parts.push(part(cyl(8.4, 8.4, 1.8, 14), [0, 0, 9.0], PAL.runeTeam));
-  parts.push(part(cyl(12.4, 12.4, 1.6, 14), [0, 0, 24.0], PAL.trimTeam));
+  parts.push(part(cyl(9.6, 9.6, 3.6, 14), [0, 0, 10.0], PAL.runeTeam));
+  parts.push(part(cyl(13.6, 13.6, 3.2, 14), [0, 0, 24.0], PAL.trimTeam));
   return { parts };
 }
 
@@ -1119,11 +1157,11 @@ function golemForge(): Assembly {
    * TWO LOW WINGS flanking the chimney, which makes the profile a symmetric T rather than the cannon's asymmetric
    * L. That flanking pair is the shape that finally separated this building from the Celestial Cannon.
    */
+  // Two flanking buttress wings, which read as the furnace's mass at phone zoom.
   for (const sx of [-1, 1] as const) {
-    parts.push(part(bbox(20, 18, 15.0, 2.2, 0.94), [sx * 20.0, 0, 2.6], PAL.ironOld));
-    parts.push(part(bbox(21, 19, 2.0, 0.9, 0.98), [sx * 20.0, 0, 17.6], PAL.steelDeep));
-    parts.push(part(bbox(19, 17, 1.6, 0.8, 0.9), [sx * 20.0, 0, 19.6], PAL.steel));
-    parts.push(part(bbox(21.0, 19.0, 2.0, 0.6), [sx * 20.0, 0, 11.4], PAL.runeTeam));
+    parts.push(part(bbox(18, 30, 22.0, 2.2, 0.92), [sx * 30.0, 0, 1.3], PAL.ironOld));
+    parts.push(part(bbox(19, 31, 2.2, 0.9, 0.98), [sx * 30.0, 0, 23.3], PAL.steelDeep));
+    parts.push(part(bbox(20.0, 32.0, 2.2, 0.6), [sx * 30.0, 0, 12.0], PAL.runeTeam));
   }
 
   /**
@@ -1195,10 +1233,80 @@ export const EXTRA_BUILDINGS: Record<string, Assembly> = {
  * rather than domed.
  */
 function thornGrove(): Assembly {
-  const parts: Part[] = [];
-  parts.push(part(bbox(64.0, 64.0, 1.8, 2.0, 0.98), [0, 0, 0], PAL.rockDeep));
-  parts.push(part(bbox(56.0, 56.0, 0.5, 1.4, 0.99), [0, 0, 1.8], PAL.trimTeam));
-  parts.push(part(cyl(28.0, 27.0, 1.4, 16), [0, 0, 2.1], PAL.rockMoss));
+  /**
+   * Same footing contract as every other building: `plinth()` supplies the thin lip AND the full-footprint base course,
+   * so the grove meets its tile edges and the alignment gate stays meaningful. Its own organic mass goes on top.
+   */
+  const parts: Part[] = [...plinth(2, 2.6)];
+  /**
+   * A THICK BED OF MATTED VINES across the whole footprint — the grove's mass, not a pad.
+   *
+   * Measured at 53% structure share before this: the mound was 1.4 units of moss on top of a 1.8-unit stone slab, so
+   * two thirds of what the player saw was foundation. The bed is now 10 units of layered growth covering 56 of the 64
+   * units of footprint, and the spikes erupt from it.
+   */
+  /**
+   * A TALL THICKET, built as a real mass rather than a low mound.
+   *
+   * The grove kept measuring 62% structure share because its whole body was 16 units against a 64-unit footprint — a
+   * wide low hump. It is now a 34-unit thicket of stacked foliage with the same footprint, so the building occupies the
+   * frame instead of the pad. The organic read is preserved by the irregular sphere stacking and the thorn crown.
+   */
+  /**
+   * The thicket sits ON TOP of the base course (which tops out at z=8), starting at z=9.
+   *
+   * `bodyBlock` starts at the foundation top, which put the foliage at the same height as the stone base — so the
+   * alignment gate, which measures the lowest geometry, was measuring leaves instead of the footing and reported the base
+   * as 37px wide against a 64px diamond.
+   */
+  parts.push(...bodyBlock(2, { height: 16, inset: 2.0, mat: PAL.leafDeep, lit: PAL.leaf, levels: 3 }));
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    const rr = 20.0 + (i % 3) * 3.0;
+    parts.push(part(sph(6.8, 10), [Math.cos(a) * rr, Math.sin(a) * rr, 10.0 + (i % 3) * 3.0], PAL.leafDeep, { scale: { x: 1.2, y: 1.2, z: 1.0 } }));
+    parts.push(part(sph(5.4, 10), [Math.cos(a) * (rr - 5), Math.sin(a) * (rr - 5), 22.0 + (i % 4) * 3.0], PAL.leaf, { scale: { x: 1.1, y: 1.1, z: 0.9 } }));
+  }
+  /**
+   * AN ASYMMETRIC CANOPY, not a symmetrical stack.
+   *
+   * With a tidy cylindrical crown the grove measured 0.717 IoU against the Storm Conductor — both were a vertical stack
+   * wider at the base, and the upper-half metric could not separate them. A canopy built from unequal lobes leaning one
+   * way reads as a plant, and no machine in the roster is asymmetric about its own axis.
+   */
+  for (const [ox, oy, oz, r] of [
+    [-5.0, 2.0, 24.0, 13.0],
+    [5.5, -3.0, 27.0, 11.0],
+    [-1.0, -6.0, 30.0, 9.5],
+    [7.0, 4.0, 32.0, 8.0],
+    [-8.0, -1.0, 33.0, 7.0],
+  ] as const) {
+    parts.push(part(sph(r, 12), [ox, oy, oz], PAL.leafDeep, { scale: { x: 1.15, y: 1.05, z: 0.85 } }));
+  }
+  // One tall leaning leader shoot, which breaks the symmetrical outline decisively.
+  parts.push(part(cone(5.0, 22.0, 7), [6.0, -2.0, 34.0], PAL.leaf, { rotZ: -0.22, rotX: 0.1 }));
+  parts.push(part(cyl(2.0, 1.4, 3.0, 6), [8.0, -2.4, 54.0], PAL.rockMoss));
+  // Team colour high on the thicket, clear of the ground-contact band.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    parts.push(part(sph(3.6, 8), [Math.cos(a) * 22.0, Math.sin(a) * 22.0, 30.0], PAL.runeTeam));
+  }
+  parts.push(part(cyl(25.0, 24.0, 3.6, 14), [0, 0, 25.0], PAL.trimTeam));
+  parts.push(part(cyl(17.0, 16.0, 3.0, 14), [0, 0, 35.0], PAL.runeTeam));
+  // A crown of thorns across the top of the bed, so the mass has texture where the camera sees it.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const rr = 20.0 + (i % 3) * 3.0;
+    parts.push(
+      part(cone(2.6, 9.0 + (i % 4) * 2.0, 5), [Math.cos(a) * rr, Math.sin(a) * rr, 22.5], PAL.boneDeep, {
+        rotZ: Math.cos(a) * 0.4,
+        rotX: Math.sin(a) * 0.4,
+      }),
+    );
+  }
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    parts.push(part(sph(6.4, 10), [Math.cos(a) * 18.0, Math.sin(a) * 18.0, 5.0], PAL.leafDeep, { scale: { x: 1.2, y: 1.2, z: 0.9 } }));
+  }
 
   /**
    * THE ROOT SPIKES — the mass of the building.

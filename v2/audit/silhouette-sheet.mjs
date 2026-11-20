@@ -27,7 +27,16 @@ for(let i=0;i<ids.length;i++){
     const si=((f.y+y)*info.width+(f.x+x))*info.channels;
     const di=(y*f.w+x)*4;
     const a=data[si+3];
-    if(a>160){ buf[di]=240;buf[di+1]=238;buf[di+2]=232;buf[di+3]=255; }
+    /**
+     * BODY ONLY — exclude the contact shadow.
+     *
+     * The shadow is near-black but reaches alpha 235 at its core (the outline pass darkens its edge), so an alpha-only
+     * test rendered it as a solid white diamond underneath every building. That made the proof sheet show a huge flat
+     * "pad" that does not exist in the game, and it is what made this sheet look like the buildings were still sitting
+     * on slabs long after they were not. Brightness separates them cleanly.
+     */
+    const bright = data[si]+data[si+1]+data[si+2] >= 110;
+    if(a>160 && bright){ buf[di]=240;buf[di+1]=238;buf[di+2]=232;buf[di+3]=255; }
   }
   const cell=await sharp(buf,{raw:{width:f.w,height:f.h,channels:4}})
     .resize(CELL-16,CELL-16,{fit:'contain',background:{r:11,g:10,b:15,alpha:1}}).png().toBuffer();

@@ -120,11 +120,18 @@ describe('team colour is a trim on the foundation, not a slab', () => {
     const src = readFileSync(join(ROOT, 'art/shapes.ts'), 'utf8');
     const plinthStart = src.indexOf('export function plinth(');
     const plinthEnd = src.indexOf('export function roundPlinth(');
-    const roundEnd = src.indexOf('/**\n * A splayed tripod');
+    const roundEnd = src.indexOf('export function bodyBlock(');
     expect(plinthStart, 'plinth() not found').toBeGreaterThan(-1);
     expect(plinthEnd, 'roundPlinth() not found').toBeGreaterThan(-1);
     expect(roundEnd, 'end of roundPlinth() not found').toBeGreaterThan(-1);
 
+    /**
+     * Only the two FOUNDATION helpers are inspected here.
+     *
+     * `bodyBlock` deliberately carries a team band: it is the building's own mass, not the ground it stands on, and a
+     * marker there is exactly where ownership should read from. The rule being enforced is narrower — the foundation
+     * course must stay neutral stone.
+     */
     for (const [name, body] of [
       ['plinth', src.slice(plinthStart, plinthEnd)],
       ['roundPlinth', src.slice(plinthEnd, roundEnd)],
@@ -137,8 +144,18 @@ describe('team colour is a trim on the foundation, not a slab', () => {
       for (const line of fullFootprintLines) {
         expect(line, `${name}: the full-footprint course must be stone, not team-tinted`).not.toMatch(/Team/);
       }
-      // And there must BE a team rim, or the fix would have traded one bug for another.
-      expect(body, `${name}: the team rim was removed entirely`).toMatch(/PAL\.(trimTeam|runeTeam)/);
+      /**
+       * THE FOUNDATION ITSELF CARRIES NO TEAM COLOUR.
+       *
+       * This used to require a team rim somewhere in the helper. That requirement is now wrong: the ground-contact
+       * band must be neutral stone, and the foundation course grew tall enough (8 units) that any band on it fell
+       * inside that band on shorter buildings. Team markers live on the building's own collars, banners and rune
+       * rings, which is where a player reads ownership anyway.
+       *
+       * What must still hold — and is still asserted above — is that the full-footprint course is stone, and that the
+       * roster test finds >=3% visible team colour on every building.
+       */
+      expect(body, `${name}: the foundation must not be team-tinted`).not.toMatch(/PAL\.(trimTeam|runeTeam)/);
     }
   });
 });

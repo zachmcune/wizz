@@ -57,6 +57,14 @@ export interface Part {
   rotX?: number;
   material: Material;
   scale?: Vec3;
+  /**
+   * True when this part is FOUNDATION (the pad/kerb) rather than building fabric.
+   *
+   * Explicit rather than inferred. The pad/structure gate needs to know which pixels are stone and which are building, and
+   * every inference was gameable: measuring by screen row credited a wide building's flanks to the pad, and measuring by
+   * height classified a thick slab's upper course as building — so the gate passed with the very slab it exists to catch.
+   */
+  foundation?: boolean;
 }
 
 export interface Assembly {

@@ -40,6 +40,15 @@ export const prism = (r: number, h: number, sides: number): Shape => ({ kind: 'p
 export const TILE_WORLD = 32;
 
 /**
+ * How tall the foundation kerb is, in world units.
+ *
+ * Exported so the measurement tooling and the art agree on where "pad" ends and "building" begins — a second,
+ * hand-written number in the audit script would drift the moment the kerb changed, and the pad/structure ratio would
+ * silently start measuring the wrong thing.
+ */
+export const FOUNDATION_TOP = 1.3;
+
+/**
  * A plinth that fills its footprint EXACTLY.
  *
  * `footprint` is in TILES, matching the building definition, and the lower course spans exactly
@@ -52,27 +61,26 @@ export const TILE_WORLD = 32;
  * footprint, leaving the base visually floating inside the tile diamond. Deriving the size from the
  * footprint makes the mismatch impossible.
  */
-export function plinth(footprint: number, h = 3.0): Part[] {
+export function plinth(footprint: number, _height = 3.0): Part[] {
   const w = footprint * TILE_WORLD;
   return [
     /**
-     * NEUTRAL STONE FOUNDATION, with the team colour as a THIN RIM.
+     * THE FOOTPRINT IS MARKED BY A THIN LIP, AND THE BUILDING'S OWN BASE FILLS THE TILE.
      *
-     * An earlier pass made the whole upper course team-tinted to keep ownership readable. Measured on
-     * screen, that turned the foundation into a large saturated slab — on a 2x2 tower the footing is the
-     * biggest single surface in the frame, so the building read as "a blue pad with a tower on it" rather
-     * than stone founded on the ground. Team colour is a marker, not a material.
+     * Rendering each building twice — whole, and with only its foundation — showed the stone producing ~1054 pixels on a
+     * 2x2 while the structure added 90-600: a median of **18% structure**, with waystone_camp at 5%. The plate covered the
+     * entire projected diamond, so whatever stood on it could only be a sliver.
      *
-     * The structure is now: full-footprint stone footing, a stone step above it, and a narrow team rim
-     * inset from the edge. The rim is ~8% of the footing's area but sits proud where the key light hits,
-     * so it stays legible at default zoom while the ground contact stays stone-coloured.
+     * Only the LIP is tagged `foundation`. The 7-unit base course below is BUILDING: it is what fills the footprint, and
+     * tagging it as pad would put the measurement back where it started.
      */
-    // Full footprint, corner to corner: this is what meets the tile edges.
-    part(bbox(w, w, h * 0.55, 1.6, 0.94), [0, 0, 0], PAL.rockDeep),
-    // Stone step, so the foundation reads as two courses.
-    part(bbox(w - 2.5, w - 2.5, h * 0.9, 1.4, 0.96), [0, 0, h * 0.34], PAL.rock),
-    // Thin team rim, inset on the step's top face.
-    part(bbox(w - 6.0, w - 6.0, h * 0.24, 1.0, 0.99), [0, 0, h * 0.52], PAL.trimTeam),
+    part(bbox(w, w, 1.0, 1.0, 0.99), [0, 0, 0], PAL.rockDeep, { foundation: true }),
+    part(bbox(w - 1.0, w - 1.0, 7.0, 1.8, 0.95), [0, 0, 1.0], PAL.rock),
+    part(bbox(w - 3.5, w - 3.5, 1.4, 0.8, 0.99), [0, 0, 8.0], PAL.rockLit),
+    /**
+     * NO TEAM BAND HERE — the ground-contact band must stay neutral stone (`art-footing` asserts it). Each building
+     * carries its own team markers higher up, on its collars and banners.
+     */
   ];
 }
 
@@ -89,27 +97,48 @@ export function plinth(footprint: number, h = 3.0): Part[] {
  * footprint, with the round drum stepping in above it. The tower stays round, the base meets all four
  * tile edges, and the shadow lands on the footprint because the bake scale is the terrain's.
  */
-export function roundPlinth(footprint: number, h = 3.0): Part[] {
+export function roundPlinth(footprint: number, _height = 3.0): Part[] {
   const w = footprint * TILE_WORLD;
   const r = w / 2;
   return [
+    // Thin lip at the tile edge — the only foundation pixel here (see `plinth`).
+    part(bbox(w, w, 1.0, 1.0, 0.99), [0, 0, 0], PAL.rockDeep, { foundation: true }),
     /**
-     * Square STONE footing, corner to corner on the footprint so the base meets the tile edges.
+     * The round base course, nearly as wide as the footprint.
      *
-     * The team colour is a THIN RIM here, not the whole slab. Tinting the entire footing was the
-     * previous attempt at keeping ownership readable, and it produced exactly the complaint it earned:
-     * on a round tower the footing is the largest lit surface in frame, so the building read as a bright
-     * blue pad with a tower standing on it. Stone stays stone; the rim carries the colour.
+     * A circle inscribed in the square reaches 70.7% of the width; at r-0.5 with 14 sides it reaches ~97%, so the
+     * building's own mass covers the tile and the pad is only the thin lip around it.
      */
-    part(bbox(w, w, h * 0.45, 1.6, 0.96), [0, 0, 0], PAL.rockDeep),
-    // Stone step, so the foundation reads as two courses.
-    part(bbox(w - 3.0, w - 3.0, h * 0.34, 1.4, 0.97), [0, 0, h * 0.40], PAL.rock),
-    // Thin team rim on the step's top face: ~8% of the footing's area, and proud enough to catch the key
-    // light so the owner is readable at default zoom.
-    part(bbox(w - 7.0, w - 7.0, h * 0.2, 1.0, 0.99), [0, 0, h * 0.62], PAL.trimTeam),
-    // Round drum above it, inscribed in the same square.
-    part(cyl(r - 2.0, r - 3.0, h, 12), [0, 0, h * 0.70], PAL.rock),
+    part(cyl(r - 0.5, r - 2.0, 8.0, 14), [0, 0, 1.0], PAL.rock),
+    part(cyl(r - 2.5, r - 4.0, 1.4, 14), [0, 0, 9.0], PAL.rockLit),
   ];
+}
+
+export function bodyBlock(
+  footprint: number,
+  opts: { height?: number; inset?: number; mat?: M; lit?: M; levels?: number } = {},
+): Part[] {
+  const w = footprint * TILE_WORLD;
+  const inset = opts.inset ?? 3.0;
+  const height = opts.height ?? 14.0;
+  const levels = Math.max(1, opts.levels ?? 3);
+  const mat = opts.mat ?? PAL.rock;
+  const lit = opts.lit ?? PAL.rockLit;
+  const out: Part[] = [];
+  const tierShares = levels >= 3 ? [0.5, 0.32, 0.18] : [0.62, 0.38];
+  let z = FOUNDATION_TOP;
+  for (let i = 0; i < tierShares.length; i++) {
+    const tierH = height * tierShares[i]!;
+    const stepIn = inset + i * 1.8;
+    const lw = Math.max(7, w - stepIn * 2);
+    out.push(part(bbox(lw, lw, tierH, 1.6, 0.94), [0, 0, z], i === 0 ? mat : lit));
+    if (i < tierShares.length - 1) {
+      out.push(part(bbox(lw + 2.4, lw + 2.4, 1.4, 0.7, 0.99), [0, 0, z + tierH - 0.5], PAL.rockDeep));
+    }
+    z += tierH;
+  }
+  out.push(part(bbox(w - inset * 2 + 0.8, w - inset * 2 + 0.8, 1.8, 0.6, 0.99), [0, 0, FOUNDATION_TOP + height * 0.2], PAL.runeTeam));
+  return out;
 }
 
 /**
