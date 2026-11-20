@@ -258,11 +258,14 @@ pixels: every building's footprint centre offset from its diamond centre is **0.
 
 **37 screenshots, 0 purple in chrome, 0 page errors.**
 
-### CI on head `996e443`
+### CI on head `06c7dee`
 
-All five checks green: `quality`, `e2e`, `slow`, `Cloudflare Pages`, and `v2`.
-The v2 job ran **420 tests in 22 files** plus the isolated perf gate (3 tests), then the production
-build and the deployed-entry assertions.
+All five checks green: `quality` (1m46s), `e2e` (2m32s), `slow` (2m03s), `Cloudflare Pages`, and `v2`
+(19m09s).
+
+The v2 job ran **532 tests in 23 files** plus the isolated perf gate (3 tests) — **535 total**, matching
+the local run — then the production build and the deployed-entry assertions. `tests/building-alignment.test.ts`
+ran with **112 tests** and passed. The `quality` job ran the v1 suite: **64 files** green.
 
 ---
 
