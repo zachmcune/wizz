@@ -16,7 +16,7 @@
 
 import type { Assembly, Part } from './mesh2';
 import { PAL } from './palette2';
-import { part, bbox, tube, cap, plate, sph, cone, cyl, prism, plinth } from './shapes';
+import { part, bbox, tube, cap, plate, sph, cone, cyl, prism, plinth, hall, towerBody } from './shapes';
 
 // ================================================================================================
 // WISP — a creature of light. No limbs; the read is a bright core inside a tapered teardrop with a
@@ -404,51 +404,41 @@ export const PILOT_UNITS: Record<string, Assembly> = {
 // ================================================================================================
 function sanctum(): Assembly {
   const parts: Part[] = [...plinth(3, 3.4)];
-  // base block
-  parts.push(part(bbox(40, 40, 10, 2.4, 0.9), [0, 0, 3.0], PAL.rock));
-  parts.push(part(bbox(42, 42, 2.0, 0.8, 0.98), [0, 0, 12.4], PAL.rockLit));
-  // tier 1
-  parts.push(part(cyl(15, 14, 13, 14), [0, 0, 14.4], PAL.violet));
-  parts.push(part(prism(14.2, 2.2, 14), [0, 0, 20.0], PAL.crystalHot));
-  parts.push(part(cyl(16, 15, 1.6, 14), [0, 0, 27.2], PAL.rockLit));
-  // tier 2
-  parts.push(part(cyl(11, 10, 13, 12), [0, 0, 28.8], PAL.violetLit));
-  parts.push(part(prism(10.2, 2.0, 12), [0, 0, 34.4], PAL.crystalHot));
-  parts.push(part(cyl(12, 11, 1.4, 12), [0, 0, 41.2], PAL.rockLit));
-  // tier 3 — crown drum
-  parts.push(part(cyl(7.8, 7.0, 12, 10), [0, 0, 42.6], PAL.violet));
-  parts.push(part(prism(7.2, 1.8, 10), [0, 0, 48.0], PAL.aether));
-  // four buttress fins up the corners of the base block
-  for (const [sx, sy] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ] as const) {
-    parts.push(
-      part(bbox(3.2, 5.2, 26.0, 0.9, 0.55), [sx * 17.4, sy * 17.4, 3.2], PAL.rockLit, { rotY: 0 }),
-    );
-    // brass cap on each fin
-    parts.push(part(bbox(3.8, 5.8, 2.2, 0.7), [sx * 17.4, sy * 17.4, 29.0], PAL.brass));
+  /**
+   * THE SANCTUM — the main base. A great HALL filling the tile with a central tower rising from its roof.
+   *
+   * Zachary: "the VERTICAL mass has to fill the footprint... walls/body should rise from at or near the footprint edge."
+   * At aa5c5f6 only **29%** of its pixels were above the ground diamond and **58%** was visible flat base: the main
+   * building of the game looked like a plate with a small tower on it.
+   *
+   * The hall now rises from the tile edge, and the tower stands on its roof — so the base is a building you can see the
+   * walls of, not a pad.
+   */
+  parts.push(...hall(3, { height: 32, wall: 4.0, mat: PAL.rockLit, roof: PAL.violetDeep }));
+  /**
+   * Buttressed flanks, so the walls have vertical relief rather than reading as a smooth box.
+   */
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    parts.push(part(bbox(10.0, 10.0, 30.0, 1.6, 0.86), [sx * 34.0, sy * 34.0, 2.0], PAL.rock));
+    parts.push(part(cone(7.0, 9.0, 4), [sx * 34.0, sy * 34.0, 33.0], PAL.violetDeep, { rotZ: Math.PI / 4 }));
   }
-  // crown: obelisk + orb
-  parts.push(part(prism(4.6, 17, 6), [0, 0, 51.0], PAL.rockLit));
-  parts.push(part(sph(6.4, 12), [0, 0, 71.4], PAL.crystalHot));
-  parts.push(part(prism(9.4, 1.2, 10), [0, 0, 63.0], PAL.aether));
-  // entrance: a lit arch recessed into the front face (the base is 40 deep, so its face is at y=-20;
-  // the arch must sit ON that plane, not beyond it)
-  parts.push(part(bbox(13.0, 1.6, 12.0, 0.9), [0, -19.6, 3.4], PAL.rockLit));
-  parts.push(part(bbox(9.6, 1.0, 9.0, 0.5), [0, -20.2, 5.2], PAL.crystalHot));
-  // banners on the two front corner buttresses, hung flat against the fin faces so they read as
-  // cloth attached to the building rather than slabs floating beside it
-  for (const s of [-1, 1] as const) {
-    parts.push(part(cyl(0.55, 0.55, 15, 6), [s * 17.4, -2.9, 24.0], PAL.wood));
-    // `plate` already builds a vertically-standing banner (z: 0..h). The previous `rotX: PI/2` laid
-    // the cloth flat, which read as a panel floating beside the building.
-    parts.push(part(plate(1.0, 1.0, 8.4, 7.0), [s * 17.4, -4.4, 15.0], PAL.bannerTeam));
+  /**
+   * THE CENTRAL TOWER — three stepped drums, the tallest thing in the base.
+   */
+  parts.push(part(cyl(20.0, 18.0, 26.0, 14), [0, 0, 34.0], PAL.violet));
+  parts.push(part(cyl(16.0, 14.0, 22.0, 12), [0, 0, 60.0], PAL.violetLit));
+  parts.push(part(cyl(11.0, 9.0, 16.0, 12), [0, 0, 82.0], PAL.violet));
+  for (const z of [36.0, 60.0, 82.0]) {
+    parts.push(part(prism(21.0, 2.4, 14), [0, 0, z], PAL.brass));
+    parts.push(part(cyl(20.0, 18.0, 2.6, 14), [0, 0, z + 2.0], PAL.runeTeam));
   }
+  // The lantern at the very top — the Sanctum's signature.
+  parts.push(part(sph(9.0, 16), [0, 0, 102.0], PAL.crystalHot));
+  parts.push(part(cyl(6.0, 4.0, 8.0, 10), [0, 0, 96.0], PAL.brass));
+  parts.push(part(prism(3.4, 6.0, 6), [0, 0, 112.0], PAL.aether));
   return { parts };
 }
+
 
 // ================================================================================================
 // ARCANE SENTRY — a compact tripod with a crystal head. The previous one had a floating ring; this
@@ -456,29 +446,26 @@ function sanctum(): Assembly {
 // ================================================================================================
 function arcaneSentry(): Assembly {
   const parts: Part[] = [...plinth(1, 2.2)];
-  // three legs, splayed
-  for (const a of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) {
-    const dx = Math.cos(a) * 6.0;
-    const dy = Math.sin(a) * 6.0;
-    parts.push(part(tube([[0, 0, 0, 1.7], [dx * 0.4, dy * 0.4, 6.0, 1.3], [dx, dy, 13.0, 1.0]], 7), [0, 0, 2.0], PAL.steelDeep));
-    // foot pad
-    parts.push(part(bbox(3.4, 3.4, 1.4, 0.5), [dx, dy, 2.6], PAL.steelDeep));
+  /**
+   * ARCANE SENTRY — a gun emplacement: a solid bastion filling the tile with a multi-barrel arcane head.
+   *
+   * At aa5c5f6 this measured 100% vertical but **67%** flat: a thin mast on a plate, so the plate was most of the sprite.
+   * The emplacement block now fills the footprint and the head sits on it.
+   */
+  parts.push(...hall(1, { height: 20, wall: 3.6, mat: PAL.rock, roof: PAL.rockLit }));
+  // Emitter head: a ring of barrels around a glowing core.
+  parts.push(part(cyl(10.0, 8.0, 8.0, 10), [0, 0, 21.0], PAL.violetDeep));
+  parts.push(part(cyl(11.6, 11.6, 2.0, 10), [0, 0, 28.0], PAL.runeTeam));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    parts.push(part(cyl(1.6, 1.2, 14.0, 5), [Math.cos(a) * 7.0, Math.sin(a) * 7.0, 24.0], PAL.steelDeep));
+    parts.push(part(sph(1.5, 8), [Math.cos(a) * 7.0, Math.sin(a) * 7.0, 38.0], PAL.crystalHot));
   }
-  // pivot housing
-  parts.push(part(sph(4.2, 12), [0, 0, 14.6], PAL.steel));
-  parts.push(part(prism(4.6, 1.0, 12), [0, 0, 14.4], PAL.brass));
-  // crystal head: ONE dominant shard with two smaller flanking it, tilted outward so the cluster has
-  // a fan silhouette instead of a single point.
-  parts.push(part(prism(2.6, 16.0, 6), [0, 0, 17.6], PAL.crystal));
-  parts.push(part(prism(1.9, 11.0, 6), [-3.6, 0.6, 17.2], PAL.crystal, { rotZ: 0.36 }));
-  parts.push(part(prism(1.9, 11.0, 6), [3.6, -0.6, 17.2], PAL.crystal, { rotZ: -0.36 }));
-  parts.push(part(prism(1.5, 8.0, 6), [0, -3.4, 17.4], PAL.crystal, { rotX: 0.34 }));
-  parts.push(part(prism(1.5, 8.0, 6), [0, 3.4, 17.4], PAL.crystal, { rotX: -0.34 }));
-  parts.push(part(sph(2.2, 9), [0, 0, 34.2], PAL.crystalHot));
-  // team ring at the pivot
-  parts.push(part(prism(5.6, 1.2, 12), [0, 0, 17.2], PAL.runeTeam));
+  parts.push(part(sph(5.0, 12), [0, 0, 32.0], PAL.crystalHot));
+  parts.push(part(prism(3.0, 7.0, 6), [0, 0, 40.0], PAL.aether));
   return { parts };
 }
+
 
 // ================================================================================================
 // STONE WALL — a staggered barrier. Individual blocks with slight rotation and height variation, so
@@ -576,54 +563,32 @@ export const PILOT_BUILDINGS: Record<string, Assembly> = {
 
 function frostSpire(): Assembly {
   /**
-   * FROST SPIRE — SILHOUETTE: a SPLAYED CRYSTAL FORMATION, like a shard of ice growing out of the stone.
+   * FROST SPIRE — a crystal formation growing out of a TOWER DRUM that fills the tile.
    *
-   * Zachary: "towers need distinct weapon heads (frost crystal...)". It had a crystal stack, but the shards leaned IN
-   * toward a central shaft, so at silhouette level it was another narrow column — IoU 0.842 against the Storm
-   * Conductor, which is a helix of similar width.
-   *
-   * The shards now FAN OUTWARD from a low core, so the widest point of the building is near the TOP rather than the
-   * base. No other tower in the roster is wider at the top than at the foot; that inverted profile is the identifier.
+   * At aa5c5f6 this measured **72%** vertical but **73%** flat: the shards rose well above the diamond, yet the tile was
+   * still showing as a plate around a narrow base. The drum now fills the footprint, so the only flat surface left is its
+   * rim, and the splayed shards sit on top of it.
    */
   const parts: Part[] = [...plinth(2, 2.4)];
-  // Stone footing.
-  parts.push(part(cyl(8, 7, 7, 12), [0, 0, 2.4], PAL.rock));
-  parts.push(part(prism(8.4, 1.2, 12), [0, 0, 8.8], PAL.rockLit));
+  // The drum: nearly the full footprint, tall enough to be the building's body.
+  parts.push(...towerBody(2, { height: 30, mat: PAL.rock, top: PAL.rockLit }));
   /**
-   * THE FAN — five shards radiating up and outward from a common root.
-   *
-   * Each shard's tip is further from the axis than its base, and the outer pair tilt hardest, so the formation opens
-   * like a hand. The tallest central shard keeps a single peak.
-   */
-  /**
-   * Shard sizes are chosen so the TOP quarter of the silhouette is still wide.
-   *
-   * The defence gate requires a weapon head that breaks the roofline: an "inverted cone" is right for identity, but if
-   * the only thing reaching the top is one thin central spike the head still tapers to a point (it measured 21% of the
-   * widest row). The outer shards are therefore only slightly shorter than the central one, so the top band contains
-   * three thick shards rather than a needle.
+   * THE FAN — five shards radiating up and outward from the drum's top. The outer pair tilt hardest, so the formation
+   * opens like a hand and the widest point is near the TOP — the only inverted-profile tower in the roster.
    */
   const shards: [number, number, number, number, number][] = [
-    // dx, dy, height, radius, lean
-    [0, 0, 40, 4.6, 0],
-    [-7.5, 1.5, 36, 4.0, 0.30],
-    [7.5, -1.0, 37, 4.2, -0.28],
-    [-12.0, -3.0, 30, 3.4, 0.48],
-    [11.5, 2.5, 31, 3.6, -0.46],
+    [0, 0, 44, 5.0, 0],
+    [-8.0, 1.6, 38, 4.2, 0.30],
+    [8.0, -1.0, 39, 4.4, -0.28],
+    [-13.0, -3.2, 31, 3.6, 0.48],
+    [12.5, 2.6, 32, 3.8, -0.46],
   ];
   for (const [dx, dy, h, r, lean] of shards) {
-    parts.push(
-      part(prism(r, h, 6), [dx * 0.45, dy * 0.45, 9.6], dx === 0 ? PAL.frostCore : PAL.crystal, {
-        rotZ: lean,
-      }),
-    );
-    // Bright tip on each shard.
-    parts.push(part(cone(r * 0.55, h * 0.22, 6), [dx * 0.95, dy * 0.95, 9.6 + h * 0.94], PAL.frostCore, { rotZ: lean }));
+    parts.push(part(prism(r, h, 6), [dx * 0.45, dy * 0.45, 29.0], dx === 0 ? PAL.frostCore : PAL.crystal, { rotZ: lean }));
+    parts.push(part(cone(r * 0.55, h * 0.22, 6), [dx * 0.95, dy * 0.95, 29.0 + h * 0.94], PAL.frostCore, { rotZ: lean }));
   }
-  // A low, wide aura ring so the base is not a bare pad.
-  parts.push(part(prism(9.4, 0.9, 12), [0, 0, 6.6], PAL.frostCore));
-  // Team band on the footing, and a slim one at the shard root.
-  parts.push(part(prism(9.6, 1.4, 12), [0, 0, 5.4], PAL.runeTeam));
-  parts.push(part(prism(7.2, 1.0, 10), [0, 0, 11.0], PAL.trimTeam));
+  // Aura ring at the drum's crown.
+  parts.push(part(prism(29.0, 1.4, 14), [0, 0, 30.0], PAL.frostCore));
   return { parts };
 }
+

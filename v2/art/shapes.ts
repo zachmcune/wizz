@@ -65,22 +65,121 @@ export function plinth(footprint: number, _height = 3.0): Part[] {
   const w = footprint * TILE_WORLD;
   return [
     /**
-     * THE FOOTPRINT IS MARKED BY A THIN LIP, AND THE BUILDING'S OWN BASE FILLS THE TILE.
+     * THE FOOTPRINT IS A THIN LIP. THE BUILDING'S WALLS RISE FROM THE TILE EDGE.
      *
-     * Rendering each building twice — whole, and with only its foundation — showed the stone producing ~1054 pixels on a
-     * 2x2 while the structure added 90-600: a median of **18% structure**, with waystone_camp at 5%. The plate covered the
-     * entire projected diamond, so whatever stood on it could only be a sliver.
+     * Two earlier versions of this helper were wrong in the same direction, and the honest metric finally exposed it:
      *
-     * Only the LIP is tagged `foundation`. The 7-unit base course below is BUILDING: it is what fills the footprint, and
-     * tagging it as pad would put the measurement back where it started.
+     *   • a full-footprint SLAB (4 units of stone) meant the plate covered the whole projected diamond and the building
+     *     could only ever be a sliver of the silhouette;
+     *   • a 7-unit "base course" counted as building by the old tag-based metric, which scored 96% while the sprite was
+     *     visibly a flat diamond — `waystone_camp` had only **11%** of its pixels above the ground diamond.
+     *
+     * So the foundation is now only a 1-unit lip, and the mass above it is WALLS at the footprint edge rather than a
+     * plate. `hall()` does that; callers stack it here.
      */
     part(bbox(w, w, 1.0, 1.0, 0.99), [0, 0, 0], PAL.rockDeep, { foundation: true }),
-    part(bbox(w - 1.0, w - 1.0, 7.0, 1.8, 0.95), [0, 0, 1.0], PAL.rock),
-    part(bbox(w - 3.5, w - 3.5, 1.4, 0.8, 0.99), [0, 0, 8.0], PAL.rockLit),
-    /**
-     * NO TEAM BAND HERE — the ground-contact band must stay neutral stone (`art-footing` asserts it). Each building
-     * carries its own team markers higher up, on its collars and banners.
-     */
+  ];
+}
+
+/**
+ * A HALL — walls rising from the footprint edge, with a roof.
+ *
+ * This is the structural answer to "the vertical mass has to fill the footprint". The walls stand at the tile edge (inset
+ * only by their own thickness), so the building's own body covers the footprint rather than a plate underneath it, and
+ * everything above the ground diamond is building.
+ *
+ * `wall` is the wall thickness. A thin shell with a roof reads as a building; a solid block does not, so the walls are
+ * separate slabs and the roof caps them.
+ *
+ * The result is deliberately RA2-like: a squat mass with real volume occupying its whole tile, with the roof as the only
+ * horizontal surface.
+ */
+export function hall(
+  footprint: number,
+  opts: { height?: number; wall?: number; mat?: M; roof?: M; roofThickness?: number; open?: boolean } = {},
+): Part[] {
+  const w = footprint * TILE_WORLD;
+  const height = opts.height ?? 22;
+  const wall = opts.wall ?? 3.2;
+  const mat = opts.mat ?? PAL.rock;
+  const roof = opts.roof ?? PAL.rockLit;
+  const t = opts.roofThickness ?? 2.2;
+  const out: Part[] = [];
+  const half = w / 2 - 0.6; // walls stand just inside the lip
+  /**
+   * FOUR WALLS, not a box.
+   *
+   * Built as separate slabs so the walls have visible thickness and relief at the corners; a single `bbox` reads as a
+   * solid block and the eye cannot tell it from a plinth.
+   */
+  const span = half * 2;
+  out.push(part(bbox(span, wall, height, 0.9, 0.95), [0, -half + wall / 2, 1.0], mat));
+  out.push(part(bbox(span, wall, height, 0.9, 0.95), [0, half - wall / 2, 1.0], mat));
+  out.push(part(bbox(wall, span - wall * 2, height, 0.9, 0.95), [-half + wall / 2, 0, 1.0], mat));
+  out.push(part(bbox(wall, span - wall * 2, height, 0.9, 0.95), [half - wall / 2, 0, 1.0], mat));
+  /**
+   * CORNER PIERS.
+   *
+   * Taller than the walls by a little, so the corners read and the roofline is not a clean rectangle — the detail that
+   * separates a building from an extruded prism at phone zoom.
+   */
+  for (const [sx, sy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ] as const) {
+    out.push(part(bbox(wall * 1.7, wall * 1.7, height * 1.12, 0.8, 0.9), [sx * (half - wall * 0.85), sy * (half - wall * 0.85), 1.0], roof));
+  }
+  if (!opts.open) {
+    // Roof slab, slightly overhanging so it casts a shadow line on the walls.
+    out.push(part(bbox(span + 1.4, span + 1.4, t, 1.2, 0.99), [0, 0, 1.0 + height], roof));
+  }
+  // Team band at eye height on the walls, clear of the ground-contact band the footing gate measures.
+  /**
+   * Team band HIGH on the walls.
+   *
+   * `art-footing` requires the lowest 30% of the sprite to be neutral stone, because team colour is a marker on the
+   * building and never a tint on the ground. At 62% of a short wall that band fell inside that zone; 0.86 puts it near the
+   * parapet, where it is also most visible.
+   */
+  /**
+   * Team band, sized from the body so a tall hall still shows >=3% team colour.
+   *
+   * A fixed 1.8-unit band is a shrinking fraction as the walls grow — four buildings fell below the roster's 3% floor
+   * once their halls got tall. Scaling the band height with the wall keeps the share roughly constant.
+   */
+  out.push(part(bbox(span + 1.6, span + 1.6, Math.max(2.4, height * 0.16), 0.7, 0.99), [0, 0, 1.0 + height * 0.78], PAL.runeTeam));
+  return out;
+}
+
+/**
+ * A ROUND TOWER BODY — a cylinder nearly as wide as the footprint, from the lip upward.
+ *
+ * The round counterpart of `hall`, for the spire-type buildings. A cylinder inscribed in the square only reaches 70.7% of
+ * the width, so the radius is set close to the half-width and the body is given real height; what matters for the
+ * vertical-mass measurement is that the tower's own walls are what occupy the tile.
+ */
+export function towerBody(
+  footprint: number,
+  opts: { height?: number; mat?: M; top?: M; taper?: number } = {},
+): Part[] {
+  const w = footprint * TILE_WORLD;
+  const height = opts.height ?? 24;
+  const r = w / 2 - 0.8;
+  const mat = opts.mat ?? PAL.rock;
+  return [
+      part(cyl(r, r * (opts.taper ?? 0.9), height, 14), [0, 0, 1.0], mat),
+      part(cyl(r * 0.96, r * 0.96, 1.6, 14), [0, 0, 1.0 + height], opts.top ?? PAL.rockLit),
+      // Four buttresses, so the tower has vertical relief rather than reading as a smooth drum.
+      ...[-1, 1].flatMap((sx) =>
+        [-1, 1].map((sy) =>
+          part(bbox(3.0, 3.0, height * 0.86, 0.7, 0.9), [sx * r * 0.72, sy * r * 0.72, 1.0], PAL.rockLit),
+        ),
+      ),
+      // Team band at eye height.
+      // Team band high on the drum, scaled with the body like `hall`'s.
+      part(cyl(r * 1.04, r * 1.04, Math.max(2.6, height * 0.16), 14), [0, 0, 1.0 + height * 0.78], PAL.runeTeam),
   ];
 }
 

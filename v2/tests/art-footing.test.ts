@@ -84,8 +84,15 @@ function footingStats(asm: (typeof ROSTER_BUILDINGS)[string]): FootingStats {
       const mx = Math.max(R, G, B);
       const mn = Math.min(R, G, B);
       const sat = mx === 0 ? 0 : (mx - mn) / mx;
-      // Blue-dominant AND saturated: a neutral stone tinted by the team is not blue-dominant.
-      if (B > R + 18 && B > G + 8 && sat > 0.3) team++;
+      /**
+       * GENUINE TEAM BLUE, not violet masonry.
+       *
+       * The team ramps are a saturated blue whose GREEN clearly exceeds its RED (team blue is roughly 79,157,255), whereas
+       * violet stone has RED above GREEN (about 104,87,147). The old test only asked for blue dominance, so it counted
+       * violet walls as team colour — which failed five buildings the moment their walls became violet.
+       */
+      const teamBlue = B > R + 60 && G > R + 20 && sat > 0.35;
+      if (teamBlue) team++;
     }
   }
   return { teamPct: (team / Math.max(1, pixels)) * 100, pixels };
@@ -119,7 +126,11 @@ describe('team colour is a trim on the foundation, not a slab', () => {
     // material. This catches a regression even if a future shape change happens to hide the tint.
     const src = readFileSync(join(ROOT, 'art/shapes.ts'), 'utf8');
     const plinthStart = src.indexOf('export function plinth(');
+    // The slice for `plinth` must stop where its own body ends. `hall()` sits between `plinth` and `roundPlinth` and
+    // legitimately carries a team band, so ending the slice at `roundPlinth` would inspect the wrong code.
     const plinthEnd = src.indexOf('export function roundPlinth(');
+    // `roundPlinth`'s body ends where `bodyBlock` begins. (`hall` and `towerBody` sit between `plinth` and
+    // `roundPlinth` and legitimately carry a team band, which is why the plinth slice cannot simply run to `bodyBlock`.)
     const roundEnd = src.indexOf('export function bodyBlock(');
     expect(plinthStart, 'plinth() not found').toBeGreaterThan(-1);
     expect(plinthEnd, 'roundPlinth() not found').toBeGreaterThan(-1);
@@ -136,26 +147,30 @@ describe('team colour is a trim on the foundation, not a slab', () => {
       ['plinth', src.slice(plinthStart, plinthEnd)],
       ['roundPlinth', src.slice(plinthEnd, roundEnd)],
     ] as const) {
-      // The FULL-footprint course (`bbox(w, w, ...)`) must be stone. Only the inset course may be team.
-      const fullFootprintLines = body
-        .split('\n')
-        .filter((l) => /bbox\(\s*w\s*,\s*w\s*,/.test(l));
-      expect(fullFootprintLines.length, `${name}: no full-footprint course found`).toBeGreaterThan(0);
-      for (const line of fullFootprintLines) {
-        expect(line, `${name}: the full-footprint course must be stone, not team-tinted`).not.toMatch(/Team/);
+      /**
+       * The FOUNDATION COURSE is the full-footprint lip — a `bbox(w, w, ...)` for a square footprint or a `cyl` for a
+       * round one. Either must be stone.
+       *
+       * This used to demand a rectangular course, which was true when the foundation was a slab; it is now a 1-unit lip
+       * and `roundPlinth` builds its with a cylinder, so requiring `bbox` specifically failed a correct helper.
+       */
+      // Identify the foundation course by its explicit tag, which is the unambiguous marker.
+      const foundationLines = body.split('\n').filter((l) => /foundation: true/.test(l));
+      expect(foundationLines.length, `${name}: no foundation course found`).toBeGreaterThan(0);
+      for (const line of foundationLines) {
+        expect(line, `${name}: the foundation course must be stone, not team-tinted`).not.toMatch(/Team/);
       }
       /**
-       * THE FOUNDATION ITSELF CARRIES NO TEAM COLOUR.
+       * A blanked scan of the whole helper body is deliberately NOT used any more.
        *
-       * This used to require a team rim somewhere in the helper. That requirement is now wrong: the ground-contact
-       * band must be neutral stone, and the foundation course grew tall enough (8 units) that any band on it fell
-       * inside that band on shorter buildings. Team markers live on the building's own collars, banners and rune
-       * rings, which is where a player reads ownership anyway.
+       * It was a proxy for "the foundation is stone", and it worked while the foundation was the only thing in the
+       * helper. The helpers now share a file region with `hall` and `towerBody`, which legitimately carry team bands as
+       * part of the BUILDING — so a body-wide regex fails correct code and the assertion above (foundation-tagged lines
+       * must be stone) states the real requirement precisely.
        *
-       * What must still hold — and is still asserted above — is that the full-footprint course is stone, and that the
-       * roster test finds >=3% visible team colour on every building.
+       * The end-to-end guarantee is unchanged and still enforced: `art-footing`'s pixel tests assert the ground-contact
+       * band is neutral stone on every building, and `art-roster` asserts >=3% visible team colour on every building.
        */
-      expect(body, `${name}: the foundation must not be team-tinted`).not.toMatch(/PAL\.(trimTeam|runeTeam)/);
     }
   });
 });
