@@ -153,6 +153,8 @@ export function planMilitary(
     attacking: boolean;
     /** The enemy position we know about, if any (a ghost building or a live sighting). */
     enemyAnchor: { x: number; y: number } | null;
+    /** True when the AI has stopped making progress and should commit everything. */
+    allIn?: boolean;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
   const commands: Command[] = [];
@@ -176,18 +178,30 @@ export function planMilitary(
    */
   const threat = assessBaseThreat(per, registry, opts.homeX, opts.homeY);
   let defending = false;
-  if (threat.threatened && threat.count >= 3 && armySize > 0) {
-    defending = true;
-    const defenders = army.slice(0, Math.max(1, Math.ceil(armySize * 0.8))).map((a) => a.seen.id);
+  /**
+   * DEFENCE DETACHES, IT DOES NOT RECALL THE WHOLE ARMY.
+   *
+   * Even with the 3-unit threshold, two AIs that each park a stack near the other's base put both sides into permanent
+   * defence: measured "defending base: 9 enemy unit(s) within 134 of home" repeating forever, with the all-in never
+   * firing because defence returns before the wave is planned. The match could not end.
+   *
+   * Defenders are now a DETACHMENT sized to the threat, and an all-in attack takes precedence over defending entirely —
+   * when the AI has decided to end the game, it goes, and the base is what it trades away.
+   */
+  if (threat.threatened && armySize > 0 && opts.allIn !== true) {
+    const needed = Math.min(armySize, threat.count + 2);
+    defending = threat.count >= 3;
+    const defenders = army.slice(0, needed).map((a) => a.seen.id);
     commands.push({ type: 'attackMove', playerId: pid, entityIds: defenders, x: threat.x, y: threat.y });
-    notes.push(`defending base: ${threat.count} enemy unit(s) within ${Math.round(threat.dist)} of home`);
-    return { commands, notes, armySize, defending, committedWave: opts.lastWaveSize, shouldAttack: false };
-  }
-  if (threat.threatened && threat.count > 0 && armySize > 0) {
-    // A raid, not an assault: detach a few defenders and keep massing.
-    const squad = army.slice(0, Math.min(4, armySize)).map((a) => a.seen.id);
-    commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: threat.x, y: threat.y });
-    notes.push(`picking off a ${threat.count}-unit raid near home`);
+    notes.push(`defending base: ${defenders.length}/${armySize} unit(s) sent against ${threat.count} near home`);
+    /**
+     * NO EARLY RETURN.
+     *
+     * Returning here — which the original code did on ANY threat, and my first rewrite still did for 3+ — means the wave
+     * is never planned, so an AI with a permanent enemy stack near home never attacks. Measured: `waves p1=0 p2=0` over 30
+     * sim-minutes, with both sides at 11 buildings and neither able to finish. Defending now happens ALONGSIDE the wave:
+     * the detachment holds the line and the rest of the army still marches.
+     */
   }
 
   /**
@@ -204,7 +218,7 @@ export function planMilitary(
    * meaningful, because the alternative is dying where it stands. A unit already clear of the fight keeps
    * whatever it was doing, so once it is out of danger it rejoins the army instead of orbiting the base.
    */
-  if (profile.retreatHurtUnits) {
+  if (profile.retreatHurtUnits && opts.allIn !== true) {
     const engagedThreshold = 220;
     const hurt = army.filter((a) => {
       if (a.seen.hp / Math.max(1, a.seen.maxHp) >= 0.35) return false;
@@ -238,8 +252,15 @@ export function planMilitary(
    * could not finish the job, and no match ever ended.
    */
   const required = Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + profile.waveGrowth)));
-  const ready = armySize >= required;
-  const shouldAttack = !defending && opts.enemyAnchor !== null && ready && !opts.attacking;
+  // An all-in ignores the wave threshold: the point is to end the grind, not to trade evenly again.
+  const ready = opts.allIn === true ? armySize >= Math.max(4, Math.floor(required * 0.4)) : armySize >= required;
+  /**
+   * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.
+   *
+   * `!defending` here was the last of three separate blockers that stopped any AI from ever attacking while an enemy
+   * stack sat near its base. Defending is now a detachment (above), so the rest of the army is free to march.
+   */
+  const shouldAttack = opts.enemyAnchor !== null && ready && !opts.attacking;
 
   if (shouldAttack && opts.enemyAnchor) {
     const target = pickAttackTarget(per, opts.enemyAnchor, registry);

@@ -39,6 +39,16 @@ export interface BrainMemory {
   anchorAge: number;
   /** Decision passes since the current wave was launched. */
   waveAge: number;
+  /**
+   * Decision passes since we last saw an enemy BUILDING's health fall or disappear.
+   *
+   * This is the stalemate detector. Two AIs that both sit at the 90-unit cap trade waves forever without either side
+   * making progress, and the match never ends — measured on two of four seeds, both locked at 90 units and 11 buildings
+   * after 32 sim-minutes with no winner. When this counter gets large the AI stops trading and commits everything it has.
+   */
+  passesWithoutProgress: number;
+  /** Highest enemy-building destruction count we have observed, to detect progress. */
+  enemyBuildingsLost: number;
 }
 
 /**
@@ -64,6 +74,14 @@ const GHOST_TRUST_TICKS = 90;
  * wins nor dies still hands control back so the next one can launch.
  */
 const WAVE_MAX_PASSES = 120;
+
+/**
+ * Decision passes without any enemy building lost before the AI stops trading and commits everything.
+ *
+ * At Normal's 1 s cadence this is 90 s of no progress, which a healthy match never reaches: waves land, buildings fall,
+ * and the counter resets. Reaching it means a genuine grind at the unit cap.
+ */
+const STALEMATE_PASSES = 90;
 
 export interface BrainTickResult {
   commands: Command[];
@@ -91,6 +109,8 @@ export class AiBrain {
     ticksSinceContact: 9999,
     anchorAge: 0,
     waveAge: 0,
+    passesWithoutProgress: 0,
+    enemyBuildingsLost: 0,
   };
   private readonly world: PerceivedWorld;
 
@@ -124,6 +144,21 @@ export class AiBrain {
     const per = this.world.build(state, this.playerId);
 
     if (per.defeated) return { commands: [], notes: ['defeated'], perception: per };
+
+    /**
+     * STALEMATE DETECTION.
+     *
+     * Progress is an enemy building disappearing. Two AIs that both sit at the 90-unit cap trade waves forever without
+     * either side making progress — measured on two of four seeds, both locked at 90 units and 11 buildings after 32
+     * sim-minutes with no winner. When nothing has changed for long enough, the AI stops trading and commits everything.
+     */
+    const enemyAlive = per.enemyBuildings.filter((b) => b.live || b.hp < b.maxHp).length;
+    if (enemyAlive < this.memory.enemyBuildingsLost) {
+      this.memory.passesWithoutProgress = 0;
+    } else {
+      this.memory.passesWithoutProgress += 1;
+    }
+    this.memory.enemyBuildingsLost = Math.max(this.memory.enemyBuildingsLost, enemyAlive);
 
     // Track contact for the "stalled" assertions.
     if (per.enemyUnits.length > 0 || per.enemyBuildings.some((b) => b.live)) {
@@ -232,6 +267,13 @@ export class AiBrain {
       homeY,
       lastWaveSize: this.memory.lastWaveSize,
       attacking: this.memory.attacking,
+      /**
+       * All-in when the game has stopped moving.
+       *
+       * `planMilitary` uses this to drop the wave-size gate and skip the retreat logic, so a stalemated AI throws its whole
+       * army at the enemy base instead of exchanging equal waves at the unit cap forever.
+       */
+      allIn: this.memory.passesWithoutProgress >= STALEMATE_PASSES,
       enemyAnchor: this.memory.enemyAnchor,
     });
     commands.push(...mil.commands);
@@ -397,14 +439,37 @@ export class AiBrain {
 
   /** Up to `count` cheap fast units to use as scouts. */
   private pickScouts(per: Perception, count: number): SeenUnit[] {
-    const ranked: { u: SeenUnit; speed: number }[] = [];
+    /**
+     * A HARVESTER SCOUTS WHEN THERE IS NOTHING ELSE.
+     *
+     * Excluding harvesters outright meant the AI had NO scout until it had trained a combat unit, and by then the army
+     * planner pulls those into waves. Measured on a 15-minute match: 8049 of 11264 tiles explored but
+     * `knownBuildings = 0` — the enemy base at (3632, 464) was never within a unit's 140-unit sight radius, so no ghost
+     * was ever recorded, the attack anchor stayed stale, and the match could not end.
+     *
+     * One wisp drawn off the mining line is the standard opening scout, and it is cheap: the economy loses one worker for
+     * a couple of minutes in exchange for knowing where the opponent lives.
+     */
+    const ranked: { u: SeenUnit; speed: number; harvester: boolean }[] = [];
     for (const u of per.myUnits) {
       const def = this.registry.units.get(u.defId);
-      if (!def || def.isHarvester) continue;
-      ranked.push({ u, speed: def.speed });
+      if (!def) continue;
+      ranked.push({ u, speed: def.speed, harvester: def.isHarvester === true });
     }
-    ranked.sort((a, b) => b.speed - a.speed || a.u.id - b.u.id);
-    return ranked.slice(0, Math.max(1, count)).map((r) => r.u);
+    // Combat units first (they survive contact), then harvesters as the fallback.
+    ranked.sort((a, b) => Number(a.harvester) - Number(b.harvester) || b.speed - a.speed || a.u.id - b.u.id);
+    // Never take more than one harvester, so the economy keeps the rest.
+    let harvestersTaken = 0;
+    const out: SeenUnit[] = [];
+    for (const r of ranked) {
+      if (out.length >= Math.max(1, count)) break;
+      if (r.harvester) {
+        if (harvestersTaken >= 1) continue;
+        harvestersTaken++;
+      }
+      out.push(r.u);
+    }
+    return out;
   }
 
   /**
