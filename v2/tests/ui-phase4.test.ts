@@ -995,3 +995,91 @@ describe('phase 4 polish: the research tree fits its viewport', () => {
     expect(failures, failures.join('\n')).toEqual([]);
   }, 180_000);
 });
+
+describe('phase 4 polish: the results screen never contradicts itself', () => {
+  /**
+   * THE REPORTED BUG.
+   *
+   * A proof screenshot showed "Draw / Both sides were spent at the same moment" above a scoreboard
+   * reading "No match has been played yet in this session" and stats of all zero. Both states were
+   * produced by the same `winnerTeam === null` value: no session, and a genuine draw. Deep-linking
+   * `?screen=results` therefore announced a result for a match that never happened — and the proof
+   * capture did exactly that, which is how the contradiction reached review.
+   *
+   * The rule this pins: the headline outcome and the body must agree. A screen that says "no match"
+   * must not claim a result, and a screen that claims a result must show one.
+   */
+  it.skipIf(!available)('the no-match state claims no result, and a real match shows one', async () => {
+    const browser = await chromium!.launch({
+      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    });
+    const failures: string[] = [];
+    try {
+      for (const vp of VIEWPORTS) {
+        // ---- (1) deep-linked with no session: must say so, and must NOT name an outcome
+        const empty = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1 });
+        await empty.goto(`${BASE}/app.html?screen=results`, { waitUntil: 'networkidle' });
+        await empty
+          .waitForFunction(() => (window as unknown as { __app?: unknown }).__app !== undefined, null, { timeout: 30000 })
+          .catch(() => failures.push(`${vp.name}: app never booted`));
+        await empty.waitForTimeout(800);
+        const noMatch = await empty.evaluate(() => ({
+          title: document.querySelector('.results-title')?.textContent?.trim() ?? '',
+          body: document.body.innerText,
+          saysNoMatch: /no match has been played/i.test(document.body.innerText),
+        }));
+        if (!noMatch.saysNoMatch) {
+          failures.push(`${vp.name}: results with no session does not say no match was played`);
+        }
+        for (const outcome of ['Draw', 'Victory', 'Defeat']) {
+          if (noMatch.title === outcome) {
+            failures.push(
+              `${vp.name}: results with no session announces "${outcome}" while its body says no match was played`,
+            );
+          }
+        }
+        await empty.close();
+
+        // ---- (2) a real finished match: must show an outcome AND a populated board
+        const real = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1 });
+        await real.goto(`${BASE}/app.html?screen=match`, { waitUntil: 'networkidle' });
+        await real
+          .waitForFunction(() => (window as unknown as { __app?: unknown }).__app !== undefined, null, { timeout: 30000 })
+          .catch(() => failures.push(`${vp.name}: match never booted`));
+        await real.waitForTimeout(1200);
+        const finished = await real.evaluate(async () => {
+          const w = window as unknown as {
+            __app: { session: { issue: (c: unknown) => boolean; surrender?: () => void } };
+          };
+          // Finish a real match by conceding, which is a legal player action.
+          const issued = w.__app.session.issue({ type: 'surrender' });
+          await new Promise((r) => setTimeout(r, 900));
+          return { issued };
+        });
+        await real.waitForTimeout(900);
+        const shown = await real.evaluate(() => ({
+          title: document.querySelector('.results-title')?.textContent?.trim() ?? null,
+          rows: document.querySelectorAll('.results-row').length,
+          saysNoMatch: /no match has been played/i.test(document.body.innerText),
+          duration: document.querySelector('.results-stat__value')?.textContent ?? '',
+          body: document.body.innerText.slice(0, 400),
+        }));
+        if (shown.title === null) {
+          failures.push(`${vp.name}: surrendering did not reach the results screen`);
+        } else {
+          if (shown.saysNoMatch) {
+            failures.push(`${vp.name}: a finished match showed the "no match has been played" empty state`);
+          }
+          if (shown.rows < 2) {
+            failures.push(`${vp.name}: a finished match showed ${shown.rows} scoreboard rows`);
+          }
+        }
+        void finished;
+        await real.close();
+      }
+    } finally {
+      await browser.close();
+    }
+    expect(failures, failures.join('\n')).toEqual([]);
+  }, 240_000);
+});

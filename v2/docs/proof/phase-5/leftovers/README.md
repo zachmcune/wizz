@@ -97,3 +97,43 @@ caught it. The rings are now radius 10.6 and stand proud.
 Proof: [`c-teamtrim-chromebook.png`](c-teamtrim-chromebook.png) ·
 [`c-teamtrim-desktop.png`](c-teamtrim-desktop.png) ·
 [`c-teamtrim-phone.png`](c-teamtrim-phone.png)
+
+## (d) Results showed "Draw" over an empty state
+
+The Phase 4 proof capture deep-linked `?screen=results`, which builds the screen with **no session**. The
+header rendered `winnerTeam === null` as **"Draw / Both sides were spent at the same moment"**, while the
+panels underneath correctly said "No match has been played yet in this session" with zeroed stats. The
+screen announced a result for a match that never happened.
+
+**Cause.** One value, `winnerTeam === null`, meant both "the sim declared a draw" and "there is no
+session". Both states were rendered as a result.
+
+**Fix.** The two states are now distinct. With no state the screen reads "Results / No match yet / Play a
+skirmish to see how it ends", and "Draw" is reserved for a match that actually ran and ended level.
+
+**Gate.** `tests/ui-phase4.test.ts` now drives both cases at all four viewports:
+
+1. deep-link with no session — the body must say no match was played, and the headline must **not** name
+   `Draw`, `Victory` or `Defeat`;
+2. a **real finished match** (surrendered after the sim ran) — must reach the results screen with at least
+   two scoreboard rows and **must not** show the empty state.
+
+Verified by restoring the old headline: fails at all four viewports with
+`results with no session announces "Draw" while its body says no match was played`.
+
+**Proof from real matches** (each surrendered after the sim advanced):
+
+| Viewport | Tick at start → end | Scoreboard rows | Headline | Empty state shown |
+|---|---|---|---|---|
+| phone 667x375 | 25 → 84 | 3 | Defeat | no |
+| phone-landscape 844x390 | 32 → 85 | 3 | Defeat | no |
+| chromebook 1024x600 | 31 → 93 | 3 | Defeat | no |
+| desktop 1366x768 | 29 → 81 | 3 | Defeat | no |
+
+0 page errors in every run. The captured screen shows real stats — 2 units, 4 built, duration 0:04, map
+Duel Glade — rather than zeros.
+
+Proof: [`d-results-phone.png`](d-results-phone.png) ·
+[`d-results-phone-landscape-wide.png`](d-results-phone-landscape-wide.png) ·
+[`d-results-chromebook.png`](d-results-chromebook.png) ·
+[`d-results-desktop.png`](d-results-desktop.png)

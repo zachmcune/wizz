@@ -13,16 +13,34 @@ export function mountResults(app: App): { root: HTMLElement; destroy: () => void
   const meIndex = st ? st.players.findIndex((p) => p.controller === 'human') : -1;
   const me = st && meIndex >= 0 ? st.players[meIndex] : null;
   const iWon = me !== null && me !== undefined && winnerTeam !== null && me.team === winnerTeam;
+  /**
+   * NO MATCH IS NOT A DRAW.
+   *
+   * `winnerTeam === null` used to mean both "the sim declared a draw" and "there is no session at all",
+   * and the header rendered both as "Draw / Both sides were spent at the same moment" — while the panels
+   * underneath said "No match has been played yet in this session", with zeroed stats. The screen
+   * contradicted itself. Deep-linking `?screen=results`, and the proof capture that did exactly that,
+   * produced a headline result for a match that never happened.
+   *
+   * The two states are now distinct: with no state the screen reports no result at all, and "Draw" is
+   * reserved for a match that actually ran and ended level.
+   */
+  const hasMatch = st !== null;
+  const isDraw = hasMatch && winnerTeam === null;
+  const outcome = !hasMatch ? 'No match yet' : isDraw ? 'Draw' : iWon ? 'Victory' : 'Defeat';
+  const subtitle = !hasMatch
+    ? 'Play a skirmish to see how it ends.'
+    : isDraw
+      ? 'Both sides were spent at the same moment.'
+      : iWon
+        ? 'The ley-line is yours.'
+        : 'Your rival holds the field.';
 
   const head = el('header', 'results-head');
   head.append(
-    el('span', 'eyebrow', 'Match complete'),
-    el('h1', `display results-title${iWon ? ' is-win' : ''}`, winnerTeam === null ? 'Draw' : iWon ? 'Victory' : 'Defeat'),
-    el('p', 'results-sub muted',
-      winnerTeam === null      ? 'Both sides were spent at the same moment.'
-        : iWon
-          ? 'The ley-line is yours.'
-          : 'Your rival holds the field.'),
+    el('span', 'eyebrow', hasMatch ? 'Match complete' : 'Results'),
+    el('h1', `display results-title${iWon ? ' is-win' : ''}`, outcome),
+    el('p', 'results-sub muted', subtitle),
   );
 
   const body = el('div', 'results-grid');
