@@ -342,7 +342,23 @@ export function planEconomy(
     const uid = registry.buildings.get(hb.defId)?.producesUnits?.find((u) => registry.units.get(u)?.isHarvester);
     return uid ? (registry.units.get(uid)?.cost ?? 200) : 200;
   })();
-  const canAffordWorkerAfterBuild = per.mana - workerCost >= affordableStep;
+  /**
+   * A BUILD STEP THAT IS OUT OF REACH MUST NOT BLOCK WORKERS FOREVER.
+   *
+   * `affordableStep` is the next unbuilt step, and with 1 harvester the AI cannot afford a 750 third refinery — so the
+   * "keep enough for the build order" guard demanded 950 mana and it bought ZERO workers permanently. Measured on seed
+   * 1000 at 30 sim-minutes, with **12 live mana nodes** on the map and both sides holding only ONE harvester each:
+   *
+   *   p1: 5 buildings (2 spires, so wisps are producible), 1 harvester, 2 army units, 355 mana, 7966/11264 explored
+   *   p2: 4 buildings, 1 harvester, 1 army unit, 430 mana
+   *
+   * Neither could ever rebuild its economy, so neither could field an army, so neither attacked, and the match ran out the
+   * clock. A starving economy has to fix the starvation first: while workers are below target, the reserve only applies to
+   * steps that are actually reachable, and an aspirational third refinery is abandoned rather than stranding the economy.
+   */
+  const starving = harvesters.length < Math.min(8, wantedHarvesters);
+  const reserveForStep = starving ? Math.min(affordableStep, workerCost) : affordableStep;
+  const canAffordWorkerAfterBuild = per.mana - workerCost >= reserveForStep;
   if (
     harvesterProducer &&
     harvesters.length < wantedHarvesters &&

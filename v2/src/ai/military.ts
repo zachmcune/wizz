@@ -260,7 +260,19 @@ export function planMilitary(
    */
   const required = Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + profile.waveGrowth)));
   // An all-in ignores the wave threshold: the point is to end the grind, not to trade evenly again.
-  const ready = opts.allIn === true ? armySize >= Math.max(4, Math.floor(required * 0.4)) : armySize >= required;
+  /**
+   * An all-in commits EVERYTHING, including a handful of units.
+   *
+   * It previously still gated on `armySize >= max(4, ...)`, which is unreachable for an AI whose economy has been razed —
+   * it cannot train replacements, so it sits on one or two units forever and never attacks. Measured on seed 1042 at 30
+   * sim-minutes: p1 had lost its attunement spire (the only building that trains workers), held **1 harvester and 1 army
+   * unit**, and had `passesWithoutProgress = 1715` — the breaker had been firing for fifteen minutes and could still not
+   * act, because one unit is less than four.
+   *
+   * An AI that cannot rebuild has nothing to lose by attacking. Sending one unit is worse than sending twenty, but it is
+   * strictly better than standing still until the clock runs out.
+   */
+  const ready = opts.allIn === true ? armySize >= 1 : armySize >= required;
   /**
    * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.
    *
@@ -279,17 +291,32 @@ export function planMilitary(
    */
   const searching = opts.searchTarget !== null && opts.searchTarget !== undefined && per.enemyBuildings.length === 0;
   if (searching) {
+    /**
+     * SWEEP WITH IDLE UNITS — AND WITH EVERY UNIT WHEN THERE IS NO OTHER CHOICE.
+     *
+     * Re-ordering marching units every pass restarts their pathing and they never arrive, so the normal rule is "idle
+     * only". But an AI down to its last unit or two has no idle units at all, because whatever order they hold keeps them
+     * `busy` indefinitely — and then it never scouts, never learns where the enemy is, and never attacks.
+     *
+     * Measured on seed 1042 at 30 sim-minutes: p1 held ONE imp_swarmling, `activity: busy`, `knownEnemyBld = 0`, coverage
+     * stuck at 5168/11264, and its note log contained **zero** search and **zero** scout entries for the whole match. It
+     * spent fifteen minutes with an uncontested map and never left its base.
+     *
+     * So: when nothing is idle, take the whole army. Two `attackMove` destinations cannot both be active anyway, and a
+     * unit that is re-tasked toward fresh ground is doing something useful, whereas one stuck on a stale order is not.
+     */
     const idleForSearch = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
-    if (idleForSearch.length > 0) {
+    const sweepWith = idleForSearch.length > 0 ? idleForSearch : army;
+    if (sweepWith.length > 0) {
       commands.push({
         type: 'attackMove',
         playerId: pid,
-        entityIds: idleForSearch.map((a) => a.seen.id),
+        entityIds: sweepWith.map((a) => a.seen.id),
         x: opts.searchTarget!.x,
         y: opts.searchTarget!.y,
       });
       notes.push(
-        `searching: ${idleForSearch.length} unit(s) sweeping unexplored ground at ` +
+        `searching: ${sweepWith.length} unit(s) sweeping unexplored ground at ` +
           `${Math.round(opts.searchTarget!.x)},${Math.round(opts.searchTarget!.y)}`,
       );
     }
