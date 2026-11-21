@@ -287,12 +287,55 @@ Content and UI only; no numbers change.
 | 3.5 | Slower projectiles | **REJECTED** | v1 speeds verbatim; renderer-side motion streaks |
 | 3.6 | Surface Astral Spire unlocks | **ACCEPTED** | Build menu + spell tooltips + tech tree |
 
+### 3.7a HQ durability — **APPROVED rule change (Zachary, 2026-11-21)**
+
+**Change:** `sanctum.hp` 2000 → **4000**. This is the ONLY gameplay value in the content set that differs
+from v1, and it is recorded as an explicit exception in `tests/data/parity.test.ts`
+(`APPROVED_VALUE_EXCEPTIONS`), which names the exact approved replacement so any further edit fails the
+parity test until separately approved.
+
+**Why the rule needed changing.** Measured on the shipped v2 AI, an even 1v1 between two Normal opponents
+was decided in a **11.8-minute median**. Once the defending army was spent, the first credible push killed
+the HQ almost immediately, so the game ended before a mid game existed. The Phase 5 target for an even 1v1
+is roughly 20 minutes.
+
+**Why 4000, by measurement** (8 seeds × both start corners per level; full bracket re-run afterwards):
+
+| `sanctum.hp` | NvN median | hard>normal | normal>easy | hard>easy | unfinished |
+|---|---|---|---|---|---|
+| 2000 (v1) | 11.8 min | 75% | 88% | 88% | 0 |
+| 3000 | 12.9 min | 75% | 88% | 88% | 0 |
+| **4000 (approved)** | **19.9 min** | **75%** | **88%** | **88%** | **0** |
+
+4000 is the smallest value inside the 15–25 minute band, and it lands essentially on the ~20 minute target.
+
+**Why the HQ and not static defence.** Turret toughness was swept first and **rejected on measurement**:
+
+| turret damage | hard>normal | normal>easy | unfinished |
+|---|---|---|---|
+| 3 (v1) | 75% | 88% | 0 |
+| 5 | 50% | 80% | 2 |
+| 7 | 63% | **20%** | **12** |
+
+Stronger turrets **equalise the difficulties** and reward turtling. Defence substitutes for good decisions,
+so a weak AI sitting behind towers survives as well as a strong one — and at damage 7 most matches stopped
+finishing inside the cap at all. HQ HP lengthens the final kill without making passivity safe, which is why
+it leaves the difficulty ordering untouched. The turret is therefore **unchanged** (hp 600, damage 3,
+range 165 — all v1 values).
+
+**Outcome on the full 96-match bracket:** median match length **20.3 min** (mean 18.8, range 11.3–24.5),
+**0 matches at the 30-minute cap**, difficulty ordering 67% / 79% / 79% with the mirror at 46%.
+
 ### 3.8 Everything else is unchanged
 
 Single resource; armour/`vs` counter table; power offline rules; all building costs, footprints and
 build times; the 20 Hz tick; fog and building-ghost semantics; HQ-destruction win condition; the
 unit roster and stats; spell damage and cooldowns; projectile speeds; node capacity; starting mana;
 harvest rate and carry; repair and sell ratios.
+
+**One exception, recorded in §3.7a:** `sanctum.hp` is 4000 rather than v1's 2000, approved by Zachary on
+2026-11-21 so an even 1v1 runs about 20 minutes instead of about 12. Every other value listed above,
+including all turret stats, is v1 exactly.
 
 ### 3.9 v1 bugs that v2 must fix (rule-neutral)
 

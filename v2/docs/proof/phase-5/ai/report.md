@@ -2,7 +2,7 @@
 
 Generated from `tournament.json` by `audit/ai-proof-report.ts`. Do not edit by hand: re-run the generator.
 
-- Tournament run: 2026-11-21T15:02:11.970Z
+- Tournament run: 2026-11-21T20:17:02.480Z
 - Seeds per matchup: 12, each played on BOTH sides (24 games per matchup)
 
 ## Win rates by difficulty
@@ -15,10 +15,10 @@ harness is unbiased.
 
 | Matchup | A wins | B wins | A win rate | Median length | Worst no-spend | Unfinished |
 |---|---|---|---|---|---|---|
-| hard vs normal | 16 | 8 | **67%** | 11.8 min | 195s | 0 |
-| normal vs easy | 19 | 5 | **79%** | 23 min | 1019s | 0 |
-| hard vs easy | 19 | 5 | **79%** | 23.3 min | 1019s | 0 |
-| normal vs normal | 11 | 13 | **46%** | 11.8 min | 290s | 0 |
+| hard vs normal | 16 | 8 | **67%** | 15.1 min | 897s | 0 |
+| normal vs easy | 19 | 5 | **79%** | 23.9 min | 1152s | 0 |
+| hard vs easy | 19 | 5 | **79%** | 23.9 min | 1152s | 0 |
+| normal vs normal | 11 | 13 | **46%** | 19.9 min | 897s | 0 |
 
 ### Against the phase targets
 
@@ -42,19 +42,19 @@ With side-swapping removing the map advantage, the ordering holds:
 
 Across all 96 matches:
 
-- median **15.9 min**
-- mean **16.6 min**
-- shortest **8.8 min**, longest **23.9 min**
+- median **20.3 min**
+- mean **18.8 min**
+- shortest **11.3 min**, longest **24.5 min**
 - matches that reached the 30-minute cap without a winner: **0**
 
-Target was ~20 minutes of game time; the 1v1 median lands at 15.9 min.
+Target was ~20 minutes of game time; the 1v1 median lands at 20.3 min.
 
 ## Stall and idle-army assertions
 
 The v1 failure modes were an AI that stopped spending and an army that never acted. Both are measured per side on
 every match, not asserted from reading the code.
 
-- worst stretch with no spending across all 192 sides: **1019s**
+- worst stretch with no spending across all 192 sides: **1152s**
 - worst stretch with an idle army: **0s**
 - sides that issued no commands at all: **0**
 
@@ -68,102 +68,102 @@ the one that indicates a genuinely passive AI, is zero throughout.
 
 | Matchup | Seed | Length | Winner | P1 start | P2 start |
 |---|---|---|---|---|---|
-| hard vs normal | 1000 | 15.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1000 | 10.8 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1007 | 10.0 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1007 | 12.9 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1014 | 15.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1014 | 10.8 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1021 | 10.0 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1021 | 12.9 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1028 | 10.0 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1028 | 12.9 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1035 | 8.8 min | team 1 | hard@0 | normal@1 |
-| hard vs normal | 1035 | 11.8 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1042 | 8.8 min | team 1 | hard@0 | normal@1 |
-| hard vs normal | 1042 | 11.8 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1049 | 10.0 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1049 | 12.9 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1056 | 15.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1056 | 10.8 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1063 | 15.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1063 | 10.8 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1070 | 15.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1070 | 10.8 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1077 | 8.8 min | team 1 | hard@0 | normal@1 |
-| hard vs normal | 1077 | 11.8 min | team 0 | hard@1 | normal@0 |
-| normal vs easy | 1000 | 23.4 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1000 | 11.0 min | team 1 | normal@1 | easy@0 |
-| normal vs easy | 1007 | 23.0 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1007 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1014 | 23.9 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1014 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1021 | 23.0 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1021 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1028 | 23.0 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1028 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1035 | 23.4 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1035 | 11.0 min | team 1 | normal@1 | easy@0 |
-| normal vs easy | 1042 | 23.0 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1042 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1049 | 23.0 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1049 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1056 | 23.9 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1056 | 22.3 min | team 0 | normal@1 | easy@0 |
-| normal vs easy | 1063 | 23.4 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1063 | 11.0 min | team 1 | normal@1 | easy@0 |
-| normal vs easy | 1070 | 23.4 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1070 | 11.0 min | team 1 | normal@1 | easy@0 |
-| normal vs easy | 1077 | 23.4 min | team 0 | normal@0 | easy@1 |
-| normal vs easy | 1077 | 11.0 min | team 1 | normal@1 | easy@0 |
-| hard vs easy | 1000 | 23.4 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1000 | 11.0 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1007 | 23.3 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1007 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1014 | 23.8 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1014 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1021 | 23.3 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1021 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1028 | 23.3 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1028 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1035 | 23.4 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1035 | 11.0 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1042 | 23.3 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1042 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1049 | 23.3 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1049 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1056 | 23.8 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1056 | 22.3 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1063 | 23.4 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1063 | 11.0 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1070 | 23.4 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1070 | 11.0 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1077 | 23.4 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1077 | 11.0 min | team 1 | hard@1 | easy@0 |
-| normal vs normal | 1000 | 19.4 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1000 | 10.8 min | team 1 | normal@1 | normal@0 |
-| normal vs normal | 1007 | 10.9 min | team 0 | normal@0 | normal@1 |
-| normal vs normal | 1007 | 17.7 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1014 | 19.4 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1014 | 10.8 min | team 1 | normal@1 | normal@0 |
-| normal vs normal | 1021 | 10.9 min | team 0 | normal@0 | normal@1 |
-| normal vs normal | 1021 | 17.7 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1028 | 10.9 min | team 0 | normal@0 | normal@1 |
-| normal vs normal | 1028 | 17.7 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1035 | 8.8 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1035 | 11.8 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1042 | 8.8 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1042 | 11.8 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1049 | 10.9 min | team 0 | normal@0 | normal@1 |
-| normal vs normal | 1049 | 17.7 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1056 | 19.4 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1056 | 10.8 min | team 1 | normal@1 | normal@0 |
-| normal vs normal | 1063 | 19.4 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1063 | 10.8 min | team 1 | normal@1 | normal@0 |
-| normal vs normal | 1070 | 19.4 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1070 | 10.8 min | team 1 | normal@1 | normal@0 |
-| normal vs normal | 1077 | 8.8 min | team 1 | normal@0 | normal@1 |
-| normal vs normal | 1077 | 11.8 min | team 0 | normal@1 | normal@0 |
+| hard vs normal | 1000 | 16.3 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1000 | 11.4 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1007 | 15.1 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1007 | 13.3 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1014 | 16.3 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1014 | 11.4 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1021 | 15.1 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1021 | 13.3 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1028 | 15.1 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1028 | 13.3 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1035 | 22.9 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1035 | 13.5 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1042 | 22.9 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1042 | 13.5 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1049 | 15.1 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1049 | 13.3 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1056 | 16.3 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1056 | 11.4 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1063 | 16.3 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1063 | 11.4 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1070 | 16.3 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1070 | 11.4 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1077 | 22.9 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1077 | 13.5 min | team 0 | hard@1 | normal@0 |
+| normal vs easy | 1000 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1000 | 14.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1007 | 23.5 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1007 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1014 | 24.3 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1014 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1021 | 23.5 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1021 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1028 | 23.5 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1028 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1035 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1035 | 14.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1042 | 23.5 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1042 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1049 | 23.5 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1049 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1056 | 24.3 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1056 | 24.5 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1063 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1063 | 14.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1070 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1070 | 14.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1077 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1077 | 14.0 min | team 1 | normal@1 | easy@0 |
+| hard vs easy | 1000 | 23.9 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1000 | 14.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1007 | 23.6 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1007 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1014 | 24.1 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1014 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1021 | 23.6 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1021 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1028 | 23.6 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1028 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1035 | 23.9 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1035 | 14.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1042 | 23.6 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1042 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1049 | 23.6 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1049 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1056 | 24.1 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1056 | 24.5 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1063 | 23.9 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1063 | 14.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1070 | 23.9 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1070 | 14.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1077 | 23.9 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1077 | 14.0 min | team 1 | hard@1 | easy@0 |
+| normal vs normal | 1000 | 20.3 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1000 | 11.4 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1007 | 11.3 min | team 0 | normal@0 | normal@1 |
+| normal vs normal | 1007 | 19.9 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1014 | 20.3 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1014 | 11.4 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1021 | 11.3 min | team 0 | normal@0 | normal@1 |
+| normal vs normal | 1021 | 19.9 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1028 | 11.3 min | team 0 | normal@0 | normal@1 |
+| normal vs normal | 1028 | 19.9 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1035 | 22.9 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1035 | 13.6 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1042 | 22.9 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1042 | 13.6 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1049 | 11.3 min | team 0 | normal@0 | normal@1 |
+| normal vs normal | 1049 | 19.9 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1056 | 20.3 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1056 | 11.4 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1063 | 20.3 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1063 | 11.4 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1070 | 20.3 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1070 | 11.4 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1077 | 22.9 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1077 | 13.6 min | team 0 | normal@1 | normal@0 |
 
 ## Honest caveats
 
