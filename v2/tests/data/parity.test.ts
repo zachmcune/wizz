@@ -47,12 +47,40 @@ const PLAN_ADDITIONS = {
  *
  * Each entry carries the reason and the date it was approved. Every other field on every other definition stays locked.
  */
-const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { v1: unknown; reason: string; approved: string }>> = {
-  // Populated by the defence-balance change; see the note added with it.
+const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { approvedValue: unknown; reason: string; approved: string }>> = {
+  /**
+   * HQ durability. APPROVED BY ZACHARY, 2026-11-21.
+   *
+   * WHY: a 1v1 between evenly matched AIs was decided in about 12 minutes because the first credible push killed the HQ almost
+   * immediately once the defending army was spent. Raising HQ HP lengthens that final step, so a match runs closer to the
+   * intended ~20 minutes.
+   *
+   * WHY THIS VALUE: measured across 8 seeds x both start corners. 3000 hp gave a 12.9 min median — not enough; 4000 gave a
+   * 19.9 min median with the difficulty ordering unchanged (hard>normal 75%, normal>easy 88%, hard>easy 88%, identical to the
+   * v1 baseline) and zero unfinished matches. 4000 is therefore the SMALLEST change that reaches the 15-25 minute band.
+   *
+   * WHY HQ HP AND NOT TURRETS: turret damage was measured first and rejected. At damage 5 the ordering collapsed
+   * (hard>normal 75% -> 50%) and at damage 7 normal-vs-easy fell to 20% with 12 of 16 matches failing to finish inside 30
+   * minutes. Static defence substitutes for good decisions, so making turrets stronger equalises the difficulties and rewards
+   * turtling. HQ HP lengthens the kill without making passivity safe, which is why it preserves the ordering exactly.
+   *
+   * This is the ONLY gameplay value in the whole content set allowed to differ from v1, and the exception names the v1 value it
+   * replaces: 2000. Any further change to it fails this test until separately approved and recorded.
+   */
+  'sanctum.hp': {
+    approvedValue: 4000,
+    reason:
+      'Approved rule change: HQ 2000 -> 4000 so an even 1v1 runs ~20 min instead of ~12. Measured: 19.9 min median, ' +
+      'difficulty ordering unchanged (75/88/88), 0 unfinished. Turret changes were measured and rejected.',
+    approved: '2026-11-21 (Zachary)',
+  },
 };
 
 /** Look up an approved exception for one field of one definition. */
-function approvedException(defId: string, key: string): { v1: unknown; reason: string; approved: string } | undefined {
+function approvedException(
+  defId: string,
+  key: string,
+): { approvedValue: unknown; reason: string; approved: string } | undefined {
   return APPROVED_VALUE_EXCEPTIONS[`${defId}.${key}`];
 }
 
@@ -206,8 +234,12 @@ function compareDefs(
      * An APPROVED exception is allowed to differ — but only for the exact v1 value it was approved against. If the current
      * value has drifted from BOTH v1 and the approved replacement, that is an unapproved change and the assertion fires.
      */
+    /**
+     * An approved exception may differ from v1 — but only by taking the ONE recorded value. If the field has drifted from both
+     * v1 and the approved replacement, that is an unapproved change and the assertion below fires.
+     */
     const exception = approvedException(String(v1.id), key);
-    if (exception && String(v2[key]) !== String(v1Value) && String(v2[key]) === String(exception.v1)) {
+    if (exception && String(v2[key]) !== String(v1Value) && String(v2[key]) === String(exception.approvedValue)) {
       continue;
     }
     expect(v2[key], `${label} ${String(v1.id)}.${key} differs from v1`).toEqual(v1Value);
