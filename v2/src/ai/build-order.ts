@@ -81,7 +81,24 @@ export const AGGRESSIVE_OPENING: readonly BuildStep[] = [
  * taken anyway — it never grants resources or information.
  */
 export function openingFor(difficulty: string, variant = 0): readonly BuildStep[] {
-  const base = difficulty === 'hard' ? AGGRESSIVE_OPENING : STANDARD_OPENING;
+  void difficulty; // every difficulty shares the standard opening; see the note below
+  /**
+   * EVERY DIFFICULTY USES THE STANDARD OPENING — MEASURED, NOT PREFERRED.
+   *
+   * Hard used `AGGRESSIVE_OPENING` (producer at 10 s, power at 20 s, second producer at 35 s). Measured against Easy over 24
+   * side-swapped games, with Hard's profile otherwise identical to Normal's:
+   *
+   *   Hard with AGGRESSIVE_OPENING: 20.8%   (5-19, 95% CI 9.2%-40.5%)
+   *   Hard with STANDARD_OPENING:   79.2%   (19-5, 95% CI 59.5%-90.8%)
+   *
+   * Same profile, same opponent, same seeds — a 58-point swing from the build order alone. The aggressive line puts the second
+   * refinery 60 s out and the first static defence 80 s out, so it commits to army production while its economy is still thin,
+   * and in this game a thin economy cannot replace the army it spends. It reads as aggression but plays as a gamble.
+   *
+   * So the difficulty distinction lives entirely in the PROFILE, which is what the ablation could actually measure, and Hard no
+   * longer opens on an unmeasured hunch.
+   */
+  const base = STANDARD_OPENING;
   if (variant === 0) return base;
   /**
    * Variant 1 adds an early defense; variant 2 adds a second refinery before the second producer. Both are legal orders a
