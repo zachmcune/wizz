@@ -105,6 +105,20 @@ export function steerToGoal(
   const goalTy = Math.floor(fieldAt.y / TILE);
   const field = flow.getFor(nav, goalTx, goalTy, ctx.unitOwner, block);
 
+  /**
+   * ON THE FINAL APPROACH, STEER AT THE UNIT'S OWN GOAL.
+   *
+   * When a shared `fieldGoal` is supplied the flow field points at the ORDER POINT, not at this unit's formation slot, so
+   * `sampleFlow` near the destination steers every unit at the same spot and they pile up there. Measured on the Phase 4
+   * separation gate: 22-28% of units deeply interpenetrating against a 15% ceiling, on the same scene that had passed before
+   * shared flow fields were introduced.
+   *
+   * Once the unit is within a couple of tiles of its own goal the flow field has no useful routing left to offer -- obstacles
+   * that close are handled by the slide/escape path in `applySteeredMove` -- so the direct vector is both correct and what
+   * keeps a formation a formation. Further out the field is used, which is what makes the field shareable.
+   */
+  if (fieldGoal && d < TILE * 3) return normalize(dx, dy);
+
   let steer = sampleFlow(field, nav, pos.x, pos.y);
   if (steer.x !== 0 || steer.y !== 0) return steer;
 
