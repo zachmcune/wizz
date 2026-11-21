@@ -146,23 +146,48 @@ export function planEconomy(
    * not enough to fund both an army and a tech tree. Measured: a 6-worker economy held a hard ceiling of
    * ~400 banked mana and never reached a 1200-cost tier-2 building in 25 minutes.
    */
-  const wantedHarvesters = Math.max(
-    8,
-    refineries * profile.harvestersPerRefinery,
-    producersOf(per, registry).length * 4,
-  );
   const producerList = producersOf(per, registry);
-  const harvesterProducer = producerList.find((b) => {
-    const def = registry.buildings.get(b.defId);
-    return !!def?.producesUnits?.some((u) => registry.units.get(u)?.isHarvester);
-  });
-
   // ------------------------------------------------------------------ 3. build order
   const opening = openingFor(difficultyId, openingVariant);
   const built = new Map<string, number>();
   for (const b of per.myBuildings) {
     if (b.buildProgress === undefined) built.set(b.defId, (built.get(b.defId) ?? 0) + 1);
   }
+
+  /**
+   * WORKERS ARE BOUGHT FROM SURPLUS, NEVER FROM THE BUILD ORDER'S SAVINGS.
+   *
+   * `harvestersPerRefinery` is a TARGET, and at Hard's value (8) two spires ask for sixteen workers. Each costs 200, so the
+   * AI spent every coin it earned on wisps and never accumulated the 550 a summoning circle needs. Measured on seed 1000,
+   * hard vs easy, at minute 10:
+   *
+   *   hard: 3 buildings (sanctum, two spires), 11 harvesters, **175/550** toward a summoning circle
+   *   easy: 5 buildings INCLUDING the summoning circle, 8 harvesters
+   *
+   * and hard held that 175 indefinitely while fielding **zero army for twelve minutes**, then lost. The strongest
+   * difficulty was the weakest player because its worker target outran its income.
+   *
+   * Two guards: the target is capped so a single refinery cannot demand a swarm, and workers are only bought once the next
+   * build-order step is already paid for — the opening is what turns income into an army, so it goes first.
+   */
+  const affordableStep = (() => {
+    const openingNow = openingFor(difficultyId, openingVariant);
+    for (const step of openingNow) {
+      if (stepSatisfied(step, openingNow, built, (id) => registry.buildings.get(id))) continue;
+      return registry.buildings.get(step.defId)?.cost ?? 0;
+    }
+    return 0;
+  })();
+  const wantedHarvesters = Math.min(
+    // Never let the worker target alone absorb everything: 4 per refinery plus base capacity is plenty.
+    8 + refineries * 4,
+    Math.max(8, refineries * profile.harvestersPerRefinery, producersOf(per, registry).length * 4),
+  );
+  const harvesterProducer = producerList.find((b) => {
+    const def = registry.buildings.get(b.defId);
+    return !!def?.producesUnits?.some((u) => registry.units.get(u)?.isHarvester);
+  });
+
 
   let activeStep: BuildStep | null = null;
   for (const step of opening) {
@@ -301,7 +326,30 @@ export function planEconomy(
    * So while a rebuild is pending, workers are paused and every coin goes to the rebuild.
    */
   const rebuildPending = rebuildTarget !== null;
-  if (harvesterProducer && harvesters.length < wantedHarvesters && !pauseHarvesters && !rebuildPending) {
+  /**
+   * Buy a worker only if the bank still covers the pending build step afterwards.
+   *
+   * This is the direct fix for the deadlock measured above: at Hard's worker target the AI spent its entire income on wisps
+   * and never reached the 550 a summoning circle costs. The opening is what converts income into an army, so it is paid for
+   * first and workers come out of whatever is left.
+   */
+  const workerCost = (() => {
+    const hb = producerList.find((b) => {
+      const d = registry.buildings.get(b.defId);
+      return !!d?.producesUnits?.some((u) => registry.units.get(u)?.isHarvester);
+    });
+    if (!hb) return 200;
+    const uid = registry.buildings.get(hb.defId)?.producesUnits?.find((u) => registry.units.get(u)?.isHarvester);
+    return uid ? (registry.units.get(uid)?.cost ?? 200) : 200;
+  })();
+  const canAffordWorkerAfterBuild = per.mana - workerCost >= affordableStep;
+  if (
+    harvesterProducer &&
+    harvesters.length < wantedHarvesters &&
+    !pauseHarvesters &&
+    !rebuildPending &&
+    canAffordWorkerAfterBuild
+  ) {
     const hDef = registry.buildings.get(harvesterProducer.defId);
     const unitId = hDef?.producesUnits?.find((u) => registry.units.get(u)?.isHarvester);
     const unit = unitId ? registry.units.get(unitId) : undefined;
