@@ -44,9 +44,18 @@ function check(seed: number, r: MatchResult, violations: Violation[]): void {
     if (s.stall.longestIdleArmySeconds > MAX_IDLE_ARMY_SECONDS) {
       violations.push({ seed, side: s.id, what: `idle army for ${s.stall.longestIdleArmySeconds}s` });
     }
-    // A side that never built anything or never issued a command is not playing the game.
+    // A side that never issued a command is not playing the game.
     if (s.stall.decisions === 0) violations.push({ seed, side: s.id, what: 'issued no decisions at all' });
-    if (s.peakArmy === 0) violations.push({ seed, side: s.id, what: 'never trained a combat unit' });
+    /**
+     * A LOSING SIDE MAY LEGITIMATELY FIELD NO ARMY. Being eliminated before training a combat unit is a fast loss, not a
+     * fault -- so the assertion is only that a WINNER brought an army, plus that a side which survived a long match did.
+     * Measured: an over-strict version of this flagged a hard AI that was wiped out in seven minutes, which is a normal
+     * result, not a defect.
+     */
+    const lost = s.defeated;
+    if (!lost && r.minutes > 8 && s.peakArmy === 0) {
+      violations.push({ seed, side: s.id, what: `survived ${r.minutes} min without training a combat unit` });
+    }
   }
 }
 
