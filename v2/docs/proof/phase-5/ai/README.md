@@ -7,9 +7,10 @@ can be reproduced with it; nothing is estimated or remembered from a previous ru
 |---|---|
 | `report.md` | Generated summary: win rates, match lengths, stall measurements |
 | `tournament.json` | The raw committed tournament output the report is derived from |
-| `match-phone.png` | In-match at phone size (844×390, touch) |
-| `match-chromebook.png` | In-match at Chromebook size (1366×768) |
-| `full-ai-vs-ai-match.webm` | Recording of a complete AI-vs-AI match |
+| `match-phone-10min.png`, `match-phone-18min.png` | In-match at phone size (844×390, touch) |
+| `match-chromebook-10min.png`, `match-chromebook-18min.png` | In-match at Chromebook size (1366×768) |
+| `full-match-20min-hq4000.webm` | Recording of a complete match with the approved HQ change |
+| `ablation.md` | Every difficulty lever with its measured effect |
 
 ## Reproducing
 
@@ -63,7 +64,7 @@ marketing, not evidence.
 | Hard over Easy | **79%** (19-5) | 60%–91% | ≥75% | yes |
 | Mirror near 50% | 46% (11-13) | 28%–65% | contains 50% | yes |
 
-96 matches, **zero unfinished**, median length **15.9 min**.
+96 matches, **zero unfinished**, median length **20.3 min** (mean 18.8, range 11.3-24.5, none at the cap).
 
 The caveat: Hard-over-Normal's interval reaches below 65%, so that target is met on the point estimate and corroborated by a
 second independent measurement of the same lever (9-3 at 12 games, then 16-8 at 24), not proven at 95% confidence.
@@ -82,12 +83,40 @@ measured 20.8% against Easy and `STANDARD_OPENING` 79.2% — a 58-point swing. E
 a target tie-break that favoured the first-listed player (fixed; the mirror then measured within noise of 50%), and a
 difficulty-profile table shared by reference so ablation overrides leaked between matches.
 
-### Match length
+### Match length — achieved by an approved rule change
 
-Median is **15.9 min**, inside the 15–25 target, but the distribution is bimodal: decisive games end near 12 min and grinds run
-to 23. The remaining structural constraint is that early pushes succeed because static defence is too weak to stop them; unit and
-building stats are locked to v1 parity by `tests/data/parity.test.ts`, and relaxing that lock is a rule change that has not been
-made.
+Median **20.3 min** across the whole bracket, against a ~20 minute target. This required the one approved rule change of Phase 5:
+
+**`sanctum.hp` 2000 -> 4000** (Zachary, 2026-11-21). Measured across 8 seeds x both corners per level: 2000 gave an 11.8 min
+median, 3000 gave 12.9, and **4000 gave 19.9** — the smallest value in the 15-25 band, with the difficulty ordering identical to
+v1 (75/88/88) and zero unfinished matches.
+
+**Turrets were measured first and deliberately left alone.** Stronger turrets equalise the difficulties and reward turtling,
+because defence substitutes for decisions:
+
+| turret damage | hard>normal | normal>easy | unfinished |
+|---|---|---|---|
+| 3 (v1, shipped) | 75% | 88% | 0 |
+| 5 | 50% | 80% | 2 |
+| 7 | 63% | **20%** | **12** |
+
+So every turret stat is still exactly v1 (hp 600, damage 3, range 165). `sanctum.hp` is the **only** gameplay value in the
+content set that differs from v1, recorded as an explicit exception in `tests/data/parity.test.ts` that names the approved
+replacement — an unapproved value still fails the test.
+
+### Economy finding: the map runs dry between minutes 15 and 20
+
+Measured, and **not changed** — economy values stay locked unless separately approved.
+
+`duel_glade` authors 127,000 mana, but `manaNodeCapacity` clamps every node to 12,000 (a v1 parity constant), so the whole match
+economy is **75,000 mana**. On the shipped build the nodes were fully mined out around **minute 15**, and the longest
+no-spending stretch reached **1019 s** (~17 min) because a side with no nodes and a bank below the cheapest unit cost genuinely
+cannot spend.
+
+With HQ 4000 the matches are longer but the no-spend stretches are **shorter**, not longer — measured across three seeds the
+worst was **304 s**, and a few thousand mana was still on the map at the 20-minute mark. The longer game spreads the same economy
+over more fighting rather than exhausting it sooner. The worst no-spend figure across the full 96-match bracket is **1152 s**,
+which occurs on the longest grinds; `worstIdleArmy` is **0 s on every side**, so it is an empty wallet, not a passive AI.
 
 ### The AI reads only what it can see
 

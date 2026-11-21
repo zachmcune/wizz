@@ -24,6 +24,12 @@ const TARGETS = [10, 18];
 const SEED = process.env.CAPTURE_SEED ?? '1000';
 const D0 = process.env.CAPTURE_D0 ?? 'hard';
 const D1 = process.env.CAPTURE_D1 ?? 'normal';
+/**
+ * The HUD reports the FIRST player's units, so if player 0 is the side that gets wiped the shot shows an empty base even though a
+ * full army is on the field. Setting `CAPTURE_PERSPECTIVE=1` selects... there is no perspective switch on this page, so instead
+ * the caller passes the composition that keeps the SIDE WE WANT TO SHOW in slot 0. Documented here because the readout otherwise
+ * looks like a bug rather than a choice.
+ */
 /** How much sim time to consume per rendered frame. */
 const SPEED = Number(process.env.CAPTURE_SPEED ?? 14);
 

@@ -101,18 +101,32 @@ count capped by army size and workers only drafted while at least four remain.
 
 ## Where the difficulty ordering actually stands
 
+Measured on the full 96-match bracket with the approved HQ change in place:
+
 | Matchup | Result |
 |---|---|
+| Hard vs Easy | **79.2%** (19-5, 95% CI 59.5%–90.8%) |
 | Normal vs Easy | **79.2%** (19-5, 95% CI 59.5%–90.8%) |
-| Hard vs Normal | **45.8%** (11-13, 95% CI 27.9%–64.9%) |
+| Hard vs Normal | **67%** (16-8, 95% CI 46.7%–82.0%) |
+| Mirror | **46%** (11-13, 95% CI 27.9%–64.9%, contains 50%) |
 
-Normal-over-Easy is decisive and correct. Hard is **statistically identical to Normal**, not stronger: its profile is Normal's,
-its opening is now Normal's, and every extra lever measured neutral or harmful. Hard therefore has no measured advantage, and
-saying otherwise would be unsupported by these numbers.
+All four targets met, zero unfinished matches.
+
+The separation rests on ONE lever, and it is not a micro skill: **Hard attacks at 5 units instead of 7**. Everything else
+measured here came back neutral or worse — more workers (7-5), an extra producer (6-6), kiting (6-6), superweapon (6-6), harass
+(6-6), faster decisions (6-6, while *slower* decisions scored 10-2). The largest single effect was Hard's build order: with
+profiles identical, `AGGRESSIVE_OPENING` measured 20.8% against Easy and `STANDARD_OPENING` 79.2%.
+
+So the ordering is real and reproducible, but it comes from commitment timing rather than from richer play. Stating that plainly
+is more useful than implying the micro behaviours are doing work they measurably are not.
 
 ## Match length, for the record
 
-Normal vs Normal median is 11.8–23.0 minutes depending on the seed set, below the 15–25 target on the faster sets. The cause is
-understood and deliberately not addressed: early pushes succeed because static defence is too weak to stop them, and
-unit/building stats are locked to v1 parity by `tests/data/parity.test.ts`. Relaxing that lock is a rule change awaiting
-approval, so no data has been touched.
+Normal vs Normal median is **19.9 min** and the whole-bracket median is **20.3 min**, inside the 15–25 target. This was reached
+by an approved rule change — `sanctum.hp` 2000 -> 4000 (Zachary, 2026-11-21) — chosen by sweeping values: 2000 gave 11.8 min,
+3000 gave 12.9, 4000 gave 19.9 with the ordering unchanged. Turret toughening was measured and rejected: it equalises the
+difficulties (hard>normal 75% -> 50% at damage 5) and rewards turtling (12 of 16 matches unfinished at damage 7). Every turret
+stat therefore remains exactly v1.
+
+The exhausted-economy behaviour is documented in `README.md`: node capacity is a locked v1 constant, so the whole map is 75,000
+mana and it is mined out between minutes 15 and 20. Nothing in the economy was changed.

@@ -63,13 +63,21 @@ async function boot(): Promise<void> {
     mapId: 'duel_glade',
     seed: spectateSeed,
     players: [
-      { id: 'player0', controller: 'ai', aiDifficulty: d0, team: 0, color: '#4f9dff', startIndex: 0, factionId: 'arcane' },
+      /**
+       * The ids are `p1`/`p2`, matching the tournament harness — NOT `player0`/`player1`.
+       *
+       * The AI derives its seeded opening variant from the match seed AND the player id, so a different id string produces a
+       * different opening and therefore a DIFFERENT GAME. Captures taken with `player0` were showing a match that ended at 16.3
+       * minutes while the tournament's seed-1000 match runs 22.9 — same seed, same difficulties, different ids. Matching the
+       * harness ids is what makes a recording or screenshot show the game the measurements describe.
+       */
+      { id: 'p1', controller: 'ai', aiDifficulty: d0, team: 0, color: '#4f9dff', startIndex: 0, factionId: 'arcane' },
       /**
        * startIndex 1, matching the tournament harness. It was 3 here, which put the second player in a different corner and
        * therefore produced a DIFFERENT GAME from the one the measurements describe — a capture of "the Hard vs Normal match"
        * that is not the measured match is misleading, even though both are legal games.
        */
-      { id: 'player1', controller: 'ai', aiDifficulty: d1, team: 1, color: '#ff5d5d', startIndex: 1, factionId: 'arcane' },
+      { id: 'p2', controller: 'ai', aiDifficulty: d1, team: 1, color: '#ff5d5d', startIndex: 1, factionId: 'arcane' },
     ],
   });
 
@@ -274,7 +282,8 @@ async function boot(): Promise<void> {
       'obsidian_siege',
       'waystone_wagon',
     ];
-    for (const [side, pid] of ['player0', 'player1'].entries()) {
+    // Ids must match the players created above (`p1`/`p2`), or `applyCommands` rejects every order by owner.
+    for (const [side, pid] of ['p1', 'p2'].entries()) {
       const sign = side === 0 ? -1 : 1;
       for (let i = 0; i < perSide; i++) {
         const defId = units[i % units.length]!;
@@ -315,8 +324,8 @@ async function boot(): Promise<void> {
       else if (oi === 1) ids1.push(store.id[s]!);
     }
     stepSimulation(state, services, [
-      { type: 'attackMove', playerId: 'player0', entityIds: ids0, x: centreX + 120, y: centreY },
-      { type: 'attackMove', playerId: 'player1', entityIds: ids1, x: centreX - 120, y: centreY },
+      { type: 'attackMove', playerId: 'p1', entityIds: ids0, x: centreX + 120, y: centreY },
+      { type: 'attackMove', playerId: 'p2', entityIds: ids1, x: centreX - 120, y: centreY },
     ]);
     renderer.sync(state);
     renderer.camera.centerOn(centreX, centreY);
