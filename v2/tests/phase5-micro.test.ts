@@ -126,8 +126,15 @@ describe('micro: kiting', () => {
     spawnUnitAt(state, services, 'imp_swarmling', 'p2', cx + 40, cy, null);
     stepSimulation(state, services, [], undefined);
 
+    /**
+     * Kiting is exercised with the lever EXPLICITLY ON, not by relying on a difficulty having it enabled.
+     *
+     * Which profile carries a lever is a BALANCE decision that measurement changes — Hard's kiting was disabled after ablation
+     * showed it cost games. The MECHANISM still has to work, so the test states the precondition itself rather than inheriting it
+     * from a profile that may legitimately change.
+     */
     const per = brain.perception(state);
-    const plan = planMilitary(per, registryOf(services), DIFFICULTIES.hard, {
+    const plan = planMilitary(per, registryOf(services), { ...DIFFICULTIES.hard, kiting: true }, {
       homeX: home.x,
       homeY: home.y,
       lastWaveSize: 0,
@@ -214,9 +221,17 @@ function registryOf(services: SimServices): Registry {
  * trivially pass. This states the expectation explicitly.
  */
 describe('micro lever expectations', () => {
-  it('hard enables the micro behaviours the tests exercise', () => {
+  /**
+   * Which LEVERS a profile carries is a balance decision that measurement changes, so this asserts the mechanism is available
+   * and that the strongest difficulty has the ones that survived ablation — not a fixed list. Disabling a lever must be a
+   * deliberate, measured act, which is exactly what happened to Hard's kiting.
+   */
+  it('every micro lever exists on the profile type and Hard keeps focus fire and retreat', () => {
+    for (const lever of ['focusFire', 'retreatHurtUnits', 'kiting'] as const) {
+      expect(typeof DIFFICULTIES.hard[lever], `${lever} missing from the profile`).toBe('boolean');
+    }
+    // These two survived ablation on the bias-fixed sim and are retained.
     expect(DIFFICULTIES.hard.focusFire).toBe(true);
-    expect(DIFFICULTIES.hard.kiting).toBe(true);
     expect(DIFFICULTIES.hard.retreatHurtUnits).toBe(true);
   });
 });

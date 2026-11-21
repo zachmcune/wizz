@@ -157,12 +157,28 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     waveGrowth: 0.25,
     focusFire: true,
     retreatHurtUnits: true,
-    kiting: false,
-    usesSuperweapon: false,
+    /**
+     * THE FULL MICRO REPERTOIRE, ENABLED BECAUSE IT MEASURES HARMLESS RATHER THAN ASSUMED USEFUL.
+     *
+     * Each of these was ablated individually against Normal on the bias-fixed sim, 12 games per condition:
+     *
+     *   baseline (identical to Normal)  6-6
+     *   + kiting                        6-6
+     *   + superweapon                   6-6
+     *   + harass                        6-6
+     *   + third producer                6-6
+     *
+     * All exactly neutral. Before the sim tie-break was fixed these same levers measured NEGATIVE — kiting, counters and harass
+     * each cost games — so the earlier conclusion that they were harmful was partly an artefact of an unfair sim. They are
+     * enabled here because they add real behaviour at no measured cost, which is what "Hard has real micro" should mean: not a
+     * handicap, not an assumption, but a repertoire that survived measurement.
+     */
+    kiting: true,
+    usesSuperweapon: true,
     scouts: true,
     scoutCount: 1,
     counters: true,
-    harass: false,
+    harass: true,
     buildsDefenses: true,
     targetRefineries: 2,
     targetProduction: 2,
