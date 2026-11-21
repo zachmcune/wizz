@@ -182,8 +182,21 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
 
 /** Normalise an arbitrary difficulty string from the lobby into a profile. */
 export function profileFor(d: string | undefined): DifficultyProfile {
-  if (d === 'easy' || d === 'hard' || d === 'normal') return DIFFICULTIES[d];
-  return DIFFICULTIES.normal;
+  /**
+   * ALWAYS RETURN A FRESH COPY.
+   *
+   * This used to hand out the shared `DIFFICULTIES` object itself. The ablation harness overrides individual levers on a brain's
+   * profile (`Object.assign(brain.profile, override)`), and because that object was the GLOBAL table the override persisted for
+   * the rest of the process — so a lever forced on for one measurement stayed on for every later match in the same worker.
+   *
+   * The symptom was impossible to explain otherwise: Hard and Normal became byte-identical in every profile field, yet measured
+   * 20.8% and 79.2% against the same opponent in the same run. A contaminated table, not AI behaviour.
+   *
+   * Copying makes overrides local to the brain that requested them, which is what an override has to mean for any ablation
+   * result to be trustworthy.
+   */
+  const base = d === 'easy' || d === 'hard' || d === 'normal' ? DIFFICULTIES[d] : DIFFICULTIES.normal;
+  return { ...base };
 }
 
 /**
