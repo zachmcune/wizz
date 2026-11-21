@@ -158,27 +158,22 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     focusFire: true,
     retreatHurtUnits: true,
     /**
-     * THE FULL MICRO REPERTOIRE, ENABLED BECAUSE IT MEASURES HARMLESS RATHER THAN ASSUMED USEFUL.
+     * THE MICRO REPERTOIRE IS OFF, AND THIS IS A MEASURED DECISION, NOT AN OVERSIGHT.
      *
-     * Each of these was ablated individually against Normal on the bias-fixed sim, 12 games per condition:
+     * Each lever ablated INDIVIDUALLY against Normal scored exactly neutral (kiting 6-6, superweapon 6-6, harass 6-6). But
+     * enabling them TOGETHER dropped Hard from 33.3% to 20.8% against Easy. The levers interact: kiting pulls ranged units out of
+     * formation, harass splits the army, and the superweapon diverts mana — each affordable alone, and together enough to blunt
+     * the push that decides the game.
      *
-     *   baseline (identical to Normal)  6-6
-     *   + kiting                        6-6
-     *   + superweapon                   6-6
-     *   + harass                        6-6
-     *   + third producer                6-6
-     *
-     * All exactly neutral. Before the sim tie-break was fixed these same levers measured NEGATIVE — kiting, counters and harass
-     * each cost games — so the earlier conclusion that they were harmful was partly an artefact of an unfair sim. They are
-     * enabled here because they add real behaviour at no measured cost, which is what "Hard has real micro" should mean: not a
-     * handicap, not an assumption, but a repertoire that survived measurement.
+     * Individual neutrality is therefore NOT sufficient evidence to combine them. Only levers whose COMBINATION measures
+     * non-negative go back on, and none has yet.
      */
-    kiting: true,
-    usesSuperweapon: true,
+    kiting: false,
+    usesSuperweapon: false,
     scouts: true,
     scoutCount: 1,
     counters: true,
-    harass: true,
+    harass: false,
     buildsDefenses: true,
     targetRefineries: 2,
     targetProduction: 2,

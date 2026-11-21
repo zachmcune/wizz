@@ -64,8 +64,18 @@ Against Normal, 12 side-swapped games per condition, with everything else held i
 (kiting, counters and harass each appeared to cost games), which was partly an artefact of an unfair sim rather than of the
 levers themselves.
 
-They are enabled on Hard because they add real behaviour at **no measured cost**. That is the honest justification — not that
-they are proven to help.
+### ...but individually neutral does NOT mean safe in combination
+
+Enabling kiting, superweapon and harass TOGETHER dropped Hard from **33.3% to 20.8%** against Easy. Each lever alone cost nothing;
+all three at once cost twelve percentage points.
+
+The interaction is plausible from what each does: kiting pulls ranged units out of the formation that focus fire depends on,
+harass splits a squad off the main push, and the superweapon diverts mana from production. Each is affordable in isolation and
+together they blunt the one push that decides the game.
+
+**This is the methodological lesson of the whole exercise**: ablation of single levers cannot validate a *set* of them. The
+repertoire is therefore off, and a lever only goes back on once the COMBINATION including it measures non-negative. The
+individual results above are kept because they are the honest first-order measurement, not because they justify the set.
 
 ## Static defence and scouting
 
