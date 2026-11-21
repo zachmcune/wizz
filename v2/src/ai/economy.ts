@@ -98,6 +98,44 @@ export function planEconomy(
   if (harvesters.length > 0 && liveNodes.length === 0) {
     notes.push('no mana nodes left in sight');
   }
+  /**
+   * PULL WORKERS OFF THE LINE WHEN RAIDERS ARRIVE.
+   *
+   * Workers are the whole economy: losing them is unrecoverable, because the building that trains replacements is also the
+   * thing their income pays for. Measured on seed 1000 (mirror): p1's worker line went 10 -> 7 -> 6 -> 0 between minutes 4
+   * and 7 while an enemy army camped near its base, and from that point it had NO income — 175 mana, permanently, with no way
+   * to buy a 200-cost worker. It had 5 buildings standing and could not use any of them for the rest of the match.
+   *
+   * A human player pulls wisps off the line the moment raiders show up. So do we: any worker within `FLEE_RADIUS` of a
+   * visible enemy unit runs to the sanctum and waits there. They are re-tasked automatically once the area is clear, because
+   * `isIdleHarvester` sees them as idle again.
+   */
+  const FLEE_RADIUS = 300;
+  const raiders = per.enemyUnits.filter((e) => e.weapon);
+  if (raiders.length > 0) {
+    const fleeing = harvesters.filter((h) =>
+      raiders.some((e) => Math.hypot(e.x - h.x, e.y - h.y) < FLEE_RADIUS),
+    );
+    if (fleeing.length > 0) {
+      const safe = per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
+      if (safe) {
+        commands.push({
+          type: 'move',
+          playerId: pid,
+          entityIds: fleeing.map((h) => h.id),
+          x: safe.x,
+          y: safe.y,
+        });
+        notes.push(`pulling ${fleeing.length} worker(s) off the line — raiders within ${FLEE_RADIUS}`);
+        /**
+         * Fleeing workers must not ALSO be handed a harvest order this pass, or the two orders fight and they stand still
+         * while being shot. Returning here keeps the flee authoritative for this decision, and the next pass re-tasks them
+         * from a safe position.
+         */
+        return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+      }
+    }
+  }
   if (liveNodes.length > 0) {
     const idle = harvesters.filter((u) => isIdleHarvester(u));
     if (idle.length > 0) {
@@ -170,10 +208,25 @@ export function planEconomy(
    * Two guards: the target is capped so a single refinery cannot demand a swarm, and workers are only bought once the next
    * build-order step is already paid for — the opening is what turns income into an army, so it goes first.
    */
+  /**
+   * WORKER COUNT SCALES FROM A SMALL BASE, AND ONLY REFINERIES ADD TO IT.
+   *
+   * The previous formula was `min(8 + refineries*4, max(8, refineries*perRefinery, producers*4))`. With ZERO refineries
+   * both sides of that clamp evaluate to 8, so the AI bought EIGHT workers (1600 mana) before it had built anything that
+   * trains an army — and then could not afford the 550 summoning circle for minutes. Measured on seed 1000, mirror match:
+   *
+   *   min 1: 5 wisps, mana 125, 2 buildings
+   *   min 4: 12 wisps, mana 375, 4 buildings, army 0
+   *   min 6:  7 wisps, mana  50, 4 buildings, army 0    <- workers dying, no army ever built
+   *   min 9: p1 eliminated
+   *
+   * A worker costs 200 and returns income slowly; the summoning circle is what turns income into an army. Starting at four
+   * workers — enough to mine the two starting nodes without saturating them — and adding three per completed refinery keeps
+   * the economy growing with the thing that actually supports it.
+   */
   const wantedHarvesters = Math.min(
-    // Never let the worker target alone absorb everything: 4 per refinery plus base capacity is plenty.
-    8 + refineries * 4,
-    Math.max(8, refineries * profile.harvestersPerRefinery, producersOf(per, registry).length * 4),
+    12,
+    Math.max(4, refineries * profile.harvestersPerRefinery > 0 ? 4 + refineries * 3 : 4, producersOf(per, registry).length * 2),
   );
   const harvesterProducer = producerList.find((b) => {
     const def = registry.buildings.get(b.defId);
@@ -403,6 +456,44 @@ export function planEconomy(
       const batch = Math.max(1, Math.min(shortfall, affordable, 3));
       for (let i = 0; i < batch; i++) {
         commands.push({ type: 'produce', playerId: pid, buildingId: harvesterProducer.id, defId: unitId });
+      }
+    }
+  }
+
+  /**
+   * ------------------------------------------------------------------ 4b. static defense
+   *
+   * A BASE DEFENSE LAYER, SO THE FIRST PUSH DOES NOT END THE GAME.
+   *
+   * Measured before this existed: the first side to mass about ten units attacked, and the defender — holding five units and
+   * at most one sentry from the build order — lost its sanctum in about thirteen seconds. Matches ended around minute seven
+   * and NO AI EVER REACHED 20 ARMY UNITS in any match, so the mid game never happened and difficulty had no room to express
+   * itself. That is the single structural reason both the match-length and the difficulty requirements failed.
+   *
+   * The build order puts its first sentry at 90 seconds and only ever asks for one. A defended base needs enough turrets to
+   * make a ten-unit push cost more than it gains, and they must go up BEFORE the enemy's first wave rather than after.
+   *
+   * `buildsDefenses` was declared on every difficulty profile and never read anywhere — a dead lever. It is now the gate, so
+   * Easy genuinely does not build them and the difference is measurable.
+   */
+  if (profile.buildsDefenses) {
+    const sentryDef = registry.buildings.get('arcane_sentry');
+    const sentries = per.myBuildings.filter((b) => b.defId === 'arcane_sentry').length +
+      inProgressCount(per, 'arcane_sentry');
+    // Scale the ring with the threat: one turret per ~8 enemy army units seen, never fewer than 2 once affordable.
+    const enemyArmy = per.enemyUnits.filter((u) => u.weapon).length;
+    const wantSentries = Math.min(6, Math.max(2, 2 + Math.floor(enemyArmy / 8)));
+    if (
+      sentryDef &&
+      sentries < wantSentries &&
+      per.mana >= sentryDef.cost &&
+      inProgressCount(per, 'arcane_sentry') === 0 &&
+      elapsedSeconds >= 25
+    ) {
+      const spot = findBuildSpot(state, per, services, registry, sentryDef);
+      if (spot) {
+        commands.push({ type: 'build', playerId: pid, defId: sentryDef.id, x: spot.x, y: spot.y });
+        notes.push(`static defense ${sentries + 1}/${wantSentries} against ${enemyArmy} seen`);
       }
     }
   }
