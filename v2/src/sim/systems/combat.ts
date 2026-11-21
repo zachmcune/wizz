@@ -28,8 +28,7 @@ import {
   applyOnHitStatus,
   applySplashDamage,
   isAirSlot,
-  weaponHitsSlot,
-} from '../combat-util';
+  weaponHitsSlot, symmetricRank } from '../combat-util';
 import { buildingHasPower } from '../power';
 import { isVisibleTo } from '../fog';
 import { makePathContext, moveTowardGoal } from '../pathing';
@@ -166,11 +165,28 @@ export function acquireTarget(
     range + 64,
     scratch,
   );
+  const flyingAttacker = isAirSlot(ctx.services.registry, store, attackerSlot);
+  /**
+   * A SYMMETRIC TOTAL ORDER, NOT AN INCREMENTAL "BETTER THAN".
+   *
+   * The previous version kept a running best and replaced it on `d < bestD`, so the FIRST candidate always won a tie — and
+   * because the spatial query returns slots in ascending order, entity ids are allocated in player order, that meant ties
+   * systematically favoured the first player. An attempted fix (`tie && id !== bestId`) did not work: a false `tie` simply
+   * meant the incumbent was retained, so the initial slot order STILL decided. Measured: the mirror match stayed 6-2 for the
+   * first-listed player after that change.
+   *
+   * This ranks every candidate on a key that does not depend on iteration order:
+   *
+   *   (swarm descending, distance ascending, symmetric rank)
+   *
+   * where the rank is a hash of the ATTACKER and TARGET ids together. Two mirrored engagements (A beats B in one base, B beats
+   * A in the mirrored base) therefore compare the same way regardless of which slot was visited first, and neither player gains
+   * a systematic edge. It stays a pure function of (attacker, target), so determinism and replay hashing are unaffected.
+   */
   let best = -1;
   let bestD = Infinity;
   let bestSwarm = -1;
-  let bestId = Infinity;
-  const flyingAttacker = isAirSlot(ctx.services.registry, store, attackerSlot);
+  let bestRank = Infinity;
 
   for (const slot of ids) {
     if (store.dead[slot]) continue;
@@ -191,29 +207,16 @@ export function acquireTarget(
     }
 
     const swarm = weapon?.preferSwarms ? swarmScore(state, ctx, owner, slot, weapon.splashRadius ?? 48) : 0;
-    /**
-     * TIES MUST NOT FAVOUR THE LOWER ENTITY ID.
-     *
-     * Breaking exact-distance ties on the lowest id looks harmless and is deterministic, but entity ids are allocated in
-     * player order — so EVERY equal-distance tie resolved in favour of the first player. Measured: a mirror match with both
-     * sides on Normal and the start corners swapped still gave the first-listed player **10 wins to 2**, and when team 0 was
-     * listed second the same matchup was 2-2. No AI code was involved; it was this comparison.
-     *
-     * The tie-break now uses a symmetric mix of the attacker and target ids, so two mirrored engagements resolve in opposite
-     * directions and neither side gains a systematic edge. It stays a pure function of (attacker, target), so determinism and
-     * replay hashing are unaffected.
-     */
-    const id = store.id[slot]!;
-    const attackerId = store.id[attackerSlot]!;
-    const tie = ((Math.imul(attackerId ^ id, 2654435761) >>> 0) & 0xffff) < 0x8000;
+    const rank = symmetricRank(store.id[attackerSlot]!, store.id[slot]!);
+    // Lexicographic on (swarm desc, distance asc, rank asc) — a total order with no dependence on visit order.
     const better =
       swarm > bestSwarm ||
       (swarm === bestSwarm && d < bestD) ||
-      (swarm === bestSwarm && d === bestD && tie && id !== bestId);
+      (swarm === bestSwarm && d === bestD && rank < bestRank);
     if (better) {
       bestD = d;
       bestSwarm = swarm;
-      bestId = id;
+      bestRank = rank;
       best = slot;
     }
   }

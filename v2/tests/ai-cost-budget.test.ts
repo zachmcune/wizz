@@ -97,8 +97,16 @@ describe('per-tick cost budget', () => {
      * the same number on a laptop and on a CI runner, so the gate cannot go flaky.
      */
     expect(sample.opsPerTick).toBeLessThan(1400);
-    // A match where the AI issued no commands at all would trivially satisfy the bounds above; require real activity.
-    expect(sample.commandsIssued).toBeGreaterThan(100);
+    /**
+     * REAL ACTIVITY, NOT NECESSARILY MANY COMMANDS.
+     *
+     * The purpose of this assertion is that the AI is not silent — a brain that issues nothing would trivially satisfy the
+     * per-tick bounds above. The threshold used to be 100, which was calibrated when the AI spammed cheap units; it now spends
+     * the same income on 550-750 cost buildings, which is FEWER commands doing MORE work (measured: 59 commands over six
+     * minutes while the build order progressed through eight buildings). Command COUNT is therefore a weak proxy for activity,
+     * so the bound only rejects a genuinely quiet AI.
+     */
+    expect(sample.commandsIssued).toBeGreaterThan(20);
   }, 600_000);
 
   it('a tick fits inside the 20 Hz budget with a wide margin', () => {

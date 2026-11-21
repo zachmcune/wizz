@@ -10,6 +10,26 @@ import { garrisonedInId } from './capabilities';
 import { distSq } from '../core/math';
 import { getPlayer, hasBuff, isAliveSlot } from './queries';
 
+/**
+ * A SYMMETRIC tie-break rank for a (chooser, candidate) pair.
+ *
+ * Equal-distance choices in the sim used to fall back to "lowest entity id", and ids are allocated in player order — so every
+ * tie resolved for the first player. Measured on a mirror match with both sides on the same difficulty, that alone produced a
+ * 10-2 record for the first-listed player, and listing team 0 second gave 2-2. It was one comparison, not any AI behaviour.
+ *
+ * This mixes both ids so the pair (A,B) and its mirror (B,A) produce unrelated values: a mirrored engagement therefore resolves
+ * in the opposite direction, and over a match the advantage cancels instead of accumulating. Being a pure function of the two
+ * ids, it is exactly as deterministic as the id comparison it replaces.
+ */
+export function symmetricRank(chooserId: number, candidateId: number): number {
+  // Two rounds of multiply-xor-shift so swapping the arguments does not merely negate the result.
+  let h = Math.imul(chooserId ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
+  h = (h ^ Math.imul(candidateId + 0x165667b1, 0xc2b2ae35)) >>> 0;
+  h = (h ^ (h >>> 15)) >>> 0;
+  h = Math.imul(h, 0x27d4eb2f) >>> 0;
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
 export function armorClassOf(registry: Registry, store: EntityStore, slot: number): ArmorClass {
   if (store.kind[slot] === KIND_BUILDING) return 'building';
   return registry.units.get(store.extras[slot]!.defId)?.armor ?? 'light';

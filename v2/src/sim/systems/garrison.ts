@@ -7,6 +7,7 @@
 import { TICK_HZ } from '../../core/constants';
 import type { WeaponDef } from '../../data/defs';
 import type { StepContext } from '../context';
+import { symmetricRank } from '../combat-util';
 import type { GameState } from '../types';
 import { KIND_BUILDING, KIND_PROJECTILE, KIND_RESOURCE_NODE, KIND_UNIT } from '../entity-store';
 import { distSq } from '../../core/math';
@@ -66,7 +67,7 @@ function acquireGarrisonTarget(
   const owner = store.ownerId(store.ownerIndex[unitSlot]!);
   let best = -1;
   let bestD = Infinity;
-  let bestId = Infinity;
+  let bestRank = Infinity;
   for (let slot = 0; slot < store.count; slot++) {
     if (store.dead[slot]) continue;
     const kind = store.kind[slot]!;
@@ -79,10 +80,14 @@ function acquireGarrisonTarget(
     const d = distSq(store.posX[hostSlot]!, store.posY[hostSlot]!, store.posX[slot]!, store.posY[slot]!);
     const reach = range + store.radius[hostSlot]! + store.radius[slot]!;
     if (d > reach * reach) continue;
-    const id = store.id[slot]!;
-    if (d < bestD || (d === bestD && id < bestId)) {
+    /**
+     * Symmetric tie-break, for the same reason as combat targeting: an id comparison favours whoever was allocated first, and
+     * ids are allocated in player order. See `symmetricRank`.
+     */
+    const rank = symmetricRank(store.id[hostSlot]!, store.id[slot]!);
+    if (d < bestD || (d === bestD && rank < bestRank)) {
       bestD = d;
-      bestId = id;
+      bestRank = rank;
       best = slot;
     }
   }
