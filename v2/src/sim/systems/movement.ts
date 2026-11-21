@@ -15,6 +15,7 @@ import type { GameState, EntityId } from '../types';
 import {
   EntityStore,
   KIND_UNIT,
+  STATE_ATTACKING,
   STATE_GARRISONED,
   STATE_IDLE,
   STATE_MOVING,
@@ -165,6 +166,20 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
     if (hasMorph(ex) || isChanneling(ex)) {
+      store.velX[slot] = 0;
+      store.velY[slot] = 0;
+      continue;
+    }
+    /**
+     * A CHASING UNIT IS MOVED BY THE COMBAT SYSTEM.
+     *
+     * `combat` walks a unit directly at the target it is attacking; this system walks it at `order + formationOffset`.
+     * When both run, the two goals cancel and the unit makes no net progress -- measured on seed 1035: 32 attacking
+     * units, none within weapon reach of the base, closing at ~0 despite valid attack orders.
+     *
+     * `STATE_ATTACKING` is set by `chase` precisely to say "movement is already handled this tick", so skip here.
+     */
+    if (store.state[slot] === STATE_ATTACKING) {
       store.velX[slot] = 0;
       store.velY[slot] = 0;
       continue;

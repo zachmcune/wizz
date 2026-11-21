@@ -16,6 +16,7 @@ import {
   KIND_RESOURCE_NODE,
   KIND_UNIT,
   STATE_ATTACKING,
+  STATE_MOVING,
   STATE_GARRISONED,
   STATE_IDLE,
   STANCE_AGGRESSIVE,
@@ -488,6 +489,21 @@ function chase(state: GameState, ctx: StepContext, slot: number, targetSlot: num
     store.posX[slot] = res.result.x;
     store.posY[slot] = res.result.y;
     if (res.result.facing !== 0) store.facing[slot] = res.result.facing;
+  }
+  /**
+   * CHASE MUST OWN THE UNIT'S MOVEMENT FOR THE TICK.
+   *
+   * `movementSystem` walks a unit toward `order + formationOffset`, while this walks it at the actual target. Both ran on
+   * the same tick and cancelled out, so a unit sat balanced between the two goals and never arrived anywhere. Measured on
+   * seed 1035 at 20 sim-minutes: 32 combat units were "attacking" a base they were 147-631 units away from, **zero** of
+   * them within weapon reach, and the victim's base lost ~55 HP per minute with a full army on top of it.
+   *
+   * The chase step already moved the unit this tick, so the formation step must be skipped -- otherwise the unit is
+   * teleported a frame's distance back toward its slot and the two systems fight forever. Marking the unit ATTACKING is the
+   * signal movementSystem already respects for "this unit is busy fighting".
+   */
+  if (store.state[slot] === STATE_MOVING || store.state[slot] === STATE_ATTACKING) {
+    store.state[slot] = STATE_ATTACKING;
   }
 }
 
