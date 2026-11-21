@@ -378,7 +378,13 @@ export function planMilitary(
    * exists. The threshold drops to a token force rather than being waived entirely.
    */
   const deadEconomy = per.myUnits.every((u) => registry.units.get(u.defId)?.isHarvester !== true);
-  const allInFloor = deadEconomy ? 2 : profile.minWaveSize;
+  /**
+   * With no harvesters there is no future army at all, so the floor is a SINGLE unit: attacking with one unit is worse than
+   * attacking with ten, but it is the only action that can still change the result, and standing still guarantees the
+   * stalemate. Measured on seed 1035 (mirror): both sides were down to ONE army unit each with 13 live mana nodes and zero
+   * income; a floor of two was unreachable, so `passesWithoutProgress` climbed past 1700 and the match ran out the clock.
+   */
+  const allInFloor = deadEconomy ? 1 : profile.minWaveSize;
   const ready = opts.allIn === true ? armySize >= allInFloor : armySize >= required && armySize >= regroupFloor;
   /**
    * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.
