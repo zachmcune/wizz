@@ -12,154 +12,15 @@ import { loadRegistry } from './data/loader';
 import type { Registry } from './data/registry';
 import { initMatch } from './sim/factory';
 import { stepSimulation } from './sim/step';
-import type { Command, GameState } from './sim/types';
+import type { GameState } from './sim/types';
 import type { SimServices } from './sim/context';
-import { buildProgressOf, getHarvester, getProductionQueue } from './sim/capabilities';
-import { getPlayer } from './sim/queries';
+import { AiDriver } from './ai/driver';
 import { loadAtlas } from './render/atlas';
 import { MAX_UNITS_PER_PLAYER } from './core/constants';
 import { button, densityFor, el as kitEl, resource, setDensity } from './ui/kit';
 import type { LoadedAtlas } from './render/atlas';
 import { Renderer, teamIdForColor } from './render/renderer';
 import { TICK_MS } from './core/constants';
-
-/** Deterministic scripted player, same shape as the Phase-2 demo bot. */
-function botCommands(state: GameState, me: string): Command[] {
-  const cmds: Command[] = [];
-  const store = state.entities;
-  const p = getPlayer(state, me);
-  if (!p || p.defeated) return cmds;
-  const oi = store.ownerIndexFor(me);
-
-  let sanctum = -1;
-  let spire = -1;
-  let circle = -1;
-  let forge = -1;
-  for (let s = 0; s < store.count; s++) {
-    if (store.dead[s] || store.kind[s] !== 1) continue;
-    if (store.ownerIndex[s] !== oi) continue;
-    const d = store.extras[s]!.defId;
-    const done = buildProgressOf(store.extras[s]!) === undefined;
-    if (d === 'sanctum' && sanctum < 0) sanctum = s;
-    else if (d === 'attunement_spire' && done && spire < 0) spire = s;
-    else if (d === 'summoning_circle' && done && circle < 0) circle = s;
-    else if (d === 'golem_forge' && done && forge < 0) forge = s;
-  }
-  if (sanctum < 0) return cmds;
-  const sx = store.posX[sanctum]!;
-  const sy = store.posY[sanctum]!;
-
-  if (spire < 0 && p.mana >= 750) {
-    cmds.push({ type: 'build', playerId: me, defId: 'attunement_spire', x: sx + 120, y: sy + 88 });
-    return cmds;
-  }
-  let hasLey = false;
-  for (let s = 0; s < store.count; s++) {
-    if (store.dead[s] || store.kind[s] !== 1) continue;
-    if (store.ownerIndex[s] !== oi) continue;
-    if (store.extras[s]!.defId === 'ley_conduit' && buildProgressOf(store.extras[s]!) === undefined) hasLey = true;
-  }
-  if (spire >= 0 && !hasLey && p.mana >= 300) {
-    cmds.push({ type: 'build', playerId: me, defId: 'ley_conduit', x: sx - 120, y: sy + 88 });
-    return cmds;
-  }
-  if (spire >= 0 && circle < 0 && p.mana >= 550) {
-    cmds.push({ type: 'build', playerId: me, defId: 'summoning_circle', x: sx + 190, y: sy + 110 });
-    return cmds;
-  }
-  // A second circle roughly doubles army throughput, which is what makes the demo reach a real
-  // battle instead of trickling four units into a fight.
-  let circleCount = 0;
-  for (let s = 0; s < store.count; s++) {
-    if (store.dead[s] || store.kind[s] !== 1) continue;
-    if (store.ownerIndex[s] !== oi) continue;
-    if (store.extras[s]!.defId === 'summoning_circle') circleCount++;
-  }
-  if (circleCount === 1 && p.mana >= 900) {
-    cmds.push({ type: 'build', playerId: me, defId: 'summoning_circle', x: sx - 60, y: sy - 140 });
-    return cmds;
-  }
-  if (circle >= 0 && forge < 0 && hasLey && p.mana >= 850) {
-    cmds.push({ type: 'build', playerId: me, defId: 'golem_forge', x: sx - 190, y: sy + 110 });
-    return cmds;
-  }
-
-  const wisps: number[] = [];
-  let node = -1;
-  let bd = Infinity;
-  for (let s = 0; s < store.count; s++) {
-    if (store.dead[s]) continue;
-    if (store.kind[s] === 0 && store.ownerIndex[s] === oi && getHarvester(store.extras[s]!)) wisps.push(s);
-    if (store.extras[s]!.defId === 'mana_node') {
-      const d = Math.hypot(store.posX[s]! - sx, store.posY[s]! - sy);
-      if (d < bd) {
-        bd = d;
-        node = s;
-      }
-    }
-  }
-  if (spire >= 0 && wisps.length < 5) {
-    const q = getProductionQueue(store.extras[spire]!);
-    if ((q?.length ?? 0) === 0 && p.mana >= 200) {
-      cmds.push({ type: 'produce', playerId: me, buildingId: store.id[spire]!, defId: 'wisp' });
-    }
-  }
-  if (node >= 0) {
-    for (const w of wisps) {
-      if (store.extras[w]!.orders.length === 0 && (store.state[w] === 0 || store.state[w] === 3)) {
-        cmds.push({ type: 'harvest', playerId: me, entityIds: [store.id[w]!], nodeId: store.id[node]! });
-        break;
-      }
-    }
-  }
-
-  const army: number[] = [];
-  for (let s = 0; s < store.count; s++) {
-    if (store.dead[s] || store.kind[s] !== 0) continue;
-    if (store.ownerIndex[s] !== oi) continue;
-    const d = store.extras[s]!.defId;
-    if (d === 'imp_swarmling' || d === 'arcane_archer' || d === 'stone_golem') army.push(s);
-  }
-  if (circle >= 0) {
-    const q = getProductionQueue(store.extras[circle]!);
-    if ((q?.length ?? 0) < 5 && p.mana >= 250) {
-      cmds.push({
-        type: 'produce',
-        playerId: me,
-        buildingId: store.id[circle]!,
-        defId: army.length % 3 === 0 ? 'arcane_archer' : 'imp_swarmling',
-      });
-    }
-  }
-  if (forge >= 0) {
-    const q = getProductionQueue(store.extras[forge]!);
-    if ((q?.length ?? 0) < 2 && p.mana >= 700) {
-      cmds.push({ type: 'produce', playerId: me, buildingId: store.id[forge]!, defId: 'stone_golem' });
-    }
-  }
-
-  if (army.length >= 8) {
-    let tx = 0;
-    let ty = 0;
-    let found = false;
-    for (let s = 0; s < store.count; s++) {
-      if (store.dead[s] || store.kind[s] !== 1) continue;
-      const o = store.ownerId(store.ownerIndex[s]!);
-      if (o === me || state.relations[me]?.[o] !== 'enemy') continue;
-      tx = store.posX[s]!;
-      ty = store.posY[s]!;
-      found = true;
-      break;
-    }
-    if (found) {
-      const idle = army.filter((s) => store.extras[s]!.orders.length === 0);
-      if (idle.length > 0) {
-        cmds.push({ type: 'attackMove', playerId: me, entityIds: idle.map((s) => store.id[s]!), x: tx, y: ty });
-      }
-    }
-  }
-  return cmds;
-}
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const n = document.createElement(tag);
@@ -195,6 +56,16 @@ async function boot(): Promise<void> {
       { id: 'player1', controller: 'ai', team: 1, color: '#ff5d5d', startIndex: 3, factionId: 'arcane' },
     ],
   });
+
+  /**
+   * THE SPECTATE PAGE RUNS THE REAL AI.
+   *
+   * This page used to drive both sides with a hand-written script in this file (`botCommands`), which meant a recording or a
+   * screenshot of it showed a demo bot — NOT the Phase 5 AI that the tournament measures. Evidence that shows a different
+   * opponent than the one being claimed is worse than no evidence, so the page now uses `AiDriver`, the same decision code
+   * every match, test and tournament result in this phase runs through.
+   */
+  const aiDriver = new AiDriver(registry, services);
 
   const canvasHost = el('div', 'game-canvas-host');
   canvasHost.dataset.testid = 'game-canvas-host';
@@ -312,18 +183,20 @@ async function boot(): Promise<void> {
   let renderMs = 0;
 
   const frame = (now: number): void => {
-    const dt = Math.min(100, now - last);
+    /**
+     * At 10 fps a 100 ms cap means each frame advances at most 100 ms of sim time, so `speed` could never exceed about 2x
+     * no matter what was requested. A 500 ms cap lets a low-frame-rate spectate page actually reach the requested speed while
+     * still bounding the catch-up after a stall (a tab backgrounded for a minute does not replay the whole minute).
+     */
+    const dt = Math.min(500, now - last);
     last = now;
     fps = fps * 0.92 + (1000 / Math.max(1, dt)) * 0.08;
     acc += dt * speed;
     let steps = 0;
     const st = performance.now();
-    while (acc >= TICK_MS && steps < 5 * speed) {
+    while (acc >= TICK_MS && steps < 20 * speed) {
       if (!state.ended) {
-        const cmds = [
-          ...(state.players[0]!.defeated ? [] : botCommands(state, 'player0')),
-          ...(state.players[1]!.defeated ? [] : botCommands(state, 'player1')),
-        ];
+        const cmds = aiDriver.hook(state, services);
         const res = stepSimulation(state, services, cmds);
         void res;
       }
