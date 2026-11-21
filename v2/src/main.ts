@@ -48,12 +48,28 @@ async function boot(): Promise<void> {
   // current URL and resolves to the wrong place. Vite serves `public/` at the site root.
   const atlas: LoadedAtlas = await loadAtlas('/atlas-final/');
 
+  /**
+   * SEED AND DIFFICULTIES COME FROM THE URL, so a proof capture can select a specific match rather than whichever one the
+   * hard-coded seed happens to produce. Without this the AI-vs-AI page always played the SAME game, and a request to capture
+   * "10 and 18 minutes of a Hard vs Normal match" was impossible: that fixed seed finished at 11.3 minutes.
+   *
+   * Defaults are unchanged, so the page behaves the same for a casual visit.
+   */
+  const params = new URLSearchParams(window.location.search);
+  const spectateSeed = Number(params.get('seed') ?? '20251113') || 20251113;
+  const d0 = (params.get('d0') ?? 'hard') as 'easy' | 'normal' | 'hard';
+  const d1 = (params.get('d1') ?? 'normal') as 'easy' | 'normal' | 'hard';
   const { state, services }: { state: GameState; services: SimServices } = initMatch(registry, {
     mapId: 'duel_glade',
-    seed: 20251113,
+    seed: spectateSeed,
     players: [
-      { id: 'player0', controller: 'ai', team: 0, color: '#4f9dff', startIndex: 0, factionId: 'arcane' },
-      { id: 'player1', controller: 'ai', team: 1, color: '#ff5d5d', startIndex: 3, factionId: 'arcane' },
+      { id: 'player0', controller: 'ai', aiDifficulty: d0, team: 0, color: '#4f9dff', startIndex: 0, factionId: 'arcane' },
+      /**
+       * startIndex 1, matching the tournament harness. It was 3 here, which put the second player in a different corner and
+       * therefore produced a DIFFERENT GAME from the one the measurements describe — a capture of "the Hard vs Normal match"
+       * that is not the measured match is misleading, even though both are legal games.
+       */
+      { id: 'player1', controller: 'ai', aiDifficulty: d1, team: 1, color: '#ff5d5d', startIndex: 1, factionId: 'arcane' },
     ],
   });
 

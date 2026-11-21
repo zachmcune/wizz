@@ -32,7 +32,14 @@ async function main(): Promise<void> {
   });
   const page = await context.newPage();
 
-  const url = `${BASE}/index.html?speed=${SPEED}`;
+  /**
+   * The matchup is named, not implied. `?seed` and `?d0/?d1` select the exact game, so the recording is of the Hard-vs-Normal
+   * match the tournament measures rather than of whatever the page's default seed happened to produce.
+   */
+  const SEED = process.env.RECORD_SEED ?? '1000';
+  const D0 = process.env.RECORD_D0 ?? 'hard';
+  const D1 = process.env.RECORD_D1 ?? 'normal';
+  const url = `${BASE}/index.html?speed=${SPEED}&seed=${SEED}&d0=${D0}&d1=${D1}`;
   console.log(`opening ${url}`);
   await page.goto(url, { waitUntil: 'load' });
 
