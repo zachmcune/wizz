@@ -399,7 +399,20 @@ export function planMilitary(
    * stalemate. Measured on seed 1035 (mirror): both sides were down to ONE army unit each with 13 live mana nodes and zero
    * income; a floor of two was unreachable, so `passesWithoutProgress` climbed past 1700 and the match ran out the clock.
    */
-  const allInFloor = deadEconomy ? 1 : profile.minWaveSize;
+  /**
+   * THE BREAKER MUST NOT REQUIRE THE SIZE IT EXISTS TO STOP WAITING FOR.
+   *
+   * An all-in still demanded the profile's full minimum wave (11 at Hard). But the entire purpose of the breaker is "stop
+   * waiting for a bigger army" -- so requiring 11 units before committing, while the army is stuck at 8 and the economy has
+   * 80 mana and is mined out, reproduces exactly the wait it was meant to end. Measured on seed 1035 (hard vs normal), which
+   * ran the full 30 minutes: hard held 8 army with `passesWithoutProgress = 3273` -- the breaker firing for over an hour of
+   * decision passes -- and never attacked.
+   *
+   * The floor is half the normal wave (and never more than the army itself), which keeps it a real force rather than a
+   * token, while making it reachable from the army an exhausted economy can actually field. A literally dead economy drops
+   * to a single unit.
+   */
+  const allInFloor = deadEconomy ? 1 : Math.max(4, Math.ceil(profile.minWaveSize / 2));
   const ready = opts.allIn === true ? armySize >= allInFloor : armySize >= required && armySize >= regroupFloor;
   /**
    * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.

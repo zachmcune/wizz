@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate-data": "vitest run tests/data/validation.test.ts",
-    "test:unit": "vitest run --exclude tests/sim/perf.test.ts"
+    "test:unit": "vitest run --exclude tests/sim/perf.test.ts",
+    "test:ai": "vite-node audit/ai-smoke.ts",
+    "tournament:ai": "vite-node audit/ai-tournament-cli.ts --seeds 12 --minutes 30 --json docs/proof/phase-5/ai/tournament.json",
+    "proof:ai": "vite-node audit/ai-proof-report.ts"
   },
   "dependencies": {
     "pixi.js": "^8.23.0",

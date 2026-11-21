@@ -96,6 +96,17 @@ jobs:
       # actually means something.
       - name: Sim performance gate (isolated, no browser running)
         run: npx vitest run tests/sim/perf.test.ts
+      # THE AI SMOKE TOURNAMENT.
+      #
+      # The full Phase 5 bracket is 12 seeds x 2 sides x 4 matchups = 96 matches and runs hours of CPU; its committed result
+      # is checked by tests/phase5-tournament.test.ts instead. This runs 4 SHORT matches on every push and asserts the
+      # properties that must hold for any match at all: every match terminates, no side stalls, an army is never left idle,
+      # and the same seed reproduces the same state hash.
+      #
+      # It is deliberately NOT a balance measurement -- four matches cannot establish a win rate -- and it is kept isolated
+      # from the browser jobs so the timing-free assertions stay meaningful.
+      - name: AI smoke tournament (termination, stalls, determinism)
+        run: npx vite-node audit/ai-smoke.ts
       # Everything EXCEPT the perf gate, which already ran alone above. Running it again here would
       # measure it under browser contention and produce a meaningless number.
       - name: Unit and proof tests (including the live UI gates)
