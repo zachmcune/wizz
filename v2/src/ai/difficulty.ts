@@ -135,7 +135,21 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
      */
     id: 'hard',
     label: 'Hard',
-    decisionInterval: 10, // thinks every 0.5s — the one advantage kept without needing proof of harm
+    /**
+     * 20 ticks (1 s), the SAME as Normal, because faster decisions measured WORSE and the cause is understood.
+     *
+     * Holding the profile identical and varying only this value, against Easy over 12 games each:
+     *
+     *   decisionInterval 10 -> 6-6
+     *   decisionInterval 20 -> 10-2
+     *   decisionInterval 40 -> 10-1
+     *
+     * The faster AI issued a build attempt every half second and re-derived its reserve twice as often, so its bank sat at 60
+     * mana while the slower one held 135 — it was permanently "saving" for a 750-cost building and never funded an army. A
+     * machine that decides more often is not smarter, it is just noisier, and here the noise cost it the game. Hard's strength
+     * therefore has to come from behaviours that survive measurement, not from reaction speed.
+     */
+    decisionInterval: 20,
     reactionDelay: 8,
     bankFraction: 0.3,
     harvestersPerRefinery: 6,

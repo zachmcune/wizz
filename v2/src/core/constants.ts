@@ -13,6 +13,14 @@ export const TILE_RAMP = 2;
  * content timings (cooldowns, build times, spell durations are all authored against it) and it
  * keeps lockstep tick counts low on school Chromebooks.
  */
+/**
+ * How many units one production building may queue at once.
+ *
+ * Unbounded queues let a client that sends `produce` faster than units are built drain its whole bank into one building. Each
+ * producer gets its own cap, so more producers still means more throughput.
+ */
+export const MAX_PRODUCTION_QUEUE = 5;
+
 export const TICK_HZ = 20;
 export const TICK_MS = 1000 / TICK_HZ;
 

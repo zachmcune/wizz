@@ -4,7 +4,7 @@
 // rejected with a `commandRejected` event (never silently). That single funnel is what makes the sim
 // auditable: if the state changed, one of these handlers did it.
 
-import { TILE } from '../../core/constants';
+import { MAX_PRODUCTION_QUEUE, TILE } from '../../core/constants';
 import type { StepContext } from '../context';
 import type { Command, GameState, EntityId, Stance } from '../types';
 import {
@@ -394,9 +394,22 @@ function handleProduce(state: GameState, ctx: StepContext, cmd: Extract<Command,
   if (!requirementsMet(state, cmd.playerId, udef.requires)) return reject(ctx, cmd.playerId, 'requires');
   if (player.mana < udef.cost) return reject(ctx, cmd.playerId, 'mana');
 
-  player.mana -= udef.cost;
+  /**
+   * A PRODUCTION QUEUE NEEDS A LIMIT.
+   *
+   * This accepted an unlimited queue and deducted mana for every entry, so a client that sent `produce` faster than units
+   * could be built drained the bank into a queue that would take minutes to empty. Measured with the AI deciding every half
+   * second instead of every second: it spent its entire income on a single producer's queue, fielded ZERO army for eight
+   * minutes and had 23% map coverage against 32% — the faster AI was the weaker one, and this was why. A human's queue is
+   * bounded by their clicking; a machine's is not.
+   *
+   * The cap is per producer, so more production buildings still mean more throughput — which is the behaviour the AI's
+   * `targetProduction` lever is supposed to reward.
+   */
   const production = ensureProduction(ex);
   production.productionQueue ??= [];
+  if (production.productionQueue.length >= MAX_PRODUCTION_QUEUE) return;
+  player.mana -= udef.cost;
   production.productionQueue.push({ defId: cmd.defId, progress: 0, required: buildTicksFor(udef.buildTime) });
   ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: player.mana });
 }
