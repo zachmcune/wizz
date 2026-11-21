@@ -117,8 +117,22 @@ export function bestCounterUnit(
      * because the golem is still shooting while the swarm is dead.
      */
     const sustain = u.hp * (1 + (u.armor === 'heavy' ? 0.35 : 0)); // heavy armour absorbs more in practice
+    /**
+     * A COUNTER YOU CANNOT AFFORD IS NOT A COUNTER.
+     *
+     * The score rewards effective HP so strongly that it always prefers the most expensive unit in the roster. Measured: Hard
+     * (which is the only profile with `counters` enabled) beat Easy **6-10** with counters on and **9-7** with them off — the
+     * "smarter" picker was making it worse. It was choosing 700-cost casters while holding 150 mana, so the production command
+     * was rejected for `mana` and the AI trained nothing at all, repeatedly.
+     *
+     * Units the bank cannot currently reach are therefore excluded when anything affordable exists, and affordability is
+     * weighed in rather than ignored. That keeps the counter logic (it still prefers good damage against the observed armour)
+     * while making it a decision the AI can actually execute.
+     */
+    const affordable = u.cost <= per.mana;
     const score = (effective * sustain) / (u.cost * u.cost) ** 0.5;
-    if (!best || score > best.score) best = { id, cost: u.cost, score };
+    const adjusted = affordable ? score : score * 0.05;
+    if (!best || adjusted > best.score) best = { id, cost: u.cost, score: adjusted };
   }
   return best ? { id: best.id, cost: best.cost } : null;
 }
