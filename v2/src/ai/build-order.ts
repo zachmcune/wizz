@@ -42,9 +42,19 @@ export const STANDARD_OPENING: readonly BuildStep[] = [
   { defId: 'attunement_spire', notBeforeSeconds: 40, pauseHarvesters: false, why: 'second refinery for a two-base economy' },
   { defId: 'summoning_circle', notBeforeSeconds: 70, pauseHarvesters: true, why: 'second producer, so waves keep coming' },
   { defId: 'arcane_sentry', notBeforeSeconds: 90, pauseHarvesters: false, why: 'one static defense so an early raid cannot end the game' },
-  { defId: 'arcane_nexus', notBeforeSeconds: 150, pauseHarvesters: true, why: 'tier 2: unlocks the heavy units and the Astral Spire' },
-  { defId: 'attunement_spire', notBeforeSeconds: 200, pauseHarvesters: false, why: 'third refinery' },
-  { defId: 'golem_forge', notBeforeSeconds: 240, pauseHarvesters: true, why: 'heavy units and siege' },
+  /**
+   * ORDER MATTERS AND THIS ONE WAS IMPOSSIBLE.
+   *
+   * `arcane_nexus` requires `golem_forge`, but it was listed BEFORE it (nexus @150s, forge @240s). The planner executes the
+   * first unsatisfied step, so nexus was always chosen, its requirement was never met, and the plan stopped there for the rest
+   * of the match. Measured on seed 1000: the AI built six buildings by minute three and NOTHING for the next fifteen minutes
+   * — no second refinery, no second producer, no tech — because it was waiting forever on a building it could never unlock.
+   *
+   * The forge now comes first, which is what its own requirement list demands.
+   */
+  { defId: 'golem_forge', notBeforeSeconds: 150, pauseHarvesters: true, why: 'heavy units and siege; also unlocks the nexus' },
+  { defId: 'arcane_nexus', notBeforeSeconds: 190, pauseHarvesters: true, why: 'tier 2: unlocks the heavy units and the Astral Spire' },
+  { defId: 'attunement_spire', notBeforeSeconds: 220, pauseHarvesters: false, why: 'third refinery' },
 ];
 
 /** A fast, greedy opening: more production sooner, defenses later. */
@@ -55,7 +65,8 @@ export const AGGRESSIVE_OPENING: readonly BuildStep[] = [
   { defId: 'summoning_circle', notBeforeSeconds: 35, pauseHarvesters: true, why: 'double production for an early wave' },
   { defId: 'attunement_spire', notBeforeSeconds: 60, pauseHarvesters: false, why: 'sustain the early aggression' },
   { defId: 'arcane_sentry', notBeforeSeconds: 80, pauseHarvesters: false, why: 'defense once the first wave is out' },
-  { defId: 'arcane_nexus', notBeforeSeconds: 130, pauseHarvesters: true, why: 'tier 2' },
+  { defId: 'golem_forge', notBeforeSeconds: 120, pauseHarvesters: true, why: 'heavy units; required by the nexus' },
+  { defId: 'arcane_nexus', notBeforeSeconds: 160, pauseHarvesters: true, why: 'tier 2' },
 ];
 
 /**

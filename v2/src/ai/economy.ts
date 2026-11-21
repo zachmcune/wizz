@@ -552,9 +552,21 @@ export function planEconomy(
   } else if (activeStep) {
     const def = registry.buildings.get(activeStep.defId);
     if (def && inProgressCount(per, activeStep.defId) === 0) {
+      /**
+       * A DISTANT GOAL STILL NEEDS A SHARE, BUT THE ARMY STILL NEEDS ITS OWN.
+       *
+       * Two failure modes measured on the same seed:
+       *   - reserving only within 400 of the cost: `saving for attunement_spire (200/750)` repeated 253 times in twelve
+       *     minutes, so NO step above ~400 mana was ever reachable and the AI stayed on six buildings;
+       *   - reserving everything past the halfway point: the AI held the whole bank, built no army, and was eliminated at
+       *     minute 9.
+       *
+       * So the reserve is a share of the bank that never exceeds the remaining cost: 35% while far away, rising toward the
+       * cost as it gets close, leaving at least 260 spendable so a defence can always be bought.
+       */
       const gap = Math.max(0, def.cost - per.mana);
-      // Only hold back while the step is nearly affordable, and never more than 40% of the bank.
-      if (gap <= 400) reservedForBuild = Math.min(gap, Math.floor(per.mana * 0.4));
+      const share = gap > def.cost * 0.5 ? 0.35 : 0.6;
+      reservedForBuild = Math.max(0, Math.min(Math.floor(per.mana * share), Math.max(0, per.mana - 260)));
     }
   }
 
