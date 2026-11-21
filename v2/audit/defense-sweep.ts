@@ -70,7 +70,14 @@ const CANDIDATES: Candidate[] = [
 
 const buildingPath = (name: string): string => join(ROOT, 'data', 'buildings', `${name}.json`);
 
-/** Snapshot every file we are about to touch, so restore is exact. */
+/**
+ * Snapshot every file we are about to touch, so restore is exact.
+ *
+ * The snapshot is taken from the CURRENT working copies, which is right for a sweep run from a clean tree. But an earlier run
+ * left a mid-sweep value in a working copy and a later restore faithfully reproduced THAT, so "restore" silently meant "restore
+ * to a half-applied candidate". The guard is `verifyRestored()` below: after restoring, every touched file is diffed against v1
+ * and the run refuses to report a result if any gameplay value still differs.
+ */
 const originals = new Map<string, string>();
 function snapshot(cand: Candidate): void {
   for (const p of cand.patches) {
@@ -80,6 +87,37 @@ function snapshot(cand: Candidate): void {
 }
 function restoreAll(): void {
   for (const [path, text] of originals) if (existsSync(path)) writeFileSync(path, text);
+}
+
+/** The v1 tree, used as the authority for "what the file should say when the sweep is done". */
+const V1_BUILDINGS = join(ROOT, '..', 'data', 'buildings');
+
+/**
+ * Fail loudly if a restore did not actually return the data to v1.
+ *
+ * This exists because it already went wrong once: a sweep ran from a working copy that held a half-applied candidate, the
+ * restore reproduced that value, and the commit that followed captured it. A measurement harness that can leave the game
+ * changed must check its own cleanup.
+ */
+function verifyRestored(files: string[]): void {
+  const problems: string[] = [];
+  for (const name of files) {
+    const v1Path = join(V1_BUILDINGS, `${name}.json`);
+    if (!existsSync(v1Path)) continue; // not a v1 def; nothing to compare
+    const v1 = JSON.parse(readFileSync(v1Path, 'utf8')) as Record<string, unknown>;
+    const v2 = JSON.parse(readFileSync(buildingPath(name), 'utf8')) as Record<string, unknown>;
+    if (v1.hp !== v2.hp) problems.push(`${name}.hp: v1=${String(v1.hp)} file=${String(v2.hp)}`);
+    const w1 = (v1.weapon ?? {}) as Record<string, unknown>;
+    const w2 = (v2.weapon ?? {}) as Record<string, unknown>;
+    for (const k of ['damage', 'cooldownTicks', 'range']) {
+      if (w1[k] !== undefined && w1[k] !== w2[k]) problems.push(`${name}.weapon.${k}: v1=${String(w1[k])} file=${String(w2[k])}`);
+    }
+  }
+  if (problems.length > 0) {
+    console.error('\nRESTORE FAILED — the data no longer matches v1:\n  ' + problems.join('\n  '));
+    console.error('Fix the files before trusting any measurement from this run.');
+    process.exit(3);
+  }
 }
 /** Restore even on an unexpected throw or an interrupt: leaving edited data behind is not acceptable. */
 process.on('SIGINT', () => {
@@ -193,6 +231,8 @@ if (best) {
     console.log(`  ${a} vs ${b}: ${aw}-${bw} (${((aw / Math.max(1, aw + bw)) * 100).toFixed(0)}%)`);
   }
   restoreAll();
+  verifyRestored(CANDIDATES.flatMap((c) => c.patches.map((p) => p.file)).filter((v, i, a) => a.indexOf(v) === i));
+  console.log('data verified identical to v1 after the sweep');
 } else {
   console.log('\nNo candidate landed inside the 15-25 band with zero unfinished matches.');
 }
