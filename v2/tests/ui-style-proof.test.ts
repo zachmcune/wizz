@@ -236,6 +236,27 @@ describe('the CI workflow that verifies all of this', () => {
     const wf = readFileSync(WF, 'utf8');
     const v2 = wf.slice(wf.indexOf('\n  v2:'));
     // The CI job runs the perf gate alone first, then everything else — both count as "runs the tests".
+    /**
+     * AND IT MUST RUN THE SLOW AI SUITES IN THEIR OWN STEP.
+     *
+     * Those suites are long CPU-bound simulations (mirror matches for the fairness interval, a 2v2 and a four-player
+     * free-for-all). Run in the same pool as the Playwright gates they starved the browser and `page.goto` hit its 30-second
+     * timeout — an intermittent failure that reported a navigation timeout rather than an assertion. This asserts the
+     * isolation, not just that "some tests run", so the split cannot be quietly folded back together.
+     */
+    expect(v2, 'v2 job runs the slow AI suites in their own isolated step').toContain('test:slow-ai');
+    /**
+     * And the remaining suite must EXCLUDE them, or they would run twice and the browser gates would be contended again. The
+     * excludes live in the `test:unit` script in package.json, which is where CI invokes them from — checking the workflow file
+     * for a flag that moved would assert the wrong thing.
+     */
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
+    expect(pkg.scripts['test:unit'], 'test:unit must exclude the suites that run separately').toContain(
+      '--exclude tests/phase5-fairness.test.ts',
+    );
+    expect(pkg.scripts['test:unit'], 'test:unit must exclude the team suites too').toContain(
+      '--exclude tests/phase5-teams.test.ts',
+    );
     expect(
       v2.includes('npm test') || v2.includes('test:unit'),
       'v2 job does not run v2 tests',
