@@ -144,6 +144,15 @@ export interface Perception {
   exploredTiles: ReadonlySet<number>;
   mapW: number;
   mapH: number;
+  /**
+   * True when a tile's centre is walkable ground.
+   *
+   * Terrain is static and fully observable from the map, exactly like the resource nodes, so this is not hidden state — a
+   * human player can see where the cliffs are from turn one. The AI needs it because a destination on impassable ground is
+   * a destination no unit can ever reach: armies were being sent into the side of a cliff and oscillating in place a few
+   * units from the goal, never exploring.
+   */
+  tileWalkable: (tx: number, ty: number) => boolean;
   /** True when a powered radar building is up. */
   radar: boolean;
 }
@@ -282,6 +291,7 @@ export class PerceivedWorld {
       exploredTiles,
       mapW: this.nav.w,
       mapH: this.nav.h,
+      tileWalkable: (tx: number, ty: number) => this.services.nav.canPlace(tx, ty, 1),
       radar: radarActive(st, registry, playerId),
     };
   }

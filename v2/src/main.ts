@@ -294,6 +294,16 @@ async function boot(): Promise<void> {
     else if (e.key === 'ArrowDown' || e.key === 's') renderer.camera.panByScreen(0, -step);
   });
 
+  /**
+   * SPECTATE SPEED.
+   *
+   * `?speed=N` multiplies how much simulation time each rendered frame consumes, so a full AI-vs-AI match can be recorded in
+   * a few minutes instead of twenty. It only changes how many fixed 20 Hz ticks are consumed per frame -- never the tick
+   * count, the step order, or the RNG -- so the outcome is byte-identical to a real-time run. That is what makes the
+   * recording evidence rather than a separate, unverified playthrough.
+   */
+  const speed = Math.max(1, Math.min(20, Number(new URLSearchParams(window.location.search).get('speed') ?? '1') || 1));
+
   // ---- main loop: fixed 20 Hz sim, interpolated render
   let acc = 0;
   let last = performance.now();
@@ -305,10 +315,10 @@ async function boot(): Promise<void> {
     const dt = Math.min(100, now - last);
     last = now;
     fps = fps * 0.92 + (1000 / Math.max(1, dt)) * 0.08;
-    acc += dt;
+    acc += dt * speed;
     let steps = 0;
     const st = performance.now();
-    while (acc >= TICK_MS && steps < 5) {
+    while (acc >= TICK_MS && steps < 5 * speed) {
       if (!state.ended) {
         const cmds = [
           ...(state.players[0]!.defeated ? [] : botCommands(state, 'player0')),

@@ -646,8 +646,32 @@ function nextUnexplored(per: Perception): { x: number; y: number } | null {
         }
       }
       if (total === 0 || seen / total >= 0.5) continue;
-      const bxC = bx + STRIDE / 2;
-      const byC = by + STRIDE / 2;
+      /**
+       * THE DESTINATION MUST BE GROUND A UNIT CAN STAND ON.
+       *
+       * A block's centre is often a cliff or a wall tile, and `attackMove` to an unwalkable point can never be satisfied:
+       * the flow field has no route, steering and separation cancel out, and the unit oscillates in place a few units from
+       * the goal forever. Measured on seed 1007 at 30 sim-minutes: armies frozen in a 4-5 unit loop around (3725, 2464)
+       * with a valid order to (3712, 2432), map coverage stuck at 4936/11264 tiles, `knownEnemyBld = 0` for BOTH sides,
+       * and neither AI ever attacking.
+       *
+       * Search the block for walkable ground instead of assuming the centre is usable, and skip the block entirely if it
+       * contains none.
+       */
+      let bxC = bx + STRIDE / 2;
+      let byC = by + STRIDE / 2;
+      if (!per.tileWalkable(bxC, byC)) {
+        let found = false;
+        for (let ty = by; ty < by + STRIDE && !found; ty++) {
+          for (let tx = bx; tx < bx + STRIDE && !found; tx++) {
+            if (!per.tileWalkable(tx, ty)) continue;
+            bxC = tx;
+            byC = ty;
+            found = true;
+          }
+        }
+        if (!found) continue;
+      }
       const d = Math.hypot(bxC - cx, byC - cy);
       if (!best || d > best.d) best = { x: bxC * TILE, y: byC * TILE, d };
     }
