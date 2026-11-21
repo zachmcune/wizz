@@ -170,14 +170,6 @@ export function planEconomy(
    * Two guards: the target is capped so a single refinery cannot demand a swarm, and workers are only bought once the next
    * build-order step is already paid for — the opening is what turns income into an army, so it goes first.
    */
-  const affordableStep = (() => {
-    const openingNow = openingFor(difficultyId, openingVariant);
-    for (const step of openingNow) {
-      if (stepSatisfied(step, openingNow, built, (id) => registry.buildings.get(id))) continue;
-      return registry.buildings.get(step.defId)?.cost ?? 0;
-    }
-    return 0;
-  })();
   const wantedHarvesters = Math.min(
     // Never let the worker target alone absorb everything: 4 per refinery plus base capacity is plenty.
     8 + refineries * 4,
@@ -356,15 +348,46 @@ export function planEconomy(
    * clock. A starving economy has to fix the starvation first: while workers are below target, the reserve only applies to
    * steps that are actually reachable, and an aspirational third refinery is abandoned rather than stranding the economy.
    */
-  const starving = harvesters.length < Math.min(8, wantedHarvesters);
-  const reserveForStep = starving ? Math.min(affordableStep, workerCost) : affordableStep;
-  const canAffordWorkerAfterBuild = per.mana - workerCost >= reserveForStep;
+  /**
+   * A STARVING ECONOMY BUYS WORKERS FIRST, WITH NO RESERVE.
+   *
+   * The reserve exists so the army cannot starve the build order. But it must not apply when the economy is already unable
+   * to fund anything: reserving even one worker's cost (200) demanded 400 banked to buy a 200-cost worker, which an economy
+   * with a single harvester realistically never reaches. Measured on seed 1007 (hard vs normal) with **13 live mana nodes**
+   * on the map and both sides down to ONE harvester each:
+   *
+   *   p1 (hard): 4 buildings, 1 harvester, 9 army units, 320 mana, `massing: 9/11` forever
+   *   p2 (norm): 4 buildings, 1 harvester, 1 army unit,  110 mana, `saving for summoning_circle (110/550)`
+   *
+   * Neither could buy a worker, so neither economy could recover, so neither army could grow, and the match ran out the
+   * clock with Hard sitting on 9 units it never committed.
+   *
+   * Below four workers there is no build order worth protecting: an economy that cannot fund its own replacement will not
+   * complete a 550-750 cost building either. Every coin goes to restoring income until the floor is met.
+   */
+  /**
+   * A STARVING ECONOMY RESERVES EXACTLY ONE WORKER — AND PROTECTS IT FROM THE ARMY.
+   *
+   * The reserve exists so the army cannot starve the build order. It must not apply to a 550-750 cost building while the
+   * economy has fewer than four workers, because such an economy can never reach that sum — but it must hold back the 200
+   * for the next worker, or the military planner spends it first and the economy never recovers.
+   *
+   * Measured on seed 1007 (hard vs normal), with **13 live mana nodes** on the map and both sides down to ONE harvester:
+   *
+   *   with no reserve at all:  p2 1 harvester -> 5 army units, still 1 harvester, 140 mana, `saving for … (140/750)`
+   *   with this reserve:       the 200 is held back and the worker is actually bought
+   *
+   * The army spending the worker's mana is the mechanism, which is why an unreserved starving economy grows an army it
+   * cannot replace instead of fixing its income.
+   */
+  const starving = harvesters.length < 4;
+  const canAffordWorker = per.mana >= workerCost;
   if (
     harvesterProducer &&
     harvesters.length < wantedHarvesters &&
     !pauseHarvesters &&
     !rebuildPending &&
-    canAffordWorkerAfterBuild
+    canAffordWorker
   ) {
     const hDef = registry.buildings.get(harvesterProducer.defId);
     const unitId = hDef?.producesUnits?.find((u) => registry.units.get(u)?.isHarvester);
@@ -410,7 +433,10 @@ export function planEconomy(
    * the reserve only ever applies once the step is within reach; a distant step is not hoarded for.
    */
   let reservedForBuild = 0;
-  if (activeStep) {
+  if (starving) {
+    // Hold back exactly one worker so the military planner cannot spend the economy's recovery.
+    reservedForBuild = Math.max(0, Math.min(workerCost, per.mana));
+  } else if (activeStep) {
     const def = registry.buildings.get(activeStep.defId);
     if (def && inProgressCount(per, activeStep.defId) === 0) {
       const gap = Math.max(0, def.cost - per.mana);
