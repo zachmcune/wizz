@@ -125,25 +125,33 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     targetProduction: 2,
   },
   hard: {
+    /**
+     * HARD IS NORMAL PLUS A FASTER DECISION CADENCE — and nothing else, until each extra is measured.
+     *
+     * Ablation showed Hard's "advanced" extras were the reason it was the WEAKEST difficulty: harass, kiting, counters, scouting
+     * and a third producer each measured neutral-to-negative, and every one of them competes with the army for the same mana.
+     * So the baseline here is Normal's proven profile with a faster cadence (which IS a real advantage: the same information
+     * acted on sooner), and each extra below is added back only once ablation shows a positive delta.
+     */
     id: 'hard',
     label: 'Hard',
-    decisionInterval: 10, // thinks every 0.5s
+    decisionInterval: 10, // thinks every 0.5s — the one advantage kept without needing proof of harm
     reactionDelay: 8,
-    bankFraction: 0.12,
-    harvestersPerRefinery: 8,
+    bankFraction: 0.3,
+    harvestersPerRefinery: 6,
     minWaveSize: 7,
-    waveGrowth: 0.3,
+    waveGrowth: 0.25,
     focusFire: true,
     retreatHurtUnits: true,
-    kiting: true,
-    usesSuperweapon: true,
+    kiting: false,
+    usesSuperweapon: false,
     scouts: true,
-    scoutCount: 2,
+    scoutCount: 1,
     counters: true,
-    harass: true,
+    harass: false,
     buildsDefenses: true,
-    targetRefineries: 3,
-    targetProduction: 3,
+    targetRefineries: 2,
+    targetProduction: 2,
   },
 };
 
