@@ -38,6 +38,24 @@ const PLAN_ADDITIONS = {
   maps: ['visualHeights'] as const,
 };
 
+/**
+ * APPROVED RULE CHANGES — the ONLY places v2 may differ from v1 in a gameplay value.
+ *
+ * Keyed by `<defId>.<field>`, and the entry must name the exact v1 value it replaces. That is deliberate: a blanket permission
+ * for a field would let any future edit to it slip through, whereas naming the value means the exception covers ONE number and
+ * any further change fails the test until it is itself approved and recorded here.
+ *
+ * Each entry carries the reason and the date it was approved. Every other field on every other definition stays locked.
+ */
+const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { v1: unknown; reason: string; approved: string }>> = {
+  // Populated by the defence-balance change; see the note added with it.
+};
+
+/** Look up an approved exception for one field of one definition. */
+function approvedException(defId: string, key: string): { v1: unknown; reason: string; approved: string } | undefined {
+  return APPROVED_VALUE_EXCEPTIONS[`${defId}.${key}`];
+}
+
 describe('content parity: v1 → v2', () => {
   it('has the same number of definitions as v1 for every content type', () => {
     const reg = getRegistry();
@@ -170,6 +188,14 @@ function compareDefs(
         (v2[key] as string[]).slice(0, (v1Value as string[]).length),
         `${label} ${String(v1.id)}.producesUnits changed its existing entries or order`,
       ).toEqual(v1Value);
+      continue;
+    }
+    /**
+     * An APPROVED exception is allowed to differ — but only for the exact v1 value it was approved against. If the current
+     * value has drifted from BOTH v1 and the approved replacement, that is an unapproved change and the assertion fires.
+     */
+    const exception = approvedException(String(v1.id), key);
+    if (exception && String(v2[key]) !== String(v1Value) && String(v2[key]) === String(exception.v1)) {
       continue;
     }
     expect(v2[key], `${label} ${String(v1.id)}.${key} differs from v1`).toEqual(v1Value);

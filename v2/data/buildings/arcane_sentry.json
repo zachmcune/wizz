@@ -6,7 +6,7 @@
   "kind": "building",
   "cost": 250,
   "buildTime": 5,
-  "hp": 600,
+  "hp": 900,
   "armor": "building",
   "sight": 190,
   "footprint": 1,
@@ -16,7 +16,7 @@
   ],
   "powerUsed": 20,
   "weapon": {
-    "damage": 3,
+    "damage": 5,
     "range": 165,
     "cooldownTicks": 2,
     "projectile": "arcane_bolt",
