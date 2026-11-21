@@ -7,10 +7,10 @@
 // field-by-field against the v2 registry. The only permitted differences are the ones the v2
 // schema deliberately adds, which are listed and justified in PLAN_ADDITIONS below.
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { getRegistry } from '../helpers';
+import { getRegistry, resetRegistry } from '../helpers';
 import type { MapData } from '../../src/data/defs';
 
 const repoRoot = join(process.cwd(), '..');
@@ -57,6 +57,18 @@ function approvedException(defId: string, key: string): { v1: unknown; reason: s
 }
 
 describe('content parity: v1 → v2', () => {
+  /**
+   * ALWAYS COMPARE A FRESH LOAD.
+   *
+   * `getRegistry()` memoises. That is fine for most suites, but this one exists to catch edits to the JSON on disk, and a cached
+   * registry predating an edit makes the check silently vacuous. It happened: a balance sweep left `arcane_sentry` at hp 900 and
+   * damage 5 instead of v1's 600 and 3, the working copy was committed, and this suite still passed because it was comparing a
+   * registry built before the change.
+   *
+   * Resetting first means the comparison is always against what is actually in the files.
+   */
+  beforeEach(() => resetRegistry());
+
   it('has the same number of definitions as v1 for every content type', () => {
     const reg = getRegistry();
     const v1Units = v1Files('units').length;
