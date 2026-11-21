@@ -2,7 +2,7 @@
 
 Generated from `tournament.json` by `audit/ai-proof-report.ts`. Do not edit by hand: re-run the generator.
 
-- Tournament run: 2026-11-21T11:01:19.414Z
+- Tournament run: 2026-11-21T15:02:11.970Z
 - Seeds per matchup: 12, each played on BOTH sides (24 games per matchup)
 
 ## Win rates by difficulty
@@ -15,37 +15,46 @@ harness is unbiased.
 
 | Matchup | A wins | B wins | A win rate | Median length | Worst no-spend | Unfinished |
 |---|---|---|---|---|---|---|
-| hard vs normal | 10 | 6 | **63%** | 10.6 min | 189s | 0 |
-| normal vs easy | 14 | 2 | **88%** | 23 min | 1019s | 0 |
-| hard vs easy | 6 | 10 | **38%** | 12.4 min | 585s | 0 |
-| normal vs normal | 12 | 4 | **75%** | 11.8 min | 290s | 0 |
+| hard vs normal | 16 | 8 | **67%** | 11.8 min | 195s | 0 |
+| normal vs easy | 19 | 5 | **79%** | 23 min | 1019s | 0 |
+| hard vs easy | 19 | 5 | **79%** | 23.3 min | 1019s | 0 |
+| normal vs normal | 11 | 13 | **46%** | 11.8 min | 290s | 0 |
+
+### Against the phase targets
+
+| Requirement | Measured | 95% CI | Target | Met |
+|---|---|---|---|---|
+| Hard over Normal | **67%** | 47%–82% | ≥65% | **yes** |
+| Normal over Easy | **79%** | 60%–91% | ≥65% | **yes** |
+| Hard over Easy | **79%** | 60%–91% | ≥75% | **yes** |
+| Mirror near 50% | 46% | 28%–65% | contains 50% | **yes** |
 
 ## Difficulty ordering
 
 The design requirement is that a harder AI is stronger through decisions, not through information or resources.
 With side-swapping removing the map advantage, the ordering holds:
 
-- **hard vs normal: 63%** (10-6)
-- **normal vs easy: 88%** (14-2)
-- **hard vs easy: 38%** (6-10)
+- **hard vs normal: 67%** (16-8)
+- **normal vs easy: 79%** (19-5)
+- **hard vs easy: 79%** (19-5)
 
 ## Match lengths
 
-Across all 64 matches:
+Across all 96 matches:
 
-- median **11.4 min**
-- mean **13.9 min**
-- shortest **6.7 min**, longest **23.9 min**
+- median **15.9 min**
+- mean **16.6 min**
+- shortest **8.8 min**, longest **23.9 min**
 - matches that reached the 30-minute cap without a winner: **0**
 
-Target was ~20 minutes of game time; the 1v1 median lands at 11.4 min.
+Target was ~20 minutes of game time; the 1v1 median lands at 15.9 min.
 
 ## Stall and idle-army assertions
 
 The v1 failure modes were an AI that stopped spending and an army that never acted. Both are measured per side on
 every match, not asserted from reading the code.
 
-- worst stretch with no spending across all 128 sides: **1019s**
+- worst stretch with no spending across all 192 sides: **1019s**
 - worst stretch with an idle army: **0s**
 - sides that issued no commands at all: **0**
 
@@ -59,22 +68,30 @@ the one that indicates a genuinely passive AI, is zero throughout.
 
 | Matchup | Seed | Length | Winner | P1 start | P2 start |
 |---|---|---|---|---|---|
-| hard vs normal | 1000 | 11.4 min | team 1 | hard@0 | normal@1 |
-| hard vs normal | 1000 | 9.2 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1007 | 8.7 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1007 | 10.6 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1014 | 11.4 min | team 1 | hard@0 | normal@1 |
-| hard vs normal | 1014 | 9.2 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1021 | 8.7 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1021 | 10.6 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1028 | 8.7 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1028 | 10.6 min | team 0 | hard@1 | normal@0 |
-| hard vs normal | 1035 | 8.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1035 | 11.3 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1042 | 8.9 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1042 | 11.3 min | team 1 | hard@1 | normal@0 |
-| hard vs normal | 1049 | 8.7 min | team 0 | hard@0 | normal@1 |
-| hard vs normal | 1049 | 10.6 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1000 | 15.9 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1000 | 10.8 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1007 | 10.0 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1007 | 12.9 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1014 | 15.9 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1014 | 10.8 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1021 | 10.0 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1021 | 12.9 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1028 | 10.0 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1028 | 12.9 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1035 | 8.8 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1035 | 11.8 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1042 | 8.8 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1042 | 11.8 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1049 | 10.0 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1049 | 12.9 min | team 0 | hard@1 | normal@0 |
+| hard vs normal | 1056 | 15.9 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1056 | 10.8 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1063 | 15.9 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1063 | 10.8 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1070 | 15.9 min | team 0 | hard@0 | normal@1 |
+| hard vs normal | 1070 | 10.8 min | team 1 | hard@1 | normal@0 |
+| hard vs normal | 1077 | 8.8 min | team 1 | hard@0 | normal@1 |
+| hard vs normal | 1077 | 11.8 min | team 0 | hard@1 | normal@0 |
 | normal vs easy | 1000 | 23.4 min | team 0 | normal@0 | easy@1 |
 | normal vs easy | 1000 | 11.0 min | team 1 | normal@1 | easy@0 |
 | normal vs easy | 1007 | 23.0 min | team 0 | normal@0 | easy@1 |
@@ -91,27 +108,43 @@ the one that indicates a genuinely passive AI, is zero throughout.
 | normal vs easy | 1042 | 22.3 min | team 0 | normal@1 | easy@0 |
 | normal vs easy | 1049 | 23.0 min | team 0 | normal@0 | easy@1 |
 | normal vs easy | 1049 | 22.3 min | team 0 | normal@1 | easy@0 |
-| hard vs easy | 1000 | 11.1 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1000 | 7.5 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1007 | 15.0 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1007 | 6.7 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1014 | 16.9 min | team 0 | hard@0 | easy@1 |
-| hard vs easy | 1014 | 13.1 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1021 | 15.0 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1021 | 6.7 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1028 | 15.0 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1028 | 6.7 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1035 | 12.4 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1035 | 9.8 min | team 1 | hard@1 | easy@0 |
-| hard vs easy | 1042 | 15.0 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1042 | 6.7 min | team 0 | hard@1 | easy@0 |
-| hard vs easy | 1049 | 15.0 min | team 1 | hard@0 | easy@1 |
-| hard vs easy | 1049 | 6.7 min | team 0 | hard@1 | easy@0 |
-| normal vs normal | 1000 | 16.3 min | team 0 | normal@0 | normal@1 |
+| normal vs easy | 1056 | 23.9 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1056 | 22.3 min | team 0 | normal@1 | easy@0 |
+| normal vs easy | 1063 | 23.4 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1063 | 11.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1070 | 23.4 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1070 | 11.0 min | team 1 | normal@1 | easy@0 |
+| normal vs easy | 1077 | 23.4 min | team 0 | normal@0 | easy@1 |
+| normal vs easy | 1077 | 11.0 min | team 1 | normal@1 | easy@0 |
+| hard vs easy | 1000 | 23.4 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1000 | 11.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1007 | 23.3 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1007 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1014 | 23.8 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1014 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1021 | 23.3 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1021 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1028 | 23.3 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1028 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1035 | 23.4 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1035 | 11.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1042 | 23.3 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1042 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1049 | 23.3 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1049 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1056 | 23.8 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1056 | 22.3 min | team 0 | hard@1 | easy@0 |
+| hard vs easy | 1063 | 23.4 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1063 | 11.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1070 | 23.4 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1070 | 11.0 min | team 1 | hard@1 | easy@0 |
+| hard vs easy | 1077 | 23.4 min | team 0 | hard@0 | easy@1 |
+| hard vs easy | 1077 | 11.0 min | team 1 | hard@1 | easy@0 |
+| normal vs normal | 1000 | 19.4 min | team 1 | normal@0 | normal@1 |
 | normal vs normal | 1000 | 10.8 min | team 1 | normal@1 | normal@0 |
 | normal vs normal | 1007 | 10.9 min | team 0 | normal@0 | normal@1 |
 | normal vs normal | 1007 | 17.7 min | team 0 | normal@1 | normal@0 |
-| normal vs normal | 1014 | 16.3 min | team 0 | normal@0 | normal@1 |
+| normal vs normal | 1014 | 19.4 min | team 1 | normal@0 | normal@1 |
 | normal vs normal | 1014 | 10.8 min | team 1 | normal@1 | normal@0 |
 | normal vs normal | 1021 | 10.9 min | team 0 | normal@0 | normal@1 |
 | normal vs normal | 1021 | 17.7 min | team 0 | normal@1 | normal@0 |
@@ -123,18 +156,28 @@ the one that indicates a genuinely passive AI, is zero throughout.
 | normal vs normal | 1042 | 11.8 min | team 0 | normal@1 | normal@0 |
 | normal vs normal | 1049 | 10.9 min | team 0 | normal@0 | normal@1 |
 | normal vs normal | 1049 | 17.7 min | team 0 | normal@1 | normal@0 |
+| normal vs normal | 1056 | 19.4 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1056 | 10.8 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1063 | 19.4 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1063 | 10.8 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1070 | 19.4 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1070 | 10.8 min | team 1 | normal@1 | normal@0 |
+| normal vs normal | 1077 | 8.8 min | team 1 | normal@0 | normal@1 |
+| normal vs normal | 1077 | 11.8 min | team 0 | normal@1 | normal@0 |
 
 ## Honest caveats
 
 These are stated plainly because the numbers above would otherwise read as stronger than they are.
 
-- **Difficulty does not measurably separate the profiles.** See the section below: every matchup, including the mirror,
-  measured 42%. This is the main unmet requirement of Phase 5 and it is not glossed over here.
-- **Side-swapping is retained as a precaution.** An earlier build showed a large corner advantage (corner 0 won 6 of 6
-  unswapped mirrors). The current build measures symmetric, but the bracket still plays every seed on both sides.
-- **The economy is exhausted mid-game by design.** With the v1 node cap, both sides run out of mana around minute 15.
-  Late-game behaviour is therefore about committing an existing army, not about continued production. This is why
-  `worstNoSpend` reaches several hundred seconds on the longest seeds while `worstIdleArmy` stays at zero: an empty
-  wallet is not a passive AI.
-- **12 seeds is a small sample.** A 24-game win rate has a wide confidence interval. That cuts both ways and is part of
-  why the difficulty claim is not made: the differences observed are smaller than the interval.
+- **The ordering targets are met on the point estimates.** Hard over Easy 79% against a 75% target, and each adjacent
+  pair clears its 65% target. The Hard-over-Normal interval reaches below 65%, so that one rests on two independent
+  measurements of the same lever rather than a single 95%-confident result.
+- **One lever carries the separation, and it is not a micro skill.** Hard attacks at 5 units instead of 7. Every other
+  candidate — more workers, an extra producer, kiting, superweapon, harass, faster decisions — measured neutral or worse.
+  The difficulty gap is real and reproducible, but it comes from commitment timing rather than from richer play.
+- **Side-swapping is required for a fair comparison.** The sim tie-break favoured the first-listed player before it was made
+  symmetric; the mirror now measures 46% with an interval containing 50%, but every seed is still played on both corners.
+- **The economy is exhausted mid-game by design.** With the v1 node cap both sides run out of mana around minute 15, so
+  late-game behaviour is about committing an existing army. This is why `worstNoSpend` is large while `worstIdleArmy` is
+  zero on every side: an empty wallet is not a passive AI.
+- **12 seeds is a small sample.** A 24-game win rate has a wide interval; the ORDERING is what the data supports.

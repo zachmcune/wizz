@@ -1,29 +1,29 @@
 {
-  "generatedAt": "2026-11-21T11:01:19.414Z",
+  "generatedAt": "2026-11-21T15:02:11.970Z",
   "summaries": [
     {
       "label": "hard vs normal",
       "a": "hard",
       "b": "normal",
-      "games": 16,
-      "winsA": 10,
-      "winsB": 6,
+      "games": 24,
+      "winsA": 16,
+      "winsB": 8,
       "draws": 0,
       "unfinished": 0,
-      "winRateA": 0.625,
-      "medianMinutes": 10.6,
-      "worstNoSpendSeconds": 189
+      "winRateA": 0.6666666666666666,
+      "medianMinutes": 11.8,
+      "worstNoSpendSeconds": 195
     },
     {
       "label": "normal vs easy",
       "a": "normal",
       "b": "easy",
-      "games": 16,
-      "winsA": 14,
-      "winsB": 2,
+      "games": 24,
+      "winsA": 19,
+      "winsB": 5,
       "draws": 0,
       "unfinished": 0,
-      "winRateA": 0.875,
+      "winRateA": 0.7916666666666666,
       "medianMinutes": 23,
       "worstNoSpendSeconds": 1019
     },
@@ -31,25 +31,25 @@
       "label": "hard vs easy",
       "a": "hard",
       "b": "easy",
-      "games": 16,
-      "winsA": 6,
-      "winsB": 10,
+      "games": 24,
+      "winsA": 19,
+      "winsB": 5,
       "draws": 0,
       "unfinished": 0,
-      "winRateA": 0.375,
-      "medianMinutes": 12.4,
-      "worstNoSpendSeconds": 585
+      "winRateA": 0.7916666666666666,
+      "medianMinutes": 23.3,
+      "worstNoSpendSeconds": 1019
     },
     {
       "label": "normal vs normal",
       "a": "normal",
       "b": "normal",
-      "games": 16,
-      "winsA": 12,
-      "winsB": 4,
+      "games": 24,
+      "winsA": 11,
+      "winsB": 13,
       "draws": 0,
       "unfinished": 0,
-      "winRateA": 0.75,
+      "winRateA": 0.4583333333333333,
       "medianMinutes": 11.8,
       "worstNoSpendSeconds": 290
     }
@@ -61,28 +61,28 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 11.4,
-        "ticks": 13683,
-        "hash": "9140623a",
-        "totalCommands": 785,
-        "aiOps": 785,
+        "winnerTeam": 0,
+        "minutes": 15.9,
+        "ticks": 19071,
+        "hash": "c29f9bb6",
+        "totalCommands": 954,
+        "aiOps": 954,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
             "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 3,
-            "spent": 6760,
-            "manaLeft": 65,
+            "defeated": false,
+            "units": 40,
+            "buildings": 12,
+            "peakArmy": 26,
+            "spent": 16745,
+            "manaLeft": 655,
             "stall": {
-              "longestNoSpendSeconds": 172,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 362
+              "decisions": 579
             }
           },
           {
@@ -90,16 +90,16 @@
             "difficulty": "normal",
             "team": 1,
             "startIndex": 1,
-            "defeated": false,
-            "units": 34,
-            "buildings": 9,
-            "peakArmy": 22,
-            "spent": 9620,
-            "manaLeft": 505,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 10370,
+            "manaLeft": 130,
             "stall": {
-              "longestNoSpendSeconds": 47,
+              "longestNoSpendSeconds": 195,
               "longestIdleArmySeconds": 0,
-              "decisions": 423
+              "decisions": 375
             }
           }
         ]
@@ -110,11 +110,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 1,
-        "minutes": 9.2,
-        "ticks": 11003,
-        "hash": "d662bb66",
-        "totalCommands": 862,
-        "aiOps": 862,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "8b3291ac",
+        "totalCommands": 740,
+        "aiOps": 740,
         "sides": [
           {
             "id": "p1",
@@ -124,13 +124,13 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 7,
-            "spent": 5570,
-            "manaLeft": 280,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
             "stall": {
-              "longestNoSpendSeconds": 124,
+              "longestNoSpendSeconds": 89,
               "longestIdleArmySeconds": 0,
-              "decisions": 570
+              "decisions": 459
             }
           },
           {
@@ -139,15 +139,15 @@
             "team": 1,
             "startIndex": 0,
             "defeated": false,
-            "units": 30,
-            "buildings": 8,
-            "peakArmy": 19,
-            "spent": 8155,
-            "manaLeft": 170,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
             "stall": {
               "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 292
+              "decisions": 281
             }
           }
         ]
@@ -158,11 +158,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 8.7,
-        "ticks": 10447,
-        "hash": "0daa97ac",
-        "totalCommands": 501,
-        "aiOps": 501,
+        "minutes": 10,
+        "ticks": 12048,
+        "hash": "07d9d53e",
+        "totalCommands": 596,
+        "aiOps": 596,
         "sides": [
           {
             "id": "p1",
@@ -170,15 +170,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 25,
+            "units": 32,
             "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7030,
-            "manaLeft": 695,
+            "peakArmy": 21,
+            "spent": 8850,
+            "manaLeft": 600,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 282
+              "decisions": 294
             }
           },
           {
@@ -190,12 +190,12 @@
             "units": 0,
             "buildings": 0,
             "peakArmy": 6,
-            "spent": 6920,
-            "manaLeft": 280,
+            "spent": 6570,
+            "manaLeft": 180,
             "stall": {
-              "longestNoSpendSeconds": 62,
+              "longestNoSpendSeconds": 132,
               "longestIdleArmySeconds": 0,
-              "decisions": 219
+              "decisions": 302
             }
           }
         ]
@@ -206,11 +206,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 10.6,
-        "ticks": 12741,
-        "hash": "97296a51",
-        "totalCommands": 1742,
-        "aiOps": 1742,
+        "minutes": 12.9,
+        "ticks": 15498,
+        "hash": "cda3e548",
+        "totalCommands": 610,
+        "aiOps": 610,
         "sides": [
           {
             "id": "p1",
@@ -218,80 +218,80 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 39,
+            "units": 33,
             "buildings": 8,
-            "peakArmy": 28,
-            "spent": 8790,
+            "peakArmy": 23,
+            "spent": 10290,
             "manaLeft": 660,
-            "stall": {
-              "longestNoSpendSeconds": 57,
-              "longestIdleArmySeconds": 0,
-              "decisions": 1126
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 5,
-            "spent": 7170,
-            "manaLeft": 30,
-            "stall": {
-              "longestNoSpendSeconds": 102,
-              "longestIdleArmySeconds": 0,
-              "decisions": 616
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1014,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 11.4,
-        "ticks": 13683,
-        "hash": "d6612f0a",
-        "totalCommands": 784,
-        "aiOps": 784,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 3,
-            "spent": 6760,
-            "manaLeft": 65,
-            "stall": {
-              "longestNoSpendSeconds": 172,
-              "longestIdleArmySeconds": 0,
-              "decisions": 362
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 34,
-            "buildings": 9,
-            "peakArmy": 22,
-            "spent": 9620,
-            "manaLeft": 505,
             "stall": {
               "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 422
+              "decisions": 328
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 7680,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 184,
+              "longestIdleArmySeconds": 0,
+              "decisions": 282
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1014,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 15.9,
+        "ticks": 19071,
+        "hash": "ded0796a",
+        "totalCommands": 953,
+        "aiOps": 953,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 40,
+            "buildings": 12,
+            "peakArmy": 26,
+            "spent": 16745,
+            "manaLeft": 655,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 579
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 10370,
+            "manaLeft": 130,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 374
             }
           }
         ]
@@ -302,11 +302,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 1,
-        "minutes": 9.2,
-        "ticks": 11003,
-        "hash": "a0aff06e",
-        "totalCommands": 862,
-        "aiOps": 862,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "40328260",
+        "totalCommands": 740,
+        "aiOps": 740,
         "sides": [
           {
             "id": "p1",
@@ -316,13 +316,13 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 7,
-            "spent": 5570,
-            "manaLeft": 280,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
             "stall": {
-              "longestNoSpendSeconds": 124,
+              "longestNoSpendSeconds": 89,
               "longestIdleArmySeconds": 0,
-              "decisions": 570
+              "decisions": 459
             }
           },
           {
@@ -331,15 +331,15 @@
             "team": 1,
             "startIndex": 0,
             "defeated": false,
-            "units": 30,
-            "buildings": 8,
-            "peakArmy": 19,
-            "spent": 8155,
-            "manaLeft": 170,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
             "stall": {
               "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 292
+              "decisions": 281
             }
           }
         ]
@@ -350,11 +350,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 8.7,
-        "ticks": 10447,
-        "hash": "352dc9d5",
-        "totalCommands": 501,
-        "aiOps": 501,
+        "minutes": 10,
+        "ticks": 12048,
+        "hash": "e9809c03",
+        "totalCommands": 596,
+        "aiOps": 596,
         "sides": [
           {
             "id": "p1",
@@ -362,15 +362,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 25,
+            "units": 32,
             "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7030,
-            "manaLeft": 695,
+            "peakArmy": 21,
+            "spent": 8850,
+            "manaLeft": 600,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 282
+              "decisions": 294
             }
           },
           {
@@ -382,12 +382,12 @@
             "units": 0,
             "buildings": 0,
             "peakArmy": 6,
-            "spent": 6920,
-            "manaLeft": 280,
+            "spent": 6570,
+            "manaLeft": 180,
             "stall": {
-              "longestNoSpendSeconds": 62,
+              "longestNoSpendSeconds": 132,
               "longestIdleArmySeconds": 0,
-              "decisions": 219
+              "decisions": 302
             }
           }
         ]
@@ -398,11 +398,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 10.6,
-        "ticks": 12741,
-        "hash": "43062848",
-        "totalCommands": 1742,
-        "aiOps": 1742,
+        "minutes": 12.9,
+        "ticks": 15498,
+        "hash": "87d95ed1",
+        "totalCommands": 610,
+        "aiOps": 610,
         "sides": [
           {
             "id": "p1",
@@ -410,15 +410,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 39,
+            "units": 33,
             "buildings": 8,
-            "peakArmy": 28,
-            "spent": 8790,
+            "peakArmy": 23,
+            "spent": 10290,
             "manaLeft": 660,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 1126
+              "decisions": 328
             }
           },
           {
@@ -429,13 +429,13 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 5,
-            "spent": 7170,
-            "manaLeft": 30,
+            "peakArmy": 6,
+            "spent": 7680,
+            "manaLeft": 45,
             "stall": {
-              "longestNoSpendSeconds": 102,
+              "longestNoSpendSeconds": 184,
               "longestIdleArmySeconds": 0,
-              "decisions": 616
+              "decisions": 282
             }
           }
         ]
@@ -446,11 +446,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 8.7,
-        "ticks": 10447,
-        "hash": "8f06448a",
-        "totalCommands": 501,
-        "aiOps": 501,
+        "minutes": 10,
+        "ticks": 12048,
+        "hash": "a0cf4df4",
+        "totalCommands": 596,
+        "aiOps": 596,
         "sides": [
           {
             "id": "p1",
@@ -458,15 +458,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 25,
+            "units": 32,
             "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7030,
-            "manaLeft": 695,
+            "peakArmy": 21,
+            "spent": 8850,
+            "manaLeft": 600,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 282
+              "decisions": 294
             }
           },
           {
@@ -478,12 +478,12 @@
             "units": 0,
             "buildings": 0,
             "peakArmy": 6,
-            "spent": 6920,
-            "manaLeft": 280,
+            "spent": 6570,
+            "manaLeft": 180,
             "stall": {
-              "longestNoSpendSeconds": 62,
+              "longestNoSpendSeconds": 132,
               "longestIdleArmySeconds": 0,
-              "decisions": 219
+              "decisions": 302
             }
           }
         ]
@@ -494,11 +494,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 10.6,
-        "ticks": 12741,
-        "hash": "b086569d",
-        "totalCommands": 1742,
-        "aiOps": 1742,
+        "minutes": 12.9,
+        "ticks": 15498,
+        "hash": "47b372b2",
+        "totalCommands": 611,
+        "aiOps": 611,
         "sides": [
           {
             "id": "p1",
@@ -506,15 +506,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 39,
+            "units": 33,
             "buildings": 8,
-            "peakArmy": 28,
-            "spent": 8790,
+            "peakArmy": 23,
+            "spent": 10290,
             "manaLeft": 660,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 1126
+              "decisions": 329
             }
           },
           {
@@ -522,271 +522,79 @@
             "difficulty": "normal",
             "team": 1,
             "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 5,
-            "spent": 7170,
-            "manaLeft": 30,
-            "stall": {
-              "longestNoSpendSeconds": 102,
-              "longestIdleArmySeconds": 0,
-              "decisions": 616
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1035,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 0,
-        "minutes": 8.9,
-        "ticks": 10636,
-        "hash": "f32cd6e0",
-        "totalCommands": 947,
-        "aiOps": 947,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 26,
-            "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7175,
-            "manaLeft": 550,
-            "stall": {
-              "longestNoSpendSeconds": 57,
-              "longestIdleArmySeconds": 0,
-              "decisions": 526
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 1,
             "defeated": true,
             "units": 0,
             "buildings": 0,
             "peakArmy": 6,
-            "spent": 5975,
-            "manaLeft": 175,
+            "spent": 7680,
+            "manaLeft": 45,
             "stall": {
-              "longestNoSpendSeconds": 81,
-              "longestIdleArmySeconds": 0,
-              "decisions": 421
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1035,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 11.3,
-        "ticks": 13557,
-        "hash": "40470c3a",
-        "totalCommands": 1582,
-        "aiOps": 1582,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 10,
-            "spent": 6130,
-            "manaLeft": 20,
-            "stall": {
-              "longestNoSpendSeconds": 189,
-              "longestIdleArmySeconds": 0,
-              "decisions": 1185
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 14,
-            "buildings": 7,
-            "peakArmy": 14,
-            "spent": 8710,
-            "manaLeft": 65,
-            "stall": {
-              "longestNoSpendSeconds": 56,
-              "longestIdleArmySeconds": 0,
-              "decisions": 397
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1042,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 0,
-        "minutes": 8.9,
-        "ticks": 10636,
-        "hash": "99d56d09",
-        "totalCommands": 946,
-        "aiOps": 946,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 26,
-            "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7175,
-            "manaLeft": 550,
-            "stall": {
-              "longestNoSpendSeconds": 57,
-              "longestIdleArmySeconds": 0,
-              "decisions": 526
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 6,
-            "spent": 5975,
-            "manaLeft": 175,
-            "stall": {
-              "longestNoSpendSeconds": 81,
-              "longestIdleArmySeconds": 0,
-              "decisions": 420
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1042,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 11.3,
-        "ticks": 13557,
-        "hash": "70642a2f",
-        "totalCommands": 1582,
-        "aiOps": 1582,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 10,
-            "spent": 6130,
-            "manaLeft": 20,
-            "stall": {
-              "longestNoSpendSeconds": 189,
-              "longestIdleArmySeconds": 0,
-              "decisions": 1185
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "normal",
-            "team": 1,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 14,
-            "buildings": 7,
-            "peakArmy": 14,
-            "spent": 8710,
-            "manaLeft": 65,
-            "stall": {
-              "longestNoSpendSeconds": 56,
-              "longestIdleArmySeconds": 0,
-              "decisions": 397
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1049,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 0,
-        "minutes": 8.7,
-        "ticks": 10447,
-        "hash": "f409ed09",
-        "totalCommands": 501,
-        "aiOps": 501,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 25,
-            "buildings": 8,
-            "peakArmy": 16,
-            "spent": 7030,
-            "manaLeft": 695,
-            "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 184,
               "longestIdleArmySeconds": 0,
               "decisions": 282
             }
+          }
+        ]
+      },
+      {
+        "seed": 1035,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 8.8,
+        "ticks": 10511,
+        "hash": "b5010fcb",
+        "totalCommands": 536,
+        "aiOps": 536,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 6935,
+            "manaLeft": 190,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 270
+            }
           },
           {
             "id": "p2",
             "difficulty": "normal",
             "team": 1,
             "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 6,
-            "spent": 6920,
-            "manaLeft": 280,
+            "defeated": false,
+            "units": 14,
+            "buildings": 8,
+            "peakArmy": 10,
+            "spent": 6630,
+            "manaLeft": 45,
             "stall": {
-              "longestNoSpendSeconds": 62,
+              "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 219
+              "decisions": 266
             }
           }
         ]
       },
       {
-        "seed": 1049,
+        "seed": 1035,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 10.6,
-        "ticks": 12741,
-        "hash": "b0e6a504",
-        "totalCommands": 1742,
-        "aiOps": 1742,
+        "minutes": 11.8,
+        "ticks": 14157,
+        "hash": "34cff26a",
+        "totalCommands": 655,
+        "aiOps": 655,
         "sides": [
           {
             "id": "p1",
@@ -794,15 +602,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 39,
-            "buildings": 8,
-            "peakArmy": 28,
-            "spent": 8790,
-            "manaLeft": 660,
+            "units": 10,
+            "buildings": 7,
+            "peakArmy": 10,
+            "spent": 7550,
+            "manaLeft": 100,
             "stall": {
-              "longestNoSpendSeconds": 57,
+              "longestNoSpendSeconds": 62,
               "longestIdleArmySeconds": 0,
-              "decisions": 1126
+              "decisions": 353
             }
           },
           {
@@ -813,13 +621,589 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 5,
-            "spent": 7170,
-            "manaLeft": 30,
+            "peakArmy": 10,
+            "spent": 7135,
+            "manaLeft": 65,
             "stall": {
-              "longestNoSpendSeconds": 102,
+              "longestNoSpendSeconds": 195,
               "longestIdleArmySeconds": 0,
-              "decisions": 616
+              "decisions": 302
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1042,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 8.8,
+        "ticks": 10511,
+        "hash": "f8f0445a",
+        "totalCommands": 535,
+        "aiOps": 535,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 6935,
+            "manaLeft": 190,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 270
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 14,
+            "buildings": 8,
+            "peakArmy": 10,
+            "spent": 6630,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 265
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1042,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 11.8,
+        "ticks": 14157,
+        "hash": "e7431ad3",
+        "totalCommands": 656,
+        "aiOps": 656,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 10,
+            "buildings": 7,
+            "peakArmy": 10,
+            "spent": 7550,
+            "manaLeft": 100,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 354
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 7135,
+            "manaLeft": 65,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 302
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1049,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 10,
+        "ticks": 12048,
+        "hash": "92cfcce7",
+        "totalCommands": 596,
+        "aiOps": 596,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 21,
+            "spent": 8850,
+            "manaLeft": 600,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 294
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6570,
+            "manaLeft": 180,
+            "stall": {
+              "longestNoSpendSeconds": 132,
+              "longestIdleArmySeconds": 0,
+              "decisions": 302
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1049,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 12.9,
+        "ticks": 15498,
+        "hash": "6c34cef9",
+        "totalCommands": 610,
+        "aiOps": 610,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 33,
+            "buildings": 8,
+            "peakArmy": 23,
+            "spent": 10290,
+            "manaLeft": 660,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 328
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 7680,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 184,
+              "longestIdleArmySeconds": 0,
+              "decisions": 282
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 15.9,
+        "ticks": 19071,
+        "hash": "5209bb47",
+        "totalCommands": 953,
+        "aiOps": 953,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 40,
+            "buildings": 12,
+            "peakArmy": 26,
+            "spent": 16745,
+            "manaLeft": 655,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 579
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 10370,
+            "manaLeft": 130,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 374
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "5ccd27e1",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 15.9,
+        "ticks": 19071,
+        "hash": "ced1470d",
+        "totalCommands": 954,
+        "aiOps": 954,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 40,
+            "buildings": 12,
+            "peakArmy": 26,
+            "spent": 16745,
+            "manaLeft": 655,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 579
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 10370,
+            "manaLeft": 130,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 375
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "2824a713",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 15.9,
+        "ticks": 19071,
+        "hash": "5eeb1947",
+        "totalCommands": 954,
+        "aiOps": 954,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 40,
+            "buildings": 12,
+            "peakArmy": 26,
+            "spent": 16745,
+            "manaLeft": 655,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 579
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 10370,
+            "manaLeft": 130,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 375
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "70991075",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 8.8,
+        "ticks": 10511,
+        "hash": "621fa270",
+        "totalCommands": 536,
+        "aiOps": 536,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 6935,
+            "manaLeft": 190,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 270
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 14,
+            "buildings": 8,
+            "peakArmy": 10,
+            "spent": 6630,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 266
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 11.8,
+        "ticks": 14157,
+        "hash": "f06b6815",
+        "totalCommands": 655,
+        "aiOps": 655,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 10,
+            "buildings": 7,
+            "peakArmy": 10,
+            "spent": 7550,
+            "manaLeft": 100,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 353
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 7135,
+            "manaLeft": 65,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 302
             }
           }
         ]
@@ -1593,6 +1977,390 @@
             }
           }
         ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.9,
+        "ticks": 28684,
+        "hash": "fe4f2665",
+        "totalCommands": 1242,
+        "aiOps": 1242,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 31,
+            "buildings": 9,
+            "peakArmy": 18,
+            "spent": 16125,
+            "manaLeft": 675,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 924
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16800,
+            "manaLeft": 0,
+            "stall": {
+              "longestNoSpendSeconds": 137,
+              "longestIdleArmySeconds": 0,
+              "decisions": 318
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "ebf06aa0",
+        "totalCommands": 476,
+        "aiOps": 476,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
+            "peakArmy": 4,
+            "spent": 3510,
+            "manaLeft": 15,
+            "stall": {
+              "longestNoSpendSeconds": 1019,
+              "longestIdleArmySeconds": 0,
+              "decisions": 299
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 970,
+              "longestIdleArmySeconds": 0,
+              "decisions": 177
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "2be96388",
+        "totalCommands": 2835,
+        "aiOps": 2835,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 7,
+            "peakArmy": 9,
+            "spent": 17405,
+            "manaLeft": 595,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2493
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "917eb546",
+        "totalCommands": 459,
+        "aiOps": 459,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
+            "stall": {
+              "longestNoSpendSeconds": 356,
+              "longestIdleArmySeconds": 0,
+              "decisions": 280
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "9a1ecdfc",
+        "totalCommands": 2835,
+        "aiOps": 2835,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 7,
+            "peakArmy": 9,
+            "spent": 17405,
+            "manaLeft": 595,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2493
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "835459fe",
+        "totalCommands": 459,
+        "aiOps": 459,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
+            "stall": {
+              "longestNoSpendSeconds": 356,
+              "longestIdleArmySeconds": 0,
+              "decisions": 280
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "fbe89e91",
+        "totalCommands": 2836,
+        "aiOps": 2836,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 8,
+            "peakArmy": 9,
+            "spent": 17955,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2494
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "42e42371",
+        "totalCommands": 459,
+        "aiOps": 459,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
+            "stall": {
+              "longestNoSpendSeconds": 356,
+              "longestIdleArmySeconds": 0,
+              "decisions": 280
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
       }
     ],
     "hard vs easy": [
@@ -1601,28 +2369,28 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 11.1,
-        "ticks": 13348,
-        "hash": "a403ac46",
-        "totalCommands": 1431,
-        "aiOps": 1431,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "f6567185",
+        "totalCommands": 2835,
+        "aiOps": 2835,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
             "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 2,
-            "spent": 4080,
-            "manaLeft": 270,
+            "defeated": false,
+            "units": 20,
+            "buildings": 7,
+            "peakArmy": 9,
+            "spent": 17405,
+            "manaLeft": 595,
             "stall": {
-              "longestNoSpendSeconds": 241,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 1290
+              "decisions": 2493
             }
           },
           {
@@ -1630,16 +2398,16 @@
             "difficulty": "easy",
             "team": 1,
             "startIndex": 1,
-            "defeated": false,
-            "units": 23,
-            "buildings": 6,
-            "peakArmy": 14,
-            "spent": 8600,
-            "manaLeft": 100,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 37,
+              "longestNoSpendSeconds": 168,
               "longestIdleArmySeconds": 0,
-              "decisions": 141
+              "decisions": 342
             }
           }
         ]
@@ -1650,11 +2418,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 1,
-        "minutes": 7.5,
-        "ticks": 9029,
-        "hash": "20b89886",
-        "totalCommands": 461,
-        "aiOps": 461,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "1019766b",
+        "totalCommands": 459,
+        "aiOps": 459,
         "sides": [
           {
             "id": "p1",
@@ -1665,12 +2433,12 @@
             "units": 0,
             "buildings": 0,
             "peakArmy": 1,
-            "spent": 3340,
-            "manaLeft": 185,
+            "spent": 3440,
+            "manaLeft": 160,
             "stall": {
-              "longestNoSpendSeconds": 159,
+              "longestNoSpendSeconds": 356,
               "longestIdleArmySeconds": 0,
-              "decisions": 376
+              "decisions": 280
             }
           },
           {
@@ -1679,126 +2447,30 @@
             "team": 1,
             "startIndex": 0,
             "defeated": false,
-            "units": 24,
-            "buildings": 8,
-            "peakArmy": 14,
-            "spent": 5850,
-            "manaLeft": 600,
-            "stall": {
-              "longestNoSpendSeconds": 37,
-              "longestIdleArmySeconds": 0,
-              "decisions": 85
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1007,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 15,
-        "ticks": 18033,
-        "hash": "4512c22e",
-        "totalCommands": 736,
-        "aiOps": 736,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 4,
-            "spent": 3860,
-            "manaLeft": 190,
-            "stall": {
-              "longestNoSpendSeconds": 585,
-              "longestIdleArmySeconds": 0,
-              "decisions": 315
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "easy",
-            "team": 1,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 7,
-            "buildings": 4,
-            "peakArmy": 14,
-            "spent": 4850,
-            "manaLeft": 175,
-            "stall": {
-              "longestNoSpendSeconds": 412,
-              "longestIdleArmySeconds": 0,
-              "decisions": 421
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1007,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 0,
-        "minutes": 6.7,
-        "ticks": 8078,
-        "hash": "c9dcb8d2",
-        "totalCommands": 497,
-        "aiOps": 497,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 9,
+            "units": 21,
             "buildings": 6,
-            "peakArmy": 4,
-            "spent": 4110,
-            "manaLeft": 15,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
             "stall": {
-              "longestNoSpendSeconds": 46,
+              "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 366
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "easy",
-            "team": 1,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 11,
-            "spent": 4800,
-            "manaLeft": 225,
-            "stall": {
-              "longestNoSpendSeconds": 43,
-              "longestIdleArmySeconds": 0,
-              "decisions": 131
+              "decisions": 179
             }
           }
         ]
       },
       {
-        "seed": 1014,
+        "seed": 1007,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 16.9,
-        "ticks": 20229,
-        "hash": "28aebbf6",
-        "totalCommands": 2646,
-        "aiOps": 2646,
+        "minutes": 23.3,
+        "ticks": 27959,
+        "hash": "11df13f9",
+        "totalCommands": 1376,
+        "aiOps": 1376,
         "sides": [
           {
             "id": "p1",
@@ -1806,15 +2478,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 26,
-            "buildings": 9,
-            "peakArmy": 14,
-            "spent": 13380,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 22,
+            "spent": 15255,
             "manaLeft": 570,
             "stall": {
-              "longestNoSpendSeconds": 49,
+              "longestNoSpendSeconds": 62,
               "longestIdleArmySeconds": 0,
-              "decisions": 2408
+              "decisions": 1041
             }
           },
           {
@@ -1825,13 +2497,61 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 10,
-            "spent": 10300,
-            "manaLeft": 50,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
             "stall": {
-              "longestNoSpendSeconds": 210,
+              "longestNoSpendSeconds": 133,
               "longestIdleArmySeconds": 0,
-              "decisions": 238
+              "decisions": 335
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1007,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "23f8aa24",
+        "totalCommands": 476,
+        "aiOps": 476,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
+            "peakArmy": 4,
+            "spent": 3510,
+            "manaLeft": 15,
+            "stall": {
+              "longestNoSpendSeconds": 1019,
+              "longestIdleArmySeconds": 0,
+              "decisions": 299
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 970,
+              "longestIdleArmySeconds": 0,
+              "decisions": 177
             }
           }
         ]
@@ -1841,93 +2561,93 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 13.1,
-        "ticks": 15724,
-        "hash": "a9e09471",
-        "totalCommands": 385,
-        "aiOps": 385,
+        "winnerTeam": 0,
+        "minutes": 23.8,
+        "ticks": 28561,
+        "hash": "e2f2b4f5",
+        "totalCommands": 1311,
+        "aiOps": 1311,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
-            "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 0,
-            "spent": 3200,
-            "manaLeft": 25,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
+            "buildings": 9,
+            "peakArmy": 19,
+            "spent": 15985,
+            "manaLeft": 590,
             "stall": {
-              "longestNoSpendSeconds": 497,
+              "longestNoSpendSeconds": 62,
               "longestIdleArmySeconds": 0,
-              "decisions": 104
+              "decisions": 989
             }
           },
           {
             "id": "p2",
             "difficulty": "easy",
             "team": 1,
-            "startIndex": 0,
-            "defeated": false,
-            "units": 39,
-            "buildings": 10,
-            "peakArmy": 25,
-            "spent": 12175,
-            "manaLeft": 1100,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
             "stall": {
-              "longestNoSpendSeconds": 61,
+              "longestNoSpendSeconds": 163,
               "longestIdleArmySeconds": 0,
-              "decisions": 281
+              "decisions": 322
             }
           }
         ]
       },
       {
-        "seed": 1021,
+        "seed": 1014,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 15,
-        "ticks": 18033,
-        "hash": "2499f7cf",
-        "totalCommands": 736,
-        "aiOps": 736,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "ae7994d5",
+        "totalCommands": 476,
+        "aiOps": 476,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
             "peakArmy": 4,
-            "spent": 3860,
-            "manaLeft": 190,
+            "spent": 3510,
+            "manaLeft": 15,
             "stall": {
-              "longestNoSpendSeconds": 585,
+              "longestNoSpendSeconds": 1019,
               "longestIdleArmySeconds": 0,
-              "decisions": 315
+              "decisions": 299
             }
           },
           {
             "id": "p2",
             "difficulty": "easy",
             "team": 1,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 7,
-            "buildings": 4,
-            "peakArmy": 14,
-            "spent": 4850,
-            "manaLeft": 175,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 412,
+              "longestNoSpendSeconds": 970,
               "longestIdleArmySeconds": 0,
-              "decisions": 421
+              "decisions": 177
             }
           }
         ]
@@ -1938,92 +2658,92 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 6.7,
-        "ticks": 8078,
-        "hash": "4086bb17",
-        "totalCommands": 497,
-        "aiOps": 497,
+        "minutes": 23.3,
+        "ticks": 27959,
+        "hash": "3446ffdc",
+        "totalCommands": 1376,
+        "aiOps": 1376,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
-            "startIndex": 1,
+            "startIndex": 0,
             "defeated": false,
-            "units": 9,
-            "buildings": 6,
-            "peakArmy": 4,
-            "spent": 4110,
-            "manaLeft": 15,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 22,
+            "spent": 15255,
+            "manaLeft": 570,
             "stall": {
-              "longestNoSpendSeconds": 46,
+              "longestNoSpendSeconds": 62,
               "longestIdleArmySeconds": 0,
-              "decisions": 366
+              "decisions": 1041
             }
           },
           {
             "id": "p2",
             "difficulty": "easy",
             "team": 1,
-            "startIndex": 0,
+            "startIndex": 1,
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 11,
-            "spent": 4800,
-            "manaLeft": 225,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
             "stall": {
-              "longestNoSpendSeconds": 43,
+              "longestNoSpendSeconds": 133,
               "longestIdleArmySeconds": 0,
-              "decisions": 131
+              "decisions": 335
             }
           }
         ]
       },
       {
-        "seed": 1028,
+        "seed": 1021,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 15,
-        "ticks": 18033,
-        "hash": "e9da901e",
-        "totalCommands": 736,
-        "aiOps": 736,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "54e74d05",
+        "totalCommands": 476,
+        "aiOps": 476,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
             "peakArmy": 4,
-            "spent": 3860,
-            "manaLeft": 190,
+            "spent": 3510,
+            "manaLeft": 15,
             "stall": {
-              "longestNoSpendSeconds": 585,
+              "longestNoSpendSeconds": 1019,
               "longestIdleArmySeconds": 0,
-              "decisions": 315
+              "decisions": 299
             }
           },
           {
             "id": "p2",
             "difficulty": "easy",
             "team": 1,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 7,
-            "buildings": 4,
-            "peakArmy": 14,
-            "spent": 4850,
-            "manaLeft": 175,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 412,
+              "longestNoSpendSeconds": 970,
               "longestIdleArmySeconds": 0,
-              "decisions": 421
+              "decisions": 177
             }
           }
         ]
@@ -2034,11 +2754,59 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 6.7,
-        "ticks": 8078,
-        "hash": "f1c546b6",
-        "totalCommands": 497,
-        "aiOps": 497,
+        "minutes": 23.3,
+        "ticks": 27959,
+        "hash": "329681fd",
+        "totalCommands": 1376,
+        "aiOps": 1376,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 22,
+            "spent": 15255,
+            "manaLeft": 570,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 1041
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
+            "stall": {
+              "longestNoSpendSeconds": 133,
+              "longestIdleArmySeconds": 0,
+              "decisions": 335
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1028,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "ae6c4a48",
+        "totalCommands": 477,
+        "aiOps": 477,
         "sides": [
           {
             "id": "p1",
@@ -2046,15 +2814,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 9,
-            "buildings": 6,
+            "units": 2,
+            "buildings": 5,
             "peakArmy": 4,
-            "spent": 4110,
+            "spent": 3510,
             "manaLeft": 15,
             "stall": {
-              "longestNoSpendSeconds": 46,
+              "longestNoSpendSeconds": 1019,
               "longestIdleArmySeconds": 0,
-              "decisions": 366
+              "decisions": 300
             }
           },
           {
@@ -2065,13 +2833,13 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 11,
+            "peakArmy": 13,
             "spent": 4800,
-            "manaLeft": 225,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 43,
+              "longestNoSpendSeconds": 970,
               "longestIdleArmySeconds": 0,
-              "decisions": 131
+              "decisions": 177
             }
           }
         ]
@@ -2081,45 +2849,45 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 1,
-        "minutes": 12.4,
-        "ticks": 14909,
-        "hash": "087e9f7e",
-        "totalCommands": 1027,
-        "aiOps": 1027,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "4d911622",
+        "totalCommands": 2836,
+        "aiOps": 2836,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
             "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 4,
-            "spent": 3800,
-            "manaLeft": 100,
-            "stall": {
-              "longestNoSpendSeconds": 419,
-              "longestIdleArmySeconds": 0,
-              "decisions": 704
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "easy",
-            "team": 1,
-            "startIndex": 1,
             "defeated": false,
             "units": 20,
-            "buildings": 6,
-            "peakArmy": 14,
-            "spent": 9950,
-            "manaLeft": 100,
+            "buildings": 8,
+            "peakArmy": 9,
+            "spent": 17955,
+            "manaLeft": 45,
             "stall": {
-              "longestNoSpendSeconds": 53,
+              "longestNoSpendSeconds": 52,
               "longestIdleArmySeconds": 0,
-              "decisions": 323
+              "decisions": 2494
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
             }
           }
         ]
@@ -2130,11 +2898,11 @@
         "players": 2,
         "ended": true,
         "winnerTeam": 1,
-        "minutes": 9.8,
-        "ticks": 11746,
-        "hash": "8a0fe4d6",
-        "totalCommands": 1803,
-        "aiOps": 1803,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "c142a77e",
+        "totalCommands": 459,
+        "aiOps": 459,
         "sides": [
           {
             "id": "p1",
@@ -2144,13 +2912,13 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 3,
-            "spent": 3800,
-            "manaLeft": 175,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
             "stall": {
-              "longestNoSpendSeconds": 231,
+              "longestNoSpendSeconds": 356,
               "longestIdleArmySeconds": 0,
-              "decisions": 1608
+              "decisions": 280
             }
           },
           {
@@ -2159,46 +2927,238 @@
             "team": 1,
             "startIndex": 0,
             "defeated": false,
-            "units": 24,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1042,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.3,
+        "ticks": 27959,
+        "hash": "1ca10778",
+        "totalCommands": 1376,
+        "aiOps": 1376,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 22,
+            "spent": 15255,
+            "manaLeft": 570,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 1041
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
+            "stall": {
+              "longestNoSpendSeconds": 133,
+              "longestIdleArmySeconds": 0,
+              "decisions": 335
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1042,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "a1dcbbe5",
+        "totalCommands": 477,
+        "aiOps": 477,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
+            "peakArmy": 4,
+            "spent": 3510,
+            "manaLeft": 15,
+            "stall": {
+              "longestNoSpendSeconds": 1019,
+              "longestIdleArmySeconds": 0,
+              "decisions": 300
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 970,
+              "longestIdleArmySeconds": 0,
+              "decisions": 177
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1049,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.3,
+        "ticks": 27959,
+        "hash": "5f9aa398",
+        "totalCommands": 1376,
+        "aiOps": 1376,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
+            "buildings": 8,
+            "peakArmy": 22,
+            "spent": 15255,
+            "manaLeft": 570,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 1041
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
+            "stall": {
+              "longestNoSpendSeconds": 133,
+              "longestIdleArmySeconds": 0,
+              "decisions": 335
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1049,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "1068a911",
+        "totalCommands": 476,
+        "aiOps": 476,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 2,
+            "buildings": 5,
+            "peakArmy": 4,
+            "spent": 3510,
+            "manaLeft": 15,
+            "stall": {
+              "longestNoSpendSeconds": 1019,
+              "longestIdleArmySeconds": 0,
+              "decisions": 299
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 4800,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 970,
+              "longestIdleArmySeconds": 0,
+              "decisions": 177
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.8,
+        "ticks": 28561,
+        "hash": "e56b76f0",
+        "totalCommands": 1311,
+        "aiOps": 1311,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 32,
             "buildings": 9,
-            "peakArmy": 15,
-            "spent": 7950,
-            "manaLeft": 450,
+            "peakArmy": 19,
+            "spent": 15985,
+            "manaLeft": 590,
             "stall": {
-              "longestNoSpendSeconds": 45,
+              "longestNoSpendSeconds": 62,
               "longestIdleArmySeconds": 0,
-              "decisions": 195
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1042,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 15,
-        "ticks": 18033,
-        "hash": "ba6a368f",
-        "totalCommands": 736,
-        "aiOps": 736,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 4,
-            "spent": 3860,
-            "manaLeft": 190,
-            "stall": {
-              "longestNoSpendSeconds": 585,
-              "longestIdleArmySeconds": 0,
-              "decisions": 315
+              "decisions": 989
             }
           },
           {
@@ -2206,31 +3166,31 @@
             "difficulty": "easy",
             "team": 1,
             "startIndex": 1,
-            "defeated": false,
-            "units": 7,
-            "buildings": 4,
-            "peakArmy": 14,
-            "spent": 4850,
-            "manaLeft": 175,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 13,
+            "spent": 16225,
+            "manaLeft": 200,
             "stall": {
-              "longestNoSpendSeconds": 412,
+              "longestNoSpendSeconds": 163,
               "longestIdleArmySeconds": 0,
-              "decisions": 421
+              "decisions": 322
             }
           }
         ]
       },
       {
-        "seed": 1042,
+        "seed": 1056,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 6.7,
-        "ticks": 8078,
-        "hash": "f9670c4b",
-        "totalCommands": 497,
-        "aiOps": 497,
+        "minutes": 22.3,
+        "ticks": 26738,
+        "hash": "ebf06aa0",
+        "totalCommands": 476,
+        "aiOps": 476,
         "sides": [
           {
             "id": "p1",
@@ -2238,15 +3198,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 9,
-            "buildings": 6,
+            "units": 2,
+            "buildings": 5,
             "peakArmy": 4,
-            "spent": 4110,
+            "spent": 3510,
             "manaLeft": 15,
             "stall": {
-              "longestNoSpendSeconds": 46,
+              "longestNoSpendSeconds": 1019,
               "longestIdleArmySeconds": 0,
-              "decisions": 366
+              "decisions": 299
             }
           },
           {
@@ -2257,92 +3217,92 @@
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 11,
+            "peakArmy": 13,
             "spent": 4800,
-            "manaLeft": 225,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 43,
+              "longestNoSpendSeconds": 970,
               "longestIdleArmySeconds": 0,
-              "decisions": 131
+              "decisions": 177
             }
           }
         ]
       },
       {
-        "seed": 1049,
-        "mapId": "duel_glade",
-        "players": 2,
-        "ended": true,
-        "winnerTeam": 1,
-        "minutes": 15,
-        "ticks": 18033,
-        "hash": "e86c6e1f",
-        "totalCommands": 736,
-        "aiOps": 736,
-        "sides": [
-          {
-            "id": "p1",
-            "difficulty": "hard",
-            "team": 0,
-            "startIndex": 0,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 4,
-            "spent": 3860,
-            "manaLeft": 190,
-            "stall": {
-              "longestNoSpendSeconds": 585,
-              "longestIdleArmySeconds": 0,
-              "decisions": 315
-            }
-          },
-          {
-            "id": "p2",
-            "difficulty": "easy",
-            "team": 1,
-            "startIndex": 1,
-            "defeated": false,
-            "units": 7,
-            "buildings": 4,
-            "peakArmy": 14,
-            "spent": 4850,
-            "manaLeft": 175,
-            "stall": {
-              "longestNoSpendSeconds": 412,
-              "longestIdleArmySeconds": 0,
-              "decisions": 421
-            }
-          }
-        ]
-      },
-      {
-        "seed": 1049,
+        "seed": 1063,
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
         "winnerTeam": 0,
-        "minutes": 6.7,
-        "ticks": 8078,
-        "hash": "87b4a33f",
-        "totalCommands": 497,
-        "aiOps": 497,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "2be96388",
+        "totalCommands": 2835,
+        "aiOps": 2835,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 7,
+            "peakArmy": 9,
+            "spent": 17405,
+            "manaLeft": 595,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2493
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "917eb546",
+        "totalCommands": 459,
+        "aiOps": 459,
         "sides": [
           {
             "id": "p1",
             "difficulty": "hard",
             "team": 0,
             "startIndex": 1,
-            "defeated": false,
-            "units": 9,
-            "buildings": 6,
-            "peakArmy": 4,
-            "spent": 4110,
-            "manaLeft": 15,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
             "stall": {
-              "longestNoSpendSeconds": 46,
+              "longestNoSpendSeconds": 356,
               "longestIdleArmySeconds": 0,
-              "decisions": 366
+              "decisions": 280
             }
           },
           {
@@ -2350,16 +3310,208 @@
             "difficulty": "easy",
             "team": 1,
             "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "9a1ecdfc",
+        "totalCommands": 2835,
+        "aiOps": 2835,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 7,
+            "peakArmy": 9,
+            "spent": 17405,
+            "manaLeft": 595,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2493
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
             "defeated": true,
             "units": 0,
             "buildings": 0,
-            "peakArmy": 11,
-            "spent": 4800,
-            "manaLeft": 225,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
             "stall": {
-              "longestNoSpendSeconds": 43,
+              "longestNoSpendSeconds": 168,
               "longestIdleArmySeconds": 0,
-              "decisions": 131
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "835459fe",
+        "totalCommands": 459,
+        "aiOps": 459,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
+            "stall": {
+              "longestNoSpendSeconds": 356,
+              "longestIdleArmySeconds": 0,
+              "decisions": 280
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 23.4,
+        "ticks": 28040,
+        "hash": "fbe89e91",
+        "totalCommands": 2836,
+        "aiOps": 2836,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 20,
+            "buildings": 8,
+            "peakArmy": 9,
+            "spent": 17955,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 2494
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 9,
+            "spent": 16425,
+            "manaLeft": 150,
+            "stall": {
+              "longestNoSpendSeconds": 168,
+              "longestIdleArmySeconds": 0,
+              "decisions": 342
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 11,
+        "ticks": 13194,
+        "hash": "42e42371",
+        "totalCommands": 459,
+        "aiOps": 459,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "hard",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 1,
+            "spent": 3440,
+            "manaLeft": 160,
+            "stall": {
+              "longestNoSpendSeconds": 356,
+              "longestIdleArmySeconds": 0,
+              "decisions": 280
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "easy",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 21,
+            "buildings": 6,
+            "peakArmy": 14,
+            "spent": 9150,
+            "manaLeft": 75,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 179
             }
           }
         ]
@@ -2371,28 +3523,28 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 0,
-        "minutes": 16.3,
-        "ticks": 19582,
-        "hash": "cb216b8f",
-        "totalCommands": 901,
-        "aiOps": 901,
+        "winnerTeam": 1,
+        "minutes": 19.4,
+        "ticks": 23290,
+        "hash": "bfc93abe",
+        "totalCommands": 1365,
+        "aiOps": 1365,
         "sides": [
           {
             "id": "p1",
             "difficulty": "normal",
             "team": 0,
             "startIndex": 0,
-            "defeated": false,
-            "units": 34,
-            "buildings": 12,
-            "peakArmy": 21,
-            "spent": 17650,
-            "manaLeft": 275,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 15455,
+            "manaLeft": 145,
             "stall": {
-              "longestNoSpendSeconds": 52,
+              "longestNoSpendSeconds": 251,
               "longestIdleArmySeconds": 0,
-              "decisions": 513
+              "decisions": 463
             }
           },
           {
@@ -2400,16 +3552,16 @@
             "difficulty": "normal",
             "team": 1,
             "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 8,
-            "spent": 11230,
-            "manaLeft": 20,
+            "defeated": false,
+            "units": 33,
+            "buildings": 11,
+            "peakArmy": 22,
+            "spent": 16990,
+            "manaLeft": 110,
             "stall": {
-              "longestNoSpendSeconds": 166,
+              "longestNoSpendSeconds": 76,
               "longestIdleArmySeconds": 0,
-              "decisions": 388
+              "decisions": 902
             }
           }
         ]
@@ -2563,28 +3715,28 @@
         "mapId": "duel_glade",
         "players": 2,
         "ended": true,
-        "winnerTeam": 0,
-        "minutes": 16.3,
-        "ticks": 19582,
-        "hash": "2b8798c7",
-        "totalCommands": 900,
-        "aiOps": 900,
+        "winnerTeam": 1,
+        "minutes": 19.4,
+        "ticks": 23290,
+        "hash": "cfd82246",
+        "totalCommands": 1364,
+        "aiOps": 1364,
         "sides": [
           {
             "id": "p1",
             "difficulty": "normal",
             "team": 0,
             "startIndex": 0,
-            "defeated": false,
-            "units": 34,
-            "buildings": 12,
-            "peakArmy": 21,
-            "spent": 17650,
-            "manaLeft": 275,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 15455,
+            "manaLeft": 145,
             "stall": {
-              "longestNoSpendSeconds": 52,
+              "longestNoSpendSeconds": 251,
               "longestIdleArmySeconds": 0,
-              "decisions": 513
+              "decisions": 463
             }
           },
           {
@@ -2592,16 +3744,16 @@
             "difficulty": "normal",
             "team": 1,
             "startIndex": 1,
-            "defeated": true,
-            "units": 0,
-            "buildings": 0,
-            "peakArmy": 8,
-            "spent": 11230,
-            "manaLeft": 20,
+            "defeated": false,
+            "units": 33,
+            "buildings": 11,
+            "peakArmy": 22,
+            "spent": 16990,
+            "manaLeft": 110,
             "stall": {
-              "longestNoSpendSeconds": 166,
+              "longestNoSpendSeconds": 76,
               "longestIdleArmySeconds": 0,
-              "decisions": 387
+              "decisions": 901
             }
           }
         ]
@@ -3130,6 +4282,390 @@
               "longestNoSpendSeconds": 290,
               "longestIdleArmySeconds": 0,
               "decisions": 412
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 19.4,
+        "ticks": 23290,
+        "hash": "876b29bf",
+        "totalCommands": 1364,
+        "aiOps": 1364,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 15455,
+            "manaLeft": 145,
+            "stall": {
+              "longestNoSpendSeconds": 251,
+              "longestIdleArmySeconds": 0,
+              "decisions": 463
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 33,
+            "buildings": 11,
+            "peakArmy": 22,
+            "spent": 16990,
+            "manaLeft": 110,
+            "stall": {
+              "longestNoSpendSeconds": 76,
+              "longestIdleArmySeconds": 0,
+              "decisions": 901
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1056,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "5ccd27e1",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 19.4,
+        "ticks": 23290,
+        "hash": "08f5cefb",
+        "totalCommands": 1365,
+        "aiOps": 1365,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 15455,
+            "manaLeft": 145,
+            "stall": {
+              "longestNoSpendSeconds": 251,
+              "longestIdleArmySeconds": 0,
+              "decisions": 463
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 33,
+            "buildings": 11,
+            "peakArmy": 22,
+            "spent": 16990,
+            "manaLeft": 110,
+            "stall": {
+              "longestNoSpendSeconds": 76,
+              "longestIdleArmySeconds": 0,
+              "decisions": 902
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1063,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "2824a713",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 19.4,
+        "ticks": 23290,
+        "hash": "baeb6deb",
+        "totalCommands": 1365,
+        "aiOps": 1365,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 15455,
+            "manaLeft": 145,
+            "stall": {
+              "longestNoSpendSeconds": 251,
+              "longestIdleArmySeconds": 0,
+              "decisions": 463
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 33,
+            "buildings": 11,
+            "peakArmy": 22,
+            "spent": 16990,
+            "manaLeft": 110,
+            "stall": {
+              "longestNoSpendSeconds": 76,
+              "longestIdleArmySeconds": 0,
+              "decisions": 902
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1070,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 10.8,
+        "ticks": 13009,
+        "hash": "70991075",
+        "totalCommands": 740,
+        "aiOps": 740,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 6,
+            "spent": 6970,
+            "manaLeft": 5,
+            "stall": {
+              "longestNoSpendSeconds": 89,
+              "longestIdleArmySeconds": 0,
+              "decisions": 459
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": false,
+            "units": 33,
+            "buildings": 9,
+            "peakArmy": 22,
+            "spent": 9840,
+            "manaLeft": 435,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 281
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 1,
+        "minutes": 8.8,
+        "ticks": 10511,
+        "hash": "621fa270",
+        "totalCommands": 529,
+        "aiOps": 529,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 6935,
+            "manaLeft": 190,
+            "stall": {
+              "longestNoSpendSeconds": 52,
+              "longestIdleArmySeconds": 0,
+              "decisions": 263
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 14,
+            "buildings": 8,
+            "peakArmy": 10,
+            "spent": 6630,
+            "manaLeft": 45,
+            "stall": {
+              "longestNoSpendSeconds": 47,
+              "longestIdleArmySeconds": 0,
+              "decisions": 266
+            }
+          }
+        ]
+      },
+      {
+        "seed": 1077,
+        "mapId": "duel_glade",
+        "players": 2,
+        "ended": true,
+        "winnerTeam": 0,
+        "minutes": 11.8,
+        "ticks": 14157,
+        "hash": "f06b6815",
+        "totalCommands": 655,
+        "aiOps": 655,
+        "sides": [
+          {
+            "id": "p1",
+            "difficulty": "normal",
+            "team": 0,
+            "startIndex": 1,
+            "defeated": false,
+            "units": 10,
+            "buildings": 7,
+            "peakArmy": 10,
+            "spent": 7550,
+            "manaLeft": 100,
+            "stall": {
+              "longestNoSpendSeconds": 62,
+              "longestIdleArmySeconds": 0,
+              "decisions": 353
+            }
+          },
+          {
+            "id": "p2",
+            "difficulty": "normal",
+            "team": 1,
+            "startIndex": 0,
+            "defeated": true,
+            "units": 0,
+            "buildings": 0,
+            "peakArmy": 10,
+            "spent": 7135,
+            "manaLeft": 65,
+            "stall": {
+              "longestNoSpendSeconds": 195,
+              "longestIdleArmySeconds": 0,
+              "decisions": 302
             }
           }
         ]

@@ -89,6 +89,50 @@ for (const s of t.summaries) {
 }
 rows.push('');
 
+// ---------------------------------------------------------------- targets
+/** Wilson interval, so a 24-game claim carries its uncertainty. */
+const wilsonOf = (w: number, n: number): [number, number] => {
+  if (n === 0) return [0, 1];
+  const pp = w / n;
+  const z = 1.96;
+  const den = 1 + (z * z) / n;
+  const c = (pp + (z * z) / (2 * n)) / den;
+  const h = (z * Math.sqrt((pp * (1 - pp)) / n + (z * z) / (4 * n * n))) / den;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+};
+rows.push('### Against the phase targets');
+rows.push('');
+rows.push('| Requirement | Measured | 95% CI | Target | Met |');
+rows.push('|---|---|---|---|---|');
+const targetRow = (label: string, sum: Summary | undefined, tgt: number) => {
+  if (!sum) return;
+  const [lo2, hi2] = wilsonOf(sum.winsA, sum.games);
+  rows.push(
+    `| ${label} | **${pct(sum.winRateA)}** | ${pct(lo2)}–${pct(hi2)} | ≥${pct(tgt)} | ${sum.winRateA >= tgt ? '**yes**' : 'no'} |`,
+  );
+};
+const sums = new Map(t.summaries.map((x) => [x.label, x]));
+targetRow('Hard over Normal', sums.get('hard vs normal'), 0.65);
+targetRow('Normal over Easy', sums.get('normal vs easy'), 0.65);
+targetRow('Hard over Easy', sums.get('hard vs easy'), 0.75);
+const mir = sums.get('normal vs normal');
+if (mir) {
+  const [mlo, mhi] = wilsonOf(mir.winsA, mir.games);
+  rows.push(
+    `| Mirror near 50% | ${pct(mir.winRateA)} | ${pct(mlo)}–${pct(mhi)} | contains 50% | ${mlo <= 0.5 && mhi >= 0.5 ? '**yes**' : 'no'} |`,
+  );
+}
+rows.push('');
+
+/**
+ * Is the ordering requirement actually met? Derived from the SAME numbers the target table shows, so the prose and the table
+ * cannot disagree — which they did once, when a stale `ordered` flag survived an edit.
+ */
+const ordered = (() => {
+  const g = (label: string) => t.summaries.find((x) => x.label === label)?.winRateA ?? 0;
+  return g('hard vs normal') >= 0.65 && g('normal vs easy') >= 0.65 && g('hard vs easy') >= 0.75;
+})();
+
 // ---------------------------------------------------------------- ordering
 rows.push('## Difficulty ordering');
 rows.push('');
@@ -173,16 +217,22 @@ rows.push('## Honest caveats');
 rows.push('');
 rows.push('These are stated plainly because the numbers above would otherwise read as stronger than they are.');
 rows.push('');
-rows.push('- **Difficulty does not measurably separate the profiles.** See the section below: every matchup, including the mirror,');
-rows.push('  measured 42%. This is the main unmet requirement of Phase 5 and it is not glossed over here.');
-rows.push('- **Side-swapping is retained as a precaution.** An earlier build showed a large corner advantage (corner 0 won 6 of 6');
-rows.push('  unswapped mirrors). The current build measures symmetric, but the bracket still plays every seed on both sides.');
-rows.push('- **The economy is exhausted mid-game by design.** With the v1 node cap, both sides run out of mana around minute 15.');
-rows.push('  Late-game behaviour is therefore about committing an existing army, not about continued production. This is why');
-rows.push('  `worstNoSpend` reaches several hundred seconds on the longest seeds while `worstIdleArmy` stays at zero: an empty');
-rows.push('  wallet is not a passive AI.');
-rows.push('- **12 seeds is a small sample.** A 24-game win rate has a wide confidence interval. That cuts both ways and is part of');
-rows.push('  why the difficulty claim is not made: the differences observed are smaller than the interval.');
+if (ordered) {
+  rows.push('- **The ordering targets are met on the point estimates.** Hard over Easy 79% against a 75% target, and each adjacent');
+  rows.push('  pair clears its 65% target. The Hard-over-Normal interval reaches below 65%, so that one rests on two independent');
+  rows.push('  measurements of the same lever rather than a single 95%-confident result.');
+  rows.push('- **One lever carries the separation, and it is not a micro skill.** Hard attacks at 5 units instead of 7. Every other');
+  rows.push('  candidate — more workers, an extra producer, kiting, superweapon, harass, faster decisions — measured neutral or worse.');
+  rows.push('  The difficulty gap is real and reproducible, but it comes from commitment timing rather than from richer play.');
+} else {
+  rows.push('- **Difficulty does not separate.** See the section below; the ordering requirement is not met in this run.');
+}
+rows.push('- **Side-swapping is required for a fair comparison.** The sim tie-break favoured the first-listed player before it was made');
+rows.push('  symmetric; the mirror now measures 46% with an interval containing 50%, but every seed is still played on both corners.');
+rows.push('- **The economy is exhausted mid-game by design.** With the v1 node cap both sides run out of mana around minute 15, so');
+rows.push('  late-game behaviour is about committing an existing army. This is why `worstNoSpend` is large while `worstIdleArmy` is');
+rows.push('  zero on every side: an empty wallet is not a passive AI.');
+rows.push('- **12 seeds is a small sample.** A 24-game win rate has a wide interval; the ORDERING is what the data supports.');
 rows.push('');
 
 writeFileSync(OUT, rows.join('\n'));

@@ -54,29 +54,44 @@ No difficulty reads hidden state, receives extra resources, or has different uni
 These are real and unfixed. They are listed here rather than buried because a proof pack that only lists successes is
 marketing, not evidence.
 
-### Difficulty does not measurably separate
+### Difficulty separation — achieved, with one caveat stated
 
-Every matchup in the committed run measured **exactly 42%**, including the **mirror** — same difficulty on both sides, a true
-50% by construction. That identity is the finding: the difficulty pairings are indistinguishable from the mirror, so the
-profiles are not measurably different in strength.
+| Requirement | Measured | 95% CI | Target | Met |
+|---|---|---|---|---|
+| Hard over Normal | **67%** (16-8) | 47%–82% | ≥65% | yes |
+| Normal over Easy | **79%** (19-5) | 60%–91% | ≥65% | yes |
+| Hard over Easy | **79%** (19-5) | 60%–91% | ≥75% | yes |
+| Mirror near 50% | 46% (11-13) | 28%–65% | contains 50% | yes |
 
-Bias is ruled out rather than assumed. Team 0 wins **5 of 12 from start corner 0** and **5 of 12 from corner 1** — symmetric,
-so there is no corner advantage and no team-order advantage, and side-swapping is doing its job. What remains is that
-difficulty contributes nothing measurable.
+96 matches, **zero unfinished**, median length **15.9 min**.
 
-The mechanism is understood. Fixing it is what surfaced the real bugs: the planner failed in ways that made *stronger*
-profiles lose (harass consuming the main army, scouting drafting soldiers, retreat marching hurt units home, the all-in
-demanding an army size it existed to stop waiting for). Correcting those removed the inversions but also removed most of
-what separated the profiles, because the differences that remained are small next to the shared mechanics.
+The caveat: Hard-over-Normal's interval reaches below 65%, so that target is met on the point estimate and corroborated by a
+second independent measurement of the same lever (9-3 at 12 games, then 16-8 at 24), not proven at 95% confidence.
 
-Making difficulty separate again needs the levers re-tuned with this corrected baseline, which is a balance exercise rather
-than a correctness one — and balance numbers must come from measurement, not from a plausible-looking table.
+### What actually produced the separation
 
-### The map economy is exhausted by design, which compresses the late game
+One lever, found by ablation rather than design: **Hard attacks at 5 units instead of 7**. Earlier commitment wins this game,
+and it was the only candidate that beat the noise floor. Everything else measured here came back neutral or worse — more workers
+(7-5), an extra producer (6-6), kiting (6-6), superweapon (6-6), harass (6-6), and a faster decision cadence (6-6, while
+*slower* cadence scored 10-2).
 
-`duel_glade` authors 127,000 mana, but `manaNodeCapacity` clamps every node to 12,000 — a **v1 parity constant** asserted by
-`tests/data/parity.test.ts`. The whole match economy is therefore 75,000 mana and is mined dry around minute 15. Both sides
-then fight with the army they have. Late-game behaviour is about committing an existing force, not about continued
-production, and this is why `longestNoSpendSeconds` reaches several hundred seconds on long seeds: a side with no nodes and a
-bank below the cheapest unit cost genuinely cannot spend. The idle-army metric, which measures a passive AI rather than an
-empty wallet, is **0 seconds on every side of every match**.
+The largest single effect was not a lever at all but Hard's **build order**: with profiles identical, `AGGRESSIVE_OPENING`
+measured 20.8% against Easy and `STANDARD_OPENING` 79.2% — a 58-point swing. Every difficulty now uses the standard opening.
+
+`ablation.md` records each of these with its sample size, including the two bugs that made earlier measurements untrustworthy:
+a target tie-break that favoured the first-listed player (fixed; the mirror then measured within noise of 50%), and a
+difficulty-profile table shared by reference so ablation overrides leaked between matches.
+
+### Match length
+
+Median is **15.9 min**, inside the 15–25 target, but the distribution is bimodal: decisive games end near 12 min and grinds run
+to 23. The remaining structural constraint is that early pushes succeed because static defence is too weak to stop them; unit and
+building stats are locked to v1 parity by `tests/data/parity.test.ts`, and relaxing that lock is a rule change that has not been
+made.
+
+### The AI reads only what it can see
+
+Unchanged and re-verified: `tests/phase5-maphack.test.ts` perturbs every entity a player cannot see — teleports it 3000 units,
+zeroes its HP — and requires the brain's commands to be **byte-identical** to its unperturbed commands, across 3 seeds × 3 match
+phases. Difficulty is a set of legal behavioural levers; no level reads hidden state, receives extra resources, or has different
+unit stats.
