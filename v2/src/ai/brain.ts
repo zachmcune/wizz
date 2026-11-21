@@ -40,6 +40,13 @@ export interface BrainMemory {
   /** Decision passes since the current wave was launched. */
   waveAge: number;
   /**
+   * Army size the AI must reach before launching the next wave, set when a wave is wiped out.
+   *
+   * Zero during a normal game. It exists so a failed wave cannot be immediately followed by another, smaller one — see the
+   * note in the wave lifecycle for the measured 58-wave dribble this prevents.
+   */
+  regroupUntil: number;
+  /**
    * Decision passes since we last saw an enemy BUILDING's health fall or disappear.
    *
    * This is the stalemate detector. Two AIs that both sit at the 90-unit cap trade waves forever without either side
@@ -114,6 +121,7 @@ export class AiBrain {
     ticksSinceContact: 9999,
     anchorAge: 0,
     waveAge: 0,
+    regroupUntil: 0,
     passesWithoutProgress: 0,
     enemyBuildingsLost: 0,
   };
@@ -299,6 +307,14 @@ export class AiBrain {
       allIn:
         this.memory.passesWithoutProgress >= STALEMATE_PASSES ||
         elapsedSeconds >= DESPERATION_SECONDS,
+      /**
+       * Do not launch the next wave until the army has regrown past the size that failed. `allIn` overrides this: once the
+       * game is decided the AI commits regardless, so a regroup order can never strand it.
+       */
+      regroupUntil:
+        this.memory.passesWithoutProgress >= STALEMATE_PASSES || elapsedSeconds >= DESPERATION_SECONDS
+          ? 0
+          : this.memory.regroupUntil,
       enemyAnchor: this.memory.enemyAnchor,
       /**
        * WHERE TO GO WHEN WE KNOW OF NO ENEMY BUILDING AT ALL.
@@ -334,6 +350,8 @@ export class AiBrain {
      */
     if (mil.shouldAttack) {
       this.memory.lastWaveSize = mil.committedWave;
+      // The regroup obligation is discharged by actually attacking.
+      this.memory.regroupUntil = 0;
       this.memory.attacking = true;
       this.memory.waveAge = 0;
     } else if (this.memory.attacking) {
@@ -354,6 +372,22 @@ export class AiBrain {
       const beenOutLongEnough = this.memory.waveAge >= WAVE_MAX_PASSES;
       if (lostMostOfIt || beenOutLongEnough) {
         this.memory.attacking = false;
+        /**
+         * A WAVE THAT DIED MUST BE REPLACED BEFORE THE NEXT ONE GOES.
+         *
+         * `lastWaveSize` was overwritten with whatever the army happened to be, and the wave gate then compared against it.
+         * After a wipe the army is near zero, so `required` collapses to `minWaveSize`, and the very next pass launched
+         * whatever single unit existed. Measured on seed 1000 (normal vs easy): p1 issued **58 waves** while its opponent
+         * issued ONE, and p2 finished with 205 army units against p1's 58. The AI was not attacking, it was dribbling its
+         * army away one squad at a time.
+         *
+         * A failed wave now commits the AI to REBUILDING to the size that failed before it tries again. The threshold only
+         * ever grows on failure, so the AI either masses a force that can succeed or escalates into the all-in path.
+         */
+        if (lostMostOfIt) {
+          this.memory.lastWaveSize = Math.max(this.memory.lastWaveSize, armyNow);
+          this.memory.regroupUntil = Math.max(this.memory.regroupUntil, Math.round(this.memory.lastWaveSize));
+        }
         notes.push(lostMostOfIt ? 'wave spent, regrouping' : 'wave timed out, regrouping');
       }
     }

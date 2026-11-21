@@ -162,6 +162,13 @@ export function planMilitary(
      * mobile unit, arrives at empty ground, and stands there — see the note in `brain.ts` for the measured 26-minute stall.
      */
     searchTarget?: { x: number; y: number } | null;
+    /**
+     * Army size that must be reached before the next wave launches.
+     *
+     * Set after a wave is wiped out, so the AI rebuilds to the strength that failed instead of dribbling single units into
+     * the enemy one after another. Zero means no regrouping is pending.
+     */
+    regroupUntil?: number;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
   const commands: Command[] = [];
@@ -320,23 +327,19 @@ export function planMilitary(
    * could not finish the job, and no match ever ended.
    */
   /**
-   * ESCALATION MUST BE SATISFIABLE.
+   * ESCALATION IS BOUNDED BY WHAT IS ACTUALLY SUSTAINABLE, NOT BY THE CURRENT ARMY SIZE.
    *
-   * Each wave was required to be `lastWaveSize * (1 + waveGrowth)` — a COMPOUNDING demand. Once a large wave died, the next
-   * one had to be a third bigger, then half again bigger, and so on. With the map's mana exhausted around minute 15 the AI
-   * can never meet that, so it sits in "massing" for the rest of the match. The harder the profile, the higher its
-   * `waveGrowth`, the sooner it locks up — which is exactly why HARD was the weakest difficulty:
+   * Each wave was required to be `lastWaveSize * (1 + waveGrowth)` — a compounding demand that becomes permanently
+   * unsatisfiable once the map's mana runs out. But capping it at the CURRENT army size was worse: after a wipe the army is
+   * one unit, so `required` collapsed to 1 and the AI immediately relaunched with a single unit, lost it, and repeated.
+   * Measured on seed 1014 (normal vs easy): p1 issued **66 waves, every one of them of size 1**, while p2 issued 2 waves of
+   * 8 and 14. The AI was not attacking, it was feeding its army in one unit at a time.
    *
-   *   easy beat normal 17-6, easy beat hard 15-7
-   *   seed 1007 at minute 5: normal went 9 units -> 1 in one fight, then never attacked again
-   *
-   * The escalation is now bounded by what the AI can actually field. `armySize` is the current army, and a ceiling of
-   * `max(minWaveSize, currentArmy)` means: grow the army if you can, but never demand more than you have minus a small
-   * remainder. A big wave still asks for a big follow-up; it just cannot ask for an army the player will never own.
+   * The cap is therefore the army size the AI can SUSTAIN, which is at least the profile's minimum wave — never below it.
+   * A big wave raises the bar; a wipe can never lower it below a real army.
    */
   const compounded = Math.round(opts.lastWaveSize * (1 + profile.waveGrowth));
-  const sustainable = Math.max(profile.minWaveSize, armySize);
-  const required = Math.max(profile.minWaveSize, Math.min(compounded, sustainable));
+  const required = Math.max(profile.minWaveSize, Math.max(compounded, 0));
   // An all-in ignores the wave threshold: the point is to end the grind, not to trade evenly again.
   /**
    * An all-in commits EVERYTHING, including a handful of units.
@@ -350,7 +353,19 @@ export function planMilitary(
    * An AI that cannot rebuild has nothing to lose by attacking. Sending one unit is worse than sending twenty, but it is
    * strictly better than standing still until the clock runs out.
    */
-  const ready = opts.allIn === true ? armySize >= 1 : armySize >= required;
+  /**
+   * AN ALL-IN COMMITS THE ARMY — IT DOES NOT DISPENSE WITH HAVING ONE.
+   *
+   * This previously dropped to `armySize >= 1`, so once the stalemate breaker engaged it launched one-unit waves forever.
+   * Measured on seed 1014 (normal vs easy): `passesWithoutProgress` reached 496, the breaker stayed on, and p1 issued **66
+   * waves of size 1** while p2 massed 8 and 14 and won.
+   *
+   * The all-in exists to stop an AI trading evenly at the unit cap, not to make it attack with nothing. It now requires a
+   * real force — the profile's minimum wave, which is 7-11 units — while still dropping the COMPOUNDING escalation that made
+   * the requirement unreachable. That is the actual intent: stop waiting for an ever-bigger army, not stop needing one.
+   */
+  const regroupFloor = opts.allIn === true ? 0 : (opts.regroupUntil ?? 0);
+  const ready = opts.allIn === true ? armySize >= profile.minWaveSize : armySize >= required && armySize >= regroupFloor;
   /**
    * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.
    *
