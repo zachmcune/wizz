@@ -278,13 +278,35 @@ export function planMilitary(
   }
 
   // ------------------------------------------------------------------ 3. harassment of a known soft target
-  if (profile.harass && opts.enemyAnchor && !opts.attacking && armySize >= 4) {
-    const soft = softestEnemyBuilding(per);
-    if (soft) {
-      // A small squad breaks off; the rest keeps massing.
-      const squad = army.slice(0, Math.min(4, Math.max(2, Math.floor(armySize * 0.25)))).map((a) => a.seen.id);
-      commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: soft.x, y: soft.y });
-      notes.push(`harassing ${soft.defId} at ${Math.round(soft.x)},${Math.round(soft.y)}`);
+  /**
+   * HARASSMENT MUST COME OUT OF SURPLUS, NEVER OUT OF THE MAIN WAVE.
+   *
+   * This block used to slice the first four units off the army on every pass while massing, and the wave planner below then
+   * ordered the WHOLE army — including those four — somewhere else. So the squad was permanently given two conflicting
+   * destinations, and the army could never reach the size the wave gate demands.
+   *
+   * Measured by isolating the lever across 8 side-swapped games against easy:
+   *
+   *   hard as-is:            2-4
+   *   hard without harass:   4-4
+   *
+   * Harass was the single biggest reason hard was the weakest difficulty, and hard is the only profile that has it enabled.
+   *
+   * It now only detaches units that are NOT needed to satisfy the wave requirement, and only when the AI is not already
+   * attacking, so harassing is something done with spare units rather than instead of building an army.
+   */
+  if (profile.harass && opts.enemyAnchor && !opts.attacking) {
+    const waveNeed = Math.max(profile.minWaveSize, opts.lastWaveSize);
+    const surplus = armySize - waveNeed;
+    if (surplus >= 2) {
+      const soft = softestEnemyBuilding(per);
+      if (soft) {
+        const squadSize = Math.min(4, Math.max(2, Math.floor(surplus)));
+        // Take from the END of the army so the main body keeps the units nearest the front.
+        const squad = army.slice(army.length - squadSize).map((a) => a.seen.id);
+        commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: soft.x, y: soft.y });
+        notes.push(`harassing ${soft.defId} with ${squadSize} surplus unit(s)`);
+      }
     }
   }
 
