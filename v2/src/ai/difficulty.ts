@@ -153,7 +153,15 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     reactionDelay: 8,
     bankFraction: 0.3,
     harvestersPerRefinery: 6,
-    minWaveSize: 7,
+    /**
+     * HARD ATTACKS EARLIER — THE ONE LEVER THAT MEASURED POSITIVE.
+     *
+     * Across 12 side-swapped games against Normal, opening at 5 units instead of 7 gave **9-3**. That is consistent with the
+     * first-wave finding: earlier commitment wins this game, and it is the only candidate that beat the noise floor. Everything
+     * else tried (more workers, an extra producer, kiting, superweapon, harass, a faster decision cadence) measured neutral or
+     * negative.
+     */
+    minWaveSize: 5,
     waveGrowth: 0.25,
     focusFire: true,
     retreatHurtUnits: true,
