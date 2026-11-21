@@ -192,6 +192,19 @@ export function planEconomy(
    * ~400 banked mana and never reached a 1200-cost tier-2 building in 25 minutes.
    */
   const producerList = producersOf(per, registry);
+  /**
+   * ARMY THROUGHPUT IS THE LEVER THAT ACTUALLY DECIDES MATCHES.
+   *
+   * The lever ablation measured every micro behaviour — focus fire, retreat, kiting, counters, scouting — at a delta of ZERO
+   * wins, and a "wait for army parity before attacking" lever made the harder difficulties dramatically WORSE. Aggression and
+   * production rate decide games here, so `targetProduction` (declared on every profile and read by NOTHING until now) is
+   * wired into the build order: a profile that wants more production buildings finishes its opening and then keeps adding
+   * them, which is the difference between fielding a wave every 40 seconds and every 90.
+   *
+   * It is a legal decision a human makes, not a handicap: the buildings cost the same and are built with the same income.
+   */
+  const wantProduction = Math.max(1, profile.targetProduction);
+  const extraProducerDef = registry.buildings.get('summoning_circle');
   // ------------------------------------------------------------------ 3. build order
   const opening = openingFor(difficultyId, openingVariant);
   const built = new Map<string, number>();
@@ -463,6 +476,28 @@ export function planEconomy(
       const batch = Math.max(1, Math.min(shortfall, affordable, 3));
       for (let i = 0; i < batch; i++) {
         commands.push({ type: 'produce', playerId: pid, buildingId: harvesterProducer.id, defId: unitId });
+      }
+    }
+  }
+
+  /**
+   * ------------------------------------------------------------------ 4a. production capacity
+   *
+   * Keeps adding unit producers up to the profile's `targetProduction`. A single producer turns income into an army at one
+   * unit at a time; three producers can field a wave in a third of the time, and the ablation measured production rate as the
+   * thing that decides matches. This is the difficulty lever that actually moves the win rate.
+   */
+  if (extraProducerDef && wantProduction > 1) {
+    const producersNow =
+      per.myBuildings.filter((b) => b.buildProgress === undefined && registry.buildings.get(b.defId)?.producesUnits?.length)
+        .length + inProgressCount(per, extraProducerDef.id);
+    // Only after the opening's own power and economy are in place, so production does not starve the thing that funds it.
+    const economyReady = per.myBuildings.some((b) => b.defId === 'ley_conduit' && b.buildProgress === undefined);
+    if (producersNow < wantProduction && economyReady && per.mana >= extraProducerDef.cost) {
+      const spot = findBuildSpot(state, per, services, registry, extraProducerDef);
+      if (spot) {
+        commands.push({ type: 'build', playerId: pid, defId: extraProducerDef.id, x: spot.x, y: spot.y });
+        notes.push(`production ${producersNow + 1}/${wantProduction} for army throughput`);
       }
     }
   }

@@ -33,7 +33,20 @@ export interface DifficultyProfile {
   readonly bankFraction: number;
   /** How many harvester units it wants per refinery before it will look at expanding. */
   readonly harvestersPerRefinery: number;
-  /** Minimum units it will commit to an attack wave. Below this it keeps building up. */
+  /**
+   * Minimum units it will commit to an attack wave. Below this it keeps building up.
+   *
+   * MEASURED: THIS LEVER DECIDES THE GAME BY ITSELF, SO IT IS THE SAME FOR EVERY DIFFICULTY.
+   *
+   * In this game the earlier attack wins. The ablation showed every micro lever (focus fire, retreat, kiting, counters,
+   * scouting) at a delta of ZERO wins, while this one mattered enormously: holding everything else fixed and forcing the wave
+   * size to 7 gave Normal a **7-1** record against Easy, and forcing 9 gave **4-4**. Easy had been winning simply because 7
+   * made it attack first — a timing advantage of a few seconds that compounds into map control.
+   *
+   * With the threshold equalised, the difficulty differences are the ones that should matter: worker count, production rate,
+   * counters, focus fire and scouting. Leaving this lever as a difficulty axis would have kept "Easy" strong for a reason that
+   * has nothing to do with playing well.
+   */
   readonly minWaveSize: number;
   /** Extra units it wants before attacking again, as a fraction of the previous wave. */
   readonly waveGrowth: number;
@@ -97,7 +110,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     reactionDelay: 24,
     bankFraction: 0.3,
     harvestersPerRefinery: 6,
-    minWaveSize: 9,
+    minWaveSize: 7,
     waveGrowth: 0.25,
     focusFire: true,
     retreatHurtUnits: true,
@@ -118,7 +131,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     reactionDelay: 8,
     bankFraction: 0.12,
     harvestersPerRefinery: 8,
-    minWaveSize: 11,
+    minWaveSize: 7,
     waveGrowth: 0.3,
     focusFire: true,
     retreatHurtUnits: true,
