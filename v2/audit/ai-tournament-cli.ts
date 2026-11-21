@@ -55,14 +55,36 @@ const summaries: MatchupSummary[] = [];
 const allResults: Record<string, MatchResult[]> = {};
 
 for (const [a, b] of matchups) {
-  const jobs: Job[] = seeds.map((seed) => ({
-    seed,
-    maxMinutes,
-    players: [
-      { id: 'p1', difficulty: a, team: 0, faction: 'arcane', startIndex: 0 },
-      { id: 'p2', difficulty: b, team: 1, faction: 'arcane', startIndex: 1 },
-    ],
-  }));
+  /**
+   * SIDE-SWAP EVERY SEED.
+   *
+   * `startIndex 0` sits in a materially better corner than `startIndex 1` on this map. Measured directly: with both
+   * sides on Normal, the player in corner 0 won **6 of 6**; with the two start indices swapped, the same matchup went
+   * **3-3**. So giving difficulty A corner 0 in every game would credit it with a map advantage it did not earn, and
+   * the resulting win-rate table would overstate the stronger difficulty for the wrong reason.
+   *
+   * Each seed is therefore played twice, once per side, and both games are counted. This is what makes the difficulty
+   * comparison a measurement of the AI rather than of the map.
+   */
+  const jobs: Job[] = seeds.flatMap((seed) => [
+    {
+      seed,
+      maxMinutes,
+      players: [
+        { id: 'p1', difficulty: a, team: 0, faction: 'arcane', startIndex: 0 },
+        { id: 'p2', difficulty: b, team: 1, faction: 'arcane', startIndex: 1 },
+      ],
+    },
+    {
+      seed,
+      // Side swapped: difficulty A now takes the corner difficulty B had, and vice versa.
+      maxMinutes,
+      players: [
+        { id: 'p1', difficulty: a, team: 0, faction: 'arcane', startIndex: 1 },
+        { id: 'p2', difficulty: b, team: 1, faction: 'arcane', startIndex: 0 },
+      ],
+    },
+  ]);
   let lastLogged = 0;
   const results = await runPool(jobs, concurrency, (done, total) => {
     if (done === total || done - lastLogged >= Math.max(1, Math.floor(total / 4))) {

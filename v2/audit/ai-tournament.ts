@@ -53,6 +53,8 @@ export interface SideResult {
   id: string;
   difficulty: Difficulty;
   team: number;
+  /** Which start location this side was given. Recorded so a side bias can be identified from the data itself. */
+  startIndex: number;
   defeated: boolean;
   /** Surviving entities at the end. */
   units: number;
@@ -132,6 +134,7 @@ export function runMatch(opts: MatchOptions): MatchResult {
       peakArmy: number;
       spent: number;
       lastMana: number;
+      decisions: number;
     }
   >();
   for (const p of opts.players) {
@@ -143,6 +146,7 @@ export function runMatch(opts: MatchOptions): MatchResult {
       peakArmy: 0,
       spent: 0,
       lastMana: 0,
+      decisions: 0,
     });
   }
 
@@ -157,6 +161,15 @@ export function runMatch(opts: MatchOptions): MatchResult {
     aiOps += opsForCommands(cmds.length);
     totalCommands += cmds.length;
     if (cmds.length > 0) decisions++;
+    /**
+     * Attribute each command to the player that issued it, so `decisions` is a per-side liveness signal rather than one
+     * aggregate number. A silent side is a real fault, and an aggregate count hides it: one side can carry a whole match
+     * while the other issues nothing.
+     */
+    for (const cmd of cmds) {
+      const t = track.get(cmd.playerId);
+      if (t) t.decisions++;
+    }
     return cmds;
   };
 
@@ -204,6 +217,7 @@ export function runMatch(opts: MatchOptions): MatchResult {
       id: spec.id,
       difficulty: spec.difficulty,
       team: spec.team,
+      startIndex: spec.startIndex,
       defeated: player?.defeated ?? true,
       units,
       buildings,
@@ -213,7 +227,7 @@ export function runMatch(opts: MatchOptions): MatchResult {
       stall: {
         longestNoSpendSeconds: Math.round(t.longestNoSpend / TICK_HZ),
         longestIdleArmySeconds: Math.round(t.longestIdleArmy / TICK_HZ),
-        decisions: 0,
+        decisions: t.decisions,
       },
     };
   });

@@ -429,10 +429,24 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
       continue;
     }
 
-    // Out of range: an explicit attack order chases; aggressive auto-acquire does not (units would
-    // otherwise run across the map chasing a scout they glimpsed).
-    if (order?.type === 'attack' && kind === KIND_UNIT) {
-      chase(state, ctx, slot, targetSlot);
+    /**
+     * OUT OF RANGE: CLOSE IN.
+     *
+     * An explicit `attack` order always chased. `attackMove` and aggressive auto-acquire did not, on the reasoning that a
+     * unit would otherwise run across the map chasing a glimpsed scout. The consequence was severe and measured: on seed
+     * 1000 (normal vs easy) the winning side had **90 units, the closest 41 world units from an enemy building, every
+     * enemy building visible** — and dealt damage to exactly one structure over the whole match. A rift_familiar had
+     * locked onto an enemy unit 38 units away with a 26-unit reach and simply stood there, with a building 41 units away
+     * it could have destroyed. 46 units stayed "moving", 0 cooldowns ever fired, and the match ran out the clock at 30
+     * minutes with the loser's base at full health.
+     *
+     * The worry about chasing is real but is already handled elsewhere: acquisition is bounded by SIGHT, and the target is
+     * dropped when it leaves sight, so a unit cannot follow a scout into the fog. Pursuing a target that is still visible
+     * and within sight range is just the unit finishing its job.
+     */
+    if (kind === KIND_UNIT) {
+      const pursuingOrder = order?.type === 'attack' || order?.type === 'attackMove' || stance === STANCE_AGGRESSIVE;
+      if (pursuingOrder) chase(state, ctx, slot, targetSlot);
     }
   }
 
