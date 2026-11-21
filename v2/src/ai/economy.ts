@@ -113,8 +113,15 @@ export function planEconomy(
   const FLEE_RADIUS = 300;
   const raiders = per.enemyUnits.filter((e) => e.weapon);
   if (raiders.length > 0) {
-    const fleeing = harvesters.filter((h) =>
-      raiders.some((e) => Math.hypot(e.x - h.x, e.y - h.y) < FLEE_RADIUS),
+    /**
+     * A WORKER CARRYING MANA IS NEVER INTERRUPTED — it is on its way to deposit, and cancelling that order throws the whole
+     * trip away. Observed on seed 1000: two workers stuck forever at `busy` with `carry 75/75` and NO order, because a flee
+     * order had replaced their harvest order and the harvest system only runs for `type === 'harvest'` entities. The player
+     * then had zero income for sixteen minutes with thirteen live mana nodes on the map.
+     */
+    const fleeing = harvesters.filter(
+      (h) =>
+        (h.carry ?? 0) <= 0 && raiders.some((e) => Math.hypot(e.x - h.x, e.y - h.y) < FLEE_RADIUS),
     );
     if (fleeing.length > 0) {
       const safe = per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
@@ -614,6 +621,23 @@ export function findBuildSpot(
   const half = (def.footprint * TILE) / 2;
   const grid = TILE;
   const maxRadiusTiles = 14;
+  /**
+   * Where the threat is, for placing defenses on the side that matters.
+   *
+   * Prefer the centroid of visible enemy units (an actual attack in progress); fall back to nothing, which leaves the
+   * outward bias to do the work.
+   */
+  const threatDir = (() => {
+    const enemies = per.enemyUnits.filter((e) => e.weapon);
+    if (enemies.length === 0) return null;
+    let sx = 0;
+    let sy = 0;
+    for (const e of enemies) {
+      sx += e.x;
+      sy += e.y;
+    }
+    return { x: sx / enemies.length, y: sy / enemies.length };
+  })();
 
   type Spot = { x: number; y: number; score: number };
   const candidates: Spot[] = [];
@@ -647,15 +671,35 @@ export function findBuildSpot(
           for (const n of per.nodes) bestNode = Math.min(bestNode, Math.hypot(n.x - x, n.y - y));
           score += Math.max(0, 40 - bestNode / 32);
         }
-        if (def.id.includes('sentry') || def.id.includes('beacon')) {
-          // Defenses want to face outwards, away from the yard.
-          score += Math.hypot(dx, dy);
+        /**
+         * DEFENSES MUST FACE THE THREAT, NOT HUDDLE ON THE YARD.
+         *
+         * The outward bias used to be `+ Math.hypot(dx, dy)` on TILE deltas — a maximum of about 14 against a `-ring*2` term,
+         * so it was nearly a no-op and turrets landed 1-3 tiles from the sanctum. Meanwhile the raiders killing the worker
+         * line sat 232-244 units out, and a sentry's range is 165: measured on seed 1000, two full-health turrets with
+         * `attack: 0` cooldowns had never fired a shot while enemy units killed every worker two tiles beyond their reach.
+         *
+         * The bias now scales with the actual distance in world units and outweighs the proximity term, so a turret is placed
+         * toward the enemy — and, when the enemy direction is known, PREFERABLY toward the side they are coming from.
+         */
+        if (def.menuCategory === 'defenses' || def.id.includes('sentry') || def.id.includes('beacon')) {
+          const worldD = Math.hypot(x - yard.x, y - yard.y) / TILE;
+          score += worldD * 12;
+          // If we know where the attack is coming from, strongly prefer the arc facing it.
+          if (threatDir) {
+            const toThreat = Math.hypot(x - threatDir.x, y - threatDir.y);
+            score += Math.max(0, 60 - toThreat / 24);
+          }
         }
         candidates.push({ x, y, score });
       }
     }
-    // Once we have candidates at this ring, take the best: closer is better, so stop looking further out.
-    if (candidates.length > 0 && ring >= 3) break;
+    /**
+     * Defenses NEED to reach further than the economy does: their whole purpose is to cover ground the yard does not.
+     * The ring cap is therefore per-building rather than a blanket 3.
+     */
+    const ringCap = def.menuCategory === 'defenses' || def.id.includes('sentry') ? 9 : 3;
+    if (candidates.length > 0 && ring >= ringCap) break;
   }
   if (candidates.length === 0) return null;
   let best = candidates[0]!;

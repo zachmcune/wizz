@@ -112,6 +112,20 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     if (!harvester) continue;
     if (isChanneling(ex)) continue;
     const order = ex.orders[0] as { type: string; nodeId?: number } | undefined;
+    /**
+     * A FULL WORKER ALWAYS DELIVERS, даже without a harvest order.
+     *
+     * A worker carrying a full load whose order was replaced (by any other system — a flee, a re-task, a queued move) used to
+     * stop being processed entirely here, because the harvest system only ran for `type === 'harvest'`. Observed on seed 1000:
+     * two workers held `carry 75/75` with no order and were skipped for the rest of the match, so the player had NO income for
+     * sixteen minutes despite thirteen live mana nodes. Cargo is the player's money and it must always reach a drop-off.
+     */
+    const carrying = harvester.carry > 0;
+    if (carrying && (!order || order.type !== 'harvest')) {
+      store.state[slot] = STATE_RETURNING;
+      ex.orders = [{ type: 'harvest' }];
+      continue;
+    }
     if (!order || order.type !== 'harvest') continue;
 
     const owner = store.ownerId(store.ownerIndex[slot]!);

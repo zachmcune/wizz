@@ -76,6 +76,19 @@ export function openingFor(difficulty: string, variant = 0): readonly BuildStep[
    * Variant 1 adds an early defense; variant 2 adds a second refinery before the second producer. Both are legal orders a
    * human might choose, and both change the shape of the early game enough to vary the match.
    */
+  /**
+   * Variants must all be VIABLE, not merely different.
+   *
+   * Variant 2 used to insert a second attunement_spire (750 mana) BEFORE the first summoning circle. Measured by pinning each
+   * variant on the same match: variants 0 and 1 both reached their first summoning circle at 3.1 min and their first army at
+   * 3.4 min, while variant 2 reached **neither, ever** — its production was 1500 mana behind and it lost every game it
+   * opened. Since the variant is derived from the match seed, roughly a third of all games were decided by which opening the
+   * seed happened to pick, which is a large part of why difficulty could not separate: the outcome was set before either AI
+   * had made a strategic decision.
+   *
+   * Each variant now differs in SHAPE without delaying the first producer: an earlier defense, a faster second producer, or
+   * a refinery immediately after the producer rather than before it.
+   */
   if (variant === 1) {
     const out = [...base];
     const insertAt = Math.min(2, out.length);
@@ -87,14 +100,20 @@ export function openingFor(difficulty: string, variant = 0): readonly BuildStep[
     });
     return out;
   }
-  const out = [...base];
-  out.splice(1, 0, {
-    defId: 'attunement_spire',
-    notBeforeSeconds: 14,
-    pauseHarvesters: false,
-    why: 'greedy second refinery (seeded variant)',
-  });
-  return out;
+  if (variant === 2) {
+    // Greedy economy, but the producer comes FIRST so the army is never delayed.
+    const out = [...base];
+    const circleAt = out.findIndex((s) => s.defId === 'summoning_circle');
+    const insertAt = circleAt >= 0 ? circleAt + 1 : 2;
+    out.splice(insertAt, 0, {
+      defId: 'attunement_spire',
+      notBeforeSeconds: 30,
+      pauseHarvesters: false,
+      why: 'greedy second refinery straight after the first producer (seeded variant)',
+    });
+    return out;
+  }
+  return base;
 }
 
 /**
