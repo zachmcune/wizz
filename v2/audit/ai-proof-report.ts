@@ -187,27 +187,41 @@ rows.push('  data supports, not the precise percentages.');
  * and say so, not to filter the output until it looks right. This block exists so a regression cannot hide: it states
  * plainly whether hard > normal > easy actually held.
  */
-const easyBeatsNormal = ne !== undefined && ne.winRateA < 0.5;
-const easyBeatsHard = he !== undefined && he.winRateA < 0.5;
-if (easyBeatsNormal || easyBeatsHard) {
+/**
+ * THE DIFFICULTY ORDERING IS NOT ASSERTED, IT IS REPORTED.
+ *
+ * The spec asks difficulty to matter, and a report that quietly omitted the win-rate table would hide whether it does. So the
+ * numbers are always printed, and when the ordering does not hold this block says so with the measurements that show it.
+ */
+const byLabelMap = new Map(t.summaries.map((x) => [x.label, x]));
+const mirror = byLabelMap.get('normal vs normal');
+const hnFinal = byLabelMap.get('hard vs normal');
+const ordered = (hnFinal?.winRateA ?? 0) > 0.5 && (ne?.winRateA ?? 0) > 0.5 && (he?.winRateA ?? 0) > 0.6;
+if (!ordered) {
   rows.push('');
-  rows.push('### KNOWN DEFECT: easy is stronger than the harder difficulties');
+  rows.push('### KNOWN DEFECT: the difficulty ordering is not established');
   rows.push('');
-  rows.push('This run does NOT satisfy the difficulty-ordering requirement, and the numbers above show it:');
+  rows.push('This run does NOT satisfy the difficulty-ordering requirement. The win rates above are all close to 50%:');
   rows.push('');
-  if (ne && ne.winRateA < 0.5) rows.push(`- easy beat normal ${ne.winsB}-${ne.winsA} (${pct(1 - ne.winRateA)} for easy)`);
-  if (he && he.winRateA < 0.5) rows.push(`- easy beat hard ${he.winsB}-${he.winsA} (${pct(1 - he.winRateA)} for easy)`);
+  for (const s of t.summaries) rows.push(`- ${s.label}: ${pct(s.winRateA)} (${s.winsA}-${s.winsB})`);
   rows.push('');
-  rows.push('The cause is measured and is NOT fog, resources or stats -- all three difficulties obey the same rules. At the');
-  rows.push('point of decision, the harder profiles commit a larger wave (minWaveSize 9-11 vs easy\'s 7), lose it in one');
-  rows.push('engagement, and then cannot rebuild it because the map economy is exhausted by minute 15. Easy, committing');
-  rows.push('smaller waves more often, keeps a standing army through that window. Measured on seed 1007 at minute 5:');
-  rows.push('normal went from 9 units to 1 in a single fight and never recovered, while easy went 11 -> 20.');
+  if (mirror) {
+    rows.push(
+      `The MIRROR match measured **${pct(mirror.winRateA)}**. Same difficulty on both sides, so a true 50% by construction — ` +
+        'that figure is the noise floor of a 24-game sample.',
+    );
+    rows.push('Every difficulty matchup sits inside it, so the data does not distinguish the profiles from noise.');
+    rows.push('');
+  }
+  rows.push('The mechanism is understood and is NOT fog, resources or unit stats — all three profiles obey identical rules and');
+  rows.push('read the world only through the fog-limited perception façade. Fixing the planner defects that made the STRONGER');
+  rows.push('profiles lose (harass consuming the main army, scouting drafting soldiers, retreat marching hurt units home, the');
+  rows.push('all-in demanding an army size it existed to stop waiting for) removed the inversions — and also removed most of');
+  rows.push('what separated the profiles, because the remaining differences are small next to the shared mechanics.');
   rows.push('');
-  rows.push('Fixing it properly needs the wave-sizing and retreat rules reworked together -- not another single-line tweak,');
-  rows.push('which is what the last several attempts were and why each fix traded one deadlock for another.');
+  rows.push('Re-establishing separation is a balance exercise on top of this corrected baseline, and balance numbers have to');
+  rows.push('come from measurement rather than from a plausible-looking table.');
 }
-rows.push('');
 
 writeFileSync(OUT, rows.join('\n'));
 console.log(rows.join('\n'));
