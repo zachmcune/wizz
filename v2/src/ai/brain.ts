@@ -484,7 +484,23 @@ export class AiBrain {
            * Once the base is located the watch has served its purpose, so a worker is simply released back to harvesting.
            * Soldiers keep the watch; holding position costs them nothing.
            */
-          if (!isWorker && Math.hypot(watch.x - ax, watch.y - ay) > 260) {
+          /**
+           * A WATCH MUST NOT COMPETE WITH THE WAVE FOR THE SAME UNIT.
+           *
+           * This emitted `move` to the enemy anchor while the military planner emitted `attackMove` to the same place on the
+           * same unit, in the SAME decision pass. The two orders cancel, the unit never moves, and because both are re-issued
+           * every pass it never will. Measured on seed 1035 at 20 sim-minutes, verbatim from the command stream:
+           *
+           *   tick 24087: attackMove p1 [38] -> 3552,512   AND   move p1 [38] -> 3632,464
+           *   tick 24108: move p1 [38] -> 3632,464
+           *   tick 24129: attackMove p1 [38] -> 3552,512   AND   move p1 [38] -> 3632,464
+           *
+           * One unit, two destinations, alternating forever. The scout must only take a unit the army is NOT using, which
+           * means a watch requires spare units beyond the wave requirement.
+           */
+          const combatCount = per.myUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
+          const spareForWatch = combatCount > Math.max(1, this.profile.minWaveSize);
+          if (!isWorker && spareForWatch && Math.hypot(watch.x - ax, watch.y - ay) > 260) {
             commands.push({ type: 'move', playerId: pid, entityIds: [watch.id], x: ax, y: ay });
             notes.push('scout watching the enemy base');
           }

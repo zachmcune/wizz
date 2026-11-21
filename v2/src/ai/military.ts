@@ -249,7 +249,22 @@ export function planMilitary(
    * It also only applies when the unit is genuinely losing: hurt AND alone, rather than hurt in the middle of its own army
    * where it is not the one being focused.
    */
-  if (profile.retreatHurtUnits && opts.allIn !== true) {
+  /**
+   * TWO HURT ARMIES MUST NOT RETREAT FROM EACH OTHER FOREVER.
+   *
+   * Retreat pulls hurt units out of contact. With a real army that is correct micro. With a ONE-UNIT army it is a permanent
+   * stalemate: the unit is below 35% HP, sees an enemy within 220 units, steps back out of range, and the enemy does exactly
+   * the same -- so neither ever closes and neither base is ever touched.
+   *
+   * Measured on seeds 1035 and 1077, which ran to the 30-minute cap in the mirror, hard-vs-normal AND normal-vs-easy
+   * matchups simultaneously: both sides ended with a single combat unit sitting at their OWN base, zero damage dealt after
+   * minute 10, and no resolution even at a 45-minute cap.
+   *
+   * Retreat is therefore skipped once the army is too small to survive the withdrawal loop; in that state attacking is the
+   * only action that can end the game.
+   */
+  const tooFewToRetreat = armySize <= 2;
+  if (profile.retreatHurtUnits && opts.allIn !== true && !tooFewToRetreat) {
     const engagedThreshold = 220;
     const hurt = army.filter((a) => {
       if (a.seen.hp / Math.max(1, a.seen.maxHp) >= 0.35) return false;

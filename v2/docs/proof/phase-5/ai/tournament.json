@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-21T05:12:24.662Z",
+  "generatedAt": "2026-11-21T05:36:23.316Z",
   "summaries": [
     {
       "label": "hard vs normal",
@@ -593,8 +593,8 @@
         "minutes": 30,
         "ticks": 36000,
         "hash": "573263c3",
-        "totalCommands": 2240,
-        "aiOps": 2240,
+        "totalCommands": 2263,
+        "aiOps": 2263,
         "sides": [
           {
             "id": "p1",
@@ -610,7 +610,7 @@
             "stall": {
               "longestNoSpendSeconds": 816,
               "longestIdleArmySeconds": 0,
-              "decisions": 617
+              "decisions": 640
             }
           },
           {
@@ -641,8 +641,8 @@
         "minutes": 11.6,
         "ticks": 13897,
         "hash": "9e771bd0",
-        "totalCommands": 1258,
-        "aiOps": 1258,
+        "totalCommands": 1443,
+        "aiOps": 1443,
         "sides": [
           {
             "id": "p1",
@@ -658,7 +658,7 @@
             "stall": {
               "longestNoSpendSeconds": 352,
               "longestIdleArmySeconds": 0,
-              "decisions": 947
+              "decisions": 1132
             }
           },
           {
@@ -1169,8 +1169,8 @@
         "minutes": 30,
         "ticks": 36000,
         "hash": "3fcc118c",
-        "totalCommands": 2240,
-        "aiOps": 2240,
+        "totalCommands": 2263,
+        "aiOps": 2263,
         "sides": [
           {
             "id": "p1",
@@ -1186,7 +1186,7 @@
             "stall": {
               "longestNoSpendSeconds": 816,
               "longestIdleArmySeconds": 0,
-              "decisions": 617
+              "decisions": 640
             }
           },
           {
@@ -1747,8 +1747,8 @@
         "minutes": 30,
         "ticks": 36000,
         "hash": "9964d21b",
-        "totalCommands": 1890,
-        "aiOps": 1890,
+        "totalCommands": 2176,
+        "aiOps": 2176,
         "sides": [
           {
             "id": "p1",
@@ -1764,7 +1764,7 @@
             "stall": {
               "longestNoSpendSeconds": 867,
               "longestIdleArmySeconds": 0,
-              "decisions": 1802
+              "decisions": 2088
             }
           },
           {
@@ -2323,8 +2323,8 @@
         "minutes": 30,
         "ticks": 36000,
         "hash": "c03bf424",
-        "totalCommands": 1890,
-        "aiOps": 1890,
+        "totalCommands": 2176,
+        "aiOps": 2176,
         "sides": [
           {
             "id": "p1",
@@ -2340,7 +2340,7 @@
             "stall": {
               "longestNoSpendSeconds": 867,
               "longestIdleArmySeconds": 0,
-              "decisions": 1802
+              "decisions": 2088
             }
           },
           {
@@ -2804,9 +2804,9 @@
         "winnerTeam": 0,
         "minutes": 7.2,
         "ticks": 8638,
-        "hash": "3ebcf48d",
-        "totalCommands": 394,
-        "aiOps": 394,
+        "hash": "921d7b63",
+        "totalCommands": 413,
+        "aiOps": 413,
         "sides": [
           {
             "id": "p1",
@@ -2814,15 +2814,15 @@
             "team": 0,
             "startIndex": 1,
             "defeated": false,
-            "units": 34,
+            "units": 30,
             "buildings": 4,
-            "peakArmy": 26,
-            "spent": 5580,
-            "manaLeft": 195,
+            "peakArmy": 23,
+            "spent": 5620,
+            "manaLeft": 5,
             "stall": {
               "longestNoSpendSeconds": 47,
               "longestIdleArmySeconds": 0,
-              "decisions": 282
+              "decisions": 281
             }
           },
           {
@@ -2839,7 +2839,7 @@
             "stall": {
               "longestNoSpendSeconds": 135,
               "longestIdleArmySeconds": 0,
-              "decisions": 112
+              "decisions": 132
             }
           }
         ]
@@ -2901,8 +2901,8 @@
         "minutes": 11.3,
         "ticks": 13509,
         "hash": "479e76c8",
-        "totalCommands": 1025,
-        "aiOps": 1025,
+        "totalCommands": 1259,
+        "aiOps": 1259,
         "sides": [
           {
             "id": "p1",
@@ -2918,7 +2918,7 @@
             "stall": {
               "longestNoSpendSeconds": 346,
               "longestIdleArmySeconds": 0,
-              "decisions": 881
+              "decisions": 1115
             }
           },
           {
@@ -2949,8 +2949,8 @@
         "minutes": 7.3,
         "ticks": 8816,
         "hash": "bb7c8a23",
-        "totalCommands": 705,
-        "aiOps": 705,
+        "totalCommands": 727,
+        "aiOps": 727,
         "sides": [
           {
             "id": "p1",
@@ -2983,7 +2983,7 @@
             "stall": {
               "longestNoSpendSeconds": 137,
               "longestIdleArmySeconds": 0,
-              "decisions": 151
+              "decisions": 173
             }
           }
         ]
@@ -2997,8 +2997,8 @@
         "minutes": 16.9,
         "ticks": 20250,
         "hash": "b056abda",
-        "totalCommands": 471,
-        "aiOps": 471,
+        "totalCommands": 593,
+        "aiOps": 593,
         "sides": [
           {
             "id": "p1",
@@ -3031,7 +3031,7 @@
             "stall": {
               "longestNoSpendSeconds": 656,
               "longestIdleArmySeconds": 0,
-              "decisions": 87
+              "decisions": 209
             }
           }
         ]
@@ -3477,8 +3477,8 @@
         "minutes": 11.3,
         "ticks": 13509,
         "hash": "60598853",
-        "totalCommands": 1025,
-        "aiOps": 1025,
+        "totalCommands": 1259,
+        "aiOps": 1259,
         "sides": [
           {
             "id": "p1",
@@ -3494,7 +3494,7 @@
             "stall": {
               "longestNoSpendSeconds": 346,
               "longestIdleArmySeconds": 0,
-              "decisions": 881
+              "decisions": 1115
             }
           },
           {
@@ -4006,9 +4006,9 @@
         "winnerTeam": null,
         "minutes": 30,
         "ticks": 36000,
-        "hash": "2ac0ee52",
-        "totalCommands": 2863,
-        "aiOps": 2863,
+        "hash": "4b548da2",
+        "totalCommands": 3445,
+        "aiOps": 3445,
         "sides": [
           {
             "id": "p1",
@@ -4016,15 +4016,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 3,
-            "buildings": 4,
+            "units": 1,
+            "buildings": 3,
             "peakArmy": 7,
-            "spent": 10770,
-            "manaLeft": 30,
+            "spent": 5170,
+            "manaLeft": 80,
             "stall": {
-              "longestNoSpendSeconds": 54,
+              "longestNoSpendSeconds": 1346,
               "longestIdleArmySeconds": 0,
-              "decisions": 2178
+              "decisions": 2673
             }
           },
           {
@@ -4041,7 +4041,7 @@
             "stall": {
               "longestNoSpendSeconds": 1491,
               "longestIdleArmySeconds": 0,
-              "decisions": 685
+              "decisions": 772
             }
           }
         ]
@@ -4055,8 +4055,8 @@
         "minutes": 21.1,
         "ticks": 25369,
         "hash": "517f1d43",
-        "totalCommands": 2715,
-        "aiOps": 2715,
+        "totalCommands": 2748,
+        "aiOps": 2748,
         "sides": [
           {
             "id": "p1",
@@ -4072,7 +4072,7 @@
             "stall": {
               "longestNoSpendSeconds": 769,
               "longestIdleArmySeconds": 0,
-              "decisions": 1646
+              "decisions": 1679
             }
           },
           {
@@ -4103,8 +4103,8 @@
         "minutes": 21.1,
         "ticks": 25369,
         "hash": "3cea5064",
-        "totalCommands": 2715,
-        "aiOps": 2715,
+        "totalCommands": 2748,
+        "aiOps": 2748,
         "sides": [
           {
             "id": "p1",
@@ -4137,7 +4137,7 @@
             "stall": {
               "longestNoSpendSeconds": 769,
               "longestIdleArmySeconds": 0,
-              "decisions": 1646
+              "decisions": 1679
             }
           }
         ]
@@ -4150,9 +4150,9 @@
         "winnerTeam": null,
         "minutes": 30,
         "ticks": 36000,
-        "hash": "5f52ea77",
-        "totalCommands": 2863,
-        "aiOps": 2863,
+        "hash": "867606c1",
+        "totalCommands": 3445,
+        "aiOps": 3445,
         "sides": [
           {
             "id": "p1",
@@ -4168,7 +4168,7 @@
             "stall": {
               "longestNoSpendSeconds": 1491,
               "longestIdleArmySeconds": 0,
-              "decisions": 685
+              "decisions": 772
             }
           },
           {
@@ -4177,15 +4177,15 @@
             "team": 1,
             "startIndex": 0,
             "defeated": false,
-            "units": 3,
-            "buildings": 4,
+            "units": 1,
+            "buildings": 3,
             "peakArmy": 7,
-            "spent": 10770,
-            "manaLeft": 30,
+            "spent": 5170,
+            "manaLeft": 80,
             "stall": {
-              "longestNoSpendSeconds": 54,
+              "longestNoSpendSeconds": 1346,
               "longestIdleArmySeconds": 0,
-              "decisions": 2178
+              "decisions": 2673
             }
           }
         ]
@@ -4582,9 +4582,9 @@
         "winnerTeam": null,
         "minutes": 30,
         "ticks": 36000,
-        "hash": "db94aa2d",
-        "totalCommands": 2863,
-        "aiOps": 2863,
+        "hash": "eccc0b6d",
+        "totalCommands": 3445,
+        "aiOps": 3445,
         "sides": [
           {
             "id": "p1",
@@ -4592,15 +4592,15 @@
             "team": 0,
             "startIndex": 0,
             "defeated": false,
-            "units": 3,
-            "buildings": 4,
+            "units": 1,
+            "buildings": 3,
             "peakArmy": 7,
-            "spent": 10770,
-            "manaLeft": 30,
+            "spent": 5170,
+            "manaLeft": 80,
             "stall": {
-              "longestNoSpendSeconds": 54,
+              "longestNoSpendSeconds": 1346,
               "longestIdleArmySeconds": 0,
-              "decisions": 2178
+              "decisions": 2673
             }
           },
           {
@@ -4617,7 +4617,7 @@
             "stall": {
               "longestNoSpendSeconds": 1491,
               "longestIdleArmySeconds": 0,
-              "decisions": 685
+              "decisions": 772
             }
           }
         ]
@@ -4631,8 +4631,8 @@
         "minutes": 21.1,
         "ticks": 25369,
         "hash": "1ac3abd4",
-        "totalCommands": 2715,
-        "aiOps": 2715,
+        "totalCommands": 2748,
+        "aiOps": 2748,
         "sides": [
           {
             "id": "p1",
@@ -4648,7 +4648,7 @@
             "stall": {
               "longestNoSpendSeconds": 769,
               "longestIdleArmySeconds": 0,
-              "decisions": 1646
+              "decisions": 1679
             }
           },
           {
