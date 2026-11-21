@@ -385,8 +385,21 @@ export class AiBrain {
          * ever grows on failure, so the AI either masses a force that can succeed or escalates into the all-in path.
          */
         if (lostMostOfIt) {
-          this.memory.lastWaveSize = Math.max(this.memory.lastWaveSize, armyNow);
-          this.memory.regroupUntil = Math.max(this.memory.regroupUntil, Math.round(this.memory.lastWaveSize));
+          /**
+           * REGROUPING MUST DEMAND A BIGGER ARMY THAN THE ONE THAT JUST DIED.
+           *
+           * This used `lastWaveSize = max(lastWaveSize, armyNow)` and then set the regroup threshold to that value — but
+           * `armyNow` is the POST-LOSS count, so a wave of 9 that died down to 2 set the threshold to 2, and the AI
+           * immediately re-attacked with the same 2 units. Measured on seed 1000 between 8.5 and 10 minutes: `attacking`
+           * flipped true, wave "ended" after one pass, re-attacked with 2, and repeated — the army never grew because it was
+           * permanently walking into a defended base in pairs.
+           *
+           * The committed size of the failed wave is what must be rebuilt, and the threshold is that size plus a margin so
+           * it is never satisfied by the wreckage of the attempt itself.
+           */
+          const committed = Math.max(this.memory.lastWaveSize, armyNow);
+          this.memory.lastWaveSize = committed;
+          this.memory.regroupUntil = Math.max(this.memory.regroupUntil, committed + 2);
         }
         notes.push(lostMostOfIt ? 'wave spent, regrouping' : 'wave timed out, regrouping');
       }

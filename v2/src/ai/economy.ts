@@ -638,6 +638,24 @@ export function findBuildSpot(
     }
     return { x: sx / enemies.length, y: sy / enemies.length };
   })();
+  /**
+   * WHERE A DEFENSE ACTUALLY EARNS ITS KEEP.
+   *
+   * On this map a base's nearest mana node is **453 units** away while a sentry's range is 165, so a turret beside the
+   * sanctum can never protect the worker line — measured: sentries at (208,208) and (720,208) with the workers dying at
+   * (784,784), every one of them out of range. Workers were being killed at a node no defense could reach.
+   *
+   * Defenses are therefore anchored on the ECONOMY rather than the sanctum: the live node closest to home, which is where
+   * the workers actually stand and where an early raid does its damage.
+   */
+  const defenseAnchor = (() => {
+    const yardNode = per.nodes
+      .filter((n) => n.remaining > 0)
+      .map((n) => ({ n, d: Math.hypot(n.x - yard.x, n.y - yard.y) }))
+      .sort((a, b) => a.d - b.d)[0];
+    if (yardNode && yardNode.d < TILE * 20) return { x: yardNode.n.x, y: yardNode.n.y };
+    return { x: yard.x, y: yard.y };
+  })();
 
   type Spot = { x: number; y: number; score: number };
   const candidates: Spot[] = [];
@@ -646,8 +664,13 @@ export function findBuildSpot(
       for (let dx = -ring; dx <= ring; dx++) {
         // Only the ring's perimeter, so we spiral outwards instead of rescanning the interior.
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-        const x = yard.x + dx * grid;
-        const y = yard.y + dy * grid;
+        /**
+       * ECONOMY buildings cluster on the yard; DEFENSES cluster on the economy they are protecting.
+       */
+      const anchorX = def.menuCategory === 'defenses' ? defenseAnchor.x : yard.x;
+      const anchorY = def.menuCategory === 'defenses' ? defenseAnchor.y : yard.y;
+      const x = anchorX + dx * grid;
+      const y = anchorY + dy * grid;
         if (x - half < TILE || y - half < TILE) continue;
         if (x + half > (per.mapW - 1) * TILE || y + half > (per.mapH - 1) * TILE) continue;
         if (groundHeightAt(services, x, y) !== yardH) continue;
