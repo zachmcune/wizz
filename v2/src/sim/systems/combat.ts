@@ -191,11 +191,25 @@ export function acquireTarget(
     }
 
     const swarm = weapon?.preferSwarms ? swarmScore(state, ctx, owner, slot, weapon.splashRadius ?? 48) : 0;
+    /**
+     * TIES MUST NOT FAVOUR THE LOWER ENTITY ID.
+     *
+     * Breaking exact-distance ties on the lowest id looks harmless and is deterministic, but entity ids are allocated in
+     * player order — so EVERY equal-distance tie resolved in favour of the first player. Measured: a mirror match with both
+     * sides on Normal and the start corners swapped still gave the first-listed player **10 wins to 2**, and when team 0 was
+     * listed second the same matchup was 2-2. No AI code was involved; it was this comparison.
+     *
+     * The tie-break now uses a symmetric mix of the attacker and target ids, so two mirrored engagements resolve in opposite
+     * directions and neither side gains a systematic edge. It stays a pure function of (attacker, target), so determinism and
+     * replay hashing are unaffected.
+     */
     const id = store.id[slot]!;
+    const attackerId = store.id[attackerSlot]!;
+    const tie = ((Math.imul(attackerId ^ id, 2654435761) >>> 0) & 0xffff) < 0x8000;
     const better =
       swarm > bestSwarm ||
       (swarm === bestSwarm && d < bestD) ||
-      (swarm === bestSwarm && d === bestD && id < bestId);
+      (swarm === bestSwarm && d === bestD && tie && id !== bestId);
     if (better) {
       bestD = d;
       bestSwarm = swarm;

@@ -11,11 +11,19 @@
 import type { Command, GameState } from '../sim/types';
 import type { SimServices } from '../sim/context';
 import { AiBrain } from './brain';
-import type { Difficulty } from './difficulty';
+import type { Difficulty, DifficultyProfile } from './difficulty';
 
 export interface AiDriverOptions {
   /** Per-player difficulty overrides. Falls back to the player's own `aiDifficulty`. */
   difficulties?: Record<string, Difficulty>;
+  /**
+   * Per-player profile-lever overrides, for ABLATION MEASUREMENT.
+   *
+   * A difficulty lever has to be measurable on its own — "focus fire helps" is a claim that needs a number, and the only way
+   * to get one is to run the same matchup with the lever forced on and forced off. These overrides exist purely so
+   * `audit/ai-ablation.ts` can do that; nothing in the shipped game sets them.
+   */
+  profileOverrides?: Record<string, Partial<DifficultyProfile>>;
   /** Called after each brain decision, for the tournament harness and the debug overlay. */
   onDecision?: (playerId: string, tick: number, notes: string[], commandCount: number) => void;
 }
@@ -42,6 +50,8 @@ export class AiDriver {
     if (!brain) {
       const forced = this.options.difficulties?.[playerId];
       brain = new AiBrain(playerId, forced ?? difficulty, this.registry, this.services);
+      const override = this.options.profileOverrides?.[playerId];
+      if (override) Object.assign(brain.profile as unknown as Record<string, unknown>, override);
       this.brains.set(playerId, brain);
     }
     return brain;

@@ -30,6 +30,8 @@ export interface PlayerSpec {
   team: number;
   faction: string;
   startIndex: number;
+  /** Profile-lever overrides, used only by the ablation harness. */
+  aiOverrides?: Record<string, boolean | number>;
 }
 
 export interface MatchOptions {
@@ -116,7 +118,13 @@ export function runMatch(opts: MatchOptions): MatchResult {
     })),
   } as never);
 
-  const driver = new AiDriver(registry, services);
+  /**
+   * Route any per-player lever overrides through to the driver. Only the ablation harness sets these; a normal tournament run
+   * passes none and every difficulty plays exactly as shipped.
+   */
+  const profileOverrides: Record<string, Record<string, boolean | number>> = {};
+  for (const p of opts.players) if (p.aiOverrides) profileOverrides[p.id] = p.aiOverrides;
+  const driver = new AiDriver(registry, services, { profileOverrides });
 
   /**
    * Activity tracking, so "stall" is measured rather than assumed.
