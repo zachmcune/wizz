@@ -1,0 +1,60 @@
+{
+  "generated": "2026-11-19T22:20:23.123Z",
+  "base": "http://127.0.0.1:5343",
+  "hudAreaLimit": 0.18,
+  "viewports": [
+    {
+      "name": "phone-667x375",
+      "width": 667,
+      "height": 375,
+      "density": "compact",
+      "viewport": "667x375",
+      "hudElements": 4,
+      "hudAreaPx": 43758,
+      "hudAreaFraction": 0.17494452773613192,
+      "overlaps": [],
+      "outside": [],
+      "errors": []
+    },
+    {
+      "name": "phone-844x390",
+      "width": 844,
+      "height": 390,
+      "density": "compact",
+      "viewport": "844x390",
+      "hudElements": 4,
+      "hudAreaPx": 55440,
+      "hudAreaFraction": 0.16842872767043382,
+      "overlaps": [],
+      "outside": [],
+      "errors": []
+    },
+    {
+      "name": "chromebook-1366x768",
+      "width": 1366,
+      "height": 768,
+      "density": "regular",
+      "viewport": "1366x768",
+      "hudElements": 6,
+      "hudAreaPx": 185574,
+      "hudAreaFraction": 0.17689078513909223,
+      "overlaps": [],
+      "outside": [],
+      "errors": []
+    },
+    {
+      "name": "desktop-1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "density": "roomy",
+      "viewport": "1920x1080",
+      "hudElements": 6,
+      "hudAreaPx": 156646,
+      "hudAreaFraction": 0.07554301697530864,
+      "overlaps": [],
+      "outside": [],
+      "errors": []
+    }
+  ],
+  "errors": []
+}

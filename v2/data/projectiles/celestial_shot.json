@@ -1,0 +1,10 @@
+{
+  "id": "celestial_shot",
+  "speed": 260,
+  "art": {
+    "shape": "hexagon",
+    "size": 13,
+    "accent": "#d9f3ff",
+    "sprite": "celestial_shot"
+  }
+}

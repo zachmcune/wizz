@@ -1,0 +1,33 @@
+{
+  "kind": "research",
+  "id": "reinforced_frames",
+  "name": "Reinforced Frames",
+  "description": "Structural bracing added to every building. Cheap, and it keeps a base alive.",
+  "cost": 450,
+  "researchTime": 32,
+  "tier": 2,
+  "icon": "shield",
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "resonance_vault",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.15
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Structure health",
+      "detail": "+15% health for all buildings"
+    }
+  ]
+}

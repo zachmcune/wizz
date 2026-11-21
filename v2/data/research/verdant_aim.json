@@ -1,0 +1,47 @@
+{
+  "kind": "research",
+  "id": "verdant_aim",
+  "name": "Verdant Aim",
+  "description": "Grove Wardens grow their bow-limbs longer and truer each season.",
+  "cost": 820,
+  "researchTime": 54,
+  "tier": 4,
+  "icon": "bow",
+  "requires": [
+    "focused_bolts"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "grove_warden"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.16
+    },
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "grove_warden"
+      ],
+      "stat": "range",
+      "operation": "multiply",
+      "value": 1.08
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Warden damage",
+      "detail": "+16% damage for Grove Wardens"
+    },
+    {
+      "label": "Warden range",
+      "detail": "+8% range for Grove Wardens"
+    }
+  ]
+}

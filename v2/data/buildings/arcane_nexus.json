@@ -1,0 +1,24 @@
+{
+  "id": "arcane_nexus",
+  "name": "Arcane Nexus",
+  "shortLabel": "NEXUS",
+  "description": "Major tech progression building. Unlocks advanced units, defenses, superweapons, and future research upgrades.",
+  "kind": "building",
+  "cost": 1200,
+  "buildTime": 14,
+  "hp": 800,
+  "armor": "building",
+  "sight": 170,
+  "footprint": 2,
+  "menuCategory": "advanced",
+  "requires": [
+    "golem_forge"
+  ],
+  "powerUsed": 50,
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#ffd166",
+    "sprite": "arcane_nexus"
+  }
+}

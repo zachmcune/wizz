@@ -1,0 +1,82 @@
+{
+  "crop50": {
+    "worst": {
+      "a": "attunement_spire",
+      "b": "storm_conductor",
+      "v": 0.6744989633724948
+    },
+    "overThreshold": 0,
+    "top": [
+      {
+        "a": "attunement_spire",
+        "b": "storm_conductor",
+        "v": 0.6744989633724948
+      },
+      {
+        "a": "obsidian_bastion",
+        "b": "thorn_grove",
+        "v": 0.6714709622721492
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "waystone_camp",
+        "v": 0.6670694864048339
+      },
+      {
+        "a": "arcane_bunker",
+        "b": "ley_conduit",
+        "v": 0.658659217877095
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.655534941249227
+      },
+      {
+        "a": "storm_conductor",
+        "b": "thorn_grove",
+        "v": 0.6539991162174105
+      }
+    ]
+  },
+  "crop30": {
+    "worst": {
+      "a": "celestial_cannon",
+      "b": "golem_forge",
+      "v": 0.7925707980875322
+    },
+    "overThreshold": 21,
+    "top": [
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.7925707980875322
+      },
+      {
+        "a": "arcane_bunker",
+        "b": "ley_conduit",
+        "v": 0.7762968299711815
+      },
+      {
+        "a": "attunement_spire",
+        "b": "frost_spire",
+        "v": 0.7635503819570753
+      },
+      {
+        "a": "ley_conduit",
+        "b": "resonance_vault",
+        "v": 0.7609439124487004
+      },
+      {
+        "a": "resonance_vault",
+        "b": "storm_conductor",
+        "v": 0.7562205783456624
+      },
+      {
+        "a": "attunement_spire",
+        "b": "storm_conductor",
+        "v": 0.7547103977669225
+      }
+    ]
+  }
+}

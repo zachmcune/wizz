@@ -1,0 +1,34 @@
+{
+  "kind": "research",
+  "id": "storm_attunement",
+  "name": "Storm Attunement",
+  "description": "Storm Casters ground their lightning through the caster instead of the air.",
+  "cost": 850,
+  "researchTime": 58,
+  "tier": 4,
+  "icon": "attack",
+  "requires": [
+    "focused_bolts"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "storm_caster"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.18
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Storm Caster damage",
+      "detail": "+18% damage for Storm Casters"
+    }
+  ]
+}

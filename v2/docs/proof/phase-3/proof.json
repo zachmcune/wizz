@@ -1,0 +1,124 @@
+{
+  "atlas": {
+    "totalBytes": 1575451,
+    "totalMB": 1.5,
+    "files": [
+      {
+        "file": "buildings-0.webp",
+        "bytes": 353836
+      },
+      {
+        "file": "buildings-1.webp",
+        "bytes": 116058
+      },
+      {
+        "file": "buildings.json",
+        "bytes": 10373
+      },
+      {
+        "file": "units-0.webp",
+        "bytes": 617044
+      },
+      {
+        "file": "units-1.webp",
+        "bytes": 423152
+      },
+      {
+        "file": "units.json",
+        "bytes": 54988
+      }
+    ]
+  },
+  "gallery": {
+    "units": 14,
+    "buildings": 21,
+    "frames": 532,
+    "teams": 4,
+    "sheets": 49
+  },
+  "viewports": [
+    {
+      "viewport": "phone-667x375",
+      "geometry": {
+        "vw": 667,
+        "vh": 375,
+        "scrollW": 667,
+        "scrollH": 375,
+        "hudVisible": true,
+        "hudOverflowRight": 0,
+        "hudOverflowBottom": 0
+      },
+      "errors": []
+    },
+    {
+      "viewport": "phone-844x390",
+      "geometry": {
+        "vw": 844,
+        "vh": 390,
+        "scrollW": 844,
+        "scrollH": 390,
+        "hudVisible": true,
+        "hudOverflowRight": 0,
+        "hudOverflowBottom": 0
+      },
+      "errors": []
+    },
+    {
+      "viewport": "chromebook-1366x768",
+      "geometry": {
+        "vw": 1366,
+        "vh": 768,
+        "scrollW": 1366,
+        "scrollH": 768,
+        "hudVisible": true,
+        "hudOverflowRight": 0,
+        "hudOverflowBottom": 0
+      },
+      "errors": []
+    },
+    {
+      "viewport": "desktop-1920x1080",
+      "geometry": {
+        "vw": 1920,
+        "vh": 1080,
+        "scrollW": 1920,
+        "scrollH": 1080,
+        "hudVisible": true,
+        "hudOverflowRight": 0,
+        "hudOverflowBottom": 0
+      },
+      "errors": []
+    }
+  ],
+  "measurements": {
+    "phone-667x375": {
+      "p50": 0.4,
+      "p95": 0.6,
+      "max": 1.7,
+      "drawn": 5,
+      "total": 10
+    },
+    "phone-844x390": {
+      "p50": 0.5,
+      "p95": 1.1,
+      "max": 6.1,
+      "drawn": 5,
+      "total": 10
+    },
+    "chromebook-1366x768": {
+      "p50": 0.7,
+      "p95": 1.1,
+      "max": 2.2,
+      "drawn": 5,
+      "total": 10
+    },
+    "desktop-1920x1080": {
+      "p50": 1.3,
+      "p95": 4,
+      "max": 5.5,
+      "drawn": 5,
+      "total": 10
+    }
+  },
+  "errors": []
+}

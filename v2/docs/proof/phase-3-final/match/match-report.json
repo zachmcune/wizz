@@ -1,0 +1,43 @@
+{
+  "generated": "2026-11-14T19:12:50.485Z",
+  "base": "http://127.0.0.1:5339/",
+  "shots": [
+    {
+      "viewport": "phone-667x375",
+      "size": "667x375",
+      "note": "default phone (landscape)",
+      "zoom": 1,
+      "aliveUnits": 38,
+      "nondTerrainPixelFraction": 0.135,
+      "bytes": 180376
+    },
+    {
+      "viewport": "phone-844x390",
+      "size": "844x390",
+      "note": "large phone (landscape)",
+      "zoom": 1,
+      "aliveUnits": 38,
+      "nondTerrainPixelFraction": 0.102,
+      "bytes": 210123
+    },
+    {
+      "viewport": "chromebook-1366x768",
+      "size": "1366x768",
+      "note": "school Chromebook",
+      "zoom": 1,
+      "aliveUnits": 39,
+      "nondTerrainPixelFraction": 0.061,
+      "bytes": 493234
+    },
+    {
+      "viewport": "desktop-1920x1080",
+      "size": "1920x1080",
+      "note": "desktop",
+      "zoom": 1,
+      "aliveUnits": 43,
+      "nondTerrainPixelFraction": 0.14,
+      "bytes": 822844
+    }
+  ],
+  "errors": []
+}

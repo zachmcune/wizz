@@ -1,0 +1,569 @@
+/* ARCANE DOMINION — UI PRIMITIVES
+ *
+ * Every value here comes from `tokens.css`. There is not a single colour, size or timing literal in
+ * this file, and `tests/ui-tokens.test.ts` enforces that.
+ *
+ * ── PANEL CONSTRUCTION ─────────────────────────────────────────────────────────────────────────
+ *
+ * A panel is a metal plate: a chamfered rectangle with a 1px outline, a bevel (light top edge, dark
+ * bottom edge), and a header bar separated by a hairline rule.
+ *
+ * The chamfer is the signature. It is drawn with `clip-path` using a `--chamfer` corner cut, so it is
+ * real geometry rather than a rounded corner, and it echoes the bevelled edges of the 3D units. Because
+ * `clip-path` also clips the border, the outline is drawn as an inset `box-shadow` ring rather than a
+ * `border` — that keeps a crisp 1px edge all the way around the cut corners.
+ *
+ * There is no backdrop blur anywhere. Panels are opaque, because a HUD that blurs the battlefield
+ * makes it harder to read the battlefield, which is the opposite of the point.
+ */
+
+/* ───────────────────────────────────────────────────────────────────────────── BASE */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Component-local custom properties are declared here so the token test can see every variable a
+ * component consumes. They are NOT palette entries — they are per-variant overrides that always
+ * resolve to a --token value. */
+:root {
+  --chamfer: var(--chamfer-md);
+  --btn-face: var(--ink-700);
+  --btn-face-hover: var(--ink-600);
+  --btn-face-active: var(--ink-800);
+  --btn-edge: var(--ink-500);
+  --btn-text: var(--bone-100);
+  --team: var(--ink-400);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink-950);
+  color: var(--bone-100);
+  font-family: var(--font-ui);
+  font-size: calc(var(--text-md) * var(--text-scale));
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers in the UI must never jitter. Any element showing a live count opts in. */
+.num {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── PLATE */
+/* The base surface. Everything else composes this. */
+.plate {
+  position: relative;
+  background: var(--ink-850);
+  color: var(--bone-100);
+  --chamfer: var(--chamfer-md);
+  clip-path: polygon(
+    var(--chamfer) 0,
+    calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer),
+    100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%,
+    var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)),
+    0 var(--chamfer)
+  );
+  /* The inset ring IS the border: clip-path would cut a real border off at the corners. */
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-500),
+    var(--bevel-inset);
+}
+
+.plate--raised {
+  background: var(--ink-800);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-500),
+    var(--bevel-outset);
+}
+
+.plate--sunken {
+  background: var(--ink-900);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-700),
+    inset 0 1px 3px var(--shade-recess);
+}
+
+/* A plate with a copper top rule, used to mark the active panel. */
+.plate--active {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500),
+    var(--bevel-inset);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── PANEL */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--ink-800);
+  border-bottom: var(--border-hair) solid var(--ink-600);
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-400);
+  flex: 0 0 auto;
+}
+
+.panel__head--accent {
+  color: var(--copper-300);
+}
+
+.panel__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel__body {
+  padding: var(--space-5);
+  min-height: 0;
+  overflow: auto;
+}
+
+.panel__body--flush {
+  padding: 0;
+}
+
+.panel__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-top: var(--border-hair) solid var(--ink-700);
+  background: var(--ink-900);
+  flex: 0 0 auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── BUTTONS */
+/* Four variants, one shape. A button is a chamfered plate with a 1px outline.
+ *
+ * STATE ORDER MATTERS: hover, then active, then disabled, then focus. Focus is always visible via
+ * `:focus-visible` and never relies on colour alone (it adds a ring), so it survives colour-blindness
+ * and high-contrast modes.
+ */
+.btn {
+  --btn-face: var(--ink-700);
+  --btn-face-hover: var(--ink-600);
+  --btn-face-active: var(--ink-800);
+  --btn-edge: var(--ink-500);
+  --btn-text: var(--bone-100);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: var(--control-md);
+  padding: 0 var(--space-5);
+  background: var(--btn-face);
+  color: var(--btn-text);
+  font-family: var(--font-ui);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  font-weight: var(--weight-medium);
+  /* `1` produced a 15px line box for 17px of glyphs, so every button label reported as clipped. The
+   * button's height comes from `min-height`, not from the text, so a normal line box costs nothing. */
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  border: 0;
+
+  --chamfer: var(--chamfer-sm);
+  clip-path: polygon(
+    var(--chamfer) 0,
+    calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer),
+    100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%,
+    var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)),
+    0 var(--chamfer)
+  );
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--btn-edge),
+    var(--bevel-inset);
+  transition:
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-instant) var(--ease);
+}
+
+/* The chamfer cuts the clip-path, so an outline drawn with box-shadow would be clipped too. The focus
+ * ring is therefore an outline on a wrapper-equivalent: `outline` is NOT clipped by clip-path in the
+ * browsers this ships to, which is exactly what we want. */
+.btn:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: 2px;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--btn-face-hover);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--btn-face-active);
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--btn-edge),
+    inset 0 2px 4px var(--shade-press);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  background: var(--ink-800);
+  color: var(--bone-600);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+
+.btn--primary {
+  --btn-face: var(--copper-600);
+  --btn-face-hover: var(--copper-500);
+  --btn-face-active: var(--copper-700);
+  --btn-edge: var(--copper-400);
+  --btn-text: var(--copper-100);
+}
+
+.btn--primary:disabled,
+.btn--primary[aria-disabled='true'] {
+  background: var(--ink-800);
+  color: var(--bone-600);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+
+.btn--quiet {
+  --btn-face: transparent;
+  --btn-face-hover: var(--ink-700);
+  --btn-face-active: var(--ink-800);
+  --btn-edge: transparent;
+  --btn-text: var(--bone-400);
+  box-shadow: none;
+}
+.btn--quiet:hover:not(:disabled) {
+  color: var(--bone-100);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-500);
+}
+.btn--quiet[aria-pressed='true'] {
+  --btn-face: var(--ink-800);
+  --btn-edge: var(--copper-600);
+  --btn-text: var(--copper-300);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500);
+}
+
+.btn--danger {
+  --btn-face: var(--ink-700);
+  --btn-face-hover: var(--signal-bad);
+  --btn-edge: var(--signal-bad);
+  --btn-text: var(--bone-100);
+}
+
+.btn--sm {
+  min-height: var(--control-sm);
+  padding: 0 var(--space-4);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.btn--lg {
+  min-height: var(--control-lg);
+  padding: 0 var(--space-6);
+  font-size: calc(var(--text-lg) * var(--text-scale));
+}
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+/* Square icon-only control, sized to the touch target for the current density. */
+.btn--icon {
+  width: max(var(--control-md), var(--touch-target));
+  min-height: max(var(--control-md), var(--touch-target));
+  padding: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── TABS */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: var(--border-hair) solid var(--ink-600);
+}
+
+.tab {
+  position: relative;
+  padding: var(--space-3) var(--space-5);
+  background: transparent;
+  border: 0;
+  color: var(--bone-400);
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.tab:hover {
+  color: var(--bone-200);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--bone-100);
+}
+
+/* Active tab is marked by a 2px copper rule, not by a filled pill. */
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: var(--border-thick);
+  background: var(--copper-500);
+}
+
+.tab:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: -2px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── GAUGE */
+/* A resource or health bar. Track is sunken, fill is solid, and the only ornament is a 1px highlight
+ * along the top edge of the fill — the same bevel language as the plates. */
+.gauge {
+  position: relative;
+  height: 8px;
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+  overflow: hidden;
+}
+
+.gauge__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--copper-500);
+  box-shadow: inset 0 1px 0 var(--copper-300);
+  transition: width var(--dur-base) var(--ease);
+}
+
+.gauge--mana .gauge__fill {
+  background: var(--signal-info);
+  box-shadow: inset 0 1px 0 var(--bone-400);
+}
+.gauge--supply .gauge__fill {
+  background: var(--signal-good);
+  box-shadow: inset 0 1px 0 var(--bone-400);
+}
+.gauge--hp .gauge__fill {
+  background: var(--signal-good);
+}
+.gauge--hp.is-low .gauge__fill {
+  background: var(--signal-warn);
+}
+.gauge--hp.is-critical .gauge__fill {
+  background: var(--signal-bad);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── RESOURCE READOUT */
+/* The RTS staple: icon, label, tabular number. Laid out so the number never shifts. */
+.res {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.res__icon {
+  color: var(--bone-400);
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.res__value {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: calc(var(--text-lg) * var(--text-scale));
+  font-weight: var(--weight-medium);
+  color: var(--bone-100);
+  /* Was `1`, which produced a 15px line box for 17px glyphs and cropped the digits. */
+  line-height: 1.4;
+  display: block;
+}
+
+.res__label {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── KEYCAP / BADGE */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-2);
+  background: var(--ink-900);
+  color: var(--bone-400);
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-600),
+    inset 0 -2px 0 var(--shade-key);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--ink-900);
+  color: var(--bone-400);
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+}
+.badge--ok {
+  color: var(--signal-good);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-good);
+}
+.badge--warn {
+  color: var(--signal-warn);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-warn);
+}
+.badge--bad {
+  color: var(--signal-bad);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-bad);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── TEAM CHIP */
+/* Team colour appears as a bar on the edge, never as a filled chip with coloured text. */
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  background: var(--ink-800);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+}
+.team-chip::before {
+  content: '';
+  width: 4px;
+  align-self: stretch;
+  background: var(--team, var(--ink-400));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── ICON */
+.icon {
+  display: block;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── DIVIDER */
+.rule {
+  height: var(--border-hair);
+  background: var(--ink-600);
+  border: 0;
+  margin: var(--space-5) 0;
+}
+.rule--vertical {
+  width: var(--border-hair);
+  height: auto;
+  align-self: stretch;
+  margin: 0 var(--space-4);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── TEXT HELPERS */
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  /* `--leading-tight` (1.15) crops the descenders and the top of tall glyphs on uppercase headings,
+   * which measured as scrollHeight > clientHeight on every page title. 1.3 fits the font's own metrics;
+   * the visual tightness comes from the letter-spacing and the display weight, not from a line box
+   * smaller than the glyphs. */
+  line-height: 1.3;
+  color: var(--bone-100);
+}
+
+.muted {
+  color: var(--bone-400);
+}
+.dim {
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── UTILITY ROW */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.row--between {
+  justify-content: space-between;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.spacer {
+  flex: 1 1 auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── MOTION */
+/* One entrance animation for panels and screens: a short rise plus a fade. Nothing else animates in. */
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.enter {
+  animation: ui-rise var(--dur-base) var(--ease) both;
+}

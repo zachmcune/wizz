@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "arcane_resonance",
+  "name": "Arcane Resonance",
+  "description": "The Nexus hums in tune with every tower, feeding them a fraction more power.",
+  "cost": 900,
+  "researchTime": 60,
+  "tier": 4,
+  "icon": "power",
+  "requires": [
+    "ley_efficiency"
+  ],
+  "researchedAt": "arcane_nexus",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "arcane_nexus",
+        "ley_conduit",
+        "attunement_spire"
+      ],
+      "stat": "powerProduced",
+      "operation": "multiply",
+      "value": 1.2
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Power output",
+      "detail": "+20% power produced by Nexus, Ley Conduit and Attunement Spire"
+    }
+  ]
+}

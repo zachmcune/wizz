@@ -1,0 +1,30 @@
+{
+  "id": "golem_forge",
+  "name": "Golem Forge",
+  "shortLabel": "FORGE",
+  "description": "Trains heavy units and the Waystone Wagon mobile HQ. Requires Ley Conduit.",
+  "kind": "building",
+  "cost": 850,
+  "buildTime": 12,
+  "hp": 900,
+  "armor": "building",
+  "sight": 130,
+  "footprint": 3,
+  "menuCategory": "buildings",
+  "requires": [
+    "ley_conduit"
+  ],
+  "producesUnits": [
+    "stone_golem",
+    "siege_behemoth",
+    "waystone_wagon",
+    "obsidian_siege"
+  ],
+  "powerUsed": 40,
+  "art": {
+    "shape": "building",
+    "size": 88,
+    "accent": "#9a6a3a",
+    "sprite": "golem_forge"
+  }
+}

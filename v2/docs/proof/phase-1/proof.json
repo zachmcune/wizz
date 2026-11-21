@@ -1,0 +1,242 @@
+[
+  {
+    "viewport": "phone-667x375",
+    "facts": {
+      "boot": {
+        "units": 14,
+        "buildings": 21,
+        "spells": 4,
+        "projectiles": 6,
+        "factions": 3,
+        "maps": 5,
+        "matches": 4,
+        "research": 8,
+        "mapLintIssues": 0,
+        "factionRosters": [
+          {
+            "id": "arcane",
+            "name": "Arcane Dominion",
+            "units": 10,
+            "buildings": 19,
+            "accent": "#9b8cff"
+          },
+          {
+            "id": "obsidian",
+            "name": "Obsidian Pact",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#ff8a3c"
+          },
+          {
+            "id": "verdant",
+            "name": "Verdant Concord",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#5cff8a"
+          }
+        ],
+        "loadMs": 19.8,
+        "seedsDiffer": true,
+        "hashA": "dea65126",
+        "hashB": "091fed9e",
+        "rngDraws": {
+          "map": 2,
+          "ai": 2,
+          "spawn": 2,
+          "cosmetic": 2
+        }
+      },
+      "error": null
+    },
+    "geometry": {
+      "vw": 667,
+      "vh": 375,
+      "scrollW": 667,
+      "scrollH": 375,
+      "bodyScrollsHorizontally": false,
+      "overflowingRects": [],
+      "bootScrollableVertically": true
+    },
+    "errors": []
+  },
+  {
+    "viewport": "phone-844x390",
+    "facts": {
+      "boot": {
+        "units": 14,
+        "buildings": 21,
+        "spells": 4,
+        "projectiles": 6,
+        "factions": 3,
+        "maps": 5,
+        "matches": 4,
+        "research": 8,
+        "mapLintIssues": 0,
+        "factionRosters": [
+          {
+            "id": "arcane",
+            "name": "Arcane Dominion",
+            "units": 10,
+            "buildings": 19,
+            "accent": "#9b8cff"
+          },
+          {
+            "id": "obsidian",
+            "name": "Obsidian Pact",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#ff8a3c"
+          },
+          {
+            "id": "verdant",
+            "name": "Verdant Concord",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#5cff8a"
+          }
+        ],
+        "loadMs": 19.1,
+        "seedsDiffer": true,
+        "hashA": "dea65126",
+        "hashB": "091fed9e",
+        "rngDraws": {
+          "map": 2,
+          "ai": 2,
+          "spawn": 2,
+          "cosmetic": 2
+        }
+      },
+      "error": null
+    },
+    "geometry": {
+      "vw": 844,
+      "vh": 390,
+      "scrollW": 844,
+      "scrollH": 390,
+      "bodyScrollsHorizontally": false,
+      "overflowingRects": [],
+      "bootScrollableVertically": true
+    },
+    "errors": []
+  },
+  {
+    "viewport": "chromebook-1366x768",
+    "facts": {
+      "boot": {
+        "units": 14,
+        "buildings": 21,
+        "spells": 4,
+        "projectiles": 6,
+        "factions": 3,
+        "maps": 5,
+        "matches": 4,
+        "research": 8,
+        "mapLintIssues": 0,
+        "factionRosters": [
+          {
+            "id": "arcane",
+            "name": "Arcane Dominion",
+            "units": 10,
+            "buildings": 19,
+            "accent": "#9b8cff"
+          },
+          {
+            "id": "obsidian",
+            "name": "Obsidian Pact",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#ff8a3c"
+          },
+          {
+            "id": "verdant",
+            "name": "Verdant Concord",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#5cff8a"
+          }
+        ],
+        "loadMs": 19,
+        "seedsDiffer": true,
+        "hashA": "dea65126",
+        "hashB": "091fed9e",
+        "rngDraws": {
+          "map": 2,
+          "ai": 2,
+          "spawn": 2,
+          "cosmetic": 2
+        }
+      },
+      "error": null
+    },
+    "geometry": {
+      "vw": 1366,
+      "vh": 768,
+      "scrollW": 1366,
+      "scrollH": 768,
+      "bodyScrollsHorizontally": false,
+      "overflowingRects": [],
+      "bootScrollableVertically": false
+    },
+    "errors": []
+  },
+  {
+    "viewport": "desktop-1920x1080",
+    "facts": {
+      "boot": {
+        "units": 14,
+        "buildings": 21,
+        "spells": 4,
+        "projectiles": 6,
+        "factions": 3,
+        "maps": 5,
+        "matches": 4,
+        "research": 8,
+        "mapLintIssues": 0,
+        "factionRosters": [
+          {
+            "id": "arcane",
+            "name": "Arcane Dominion",
+            "units": 10,
+            "buildings": 19,
+            "accent": "#9b8cff"
+          },
+          {
+            "id": "obsidian",
+            "name": "Obsidian Pact",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#ff8a3c"
+          },
+          {
+            "id": "verdant",
+            "name": "Verdant Concord",
+            "units": 2,
+            "buildings": 20,
+            "accent": "#5cff8a"
+          }
+        ],
+        "loadMs": 21.1,
+        "seedsDiffer": true,
+        "hashA": "dea65126",
+        "hashB": "091fed9e",
+        "rngDraws": {
+          "map": 2,
+          "ai": 2,
+          "spawn": 2,
+          "cosmetic": 2
+        }
+      },
+      "error": null
+    },
+    "geometry": {
+      "vw": 1920,
+      "vh": 1080,
+      "scrollW": 1920,
+      "scrollH": 1080,
+      "bodyScrollsHorizontally": false,
+      "overflowingRects": [],
+      "bootScrollableVertically": false
+    },
+    "errors": []
+  }
+]

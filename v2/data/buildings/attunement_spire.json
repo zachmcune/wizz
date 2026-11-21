@@ -1,0 +1,29 @@
+{
+  "id": "attunement_spire",
+  "name": "Attunement Spire",
+  "shortLabel": "MINE",
+  "description": "Harvests mana. Trains Wisps and provides a drop-off point. Build a Resonance Vault to train Mana Weavers.",
+  "kind": "building",
+  "cost": 750,
+  "buildTime": 8,
+  "hp": 900,
+  "armor": "building",
+  "sight": 150,
+  "footprint": 2,
+  "menuCategory": "buildings",
+  "requires": [
+    "sanctum"
+  ],
+  "isRefinery": true,
+  "spawnsFreeWisp": true,
+  "producesUnits": [
+    "wisp"
+  ],
+  "powerUsed": 10,
+  "art": {
+    "shape": "building",
+    "size": 60,
+    "accent": "#4fb6c9",
+    "sprite": "attunement_spire"
+  }
+}

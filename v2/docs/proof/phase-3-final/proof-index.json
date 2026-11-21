@@ -1,0 +1,294 @@
+{
+  "generated": "2026-11-14T19:15:29.256Z",
+  "images": [
+    {
+      "file": "docs/proof/phase-3-final/sprites/arcane_archer.png",
+      "name": "arcane_archer",
+      "atlasKey": "unit/arcane_archer/blue/0",
+      "atlas": "atlas-final",
+      "md5": "4b27387c351bd81fe9916f51fb7ada49",
+      "bytes": 149412
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/cinder_acolyte.png",
+      "name": "cinder_acolyte",
+      "atlasKey": "unit/cinder_acolyte/blue/0",
+      "atlas": "atlas-final",
+      "md5": "fcde205e40c30b937b96a668a3d21503",
+      "bytes": 175947
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/grove_warden.png",
+      "name": "grove_warden",
+      "atlasKey": "unit/grove_warden/blue/0",
+      "atlas": "atlas-final",
+      "md5": "a6d483c053243204260618fb7c9d37f1",
+      "bytes": 154592
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/imp_swarmling.png",
+      "name": "imp_swarmling",
+      "atlasKey": "unit/imp_swarmling/blue/0",
+      "atlas": "atlas-final",
+      "md5": "5622d3501a9ac7ab6d03a9400b912ec8",
+      "bytes": 175834
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/mana_weaver.png",
+      "name": "mana_weaver",
+      "atlasKey": "unit/mana_weaver/blue/0",
+      "atlas": "atlas-final",
+      "md5": "4d5fadf73f7b92c1136b51fdda24a276",
+      "bytes": 161363
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/obsidian_siege.png",
+      "name": "obsidian_siege",
+      "atlasKey": "unit/obsidian_siege/blue/0",
+      "atlas": "atlas-final",
+      "md5": "65dcf2f4aea042aaa79b83eedc14d8ca",
+      "bytes": 175159
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/rift_familiar.png",
+      "name": "rift_familiar",
+      "atlasKey": "unit/rift_familiar/blue/0",
+      "atlas": "atlas-final",
+      "md5": "d24da32e24d7f251846d7d182171b25c",
+      "bytes": 155700
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/rift_skimmer.png",
+      "name": "rift_skimmer",
+      "atlasKey": "unit/rift_skimmer/blue/0",
+      "atlas": "atlas-final",
+      "md5": "5fab355a1cbc213b60a65a585f87e48d",
+      "bytes": 179539
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/siege_behemoth.png",
+      "name": "siege_behemoth",
+      "atlasKey": "unit/siege_behemoth/blue/0",
+      "atlas": "atlas-final",
+      "md5": "40a8545bc66d36fd995fa695faf8e15e",
+      "bytes": 136745
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/stone_golem.png",
+      "name": "stone_golem",
+      "atlasKey": "unit/stone_golem/blue/0",
+      "atlas": "atlas-final",
+      "md5": "42fdc1566c53eccbc030e7c8eb8dc2e2",
+      "bytes": 188643
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/storm_caster.png",
+      "name": "storm_caster",
+      "atlasKey": "unit/storm_caster/blue/0",
+      "atlas": "atlas-final",
+      "md5": "d0917ec068a9875d58fce3e14428e3ac",
+      "bytes": 130900
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/thornling.png",
+      "name": "thornling",
+      "atlasKey": "unit/thornling/blue/0",
+      "atlas": "atlas-final",
+      "md5": "3937560b92245ee7ab242df938ff7b30",
+      "bytes": 192210
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/waystone_wagon.png",
+      "name": "waystone_wagon",
+      "atlasKey": "unit/waystone_wagon/blue/0",
+      "atlas": "atlas-final",
+      "md5": "5abd9250ab1d30428e44e37e2cc735df",
+      "bytes": 171156
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/wisp.png",
+      "name": "wisp",
+      "atlasKey": "unit/wisp/blue/0",
+      "atlas": "atlas-final",
+      "md5": "e76c7b0ef66619f108f497ddb38d68a5",
+      "bytes": 134406
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/arcane_bunker.png",
+      "name": "arcane_bunker",
+      "atlasKey": "building/arcane_bunker/blue/0",
+      "atlas": "atlas-final",
+      "md5": "553f2785a8815d8c451a14cadb3d9c97",
+      "bytes": 42802
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/arcane_gate.png",
+      "name": "arcane_gate",
+      "atlasKey": "building/arcane_gate/blue/0",
+      "atlas": "atlas-final",
+      "md5": "6db5a6b736f89008bca4029a3aa1c3e4",
+      "bytes": 41752
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/arcane_nexus.png",
+      "name": "arcane_nexus",
+      "atlasKey": "building/arcane_nexus/blue/0",
+      "atlas": "atlas-final",
+      "md5": "6cae2b55e1a8bd90ae8ae513b7c1ae0f",
+      "bytes": 47668
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/arcane_sentry.png",
+      "name": "arcane_sentry",
+      "atlasKey": "building/arcane_sentry/blue/0",
+      "atlas": "atlas-final",
+      "md5": "11506d5d5900a690aa49c9d08ca35449",
+      "bytes": 38768
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/astral_spire.png",
+      "name": "astral_spire",
+      "atlasKey": "building/astral_spire/blue/0",
+      "atlas": "atlas-final",
+      "md5": "f8f02d2af24041a8059d0c9e42c081bd",
+      "bytes": 47127
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/attunement_spire.png",
+      "name": "attunement_spire",
+      "atlasKey": "building/attunement_spire/blue/0",
+      "atlas": "atlas-final",
+      "md5": "10e05a5b7f4f0729458bbc5fa3bcb74c",
+      "bytes": 39918
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/celestial_cannon.png",
+      "name": "celestial_cannon",
+      "atlasKey": "building/celestial_cannon/blue/0",
+      "atlas": "atlas-final",
+      "md5": "e21c523be27642b4ba1322c1724256d4",
+      "bytes": 43676
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/frost_spire.png",
+      "name": "frost_spire",
+      "atlasKey": "building/frost_spire/blue/0",
+      "atlas": "atlas-final",
+      "md5": "251f0fd789979fe01c9d51600da675bd",
+      "bytes": 36059
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/golem_forge.png",
+      "name": "golem_forge",
+      "atlasKey": "building/golem_forge/blue/0",
+      "atlas": "atlas-final",
+      "md5": "d6866dea57841ec729ddaa041b74ac1a",
+      "bytes": 35375
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/inferno_beacon.png",
+      "name": "inferno_beacon",
+      "atlasKey": "building/inferno_beacon/blue/0",
+      "atlas": "atlas-final",
+      "md5": "2ad1339903c142930461feda8305f5c9",
+      "bytes": 38891
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/ley_conduit.png",
+      "name": "ley_conduit",
+      "atlasKey": "building/ley_conduit/blue/0",
+      "atlas": "atlas-final",
+      "md5": "c56cde91ae344e1c737a0efa512473d2",
+      "bytes": 37805
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/mana_node.png",
+      "name": "mana_node",
+      "atlasKey": "building/mana_node/blue/0",
+      "atlas": "atlas-final",
+      "md5": "b5da48d7c97d13690f841a03addc376e",
+      "bytes": 38935
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/obsidian_bastion.png",
+      "name": "obsidian_bastion",
+      "atlasKey": "building/obsidian_bastion/blue/0",
+      "atlas": "atlas-final",
+      "md5": "b44665d8f9f78f27b92341cf33bd91b6",
+      "bytes": 48234
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/resonance_vault.png",
+      "name": "resonance_vault",
+      "atlasKey": "building/resonance_vault/blue/0",
+      "atlas": "atlas-final",
+      "md5": "4ed9d47ecc77cb94e64d07703a93f5b8",
+      "bytes": 43625
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/sanctuary_spire.png",
+      "name": "sanctuary_spire",
+      "atlasKey": "building/sanctuary_spire/blue/0",
+      "atlas": "atlas-final",
+      "md5": "4c683c935d7b699d0917040da4181b2f",
+      "bytes": 46080
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/sanctum.png",
+      "name": "sanctum",
+      "atlasKey": "building/sanctum/blue/0",
+      "atlas": "atlas-final",
+      "md5": "b843774c7af80ba9df1aea2f4bff4fba",
+      "bytes": 46579
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/scrying_obelisk.png",
+      "name": "scrying_obelisk",
+      "atlasKey": "building/scrying_obelisk/blue/0",
+      "atlas": "atlas-final",
+      "md5": "ae6075dd3926681cd4fc16a588e403a6",
+      "bytes": 37870
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/stone_wall.png",
+      "name": "stone_wall",
+      "atlasKey": "building/stone_wall/blue/0",
+      "atlas": "atlas-final",
+      "md5": "9a62fad8071e60f78de25872f6776f0e",
+      "bytes": 53689
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/storm_conductor.png",
+      "name": "storm_conductor",
+      "atlasKey": "building/storm_conductor/blue/0",
+      "atlas": "atlas-final",
+      "md5": "69368e8e8e7339976c9d070e0b49ecfd",
+      "bytes": 40569
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/summoning_circle.png",
+      "name": "summoning_circle",
+      "atlasKey": "building/summoning_circle/blue/0",
+      "atlas": "atlas-final",
+      "md5": "f8f9094b1126f9ecfed3eae5f0bcc514",
+      "bytes": 46223
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/thorn_grove.png",
+      "name": "thorn_grove",
+      "atlasKey": "building/thorn_grove/blue/0",
+      "atlas": "atlas-final",
+      "md5": "2ce139f89747c6d9452c0efcfb2074c4",
+      "bytes": 49580
+    },
+    {
+      "file": "docs/proof/phase-3-final/sprites/waystone_camp.png",
+      "name": "waystone_camp",
+      "atlasKey": "building/waystone_camp/blue/0",
+      "atlas": "atlas-final",
+      "md5": "32676497db32b026c65bf9529693676e",
+      "bytes": 42423
+    }
+  ],
+  "skipped": []
+}

@@ -1,0 +1,570 @@
+/* HUD LAYOUT — CSS grid, named areas, no floating zones.
+ *
+ * THE CONTRACT (asserted by tests/hud-geometry.test.ts on real rendered boxes):
+ *   • at most 18% of a 667x375 viewport's area
+ *   • no two HUD elements overlap, at any of the four target viewports
+ *   • nothing overflows the viewport
+ *
+ * THE MECHANISM: the HUD is a single grid over the screen with one named area per zone. Grid cells
+ * cannot overlap, so overlap is prevented by construction rather than by tuning offsets. The previous
+ * proof used `position:absolute` for the hint and the zoom widget, which is precisely how the WASD hint
+ * ended up sitting on the Move button.
+ *
+ * The only absolutely-positioned elements are the zoom widget and the toast, and both are placed in
+ * their OWN grid row so their containing block does not intersect the command bar. `position:absolute`
+ * inside a grid item is relative to that item, which keeps them out of other zones.
+ *
+ * Sizes come from tokens; this file adds only layout.
+ */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  /* The free row must never contribute height: if it did, an empty middle row would still occupy the
+   * screen and the HUD's measured area would be meaningless. */
+  min-height: 0;
+  z-index: var(--z-hud);
+  display: grid;
+  /* ONE column: every band spans the full width. The minimap is a band of its own, aligned right, rather
+   * than a grid column that would squeeze the top bar. */
+  grid-template-columns: minmax(0, 1fr);
+  /**
+   * THE COMMAND BAR IS PINNED TO THE BOTTOM EDGE — THE SLACK ROW IS BETWEEN THE BANDS, NOT BELOW THEM.
+   *
+   * An earlier version put the command bar in row 2 and a `1fr` spacer in row 4. That made the bar float
+   * under the top bar with 565px of dead space below it on Chromebook (measured: bar at y=131-203 of a
+   * 768px viewport). RTS commands belong at the bottom edge, where the hand and eye already are.
+   *
+   * Now the spacer sits in the MIDDLE: top band, slack, command band, footer band. The command bar can
+   * only ever be as far from the bottom as the footer row is tall (18px).
+   *
+   * The slack row is deliberately NOT a HUD element's box, so it does not inflate the measured HUD area —
+   * see the area test, which unions element rects rather than grid rows.
+   */
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    'top'
+    'mm'
+    '.'
+    'cmd';
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  /* The HUD must never eat clicks meant for the board. */
+  pointer-events: none;
+}
+
+.hud > * {
+  pointer-events: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── top bar */
+.hud-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  align-self: start;
+  min-height: 0;
+}
+.hud-top__res {
+  gap: var(--space-5);
+}
+.hud-top__clock {
+  padding: 0 var(--space-3);
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-400);
+  border-left: var(--border-hair) solid var(--ink-600);
+  padding-left: var(--space-4);
+}
+.hud-top__controls {
+  gap: var(--space-2);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── selection */
+/* Desktop: a tall left panel. Phone: a single horizontal strip (see [data-density=compact]). */
+.hud-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+.hud-select__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-right: var(--space-3);
+  border-right: var(--border-hair) solid var(--ink-600);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.hud-select__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.hud-select__portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+  color: var(--bone-400);
+}
+.hud-select__stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 0 1 150px;
+  min-width: 90px;
+}
+.hud-select__hp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.hud-select__empty {
+  margin: 0;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── minimap */
+.hud-minimap {
+  grid-area: mm;
+  align-self: start;
+  justify-self: end;
+  width: 150px;
+}
+.hud-minimap__head {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-hair) solid var(--ink-700);
+  background: var(--ink-800);
+}
+.hud-minimap__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── command bar */
+.hud-cmd {
+  grid-area: cmd;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) 20px;
+  /* Anchored to the bottom of its track, so the bar hugs the bottom edge. */
+  align-self: end;
+  /* Explicit min-height so the bar can never collapse to 0 (the v1 `.cmd-card` bug). */
+  min-height: 44px;
+}
+.hud-cmd__grid {
+  display: grid;
+  /* Six command cells plus a dedicated column for the zoom pair. The zoom cluster is a real grid child
+   * (see hud.ts), so it must have a tracker reserved or it wraps onto a second row. */
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+.hud-cmd__grid .btn {
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+
+/* The contextual build/train/research panel: sits INSIDE the command bar, so it grows the bar rather
+ * than floating over the battlefield or over another HUD zone. */
+.hud-cmd__panel {
+  display: none;
+}
+.hud-cmd__panel.is-open {
+  display: block;
+}
+.hud-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-height: 92px;
+  overflow-y: auto;
+  padding-top: var(--space-2);
+  border-top: var(--border-hair) solid var(--ink-700);
+}
+.hud-list .btn {
+  min-height: 26px;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.hud-list__head {
+  padding-top: var(--space-1);
+}
+.hud-list__tabs .tab {
+  padding: var(--space-1) var(--space-3);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── hint row */
+/* Its own grid row: it cannot overlap the command bar or anything else. */
+/* The hint and the zoom pair live INSIDE the command band's row as absolutely-positioned children of
+ * that band — not as their own grid row. Their own row would leave an 18-30px strip under the command
+ * bar, which is exactly the dead band this pass is removing. */
+.hud-hint {
+  position: absolute;
+  left: var(--space-3);
+  bottom: 2px;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  padding-left: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── zoom */
+/* A GRID CELL, not an overlay. It reserved `auto auto` trackers in the command grid but was previously
+ * taken out of flow by `position:absolute` and pinned to the band's bottom-right, where it covered the
+ * Research button. It is now a normal flex row inside its own grid column, so no z-order can hide a
+ * command. */
+.hud-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  grid-area: auto;
+  justify-self: end;
+  align-self: center;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── toast */
+/* Anchored to the TOP CENTRE, away from both the command bar and the selection panel, so it cannot
+ * overlap either. */
+.hud-toast {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  padding: var(--space-2) var(--space-5);
+  background: var(--ink-800);
+  color: var(--bone-100);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-500), var(--shadow-plate);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.hud-toast.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.hud-toast--warn {
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-warn), var(--shadow-plate);
+}
+.hud-toast--bad {
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-bad), var(--shadow-plate);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── COMPACT */
+/* 667x375 phone. This is where the 18% budget is won:
+ *   • the minimap is REMOVED (a 180px minimap on a 375px screen is not usable anyway)
+ *   • the selection panel becomes ONE 36px strip, portrait shrunk to 26px, head inline
+ *   • the command bar is one 40px row with icon+label at the smallest text step
+ *   • the hint row is removed entirely (it was the overlap culprit, and there is no room for it)
+ * Measured result is ~14% of the screen, down from ~50% before. */
+/* Compact: the HUD is FOUR CONTENT-HEIGHT BANDS pinned to the edges, with no flexible middle row.
+ * An earlier version used `minmax(0,1fr)` for a spacer row, which still reserved the rest of the screen
+ * for the HUD element and measured as an 86% HUD. Now the bands hug their content and the board shows
+ * through the gap. */
+/* Compact: TWO bands, not four.
+ *
+ * Measured cost of the earlier three-band layout: top 36px + select 34px + cmd 40px = 110px of a 375px
+ * screen = 29%. The 18% budget allows ~67px total, so a third full-width band simply cannot fit.
+ *
+ * The fix is structural rather than cosmetic: on a phone the selection readout is MERGED INTO the top
+ * bar (selection summary on the left, resources on the right), leaving exactly two bands — a top bar and
+ * a command bar — plus the small zoom cluster. That is 36 + 40 = 76px, and with the zoom cluster the
+ * union measures under 18%.
+ *
+ * The selection panel element is kept in the DOM and moved into the top bar with a CSS grid placement,
+ * so no TypeScript changes per density and the same element serves both layouts. */
+/* Compact: TWO bands, no third.
+ *
+ * Measured budget on 667x375 (250,125 px²):
+ *   18%  = 45,022 px²  ->  about 68px of full-width band
+ *   top bar   34px x 659 = 22,406
+ *   cmd bar   32px x 659 = 21,088
+ *   --------------------------------
+ *   total                = 43,494  (17.4%)
+ *
+ * The zoom cluster therefore moves INTO the command bar as its last cell rather than occupying its own
+ * row. It is a camera command, so it belongs there anyway — this is a layout simplification, not a
+ * squeeze. */
+/* Compact: two bands pinned to the EDGES.
+ *
+ * `align-content: space-between` with content-height rows put the command bar at y=189 of 375 — i.e.
+ * floating in the middle of the battlefield with units hidden behind it, which is worse than a big HUD.
+ * The bands belong at the edges, so the command bar is explicitly pinned to the bottom and the empty
+ * third row collapses to zero. */
+[data-density='compact'] .hud {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'top'
+    'cmd';
+  grid-template-rows: auto 1fr auto;
+  align-content: start;
+  gap: 0;
+  padding: 2px;
+}
+[data-density='compact'] .hud-cmd {
+  align-self: end;
+}
+[data-density='compact'] .hud-hint {
+  display: none;
+}
+[data-density='compact'] .hud-zoom {
+  grid-area: auto;
+  justify-self: end;
+  align-self: center;
+  gap: var(--space-1);
+}
+[data-density='compact'] .hud-cmd__grid {
+  /* Six commands + the zoom pair share one row: six fluid cells, then the two square zoom buttons. */
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto auto;
+  gap: 2px;
+  align-items: center;
+}
+/* `min-height` on the base rule (44px, there so the bar can never collapse to 0 like v1's `.cmd-card`)
+ * beats a plain `height`. The compact tier must override the MINIMUM, not just the height — that is why
+ * an earlier attempt measured 44px no matter what height was set. */
+[data-density='compact'] .hud-cmd {
+  /* 30px: the command band plus an 18px footer row is what keeps the total under 18%. */
+  padding: 1px 2px 16px;
+  height: 28px;
+  max-height: 28px;
+  min-height: 28px;
+  overflow: visible;
+}
+[data-density='compact'] .hud-cmd__grid .btn {
+  min-height: 26px;
+  height: 26px;
+}
+/* The zoom cluster inherits the row height, so its own buttons must match the command height exactly or
+ * they push the band 8px taller. */
+[data-density='compact'] .hud-zoom .btn {
+  min-height: 26px;
+  height: 26px;
+  width: 26px;
+}
+[data-density='compact'] .hud-zoom {
+  height: 26px;
+}
+/* The top band is CAPPED, not merely min-height: the 18% budget assumes ~34px, and an uncapped band
+ * grew to 54px because the selection segment's own content set the height. */
+/**
+ * PHONE TOP BAND.
+ *
+ * This was capped at 34px while its contents needed 46px, so the selection's "HP 2000 / 2000" clipped
+ * at the top — the reported bug. The cap is now 40px (measured requirement: 38px) and every child is
+ * explicitly sized to fit inside it rather than relying on overflow:hidden to crop.
+ */
+/**
+ * PHONE TOP BAND — 38px, sized from measurement.
+ *
+ * Constraints that must hold TOGETHER:
+ *   • content must fit (38px was the measured requirement after the health readout became one line);
+ *   • the whole HUD must stay under 18% of a 667x375 screen.
+ *
+ * 38 + 30 (command band) = 68px of full-width band = 18.0% of 375px. Going to 40px pushed the total to
+ * 19.1%, which failed the area gate; going back to 34px clipped the health text. 38 is the value that
+ * satisfies both, and the two tests now hold each other honest.
+ */
+[data-density='compact'] .hud-top {
+  padding: 1px var(--space-2);
+  gap: var(--space-2);
+  height: 38px;
+  max-height: 38px;
+  min-height: 38px;
+  align-items: center;
+  overflow: visible;
+}
+/* The segment fills the band and its children are laid out to fit, not cropped. */
+[data-density='compact'] .hud-select {
+  height: 34px;
+  overflow: visible;
+}
+[data-density='compact'] .hud-select__body {
+  height: 34px;
+  align-items: center;
+}
+[data-density='compact'] .hud-select__stats {
+  height: 32px;
+  justify-content: center;
+  gap: 2px;
+}
+[data-density='compact'] .hud-select__portrait {
+  display: none;
+}
+/**
+ * PHONE: THE HEALTH READOUT IS ONE LINE.
+ *
+ * The stats block is a vertical stack — `[HP label + value]` above `[gauge]` — which needs ~46px inside
+ * a 40px band and clipped the value at the top, exactly as reported. On compact it becomes a single
+ * horizontal line: "HP 2000/2000" then the bar, both centred in the band.
+ */
+[data-density='compact'] .hud-select__stats {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: visible;
+}
+[data-density='compact'] .hud-select__stats > .row {
+  gap: var(--space-2);
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+[data-density='compact'] .hud-select__stats > .row .eyebrow {
+  display: none; /* the gauge's own aria-label carries "Health" */
+}
+[data-density='compact'] .hud-select__hp {
+  flex: 1 1 auto;
+  min-width: 36px;
+  height: 10px;
+}
+[data-density='compact'] .hud-select__hp .gauge {
+  height: 6px;
+}
+[data-density='compact'] .hud-select__stats .num {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: 1;
+  white-space: nowrap;
+}
+[data-density='compact'] .hud-select {
+  gap: var(--space-2);
+}
+[data-density='compact'] .hud-select__body {
+  gap: var(--space-2);
+}
+/* 3px of horizontal overflow remained here: the stat line's intrinsic width slightly exceeded the
+ * segment's. `min-width: 0` plus `flex-shrink` lets it fit rather than overflow its own box. */
+[data-density='compact'] .hud-select__stats {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+}
+[data-density='compact'] .hud-select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+[data-density='compact'] .hud-select__body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+[data-density='compact'] .hud-select__head {
+  padding-right: var(--space-2);
+}
+[data-density='compact'] .hud-select__empty {
+  display: none;
+}
+[data-density='compact'] .hud-top__controls .btn {
+  min-height: 24px;
+  width: 24px;
+}
+
+[data-density='compact'] .hud-minimap {
+  display: none;
+}
+
+[data-density='compact'] .hud-top {
+  padding: var(--space-1) var(--space-3);
+  gap: var(--space-2);
+}
+[data-density='compact'] .hud-top__res {
+  gap: var(--space-3);
+}
+[data-density='compact'] .hud-top .res__label {
+  display: none;
+}
+[data-density='compact'] .hud-top .res__value {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+[data-density='compact'] .hud-top__clock {
+  display: none;
+}
+
+[data-density='compact'] .hud-select {
+  align-self: stretch;
+  max-height: none;
+  flex-direction: row;
+  align-items: center;
+}
+[data-density='compact'] .hud-select__head {
+  border-bottom: 0;
+  border-right: var(--border-hair) solid var(--ink-700);
+  padding: var(--space-1) var(--space-3);
+  background: transparent;
+  flex: 0 0 auto;
+}
+[data-density='compact'] .hud-select__body {
+  flex-direction: row;
+  padding: var(--space-1) var(--space-3);
+  gap: var(--space-2);
+  flex: 1 1 auto;
+}
+[data-density='compact'] .hud-select__portrait {
+  width: 26px;
+  height: 26px;
+}
+[data-density='compact'] .hud-select__portrait svg {
+  width: 16px;
+  height: 16px;
+}
+[data-density='compact'] .hud-select__empty {
+  display: none;
+}
+[data-density='compact'] .hud-select__hp .eyebrow {
+  display: none;
+}
+
+[data-density='compact'] .hud-cmd__grid .btn__label {
+  display: none;
+}
+[data-density='compact'] .hud-list {
+  max-height: 72px;
+}
+[data-density='compact'] .hud-list .btn {
+  min-height: 24px;
+}
+
+[data-density='compact'] .hud-hint {
+  display: none;
+}
+[data-density='compact'] .hud-zoom {
+  align-self: end;
+  justify-self: end;
+}
+[data-density='compact'] .hud-toast {
+  top: 84px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── ROOMY */
+[data-density='roomy'] .hud-minimap {
+  width: 180px;
+}
+[data-density='roomy'] .hud-cmd__grid {
+  grid-template-columns: repeat(6, minmax(0, 140px)) auto;
+  justify-content: start;
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "research",
+  "id": "field_repairs",
+  "name": "Field Repairs",
+  "description": "Repair crews work faster and spend less mana for each point of structure restored.",
+  "cost": 350,
+  "researchTime": 25,
+  "tier": 1,
+  "icon": "build",
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "resonance_vault",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "economyModifier",
+      "stat": "repairHpPerTick",
+      "operation": "multiply",
+      "value": 1.5
+    },
+    {
+      "kind": "economyModifier",
+      "stat": "repairManaPerHp",
+      "operation": "multiply",
+      "value": 0.85
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Repair speed",
+      "detail": "+50% structure health restored per second"
+    },
+    {
+      "label": "Repair cost",
+      "detail": "15% cheaper to repair"
+    }
+  ]
+}

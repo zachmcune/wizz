@@ -1,0 +1,34 @@
+{
+  "kind": "research",
+  "id": "smouldering_fury",
+  "name": "Smouldering Fury",
+  "description": "Obsidian acolytes stoke the ember in their chest until it answers their strikes.",
+  "cost": 880,
+  "researchTime": 56,
+  "tier": 4,
+  "icon": "attack",
+  "requires": [
+    "heavy_plating"
+  ],
+  "researchedAt": "golem_forge",
+  "factions": [
+    "obsidian"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "cinder_acolyte"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.2
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Acolyte damage",
+      "detail": "+20% damage for Cinder Acolytes"
+    }
+  ]
+}

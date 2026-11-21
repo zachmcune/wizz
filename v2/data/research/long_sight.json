@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "long_sight",
+  "name": "Long Sight",
+  "description": "Scrying lenses ground into every helm. Troops see the enemy before the enemy sees them.",
+  "cost": 550,
+  "researchTime": 40,
+  "tier": 3,
+  "icon": "research",
+  "requires": [
+    "runed_armour"
+  ],
+  "researchedAt": "scrying_obelisk",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "light_ranged",
+        "aoe_ranged",
+        "sustained_ranged"
+      ],
+      "stat": "range",
+      "operation": "multiply",
+      "value": 1.12
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Ranged reach",
+      "detail": "+12% attack range for all ranged troops"
+    }
+  ]
+}

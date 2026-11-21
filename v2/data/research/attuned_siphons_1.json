@@ -1,0 +1,33 @@
+{
+  "kind": "research",
+  "id": "attuned_siphons_1",
+  "name": "Attuned Siphons I",
+  "description": "Attune the refinery to the local ley-lines so harvesters draw mana faster.",
+  "cost": 400,
+  "researchTime": 30,
+  "tier": 1,
+  "icon": "mana",
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "resonance_vault",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "economyModifier",
+      "stat": "siphonPerSecond",
+      "operation": "multiply",
+      "value": 1.08
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Harvest yield",
+      "detail": "+8% mana per second from harvesters"
+    }
+  ]
+}
