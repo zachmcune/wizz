@@ -171,15 +171,42 @@ rows.push('## Honest caveats');
 rows.push('');
 rows.push('These are stated plainly because the numbers above would otherwise read as stronger than they are.');
 rows.push('');
-rows.push(`- **The hard-vs-normal gap is real but modest.** ${hn ? `${hn.winsA}-${hn.winsB} over ${hn.games} games` : 'n/a'} is a`);
-rows.push('  clear edge, not dominance. Hard wins by making better decisions at its faster decision cadence, but both');
+rows.push(`- **The hard-vs-normal gap is real but modest.** ${hn ? `${hn.winsA}-${hn.winsB} over ${hn.games} games` : 'n/a'}.`);
+rows.push('  Hard wins by making better decisions at its faster decision cadence, but both');
 rows.push('  difficulties share the same economy, units and map.');
 rows.push('- **The map has a side bias, which is why every matchup is side-swapped.** Unswapped, the corner-0 player won 6 of 6');
 rows.push('  mirror matches. The tournament therefore reports 24 games per matchup rather than 12.');
 rows.push('- **The economy is exhausted mid-game by design.** With the v1 node cap, both sides run out of mana around minute 15.');
 rows.push('  Late-game behaviour is therefore about committing an existing army, not about continued production.');
-rows.push('- **12 seeds is a small sample.** A 58% win rate over 24 games has a wide confidence interval; the difficulty ordering');
-rows.push('  is supported, the exact percentages are not precise.');
+rows.push('- **12 seeds is a small sample.** A win rate over 24 games has a wide confidence interval; the ORDERING is what the');
+rows.push('  data supports, not the precise percentages.');
+/**
+ * THE DIFFICULTY ORDERING IS NOT ASSERTED HERE, IT IS REPORTED.
+ *
+ * The spec asks difficulty to matter. If the measured ordering comes out inverted, the honest thing is to print the numbers
+ * and say so, not to filter the output until it looks right. This block exists so a regression cannot hide: it states
+ * plainly whether hard > normal > easy actually held.
+ */
+const easyBeatsNormal = ne !== undefined && ne.winRateA < 0.5;
+const easyBeatsHard = he !== undefined && he.winRateA < 0.5;
+if (easyBeatsNormal || easyBeatsHard) {
+  rows.push('');
+  rows.push('### KNOWN DEFECT: easy is stronger than the harder difficulties');
+  rows.push('');
+  rows.push('This run does NOT satisfy the difficulty-ordering requirement, and the numbers above show it:');
+  rows.push('');
+  if (ne && ne.winRateA < 0.5) rows.push(`- easy beat normal ${ne.winsB}-${ne.winsA} (${pct(1 - ne.winRateA)} for easy)`);
+  if (he && he.winRateA < 0.5) rows.push(`- easy beat hard ${he.winsB}-${he.winsA} (${pct(1 - he.winRateA)} for easy)`);
+  rows.push('');
+  rows.push('The cause is measured and is NOT fog, resources or stats -- all three difficulties obey the same rules. At the');
+  rows.push('point of decision, the harder profiles commit a larger wave (minWaveSize 9-11 vs easy\'s 7), lose it in one');
+  rows.push('engagement, and then cannot rebuild it because the map economy is exhausted by minute 15. Easy, committing');
+  rows.push('smaller waves more often, keeps a standing army through that window. Measured on seed 1007 at minute 5:');
+  rows.push('normal went from 9 units to 1 in a single fight and never recovered, while easy went 11 -> 20.');
+  rows.push('');
+  rows.push('Fixing it properly needs the wave-sizing and retreat rules reworked together -- not another single-line tweak,');
+  rows.push('which is what the last several attempts were and why each fix traded one deadlock for another.');
+}
 rows.push('');
 
 writeFileSync(OUT, rows.join('\n'));

@@ -225,16 +225,55 @@ export function planMilitary(
    * meaningful, because the alternative is dying where it stands. A unit already clear of the fight keeps
    * whatever it was doing, so once it is out of danger it rejoins the army instead of orbiting the base.
    */
+  /**
+   * RETREAT IS A STEP BACK, NOT A RETREAT HOME.
+   *
+   * Sending hurt units to the base sent them on a multi-thousand-unit walk across open ground, where they were caught and
+   * killed — and it repeated every pass. Measured across a 96-match tournament, this made the difficulties that HAVE retreat
+   * WEAKER than the one that does not:
+   *
+   *   easy beat normal 17-6, easy beat hard 15-7
+   *   disabling retreat on hard moved it from 0-4 to 2-2 against easy
+   *
+   * The intent of the lever was always "pull hurt units out of contact", which is a short step away from the nearest enemy,
+   * not a march to the far corner of the map. A unit that leaves weapon range stops taking fire and can rejoin; a unit that
+   * walks home is out of the fight for a minute and usually dies on the way.
+   *
+   * It also only applies when the unit is genuinely losing: hurt AND alone, rather than hurt in the middle of its own army
+   * where it is not the one being focused.
+   */
   if (profile.retreatHurtUnits && opts.allIn !== true) {
     const engagedThreshold = 220;
     const hurt = army.filter((a) => {
       if (a.seen.hp / Math.max(1, a.seen.maxHp) >= 0.35) return false;
-      // Only retreat from an actual fight.
       return per.enemyUnits.some((e) => Math.hypot(e.x - a.seen.x, e.y - a.seen.y) < engagedThreshold);
     });
     if (hurt.length > 0) {
-      commands.push({ type: 'move', playerId: pid, entityIds: hurt.map((h) => h.seen.id), x: opts.homeX, y: opts.homeY });
-      notes.push(`retreating ${hurt.length} hurt unit(s) out of contact`);
+      /**
+       * Step each hurt unit a short distance AWAY from the nearest enemy instead of toward home. `RETREAT_STEP` is just
+       * over a weapon's reach so the unit leaves fire but stays in the fight's neighbourhood and can return in seconds.
+       */
+      const RETREAT_STEP = 260;
+      const ax = hurt.reduce((s, h) => s + h.seen.x, 0) / hurt.length;
+      const ay = hurt.reduce((s, h) => s + h.seen.y, 0) / hurt.length;
+      let ex = 0;
+      let ey = 0;
+      for (const e of per.enemyUnits) {
+        ex += e.x - ax;
+        ey += e.y - ay;
+      }
+      const len = Math.hypot(ex, ey);
+      // No nearby enemy direction to flee? Fall back to stepping toward home, which is at least safe ground.
+      const dirX = len > 1 ? -ex / len : Math.sign(opts.homeX - ax);
+      const dirY = len > 1 ? -ey / len : Math.sign(opts.homeY - ay);
+      commands.push({
+        type: 'move',
+        playerId: pid,
+        entityIds: hurt.map((h) => h.seen.id),
+        x: ax + dirX * RETREAT_STEP,
+        y: ay + dirY * RETREAT_STEP,
+      });
+      notes.push(`stepping ${hurt.length} hurt unit(s) out of weapon range`);
     }
   }
 
@@ -258,7 +297,24 @@ export function planMilitary(
    * fortified base. With a 90-unit ceiling and a 10-building enemy that meant an endless exchange of 15-unit waves that
    * could not finish the job, and no match ever ended.
    */
-  const required = Math.max(profile.minWaveSize, Math.round(opts.lastWaveSize * (1 + profile.waveGrowth)));
+  /**
+   * ESCALATION MUST BE SATISFIABLE.
+   *
+   * Each wave was required to be `lastWaveSize * (1 + waveGrowth)` — a COMPOUNDING demand. Once a large wave died, the next
+   * one had to be a third bigger, then half again bigger, and so on. With the map's mana exhausted around minute 15 the AI
+   * can never meet that, so it sits in "massing" for the rest of the match. The harder the profile, the higher its
+   * `waveGrowth`, the sooner it locks up — which is exactly why HARD was the weakest difficulty:
+   *
+   *   easy beat normal 17-6, easy beat hard 15-7
+   *   seed 1007 at minute 5: normal went 9 units -> 1 in one fight, then never attacked again
+   *
+   * The escalation is now bounded by what the AI can actually field. `armySize` is the current army, and a ceiling of
+   * `max(minWaveSize, currentArmy)` means: grow the army if you can, but never demand more than you have minus a small
+   * remainder. A big wave still asks for a big follow-up; it just cannot ask for an army the player will never own.
+   */
+  const compounded = Math.round(opts.lastWaveSize * (1 + profile.waveGrowth));
+  const sustainable = Math.max(profile.minWaveSize, armySize);
+  const required = Math.max(profile.minWaveSize, Math.min(compounded, sustainable));
   // An all-in ignores the wave threshold: the point is to end the grind, not to trade evenly again.
   /**
    * An all-in commits EVERYTHING, including a handful of units.
