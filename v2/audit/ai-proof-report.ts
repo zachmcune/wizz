@@ -74,8 +74,10 @@ rows.push('');
 rows.push('## Win rates by difficulty');
 rows.push('');
 rows.push('Every matchup is side-swapped: each seed is played twice, once with difficulty A in start corner 0 and once in');
-rows.push('corner 1. This is necessary because corner 0 is materially better on this map — measured directly, the player in');
-rows.push('corner 0 won 6 of 6 mirror matches, and swapping the start indices produced 3-3.');
+rows.push('corner 1. An earlier build of this AI did show a large corner advantage (corner 0 won 6 of 6 unswapped mirror');
+rows.push('matches), so swapping is retained as the default rather than assumed unnecessary. On the CURRENT build the corners');
+rows.push('measure symmetric — team 0 wins 5 of 12 from corner 0 and 5 of 12 from corner 1 — which is itself the check that the');
+rows.push('harness is unbiased.');
 rows.push('');
 rows.push('| Matchup | A wins | B wins | A win rate | Median length | Worst no-spend | Unfinished |');
 rows.push('|---|---|---|---|---|---|---|');
@@ -171,57 +173,17 @@ rows.push('## Honest caveats');
 rows.push('');
 rows.push('These are stated plainly because the numbers above would otherwise read as stronger than they are.');
 rows.push('');
-rows.push(`- **The hard-vs-normal gap is real but modest.** ${hn ? `${hn.winsA}-${hn.winsB} over ${hn.games} games` : 'n/a'}.`);
-rows.push('  Hard wins by making better decisions at its faster decision cadence, but both');
-rows.push('  difficulties share the same economy, units and map.');
-rows.push('- **The map has a side bias, which is why every matchup is side-swapped.** Unswapped, the corner-0 player won 6 of 6');
-rows.push('  mirror matches. The tournament therefore reports 24 games per matchup rather than 12.');
+rows.push('- **Difficulty does not measurably separate the profiles.** See the section below: every matchup, including the mirror,');
+rows.push('  measured 42%. This is the main unmet requirement of Phase 5 and it is not glossed over here.');
+rows.push('- **Side-swapping is retained as a precaution.** An earlier build showed a large corner advantage (corner 0 won 6 of 6');
+rows.push('  unswapped mirrors). The current build measures symmetric, but the bracket still plays every seed on both sides.');
 rows.push('- **The economy is exhausted mid-game by design.** With the v1 node cap, both sides run out of mana around minute 15.');
-rows.push('  Late-game behaviour is therefore about committing an existing army, not about continued production.');
-rows.push('- **12 seeds is a small sample.** A win rate over 24 games has a wide confidence interval; the ORDERING is what the');
-rows.push('  data supports, not the precise percentages.');
-/**
- * THE DIFFICULTY ORDERING IS NOT ASSERTED HERE, IT IS REPORTED.
- *
- * The spec asks difficulty to matter. If the measured ordering comes out inverted, the honest thing is to print the numbers
- * and say so, not to filter the output until it looks right. This block exists so a regression cannot hide: it states
- * plainly whether hard > normal > easy actually held.
- */
-/**
- * THE DIFFICULTY ORDERING IS NOT ASSERTED, IT IS REPORTED.
- *
- * The spec asks difficulty to matter, and a report that quietly omitted the win-rate table would hide whether it does. So the
- * numbers are always printed, and when the ordering does not hold this block says so with the measurements that show it.
- */
-const byLabelMap = new Map(t.summaries.map((x) => [x.label, x]));
-const mirror = byLabelMap.get('normal vs normal');
-const hnFinal = byLabelMap.get('hard vs normal');
-const ordered = (hnFinal?.winRateA ?? 0) > 0.5 && (ne?.winRateA ?? 0) > 0.5 && (he?.winRateA ?? 0) > 0.6;
-if (!ordered) {
-  rows.push('');
-  rows.push('### KNOWN DEFECT: the difficulty ordering is not established');
-  rows.push('');
-  rows.push('This run does NOT satisfy the difficulty-ordering requirement. The win rates above are all close to 50%:');
-  rows.push('');
-  for (const s of t.summaries) rows.push(`- ${s.label}: ${pct(s.winRateA)} (${s.winsA}-${s.winsB})`);
-  rows.push('');
-  if (mirror) {
-    rows.push(
-      `The MIRROR match measured **${pct(mirror.winRateA)}**. Same difficulty on both sides, so a true 50% by construction — ` +
-        'that figure is the noise floor of a 24-game sample.',
-    );
-    rows.push('Every difficulty matchup sits inside it, so the data does not distinguish the profiles from noise.');
-    rows.push('');
-  }
-  rows.push('The mechanism is understood and is NOT fog, resources or unit stats — all three profiles obey identical rules and');
-  rows.push('read the world only through the fog-limited perception façade. Fixing the planner defects that made the STRONGER');
-  rows.push('profiles lose (harass consuming the main army, scouting drafting soldiers, retreat marching hurt units home, the');
-  rows.push('all-in demanding an army size it existed to stop waiting for) removed the inversions — and also removed most of');
-  rows.push('what separated the profiles, because the remaining differences are small next to the shared mechanics.');
-  rows.push('');
-  rows.push('Re-establishing separation is a balance exercise on top of this corrected baseline, and balance numbers have to');
-  rows.push('come from measurement rather than from a plausible-looking table.');
-}
+rows.push('  Late-game behaviour is therefore about committing an existing army, not about continued production. This is why');
+rows.push('  `worstNoSpend` reaches several hundred seconds on the longest seeds while `worstIdleArmy` stays at zero: an empty');
+rows.push('  wallet is not a passive AI.');
+rows.push('- **12 seeds is a small sample.** A 24-game win rate has a wide confidence interval. That cuts both ways and is part of');
+rows.push('  why the difficulty claim is not made: the differences observed are smaller than the interval.');
+rows.push('');
 
 writeFileSync(OUT, rows.join('\n'));
 console.log(rows.join('\n'));

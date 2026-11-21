@@ -8,8 +8,10 @@ Generated from `tournament.json` by `audit/ai-proof-report.ts`. Do not edit by h
 ## Win rates by difficulty
 
 Every matchup is side-swapped: each seed is played twice, once with difficulty A in start corner 0 and once in
-corner 1. This is necessary because corner 0 is materially better on this map — measured directly, the player in
-corner 0 won 6 of 6 mirror matches, and swapping the start indices produced 3-3.
+corner 1. An earlier build of this AI did show a large corner advantage (corner 0 won 6 of 6 unswapped mirror
+matches), so swapping is retained as the default rather than assumed unnecessary. On the CURRENT build the corners
+measure symmetric — team 0 wins 5 of 12 from corner 0 and 5 of 12 from corner 1 — which is itself the check that the
+harness is unbiased.
 
 | Matchup | A wins | B wins | A win rate | Median length | Worst no-spend | Unfinished |
 |---|---|---|---|---|---|---|
@@ -158,33 +160,13 @@ the one that indicates a genuinely passive AI, is zero throughout.
 
 These are stated plainly because the numbers above would otherwise read as stronger than they are.
 
-- **The hard-vs-normal gap is real but modest.** 10-14 over 24 games.
-  Hard wins by making better decisions at its faster decision cadence, but both
-  difficulties share the same economy, units and map.
-- **The map has a side bias, which is why every matchup is side-swapped.** Unswapped, the corner-0 player won 6 of 6
-  mirror matches. The tournament therefore reports 24 games per matchup rather than 12.
+- **Difficulty does not measurably separate the profiles.** See the section below: every matchup, including the mirror,
+  measured 42%. This is the main unmet requirement of Phase 5 and it is not glossed over here.
+- **Side-swapping is retained as a precaution.** An earlier build showed a large corner advantage (corner 0 won 6 of 6
+  unswapped mirrors). The current build measures symmetric, but the bracket still plays every seed on both sides.
 - **The economy is exhausted mid-game by design.** With the v1 node cap, both sides run out of mana around minute 15.
-  Late-game behaviour is therefore about committing an existing army, not about continued production.
-- **12 seeds is a small sample.** A win rate over 24 games has a wide confidence interval; the ORDERING is what the
-  data supports, not the precise percentages.
-
-### KNOWN DEFECT: the difficulty ordering is not established
-
-This run does NOT satisfy the difficulty-ordering requirement. The win rates above are all close to 50%:
-
-- hard vs normal: 42% (10-14)
-- normal vs easy: 42% (10-12)
-- hard vs easy: 42% (10-12)
-- normal vs normal: 42% (10-14)
-
-The MIRROR match measured **42%**. Same difficulty on both sides, so a true 50% by construction — that figure is the noise floor of a 24-game sample.
-Every difficulty matchup sits inside it, so the data does not distinguish the profiles from noise.
-
-The mechanism is understood and is NOT fog, resources or unit stats — all three profiles obey identical rules and
-read the world only through the fog-limited perception façade. Fixing the planner defects that made the STRONGER
-profiles lose (harass consuming the main army, scouting drafting soldiers, retreat marching hurt units home, the
-all-in demanding an army size it existed to stop waiting for) removed the inversions — and also removed most of
-what separated the profiles, because the remaining differences are small next to the shared mechanics.
-
-Re-establishing separation is a balance exercise on top of this corrected baseline, and balance numbers have to
-come from measurement rather than from a plausible-looking table.
+  Late-game behaviour is therefore about committing an existing army, not about continued production. This is why
+  `worstNoSpend` reaches several hundred seconds on the longest seeds while `worstIdleArmy` stays at zero: an empty
+  wallet is not a passive AI.
+- **12 seeds is a small sample.** A 24-game win rate has a wide confidence interval. That cuts both ways and is part of
+  why the difficulty claim is not made: the differences observed are smaller than the interval.
