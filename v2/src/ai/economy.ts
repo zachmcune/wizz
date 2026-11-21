@@ -489,7 +489,22 @@ export function planEconomy(
       inProgressCount(per, 'arcane_sentry');
     // Scale the ring with the threat: one turret per ~8 enemy army units seen, never fewer than 2 once affordable.
     const enemyArmy = per.enemyUnits.filter((u) => u.weapon).length;
-    const wantSentries = Math.min(6, Math.max(2, 2 + Math.floor(enemyArmy / 8)));
+    /**
+     * DEFENSE COMPETES WITH ARMY FOR THE SAME MANA, SO IT MUST YIELD.
+     *
+     * A turret costs 250 and comes out of the same pool as a soldier. Without a brake the AI kept buying turrets while its
+     * army stayed small: measured on seed 1000, p1 sat on 3 defenses and 4 army at minute 10 while p2 — which had 2 defenses
+     * — fielded 10, then 19, then 22 and won. Static defense does not win fights, it only buys time; time is worthless
+     * without an army to use it.
+     *
+     * So the ring is capped by the army that exists: at most one turret per three soldiers, and never more than the threat
+     * justifies. A bigger army raises the cap, which is the correct feedback direction.
+     */
+    const myArmy = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester).length;
+    const wantSentries = Math.min(
+      Math.min(6, Math.max(2, 2 + Math.floor(enemyArmy / 8))),
+      Math.max(2, Math.floor(myArmy / 3)),
+    );
     if (
       sentryDef &&
       sentries < wantSentries &&

@@ -573,10 +573,23 @@ export class AiBrain {
      * One wisp drawn off the mining line is the standard opening scout, and it is cheap: the economy loses one worker for
      * a couple of minutes in exchange for knowing where the opponent lives.
      */
+    /**
+     * NEVER DRAFT A WORKER THE ECONOMY CANNOT SPARE.
+     *
+     * Scouting with one worker is right early, when there is no soldier to send. But the draft had no floor, so once the
+     * worker count fell the AI kept sending its last worker across the map to be killed. Measured on seed 1000 (mirror):
+     * p1 workers died at (2057,649) and (511,1547) — 1600 and 1100 units from a base at (464,464) — and the line went
+     * 7 -> 3 -> 1 -> 0 by minute 6, taking the economy with it. p2, whose scout survived, kept all seven.
+     *
+     * A worker is only drafted while at least four remain, which is enough to keep income alive if the scout dies.
+     */
+    const workerCount = per.myUnits.filter((u) => this.registry.units.get(u.defId)?.isHarvester === true).length;
+    const mayDraftWorker = workerCount >= 4;
     const ranked: { u: SeenUnit; speed: number; harvester: boolean }[] = [];
     for (const u of per.myUnits) {
       const def = this.registry.units.get(u.defId);
       if (!def) continue;
+      if (def.isHarvester === true && !mayDraftWorker) continue;
       ranked.push({ u, speed: def.speed, harvester: def.isHarvester === true });
     }
     // Combat units first (they survive contact), then harvesters as the fallback.
