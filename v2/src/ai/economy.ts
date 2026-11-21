@@ -456,7 +456,21 @@ export function planEconomy(
  * which is exactly what happened when this was inferred from position.
  */
 function isIdleHarvester(u: SeenUnit): boolean {
-  return u.activity === 'idle' || u.activity === undefined;
+  /**
+   * A WORKER WITH NO HARVEST ORDER IS IDLE, whatever its movement state says.
+   *
+   * `activity` reports `busy` for any unit that is not idle/harvesting/returning, so a worker holding a stale `move` order
+   * reported `busy` and was never re-tasked — while producing nothing. Measured on seed 1035 (hard vs normal), which ran the
+   * full 30 minutes: the player's only harvester sat at its destination with `carry: 0`, permanently `busy`, on a map with 13
+   * live mana nodes. Income was zero and the economy could never recover, so the match could not end.
+   *
+   * `harvestNodeId` is present only when a `harvest` order is actually active, so its absence is the reliable signal that
+   * the worker is not contributing. A worker CARRYING mana is never re-tasked — it is on its way to deposit, and
+   * interrupting that throws the trip away.
+   */
+  if ((u.carry ?? 0) > 0) return false;
+  if (u.harvestNodeId !== undefined) return false;
+  return u.activity === 'idle' || u.activity === undefined || u.activity === 'moving' || u.activity === 'busy';
 }
 
 /** The node a worker is currently committed to, from its own order (see `SeenUnit.harvestNodeId`). */

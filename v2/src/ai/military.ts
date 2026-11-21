@@ -365,7 +365,21 @@ export function planMilitary(
    * the requirement unreachable. That is the actual intent: stop waiting for an ever-bigger army, not stop needing one.
    */
   const regroupFloor = opts.allIn === true ? 0 : (opts.regroupUntil ?? 0);
-  const ready = opts.allIn === true ? armySize >= profile.minWaveSize : armySize >= required && armySize >= regroupFloor;
+  /**
+   * A DEAD ECONOMY CANNOT WAIT FOR A FULL WAVE.
+   *
+   * The all-in still required the profile's minimum wave (7-11 units). But an AI whose workers are all gone cannot ever
+   * train another unit, so that threshold can become permanently unreachable while it holds a handful of soldiers.
+   * Measured on seed 1035 (hard vs normal): both sides ended with ZERO harvesters, and p1 sat on 7 units with
+   * `passesWithoutProgress = 3273` — the breaker firing for over an hour of decision passes — never attacking, because 7 is
+   * below hard's minimum of 11. The match ran out the clock with both armies intact.
+   *
+   * With no harvesters there is no future army, so the only move that can still change the outcome is to attack with what
+   * exists. The threshold drops to a token force rather than being waived entirely.
+   */
+  const deadEconomy = per.myUnits.every((u) => registry.units.get(u.defId)?.isHarvester !== true);
+  const allInFloor = deadEconomy ? 2 : profile.minWaveSize;
+  const ready = opts.allIn === true ? armySize >= allInFloor : armySize >= required && armySize >= regroupFloor;
   /**
    * THE WAVE IS NOT CANCELLED BY A LOCAL SKIRMISH.
    *

@@ -468,7 +468,23 @@ export class AiBrain {
           const watch = scouts[0]!;
           const ax = this.memory.enemyAnchor.x;
           const ay = this.memory.enemyAnchor.y;
-          if (Math.hypot(watch.x - ax, watch.y - ay) > 260) {
+          const isWorker = this.registry.units.get(watch.defId)?.isHarvester === true;
+          /**
+           * A WORKER IS NEVER PARKED ON A WATCH.
+           *
+           * `pickScouts` uses a harvester when there is no spare soldier, and this watch order was re-issued every pass
+           * while the worker sat more than 260 units from the anchor, with no timeout. If the anchor is somewhere the worker
+           * cannot stand, it is pinned for the rest of the match.
+           *
+           * Measured on seed 1035 (hard vs normal), which ran the full 30 minutes: p2 was down to ONE harvester holding
+           * `move` to (128, 2688) while sitting at (140, 2686) -- already there, never "arriving" because its formation slot
+           * was unreachable. Carry stayed 0, income was zero, and with 13 live mana nodes on the map it could never buy
+           * another worker. The economy could not recover and the match could not end.
+           *
+           * Once the base is located the watch has served its purpose, so a worker is simply released back to harvesting.
+           * Soldiers keep the watch; holding position costs them nothing.
+           */
+          if (!isWorker && Math.hypot(watch.x - ax, watch.y - ay) > 260) {
             commands.push({ type: 'move', playerId: pid, entityIds: [watch.id], x: ax, y: ay });
             notes.push('scout watching the enemy base');
           }
