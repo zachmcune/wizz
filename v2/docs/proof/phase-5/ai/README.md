@@ -56,9 +56,13 @@ marketing, not evidence.
 
 ### Difficulty does not measurably separate
 
-The measured win rates cluster between 38% and 50%, and the **mirror matchup** — same difficulty on both sides, a true 50%
-by construction — measured 42%. That 42% is the noise floor of a 24-game sample, and every difficulty matchup sits inside
-it. So the honest conclusion is that at the current lever strengths the profiles are not distinguishable from noise.
+Every matchup in the committed run measured **exactly 42%**, including the **mirror** — same difficulty on both sides, a true
+50% by construction. That identity is the finding: the difficulty pairings are indistinguishable from the mirror, so the
+profiles are not measurably different in strength.
+
+Bias is ruled out rather than assumed. Team 0 wins **5 of 12 from start corner 0** and **5 of 12 from corner 1** — symmetric,
+so there is no corner advantage and no team-order advantage, and side-swapping is doing its job. What remains is that
+difficulty contributes nothing measurable.
 
 The mechanism is understood. Fixing it is what surfaced the real bugs: the planner failed in ways that made *stronger*
 profiles lose (harass consuming the main army, scouting drafting soldiers, retreat marching hurt units home, the all-in
