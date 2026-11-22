@@ -173,6 +173,9 @@ export class AiBrain {
    */
   private openingVariant = 0;
   private variantSeed = -1;
+  /** Seed-derived decision-pass phase, identical for every player in a match. */
+  private decisionPhase = 0;
+  private phaseApplied = false;
 
   private readonly memory: BrainMemory = {
     lastWaveSize: 0,
@@ -244,6 +247,36 @@ export class AiBrain {
        * variants were being compared.
        */
       this.openingVariant = ((h ^ (h >>> 16)) >>> 0) % 3;
+      /**
+       * SEED-DERIVED DECISION PHASE — THE THING THAT MAKES SEEDS ACTUALLY DIFFERENT.
+       *
+       * The simulation allocates four RNG streams but NOTHING in `src/sim` or `src/ai` ever draws from them, so a match is a
+       * pure function of the map, the profiles and the code. Removing the seeded opening variant (correctly — it changed
+       * STRENGTH, not shape) then left the seed with no effect at all: measured, twelve mirror seeds produced byte-identical
+       * match lengths (21.5 min and 25.2 min, repeating), so a "24-game" win-rate study had an effective sample size of about
+       * one and any 24-0 result was a single deterministic outcome counted twenty-four times rather than evidence of bias.
+       *
+       * A match still needs to vary between seeds, and the variation has to be SYMMETRIC IN EXPECTATION or it becomes the same
+       * fairness bug in a new costume. This offset staggers WHEN each brain takes its decision pass, derived from the seed ALONE
+       * — every player in a match draws the SAME value, so no side gains a tempo edge from it, while different seeds produce
+       * genuinely different engagements.
+       *
+       * It is a property of the match, not a handicap: both sides are shifted by the same amount, so the mirror stays a coin
+       * flip while the game tree diverges.
+       */
+      this.decisionPhase = ((h ^ (h >>> 16)) >>> 0) % Math.max(1, this.profile.decisionInterval);
+    }
+
+    /**
+     * APPLY THE SEED PHASE ONCE, AT THE FIRST DECISION, SO THE COOLDOWN START POINT DIFFERS PER SEED.
+     *
+     * The phase is bounded by the decision interval, so it only shifts which tick a pass lands on — it never delays a pass by
+     * more than one cadence and it cannot give a side an extra decision, because every player in the match is shifted by the
+     * identical amount.
+     */
+    if (this.memory.cooldown === 0 && !this.phaseApplied) {
+      this.phaseApplied = true;
+      this.memory.cooldown = this.decisionPhase;
     }
 
     if (this.memory.cooldown > 0) {
