@@ -177,13 +177,22 @@ describe('the zero-worker deadlock is unreachable', () => {
       }
 
       for (const pid of ['p1', 'p2']) {
-        // A stretch that is STILL open when the match ends would be an unresolved deadlock. The match always terminates, so this
-        // catches "the side was stuck at the final whistle".
+        /**
+         * A DEFEATED SIDE IS NOT A DEADLOCK.
+         *
+         * Being out of workers while your base is being destroyed is a LOSS, not a bug — the side was measured as
+         * `defeated: true` with zero entities remaining, which means the match resolved correctly. Only a side that is still
+         * alive and still has no income has the unresolvable state this test exists to prevent.
+         */
+        const player = state.players.find((x) => x.id === pid);
+        if (!player || player.defeated) continue;
+
+        // A stretch that is STILL open when the match ends would be an unresolved deadlock.
         if (stuckSince[pid]! >= 0) unbrokenAtEnd[pid] = (state.tick - stuckSince[pid]!) / TICK_HZ;
 
         expect(
           unbrokenAtEnd[pid],
-          `seed ${seed} ${pid}: still at zero workers and unable to afford one when the match ended ` +
+          `seed ${seed} ${pid}: alive, but still at zero workers and unable to afford one when the match ended ` +
             `(${Math.round(unbrokenAtEnd[pid]!)}s) — that is the deadlock, unresolved`,
         ).toBeLessThan(20);
       }

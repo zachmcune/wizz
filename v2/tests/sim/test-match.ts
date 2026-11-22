@@ -37,12 +37,25 @@ export function twoPlayerConfig(overrides: Partial<MatchConfig> = {}): MatchConf
 
 export function makeMatch(config: MatchConfig = twoPlayerConfig()): TestMatch {
   const reg = getRegistry();
-  const { state, services } = initMatch(reg, config);
+  /**
+   * THE CONFORMANCE SUITES ASSERT **v1** ECONOMY ARITHMETIC, so the approved sanctum trickle is switched off here.
+   *
+   * `sanctumTricklePerSecond` (approved 2026-11-21) adds a fractional amount of mana to every player every tick. That broke nine
+   * v1 conformance checks by tiny amounts — "expected 76.1 to be close to 75", "expected 800.1 to be 800" — because those tests
+   * verify exact deposit, conjure, repair and refund arithmetic that must still hold to the v1 rules.
+   *
+   * Neutralising it HERE rather than loosening the assertions keeps the v1 arithmetic checked exactly, and keeps the trickle's
+   * own behaviour covered by `tests/phase5-dead-economy.test.ts`, which tests it directly and at full strength.
+   */
+  const v1Balance = { ...reg.balance, sanctumTricklePerSecond: 0 };
+  const regForMatch = Object.create(Object.getPrototypeOf(reg)) as typeof reg;
+  Object.assign(regForMatch, reg, { balance: v1Balance });
+  const { state, services } = initMatch(regForMatch, config);
 
   const match: TestMatch = {
     state,
     services,
-    reg,
+    reg: regForMatch,
     run(ticks, schedule, aiHook) {
       for (let i = 0; i < ticks; i++) {
         if (state.ended) return;

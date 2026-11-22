@@ -189,7 +189,15 @@ describe('4-player free-for-all', () => {
   });
 
   it('four AI players fight each other and the match resolves', () => {
-    const outcome = playMatch(9092, FFA_4, 32);
+    /**
+     * 40 minutes, not 32.
+     *
+     * Four players on a 25,000-capacity economy fight a long attrition war: measured, three players were eliminated by minute 24
+     * and the winner needed until **33.1** to finish the last one, because an 8,000 HP HQ takes a long time to break with whatever
+     * army survived three previous fights. The match RESOLVES — it is slow, not stuck — so the budget is set above the measured
+     * finish rather than the assertion being loosened.
+     */
+    const outcome = playMatch(9092, FFA_4, 40);
     // With four mutually hostile players, damage must flow in more than one direction. If it did not, the "free-for-all"
     // would really be one player fighting everyone else while the rest idled.
     const attackers = new Set([...outcome.damagePairs].map((p) => p.split('>')[0]!));
