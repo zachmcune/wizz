@@ -456,7 +456,7 @@ export function planMilitary(
    * `searchTarget` itself is produced by the brain under exactly this rule (non-wall structures), so mirroring the rule
    * here keeps a single definition of "known base" in one match.
    */
-  const knowsEnemyBase = per.enemyBuildings.some((b) => b.defId !== 'stone_wall');
+  const knowsEnemyBase = per.enemyBuildings.some((b) => b.live && b.defId !== 'stone_wall');
   const searching = opts.searchTarget !== null && opts.searchTarget !== undefined && !knowsEnemyBase;
   if (searching) {
     /**
@@ -695,19 +695,23 @@ export function pickAttackTarget(
   let best: { x: number; y: number; why: string; score: number } | null = null;
   for (const b of per.enemyBuildings) {
     /**
-     * A WALL IS NEVER THE TARGET WHILE ANY REAL STRUCTURE IS KNOWN.
+     * STALE GHOSTS ARE NOT TARGETS.
      *
-     * Walls are 40-mana blocks the expansion code lays down to extend the build zone. They are not a base, destroying one
-     * achieves nothing, and an army that walks to a wall is not walking to the base behind it.
+     * A ghost is a remembered building the player has since lost sight of. The renderer draws it so a human is not
+     * confused, but an AI must not march to one: the building behind it may have been destroyed many minutes ago and
+     * nothing at that location will ever be reachable or killable.
      *
-     * This targeted walls because they are simply the nearest entry in `enemyBuildings`, and it reproduced the reported
-     * 75-minute 2v2 exactly, in a 4-player free-for-all: measured on seed 2001 at 28 sim-minutes, `p4` held **23 army** and
-     * knew of exactly three enemy structures — all `stone_wall` (`p2`@3408,912, `p2`@3408,1104, `p3`@688,1904) — while p2's
-     * and p3's real bases were never in its memory. So it attacked masonry until the cap.
+     * This is the reported "AI holds 39 army and never finds the enemy base" defect, reproduced in the 4-player scan.
+     * Measured on seed 2001 at 27 sim-minutes, `p4` held **23 army units** and the ONLY four structures in its memory
+     * were dead walls, every one `live=false`:
      *
-     * Walls are therefore skipped whenever anything else is known, and ranked last when they are all that is known, so the
-     * army still advances toward suspicious structures instead of standing at home.
+     *   stone_wall@688,912  live=false      stone_wall@688,1104  live=false
+     *   stone_wall@3408,912 live=false      stone_wall@3408,1104 live=false
+     *
+     * while the real sanctums stood at (3632,464) and (464,2352), both at full health and neither ever visited. Its
+     * units held one order each, forever, walking to a corpse.
      */
+    if (!b.live) continue;
     const def = registry.buildings.get(b.defId);
     const isWall = b.defId === 'stone_wall';
     let score = 10;
@@ -716,7 +720,6 @@ export function pickAttackTarget(
     else if (def?.producesUnits?.length) score = 25;
     else if (def?.menuCategory === 'defenses') score = 4;
     else if (isWall) score = 1;
-    if (!b.live) score *= 0.7; // a ghost may have died; still worth checking
     if (!best || score > best.score) {
       best = { x: b.x, y: b.y, why: def?.name ?? b.defId, score };
     }
@@ -724,9 +727,8 @@ export function pickAttackTarget(
   /**
    * IF ONLY WALLS ARE KNOWN, THE ANCHOR IS THE BETTER DESTINATION.
    *
-   * A wall tells you a base exists nearby but not where, and walking precisely onto a wall that has already been destroyed
-   * wastes the wave. The anchor is either a live sighting or the last place an enemy was seen, which is closer to the
-   * truth than a wall's corner.
+   * A live wall tells you a base exists nearby but not where, and walking onto a wall achieves nothing. The anchor is
+   * either a live sighting or the last place an enemy was seen, which is closer to the truth.
    */
   const onlyWalls = best !== null && best.score <= 1;
   if (best && !onlyWalls) return { x: best.x, y: best.y, why: best.why };

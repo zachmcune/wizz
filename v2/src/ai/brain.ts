@@ -442,8 +442,22 @@ export class AiBrain {
        * (688,912); with the sweep disabled it never found `a1`'s ten-building base, explored only 69% of the map, and the match ran past
        * 75 minutes while it chewed scaffolding.
        */
+      /**
+       * SWEEP UNLESS A LIVE, REAL STRUCTURE IS KNOWN.
+       *
+       * Two conditions, and both were missing at some point in this investigation:
+       *
+       *   • `b.live` — a GHOST is a remembered building we have lost sight of. It may have been destroyed long ago, so it
+       *     cannot justify calling off the search. Measured on seed 2001 at 27 sim-minutes, `p4` held 23 army and its only
+       *     remembered structures were four dead walls, all `live=false`, so it never swept and never visited either real
+       *     sanctum.
+       *   • not a wall — a `stone_wall` is a 40-mana build-zone extender, not a base. Treating one as "base located" was
+       *     the 75-minute 2v2 defect.
+       *
+       * `knowsEnemyBase` in `planMilitary` mirrors this predicate exactly, so the two planners cannot disagree again.
+       */
       searchTarget:
-        per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length === 0
+        per.enemyBuildings.filter((b) => b.live && b.defId !== 'stone_wall').length === 0
           ? this.searchObjective(per)
           : null,
     });
