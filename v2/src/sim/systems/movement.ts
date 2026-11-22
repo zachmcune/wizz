@@ -78,15 +78,31 @@ function formationSlot(id: EntityId, spacing: number): { x: number; y: number } 
    */
   if (spacing <= 0) return { x: 0, y: 0 };
   const h = (Math.imul(id | 0, 2654435761) >>> 0) / 4294967296;
-  // Up to 64 slots covers any realistic order; ids beyond that wrap, which is acceptable.
+  /**
+   * THE LATTICE MUST BE CENTRED ON THE ORDER POINT, IN BOTH AXES AND IN BOTH DIRECTIONS.
+   *
+   * `n` ranged over [0, 64) and `row = floor(n / COLS)` therefore reached row 12, so `y = row * spacing * 0.87 - 2 *
+   * spacing * 0.87` produced offsets from **-1.74 to +8.70** slots: the formation extended five times further BELOW the
+   * click than above it. Two consequences, both measured:
+   *
+   *   • an army ordered to a point gathered mostly underneath it, so any target it was sent to (a base, a ramp, a
+   *     chokepoint) was approached from one side regardless of where the enemy actually was;
+   *   • the spread depended on WHICH IDS were present. Ids are allocated per player in creation order, so the block
+   *     belonging to the first-created player sat at a slightly different mean offset than the second player's
+   *     (`audit/mirror4way.ts` measured the first-created player winning 12 of 12 mirrors).
+   *
+   * The lattice is now a centred block: rows are remapped from [0, 12] to [-6, +6], and the row offset is subtracted at
+   * the true centre rather than an assumed one, so the mean slot offset is zero for a uniformly-sampled group. That makes
+   * the formation neutral with respect to which ids a group happens to contain.
+   */
   const n = Math.floor(h * 64);
   const COLS = 5;
+  const ROWS = Math.ceil(64 / COLS); // 13 rows: n / 5 for n in [0, 64)
   const row = Math.floor(n / COLS);
   const col = n % COLS;
+  const centredRow = row - (ROWS - 1) / 2;
   const x = (col - (COLS - 1) / 2) * spacing + (row % 2 === 0 ? 0 : spacing * 0.5);
-  const y = row * spacing * 0.87; // 0.87 ~= sin(60deg), a hex row pitch
-  // Centre the lattice's mean on the order point so the group forms AROUND the click.
-  return { x, y: y - 2 * spacing * 0.87 };
+  return { x, y: centredRow * spacing * 0.87 };
 }
 
 export function separationForPair(

@@ -1052,10 +1052,26 @@ export function findBuildSpot(
        * ECONOMY buildings cluster on the yard; DEFENSES cluster on the economy they are protecting.
        */
       const anchor = def.menuCategory === 'defenses' ? defenseAnchor : { x: yard.x, y: yard.y };
-      const yardOriginX = Math.floor((anchor.x - half) / TILE);
-      const yardOriginY = Math.floor((anchor.y - half) / TILE);
-      const originTx = yardOriginX + dx;
-      const originTy = yardOriginY + dy;
+      /**
+       * ORIGINS ARE COMPUTED FROM THE YARD'S ORIGIN TILE, NOT FROM ITS CENTRE.
+       *
+       * `Math.floor((centre - footprint/2) / TILE)` cannot be mirror-covariant for an EVEN footprint. The yard's centre
+       * sits on a half tile (a 3-wide sanctum at x=464 has its centre at tile 14.5), so `centre - fp/2` lands on a
+       * half-tile boundary for even fp and `floor` breaks toward -x on both sides of the map. Verified exhaustively over
+       * floor / round / ceil and dx = -4..+4: every rounding of an even footprint failed the mirror test, because
+       * origin(left) + origin(right) came out 125 when it must be 128 - fp = 126.
+       *
+       * Anchoring on the yard's ORIGIN tile instead makes the arithmetic integral and therefore exactly covariant:
+       * origin(left, +dx) and origin(right, -dx) sum to `mapTiles - footprint` by construction. World coordinates are
+       * then the centre of the resulting footprint, which is the same point the sim reconstructs from `buildingOrigin`.
+       *
+       * This was the last positional asymmetry: `audit/symmetry-break.ts` still caught one side's first refinery a tile
+       * row away from the other's, and `audit/mirror4way.ts` measured the lower-x corner winning every game.
+       */
+      const anchorTx = Math.floor((anchor.x - half) / TILE);
+      const anchorTy = Math.floor((anchor.y - half) / TILE);
+      const originTx = anchorTx + dx;
+      const originTy = anchorTy + dy;
       const x = (originTx + def.footprint / 2) * TILE;
       const y = (originTy + def.footprint / 2) * TILE;
         if (x - half < TILE || y - half < TILE) continue;
