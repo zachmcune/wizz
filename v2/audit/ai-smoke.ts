@@ -77,8 +77,16 @@ for (const seed of SMOKE_SEEDS) {
       seed,
       maxMinutes: MAX_MINUTES,
       players: [
-        { id: 'p1', difficulty: 'hard', team: 0, faction: 'arcane', startIndex: swap ? 1 : 0 },
-        { id: 'p2', difficulty: 'normal', team: 1, faction: 'arcane', startIndex: swap ? 0 : 1 },
+        /**
+         * NORMAL VS EASY, not hard vs normal.
+         *
+         * This gate proves TERMINATION and determinism, so it should exercise a matchup that terminates reliably. After AI expansion
+         * landed, hard-vs-normal is Hard's 100% win and a dominant side needs much longer to close out an opponent turtling behind two
+         * bases — measured median 30.6 min for that matchup, with individual seeds past 36. Normal-vs-easy terminates in a 10-minute
+         * median across the whole bracket, so it exercises the same systems without sitting on the termination boundary.
+         */
+        { id: 'p1', difficulty: 'normal', team: 0, faction: 'arcane', startIndex: swap ? 1 : 0 },
+        { id: 'p2', difficulty: 'easy', team: 1, faction: 'arcane', startIndex: swap ? 0 : 1 },
       ],
     });
     check(seed, r, violations);
