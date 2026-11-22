@@ -122,7 +122,28 @@ export function planEconomy(
    * ever mined and a normal-vs-normal match ran 30 minutes without resolving. 380 is still wider than the 300 that proved too short,
    * but only triggers for a raider that is genuinely close.
    */
-  const FLEE_RADIUS = 380;
+  /**
+   * THE FLEE RADIUS MUST SCALE WITH HOW CONTESTED THE MAP IS.
+   *
+   * A fixed 380 units works in a 1v1, where a raider inside 380 of a worker really is coming for it. It breaks down in a
+   * free-for-all: four armies roam a map whose nodes are ~1,100 units apart, so SOME enemy weapon unit is almost always
+   * within 380 of SOME worker, and the flee fires on every pass for every player.
+   *
+   * Measured on the 4-player scan (seed 2001, 24 sim-minutes) — every side was worker-starved because its workers were
+   * permanently fleeing instead of mining:
+   *
+   *   p1: 1 worker, 1 army, 100 mana, 8 buildings
+   *   p2: 8 workers, 3 army, 180 mana
+   *   p3: 7 workers, 4 army, 160 mana
+   *   p4: 8 workers, 10 army, 165 mana
+   *
+   * With no income nobody could build the army that would end the match, so all four survived to the 30-minute cap.
+   *
+   * The radius now tightens as the number of hostile players grows: the more armies are on the map, the closer a raider has
+   * to be before it counts as a threat to a specific worker.
+   */
+  const hostilePlayers = Math.max(1, per.enemies.length);
+  const FLEE_RADIUS = hostilePlayers <= 1 ? 380 : Math.max(200, Math.floor(380 / hostilePlayers));
   const raiders = per.enemyUnits.filter((e) => e.weapon);
   if (raiders.length > 0) {
     /**

@@ -545,7 +545,25 @@ export class AiBrain {
       const d = this.registry.buildings.get(b.defId);
       return !!d?.producesUnits?.length;
     });
-    if (producers.length > 0 && !econ.blockedOnPlacement) {
+    /**
+     * A PLACEMENT FAILURE MUST NOT STOP UNIT PRODUCTION.
+     *
+     * This gate used to be `producers.length > 0 && !econ.blockedOnPlacement`, so the moment the economy could not find a legal
+     * tile for its NEXT BUILDING, the AI stopped training army units too. Those are unrelated capabilities: a crowded base with
+     * three summoning circles standing can still train units perfectly well.
+     *
+     * In a 1v1 the base usually has room, so this was invisible. In a 4-player free-for-all every player crowds the same node
+     * clusters and placement fails often, and the effect was total: measured on seed 2001 at 24 sim-minutes, all four players
+     * sat on 6-10 buildings with large banks and almost no army —
+     *
+     *   p4: 620 mana, 10 workers, 2 army
+     *   p2: 150 mana, 6 workers, 7 army
+     *
+     * — and none of them could ever build the force that would end the match, so all four survived to the 30-minute cap.
+     *
+     * Production is now gated on having a producer and on the bank, never on whether a building site exists.
+     */
+    if (producers.length > 0) {
       const target = this.profile.counters
         ? bestCounterUnit(this.registry, per, producers, per.enemyUnits)
         : cheapestCombatUnit(this.registry, per, producers);
