@@ -254,7 +254,17 @@ export class AiBrain {
      * and zero waves, i.e. the breaker could never fire. Ghosts persist in `per.enemyBuildings` until the sim prunes
      * them, so their count is stable across vision loss and is the right progress signal.
      */
-    const enemyAlive = per.enemyBuildings.length;
+    /**
+     * COUNT MEANINGFUL STRUCTURES, NOT CHAIN SCAFFOLDING.
+     *
+     * The progress signal was `enemyBuildings.length`, which includes `stone_wall` — the cheap 40-mana blocks expansion uses to
+     * bridge the build zone. Destroying one registered as "progress", resetting the counter, so an AI whose army was chewing through
+     * scaffolding never escalated. Measured in the 2v2: `b1` had 39 army against `a1`'s 11 and sat at `passes = 0` forever because it
+     * kept killing walls, while `a1`'s real base — 10 buildings — was never found. The match ran past 75 minutes.
+     *
+     * Only structures that matter are counted, so chewing on walls cannot masquerade as winning.
+     */
+    const enemyAlive = per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length;
     if (enemyAlive < this.memory.enemyBuildingsLost) {
       this.memory.passesWithoutProgress = 0;
     } else {
@@ -334,7 +344,16 @@ export class AiBrain {
        * Keyed on "no enemy BUILDING known", not "no anchor": the stall case had a perfectly good anchor — a stale sighting
        * of a mobile unit — which is exactly what made it a phantom destination.
        */
-      searchTarget: per.enemyBuildings.length === 0 ? nextUnexplored(per) : null,
+      /**
+       * SWEEP WHEN NO REAL STRUCTURE IS KNOWN — not merely when no building at all is.
+       *
+       * The condition was `enemyBuildings.length === 0`, so scouting a single 40-mana stone wall counted as "we know where they live"
+       * and switched the search off. Measured in the 2v2: `b1` had **39 army units** and its only known enemy building was a wall at
+       * (688,912); with the sweep disabled it never found `a1`'s ten-building base, explored only 69% of the map, and the match ran past
+       * 75 minutes while it chewed scaffolding.
+       */
+      searchTarget:
+        per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length === 0 ? nextUnexplored(per) : null,
     });
     commands.push(...mil.commands);
     notes.push(...mil.notes);
