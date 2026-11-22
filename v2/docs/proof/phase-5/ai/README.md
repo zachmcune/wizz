@@ -55,72 +55,60 @@ No difficulty reads hidden state, receives extra resources, or has different uni
 These are real and unfixed. They are listed here rather than buried because a proof pack that only lists successes is
 marketing, not evidence.
 
-### Difficulty separation — achieved, with one caveat stated
+### Against the phase targets — what holds and what does not
 
 | Requirement | Measured | 95% CI | Target | Met |
 |---|---|---|---|---|
-| Hard over Normal | **67%** (16-8) | 47%–82% | ≥65% | yes |
-| Normal over Easy | **79%** (19-5) | 60%–91% | ≥65% | yes |
-| Hard over Easy | **79%** (19-5) | 60%–91% | ≥75% | yes |
-| Mirror near 50% | 46% (11-13) | 28%–65% | contains 50% | yes |
+| Hard over Normal | **50%** (12-12) | 31%–69% | ≥65% | **no** |
+| Normal over Easy | **100%** (24-0) | 86%–100% | ≥65% | yes |
+| Hard over Easy | **100%** (24-0) | 86%–100% | ≥75% | yes |
+| Mirror | **50%** (12-12) | 31%–69% | ~50% | yes |
+| Median length | **17.5 min** | — | 15–25 | yes |
+| Unfinished | **0 of 96** | — | 0 | yes |
+| Worst idle army | **0 s** | — | — | yes |
 
-96 matches, **zero unfinished**, median length **20.3 min** (mean 18.8, range 11.3-24.5, none at the cap).
+**Hard vs Normal is the one unmet target and it is a regression against the previous build (67% -> 50%).** Diagnosed: Hard's only
+advantage over Normal is attacking at 5 units instead of 7, and that timing edge decided matches when economy was scarce. With
+25,000-capacity nodes both sides can afford continuous production, so the window it exploited has closed. Five candidate levers
+were measured to restore it (wave 4, faster wave growth, more workers, a third producer) and every one came back 6-6 or worse —
+none of the existing levers separates the two profiles any more. Giving Hard a real edge again needs a new kind of decision
+lever, not a retune of the old ones.
 
-The caveat: Hard-over-Normal's interval reaches below 65%, so that target is met on the point estimate and corroborated by a
-second independent measurement of the same lever (9-3 at 12 games, then 16-8 at 24), not proven at 95% confidence.
+### Economy — fixed, by measurement
 
-### What actually produced the separation
-
-One lever, found by ablation rather than design: **Hard attacks at 5 units instead of 7**. Earlier commitment wins this game,
-and it was the only candidate that beat the noise floor. Everything else measured here came back neutral or worse — more workers
-(7-5), an extra producer (6-6), kiting (6-6), superweapon (6-6), harass (6-6), and a faster decision cadence (6-6, while
-*slower* cadence scored 10-2).
-
-The largest single effect was not a lever at all but Hard's **build order**: with profiles identical, `AGGRESSIVE_OPENING`
-measured 20.8% against Easy and `STANDARD_OPENING` 79.2% — a 58-point swing. Every difficulty now uses the standard opening.
-
-`ablation.md` records each of these with its sample size, including the two bugs that made earlier measurements untrustworthy:
-a target tie-break that favoured the first-listed player (fixed; the mirror then measured within noise of 50%), and a
-difficulty-profile table shared by reference so ablation overrides leaked between matches.
-
-### Match length — achieved by an approved rule change
-
-Median **20.3 min** across the whole bracket, against a ~20 minute target. This required the one approved rule change of Phase 5:
-
-**`sanctum.hp` 2000 -> 4000** (Zachary, 2026-11-21). Measured across 8 seeds x both corners per level: 2000 gave an 11.8 min
-median, 3000 gave 12.9, and **4000 gave 19.9** — the smallest value in the 15-25 band, with the difficulty ordering identical to
-v1 (75/88/88) and zero unfinished matches.
-
-**Turrets were measured first and deliberately left alone.** Stronger turrets equalise the difficulties and reward turtling,
-because defence substitutes for decisions:
-
-| turret damage | hard>normal | normal>easy | unfinished |
+| Value | Before | After | Why |
 |---|---|---|---|
-| 3 (v1, shipped) | 75% | 88% | 0 |
-| 5 | 50% | 80% | 2 |
-| 7 | 63% | **20%** | **12** |
+| `manaNodeCapacity` | 12000 | **25000** | the largest amount the map AUTHORS; 40000 measured identical |
+| `sanctumTricklePerSecond` | — | **2/s** | dead-economy floor; at 0 a match went unfinished with a 1243 s no-spend |
 
-So every turret stat is still exactly v1 (hp 600, damage 3, range 165). `sanctum.hp` is the **only** gameplay value in the
-content set that differs from v1, recorded as an explicit exception in `tests/data/parity.test.ts` that names the approved
-replacement — an unapproved value still fails the test.
+The map authors 127,000 mana but the clamp allowed only 75,000 — about 6.5 minutes of continuous mining. Income was measured at
+~890 mana/min/side with spending EXCEEDING earnings, so both sides ran at zero margin and any raid that killed the worker line was
+unrecoverable. Worst no-spend across the bracket fell from **1073 s to 293 s**, and the map is never mined dry inside a match.
 
-### Economy finding: the map runs dry between minutes 15 and 20
+**The zero-worker deadlock is fixed and tested.** A side with no harvesters has no income, so it can never afford the worker that
+would restore its income; p2 was measured holding 155 mana against a 200-cost worker with nothing sellable. Two fixes: a worker
+reserve (never spend below one worker while short) and the sanctum trickle. `tests/phase5-dead-economy.test.ts` reproduces the
+dead state and asserts both, plus end-to-end that a side in it always escapes — at 1.0/s it did not (a 115 s unresolved deadlock
+remained), which is why the value is 2.
 
-Measured, and **not changed** — economy values stay locked unless separately approved.
+### Base growth — improved, expansions not done
 
-`duel_glade` authors 127,000 mana, but `manaNodeCapacity` clamps every node to 12,000 (a v1 parity constant), so the whole match
-economy is **75,000 mana**. On the shipped build the nodes were fully mined out around **minute 15**, and the longest
-no-spending stretch reached **1019 s** (~17 min) because a side with no nodes and a bank below the cheapest unit cost genuinely
-cannot spend.
+At 18 minutes the surviving side now holds **11 buildings, 6 production buildings, 2 defences, 10 workers and 22 army**, against
+5 buildings and 15 units before. It remains **one base**: taking additional nodes and expanding to them was not implemented, so
+the "2 or more bases" target is unmet.
 
-With HQ 4000 the matches are longer but the no-spend stretches are **shorter**, not longer — measured across three seeds the
-worst was **304 s**, and a few thousand mana was still on the map at the 20-minute mark. The longer game spreads the same economy
-over more fighting rather than exhausting it sooner. The worst no-spend figure across the full 96-match bracket is **1152 s**,
-which occurs on the longest grinds; `worstIdleArmy` is **0 s on every side**, so it is an empty wallet, not a passive AI.
+### Two sim bugs found and fixed on the way
 
-### The AI reads only what it can see
+- **Frozen attackers.** `movementSystem` skips a unit in `STATE_ATTACKING` because `combat` moves it at its target — but `chase`
+  only runs with a target in reach, so a unit left in that state with NO target was moved by neither system. Measured: a unit sat
+  at (506,604) for **200 consecutive ticks** with a valid `attackMove` to a base 3000 units away. That is why a 17-unit army could
+  not destroy a 7-building base and matches ran past 45 minutes. Fixed by only skipping a unit that genuinely holds an attack
+  target; unfinished matches fell from 5 to 0.
+- **Turrets were rejected again, twice.** Turfing up turrets to lengthen matches broke the ordering at damage 4, 6 and 10 — every
+  time to 50%. Stronger turrets substitute for decisions, so a weak AI behind towers survives like a strong one. Every turret stat
+  is therefore **exactly v1**, and their parity exceptions were removed rather than left permitting a change nobody made.
 
-Unchanged and re-verified: `tests/phase5-maphack.test.ts` perturbs every entity a player cannot see — teleports it 3000 units,
-zeroes its HP — and requires the brain's commands to be **byte-identical** to its unperturbed commands, across 3 seeds × 3 match
-phases. Difficulty is a set of legal behavioural levers; no level reads hidden state, receives extra resources, or has different
-unit stats.
+### Match length — in band
+
+Median **17.5 min** (mirror), whole bracket 14.6–18.8, zero at the cap. Reached by **HQ 8000** (from 4000), which is length-only:
+it was verified not to affect the difficulty ordering at any value tested.
