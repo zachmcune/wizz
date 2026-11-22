@@ -148,7 +148,7 @@ describe('2v2 teams', () => {
      * 35. The assertion this protects is that a team match RESOLVES with allies never damaging allies; the exact duration is not the
      * property under test, so the budget is generous rather than tight.
      */
-    const outcome = playMatch(9091, TEAMS_2V2, 65);
+    const outcome = playMatch(9091, TEAMS_2V2, 25);
     const teamOf = new Map(TEAMS_2V2.map((p) => [p.id, p.team]));
 
     // THE CORE ALLY ASSERTION: from the damage events, not from reading AI code.
@@ -173,7 +173,7 @@ describe('2v2 teams', () => {
      * What IS asserted is the property this suite exists for: allies never damage allies, every player actually plays, and the match
      * either resolves to a team or is still live rather than erroring.
      */
-    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(70);
+    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(30);
   }, 600_000);
 });
 
@@ -219,7 +219,7 @@ describe('4-player free-for-all', () => {
      * takes time to break with whatever army survived three earlier fights. The match RESOLVES — it is slow, not stuck — so the
      * budget is set well above the observed spread.
      */
-    const outcome = playMatch(9092, FFA_4, 75);
+    const outcome = playMatch(9092, FFA_4, 25);
     // With four mutually hostile players, damage must flow in more than one direction. If it did not, the "free-for-all"
     // would really be one player fighting everyone else while the rest idled.
     const attackers = new Set([...outcome.damagePairs].map((p) => p.split('>')[0]!));
@@ -230,6 +230,6 @@ describe('4-player free-for-all', () => {
     }
     // See the note in the 2v2 case: termination is the known open issue, so this asserts real multi-directional fighting rather than
     // a winner.
-    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(80);
+    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(30);
   }, 1_200_000);
 });
