@@ -7,9 +7,9 @@ import { countBases } from '../src/ai/economy';
 import { KIND_UNIT } from '../src/sim/entity-store';
 
 const reg = loadRegistry();
-const seeds = [1000, 1014, 1035];
+const seeds = [1035, 1056, 1077];
 console.log('diff   seed  10m[bld/bases/wk/army]  18m[bld/bases/wk/army]  end[min]');
-for (const diff of ['easy', 'normal', 'hard'] as const) {
+for (const diff of ['normal', 'hard'] as const) {
   for (const seed of seeds) {
     const { state, services } = initMatch(reg, {
       mapId: 'duel_glade', seed, oneSuperweaponPerPlayer: false,

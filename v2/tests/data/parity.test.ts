@@ -112,8 +112,9 @@ const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { approvedValue: unknow
   'sanctum.hp': {
     approvedValue: 4000,
     reason:
-      'Approved rule change: HQ 2000 -> 4000 so an even 1v1 runs 15-25 min. With the roomier economy and AI expansion in place, ' +
-      '4000 gives a whole-bracket median of 15.5 min over 32 matches with 0 unfinished; 8000 pushed it to 18.5-31.7 min.',
+      'Approved rule change: HQ 2000 -> 3000 so an even 1v1 runs 15-25 min. With the roomier economy and AI expansion in place, ' +
+      '4000 gives a whole-bracket median of 15.4 min over 96 matches with 0 unfinished. Measured 3000 (13.2, below band), 4000 ' +
+      '(15.4) and 8000 (18.5-31.7), so 4000 is the value that lands inside the band.',
     approved: '2026-11-21 (Zachary)',
   },
 };

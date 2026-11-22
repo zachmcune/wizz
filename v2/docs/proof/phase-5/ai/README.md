@@ -55,60 +55,65 @@ No difficulty reads hidden state, receives extra resources, or has different uni
 These are real and unfixed. They are listed here rather than buried because a proof pack that only lists successes is
 marketing, not evidence.
 
-### Against the phase targets — what holds and what does not
+### Against the phase targets
 
 | Requirement | Measured | 95% CI | Target | Met |
 |---|---|---|---|---|
-| Hard over Normal | **50%** (12-12) | 31%–69% | ≥65% | **no** |
-| Normal over Easy | **100%** (24-0) | 86%–100% | ≥65% | yes |
-| Hard over Easy | **100%** (24-0) | 86%–100% | ≥75% | yes |
-| Mirror | **50%** (12-12) | 31%–69% | ~50% | yes |
-| Median length | **17.5 min** | — | 15–25 | yes |
+| Hard over Normal | **100%** (24-0) | 86%–100% | ≥65% | **yes** |
+| Normal over Easy | **79%** (19-5) | 60%–91% | ≥65% | **yes** |
+| Hard over Easy | **79%** (19-5) | 60%–91% | ≥75% | **yes** |
+| Mirror near 50% | 71% (17-7) | 51%–85% | ~50% | **no** — see below |
+| Median length | **18.1 min** | — | 15–25 | yes |
 | Unfinished | **0 of 96** | — | 0 | yes |
 | Worst idle army | **0 s** | — | — | yes |
 
-**Hard vs Normal is the one unmet target and it is a regression against the previous build (67% -> 50%).** Diagnosed: Hard's only
-advantage over Normal is attacking at 5 units instead of 7, and that timing edge decided matches when economy was scarce. With
-25,000-capacity nodes both sides can afford continuous production, so the window it exploited has closed. Five candidate levers
-were measured to restore it (wave 4, faster wave growth, more workers, a third producer) and every one came back 6-6 or worse —
-none of the existing levers separates the two profiles any more. Giving Hard a real edge again needs a new kind of decision
-lever, not a retune of the old ones.
+### AI expansion — the lever that produced the separation
 
-### Economy — fixed, by measurement
+Three profile fields drive it: `targetBases` (Easy 1, Normal 2, Hard 3), `expandAfterSeconds` and `defendExpansions`. Measured base
+growth:
+
+| Difficulty | 10 min | 18 min |
+|---|---|---|
+| Easy | **1 base**, 3-6 buildings, 1-2 army | never expands |
+| Normal | **2 bases**, 9 buildings, 10 workers, 21-23 army | holds 2 bases |
+| Hard | **2 bases**, 9 buildings, 12 workers | 2 bases, 9 buildings, 8-12 workers |
+
+**What an expansion can actually be**, measured from the map rather than assumed: a building must be within 7 tiles of an existing
+structure. Every start is 14.1 tiles from its richest node (already served by its own refinery) and 30+ tiles from the next. So the
+2000-cost Waystone Wagon, which deploys anywhere, is unusable — both sides sat at 180-399 mana for whole matches — and a remote node
+needs a 4-5 building chain. The forward base is a **two-link chain to the next cluster, then a refinery and turret on it**.
+
+**Hard expands at 200 s, not 110 s, and that is a measured choice.** Expanding at 110 s made Hard *weaker*: 6-5 with one unfinished,
+because the chain pulled workers off the line before the economy could fund it (Hard ended with **2 workers against Normal's 10**). At
+200 s the same profile went **12-0 with zero unfinished**.
+
+### Four sim bugs found and fixed
+
+1. **`findBuildSpot` could not extend a chain.** It scanned rings from the YARD with a 3-ring cap, so the first expansion attempt laid
+   **92 stone walls** in a cluster beside the base and never advanced. It now walks the line toward the target and takes the furthest
+   legal tile, hard-capped so it cannot pave the map.
+2. **Worker flee radius 560 fired on every pass** once armies met, so no worker ever mined and a normal mirror ran 30 minutes. Now 380.
+3. **`prepareForOrder` never reset unit state**, so a unit given `move` after `attack` kept `STATE_ATTACKING` and was skipped by
+   movement forever.
+4. **Combat and movement cancelled each other exactly.** `combat` runs after `movement` and wrote position directly, so chasing an
+   out-of-range target undid the move. Measured: a unit advanced 4.40 units in `movementSystem` and was moved 4.40 back by
+   `combatSystem`, every tick, for 200 ticks — a perfect deadlock invisible to any state or velocity check because both systems were
+   correct in isolation. Combat now only steers units on a *pursuing* order, so exactly one system owns position per tick.
+
+### The one unmet target: the mirror is 71%, not ~50%
+
+Measured by start corner, team 0 won **12 of 12 from corner 0** but only **5 of 12 from corner 1**. The nodes are symmetric, so this is
+not map geometry — it is a sim ordering effect (entity creation order) that the expansion and combat changes amplified. The bracket
+side-swaps every seed, so matchups still compare fairly — both difficulties occupy corner 0 equally often — but the variance is large
+and the mirror sits outside the interval expected of a fair game. It is reported, not smoothed over.
+
+### Economy — approved changes, measured
 
 | Value | Before | After | Why |
 |---|---|---|---|
-| `manaNodeCapacity` | 12000 | **25000** | the largest amount the map AUTHORS; 40000 measured identical |
+| `manaNodeCapacity` | 12000 | **25000** | the largest amount the map AUTHORS |
 | `sanctumTricklePerSecond` | — | **2/s** | dead-economy floor; at 0 a match went unfinished with a 1243 s no-spend |
+| `sanctum.hp` | 4000 | **4000** | length only; 3000 gave 13.2 min (below band), 8000 gave 18.5–31.7 |
 
-The map authors 127,000 mana but the clamp allowed only 75,000 — about 6.5 minutes of continuous mining. Income was measured at
-~890 mana/min/side with spending EXCEEDING earnings, so both sides ran at zero margin and any raid that killed the worker line was
-unrecoverable. Worst no-spend across the bracket fell from **1073 s to 293 s**, and the map is never mined dry inside a match.
-
-**The zero-worker deadlock is fixed and tested.** A side with no harvesters has no income, so it can never afford the worker that
-would restore its income; p2 was measured holding 155 mana against a 200-cost worker with nothing sellable. Two fixes: a worker
-reserve (never spend below one worker while short) and the sanctum trickle. `tests/phase5-dead-economy.test.ts` reproduces the
-dead state and asserts both, plus end-to-end that a side in it always escapes — at 1.0/s it did not (a 115 s unresolved deadlock
-remained), which is why the value is 2.
-
-### Base growth — improved, expansions not done
-
-At 18 minutes the surviving side now holds **11 buildings, 6 production buildings, 2 defences, 10 workers and 22 army**, against
-5 buildings and 15 units before. It remains **one base**: taking additional nodes and expanding to them was not implemented, so
-the "2 or more bases" target is unmet.
-
-### Two sim bugs found and fixed on the way
-
-- **Frozen attackers.** `movementSystem` skips a unit in `STATE_ATTACKING` because `combat` moves it at its target — but `chase`
-  only runs with a target in reach, so a unit left in that state with NO target was moved by neither system. Measured: a unit sat
-  at (506,604) for **200 consecutive ticks** with a valid `attackMove` to a base 3000 units away. That is why a 17-unit army could
-  not destroy a 7-building base and matches ran past 45 minutes. Fixed by only skipping a unit that genuinely holds an attack
-  target; unfinished matches fell from 5 to 0.
-- **Turrets were rejected again, twice.** Turfing up turrets to lengthen matches broke the ordering at damage 4, 6 and 10 — every
-  time to 50%. Stronger turrets substitute for decisions, so a weak AI behind towers survives like a strong one. Every turret stat
-  is therefore **exactly v1**, and their parity exceptions were removed rather than left permitting a change nobody made.
-
-### Match length — in band
-
-Median **17.5 min** (mirror), whole bracket 14.6–18.8, zero at the cap. Reached by **HQ 8000** (from 4000), which is length-only:
-it was verified not to affect the difficulty ordering at any value tested.
+Worst no-spend fell from **1073 s to 135 s** and the map is never mined dry inside a match. **Turrets remain exactly v1** (600 hp, 3
+damage): toughening them was measured at damage 4, 6 and 10 and broke the ordering every time.
