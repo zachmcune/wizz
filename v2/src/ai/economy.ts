@@ -117,10 +117,12 @@ export function planEconomy(
    * was already between the worker and safety, which is too late: measured on seed 1035, the flee fired 64 times and the worker
    * line still went 10 -> 0 between minutes 8 and 9, because fleeing meant crossing open ground under fire.
    *
-   * The radius is now wider than the distance the worker would have to run, so it starts withdrawing while the raider is still
-   * approaching.
+   * The radius has to be wide enough to escape but narrow enough not to fire constantly. At 560 it fired on EVERY pass once both
+   * armies sat near each other's bases: measured, both sides logged "pulling 7-10 workers off the line" continuously, so no worker
+   * ever mined and a normal-vs-normal match ran 30 minutes without resolving. 380 is still wider than the 300 that proved too short,
+   * but only triggers for a raider that is genuinely close.
    */
-  const FLEE_RADIUS = 560;
+  const FLEE_RADIUS = 380;
   const raiders = per.enemyUnits.filter((e) => e.weapon);
   if (raiders.length > 0) {
     /**
@@ -560,6 +562,175 @@ export function planEconomy(
   }
 
   /**
+   * ------------------------------------------------------------------ 4c. EXPANSION — a forward refining base
+   *
+   * WHAT AN EXPANSION ACTUALLY IS HERE, measured from the map rather than assumed. A building must be within 7 tiles of an
+   * existing friendly structure, and every start position sits **14.1 tiles** from its richest node (a 25,000 node) and 30+ tiles
+   * from the next one. So:
+   *
+   *   • the 2000-cost Waystone Wagon — which can deploy anywhere — is unusable in practice: measured over a whole match both
+   *     difficulties hovered at 180-399 mana because the army spends everything, so 2000 was never reached;
+   *   • a remote node 30 tiles out would need a 4-5 building chain, which costs more than the node is worth;
+   *   • the RICH node at 14 tiles needs only a **two-building chain**, and taking it doubles the reachable mana.
+   *
+   * So an expansion is a forward refining base on the rich node next to home: two cheap structures to bridge the build zone, then a
+   * refinery and a turret on the node itself. That is a real second base — separate income, separate thing to defend — which is what
+   * the target asks for, and it is affordable at 750 for the refinery rather than 2000 for a wagon.
+   *
+   * DIFFICULTY LEVERS: `targetBases` (1 = never, Normal 2, Hard 3), `expandAfterSeconds` (Hard 70 s earlier) and
+   * `defendExpansions` (units stationed at the new site).
+   */
+  if (profile.targetBases > 1 && elapsedSeconds >= profile.expandAfterSeconds) {
+    const bases = countBases(per, registry);
+    const site = bestExpansionSite(per, registry, services);
+
+    if (site && bases < profile.targetBases) {
+      const spireDef = registry.buildings.get('attunement_spire');
+      const chainDef = registry.buildings.get('stone_wall');
+      const turretDef = registry.buildings.get('arcane_sentry');
+
+      // How far is the site from the nearest owned building, in tiles?
+      const nearOwn = per.myBuildings.reduce(
+        (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
+        Infinity,
+      );
+
+      /**
+       * STEP 1 — bridge the build zone with cheap structures.
+       *
+       * Each step is placed at the furthest legal point toward the site, so the chain is as short as possible. `stone_wall` costs 40,
+       * which is trivial next to the refinery it unlocks.
+       */
+      /**
+       * Hard cap on bridging. Two links reach a 14-tile node; more than four means the target is unreachable and the AI should stop
+       * spending rather than pave the map. Measured without this cap: 92 stone walls in one match and still no expansion.
+       */
+      const bridges = per.myBuildings.filter((b) => b.defId === 'stone_wall').length;
+      /**
+       * CHAIN BUDGET, from the distance actually required.
+       *
+       * The measured second cluster is 30.6 tiles from home and a link reaches ~6 tiles beyond the 7-tile zone, so it needs 4-5
+       * links. The budget is derived from the distance rather than fixed, and hard-capped at 6 so a mis-chosen target can never pave
+       * the map again — the run that taught this lesson laid **92 stone walls** in one match.
+       */
+      const siteTiles = site ? Math.hypot(site.x - per.myBuildings[0]!.x, site.y - per.myBuildings[0]!.y) / TILE : 0;
+      const MAX_BRIDGES = Math.min(6, Math.max(2, Math.ceil((siteTiles - 7) / 5)));
+      if (nearOwn > TILE * 6 && chainDef && bridges < MAX_BRIDGES) {
+        const anchor = per.myBuildings.reduce(
+          (best, b) => (Math.hypot(b.x - site.x, b.y - site.y) < Math.hypot(best.x - site.x, best.y - site.y) ? b : best),
+          per.myBuildings[0]!,
+        );
+        /**
+         * STEP TO THE EDGE OF THE BUILD ZONE, NOT 85% OF THE WAY.
+         *
+         * The build zone is 7 tiles, so a link placed at 85% of the remaining distance advances only ~1.4 tiles when the target is 9
+         * tiles out — measured, the chain laid five walls in a cluster near the base and advanced a few dozen units toward a node 30
+         * tiles away. Placing at ~6 tiles out (just inside the zone) makes each link cover a full zone-step, so 4-5 links cross the 30
+         * tiles to the next cluster.
+         */
+        /**
+         * WALK ALONG THE PATH AND TAKE THE FURTHEST LEGAL TILE.
+         *
+         * The generic ring scan is the wrong tool here: it ranks by proximity to an anchor and by `-ring*2`, so asking it for a tile
+         * near a step point 6 tiles from a structure returned a spot in a completely different direction (976,528 for a target at
+         * 703,911). A chain link has one job — be as far toward the site as the build zone allows — so it samples the line directly
+         * and keeps the deepest legal candidate.
+         */
+        const toSite = Math.hypot(site.x - anchor.x, site.y - anchor.y) || 1;
+        const dirX = (site.x - anchor.x) / toSite;
+        const dirY = (site.y - anchor.y) / toSite;
+        let linkSpot: { x: number; y: number } | null = null;
+        for (let step = TILE * 6; step >= TILE; step -= TILE / 2) {
+          const px = anchor.x + dirX * step;
+          const py = anchor.y + dirY * step;
+          if (isLegalBuildSpot(state, services, per, registry, chainDef, px, py)) {
+            linkSpot = { x: px, y: py };
+            break;
+          }
+        }
+        if (per.mana >= chainDef.cost) {
+          const spot = linkSpot ? snapToTile(linkSpot) : null;
+          if (spot) {
+            commands.push({ type: 'build', playerId: pid, defId: chainDef.id, x: spot.x, y: spot.y });
+            notes.push(`EXPANDING: bridging the build zone toward a rich node (${Math.round(nearOwn)} away)`);
+            return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+          }
+        }
+      }
+
+      /**
+       * STEP 2 — the refinery itself, on the node. This is the base.
+       */
+      if (nearOwn <= TILE * 6 && spireDef && per.mana >= spireDef.cost) {
+        const spot = findBuildSpot(state, per, services, registry, spireDef, { x: site.x, y: site.y });
+        if (spot) {
+          commands.push({ type: 'build', playerId: pid, defId: spireDef.id, x: spot.x, y: spot.y });
+          notes.push(`EXPANDING: forward refinery — base ${bases + 1}/${profile.targetBases}`);
+          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+        }
+      }
+      // Hold money for the refinery while it is out of reach, rather than letting the army spend it.
+      if (nearOwn <= TILE * 6 && spireDef && per.mana < spireDef.cost) {
+        notes.push(`saving to expand (${Math.round(per.mana)}/${spireDef.cost})`);
+        return { commands, notes, blockedOnPlacement: false, reservedForBuild: Math.max(0, spireDef.cost - per.mana) };
+      }
+
+      /**
+       * STEP 3 — a turret at the new base, so it is not a gift. Only once the refinery is standing there.
+       */
+      if (nearOwn <= TILE * 6 && turretDef && profile.defendExpansions > 0) {
+        const hasOwnTurret = per.myBuildings.some(
+          (b) => b.defId === 'arcane_sentry' && Math.hypot(b.x - site.x, b.y - site.y) < TILE * 6,
+        );
+        if (!hasOwnTurret && per.mana >= turretDef.cost) {
+          const spot = findBuildSpot(state, per, services, registry, turretDef, { x: site.x, y: site.y });
+          if (spot) {
+            commands.push({ type: 'build', playerId: pid, defId: turretDef.id, x: spot.x, y: spot.y });
+            notes.push('EXPANDING: turret at the forward base');
+            return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+          }
+        }
+      }
+    }
+
+    /**
+     * DEFEND THE FORWARD BASE.
+     *
+     * An expansion that is planted and abandoned is mana given away. `defendExpansions` units go to the newest base when enemies are
+     * seen near it — a real cost, which is why Normal commits 2 and Hard 4.
+     */
+    if (profile.defendExpansions > 0 && bases > 1) {
+      const newest = newestBase(per, registry);
+      if (newest) {
+        const threatened = per.enemyUnits.some((e) => Math.hypot(e.x - newest.x, e.y - newest.y) < TILE * 12);
+        if (threatened) {
+          /**
+           * DEFENDING AN EXPANSION MUST NOT DISARM THE MAIN ARMY.
+           *
+           * `defendExpansions` units were taken from the front of the army on every pass, so a contested expansion pulled the whole
+           * force home continuously — measured on hard-vs-normal, which logged "defending expansion with 4 unit(s)" while sitting at
+           * 3 army units, and the match ran 32 minutes without either side able to push. The detachment is now capped at a third of
+           * the army, so the expansion is covered without the main force being recalled.
+           */
+          const army = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester);
+          const maxDetach = Math.max(1, Math.floor(army.length / 3));
+          const defenders = army.slice(0, Math.min(profile.defendExpansions, maxDetach));
+          if (defenders.length > 0) {
+            commands.push({
+              type: 'attackMove',
+              playerId: pid,
+              entityIds: defenders.map((d) => d.id),
+              x: newest.x,
+              y: newest.y,
+            });
+            notes.push(`defending expansion with ${defenders.length} unit(s)`);
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * ------------------------------------------------------------------ 4b. static defense
    *
    * A BASE DEFENSE LAYER, SO THE FIRST PUSH DOES NOT END THE GAME.
@@ -769,10 +940,35 @@ export function findBuildSpot(
   services: SimServices,
   registry: Registry,
   def: BuildingDef,
+  /**
+   * Optional point to build TOWARD.
+   *
+   * Expansion needs buildings at a specific remote site, not merely "somewhere near the yard". Passing a target biases the score so
+   * the chosen spot is as close to it as the build zone and terrain allow, while every legality check still comes from the sim.
+   */
+  prefer?: { x: number; y: number },
 ): { x: number; y: number } | null {
-  const yard =
-    per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ??
-    per.myBuildings.find((b) => b.buildProgress === undefined);
+  /**
+   * WHERE THE SCAN IS ANCHORED.
+   *
+   * Normally the yard, because economy buildings belong near the base. But the ring scan only reaches `maxRadiusTiles`, so anchoring
+   * on the yard makes it IMPOSSIBLE to build beyond that radius — measured: an expansion chain laid five stone walls in a tight
+   * cluster beside the base and never advanced toward its target 30 tiles away.
+   *
+   * When a `prefer` point is supplied the scan anchors on the nearest OWNED BUILDING to that point instead, so each link extends
+   * from the furthest structure already built and the chain actually walks toward the target.
+   */
+  /**
+   * WITH A TARGET, SCAN AROUND THE TARGET ITSELF.
+   *
+   * Anchoring on the nearest owned building searches rings outward from THERE, so the scan can never propose a tile near the target —
+   * measured: asking for a spot near (656,1424) returned (528,624), which is FURTHER from the target than the untargeted answer
+   * (688,720). Scanning around the target and keeping only zone-legal, buildable tiles makes the chain actually advance.
+   */
+  const yard = prefer
+    ? { x: prefer.x, y: prefer.y, id: -1, defId: '', buildProgress: undefined }
+    : (per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ??
+      per.myBuildings.find((b) => b.buildProgress === undefined));
   if (!yard) return null;
 
   const yardH = groundHeightAt(services, yard.x, yard.y);
@@ -847,6 +1043,14 @@ export function findBuildSpot(
 
         // Score: prefer close to the yard, and (for refineries) close to a mana node.
         let score = -ring * 2;
+        /**
+         * When a target point is supplied, closeness to it dominates every other term. Expansion chains need the NEXT link toward a
+         * remote node, which "near the yard" scoring would never choose.
+         */
+        if (prefer) {
+          const toTarget = Math.hypot(x - prefer.x, y - prefer.y);
+          score += Math.max(0, 400 - toTarget / 4);
+        }
         if (def.isRefinery) {
           let bestNode = Infinity;
           for (const n of per.nodes) bestNode = Math.min(bestNode, Math.hypot(n.x - x, n.y - y));
@@ -879,7 +1083,19 @@ export function findBuildSpot(
      * Defenses NEED to reach further than the economy does: their whole purpose is to cover ground the yard does not.
      * The ring cap is therefore per-building rather than a blanket 3.
      */
-    const ringCap = def.menuCategory === 'defenses' || def.id.includes('sentry') ? 9 : 3;
+    /**
+     * A TARGETED BUILD MUST REACH THE EDGE OF THE ZONE.
+     *
+     * The cap stopped the scan 3 tiles from the anchor, which is right for economy buildings placed near the yard but makes a chain
+     * link impossible: a link must sit ~6 tiles out to advance the chain a full step. Measured with the cap in place, an expansion
+     * chain laid five walls in a tight cluster beside the base and never moved toward its target. With a `prefer` point the cap is
+     * wide enough to reach the zone edge.
+     */
+    const ringCap = prefer
+      ? Math.ceil((TILE * 6) / TILE) + 2
+      : def.menuCategory === 'defenses' || def.id.includes('sentry')
+        ? 9
+        : 3;
     if (candidates.length > 0 && ring >= ringCap) break;
   }
   if (candidates.length === 0) return null;
@@ -995,4 +1211,126 @@ function legalSpot(
   const ty = Math.floor((y - half) / TILE);
   if (!services.nav.canPlace(tx, ty, def.footprint)) return false;
   return canBuildNearBase(state, services, playerId, tx, ty, def.footprint);
+}
+
+/**
+ * How many separate mining bases a side holds.
+ *
+ * A "base" is a cluster of owned buildings: buildings within `BASE_CLUSTER` world units of each other belong to the same base.
+ * Measured from building positions rather than tracked as state, so it cannot drift from reality — if a forward base is destroyed
+ * the count drops and the AI will try to replace it.
+ */
+export function countBases(per: Perception, registry: Registry): number {
+  const pts = per.myBuildings.map((b) => ({ x: b.x, y: b.y }));
+  void registry;
+  const BASE_CLUSTER = TILE * 12;
+  const clusters: { x: number; y: number; n: number }[] = [];
+  for (const p of pts) {
+    const near = clusters.find((c) => Math.hypot(c.x / c.n - p.x, c.y / c.n - p.y) < BASE_CLUSTER);
+    if (near) {
+      near.x += p.x;
+      near.y += p.y;
+      near.n++;
+    } else clusters.push({ x: p.x, y: p.y, n: 1 });
+  }
+  return Math.max(1, clusters.length);
+}
+
+/** The centroid of the most recently founded cluster, i.e. the one to defend. */
+export function newestBase(per: Perception, registry: Registry): { x: number; y: number } | null {
+  const BASE_CLUSTER = TILE * 12;
+  const clusters: { x: number; y: number; n: number; id: number }[] = [];
+  // Highest entity id = most recently built, so seed clusters from the newest buildings first.
+  const sorted = [...per.myBuildings].sort((a, b) => b.id - a.id);
+  for (const p of sorted) {
+    const near = clusters.find((c) => Math.hypot(c.x / c.n - p.x, c.y / c.n - p.y) < BASE_CLUSTER);
+    if (near) {
+      near.x += p.x;
+      near.y += p.y;
+      near.n++;
+    } else clusters.push({ x: p.x, y: p.y, n: 1, id: p.id });
+  }
+  void registry;
+  if (clusters.length === 0) return null;
+  // The newest cluster is the one seeded by the highest id.
+  const newest = clusters.reduce((a, b) => (a.id > b.id ? a : b));
+  return { x: newest.x / newest.n, y: newest.y / newest.n };
+}
+
+/**
+ * The best free mana cluster to expand to.
+ *
+ * "Free" means a live node with mana that no owned base is already working, and "best" balances remaining mana against distance
+ * so the AI does not cross the map for a 3,000 node while a 25,000 node sits two tiles away. Enemies are NOT consulted beyond what
+ * the perception already shows, so this stays fog-legal: a site behind fog is chosen on distance and richness alone.
+ */
+export function bestExpansionSite(
+  per: Perception,
+  registry: Registry,
+  services: SimServices,
+): { x: number; y: number } | null {
+  const BASE_CLUSTER = TILE * 12;
+  const home = per.myBuildings[0];
+  if (!home) return null;
+  void registry;
+  void services;
+  /**
+   * ONLY CONSIDER A NODE THE BUILD ZONE CAN ACTUALLY REACH.
+   *
+   * A build zone is 7 tiles, so a node 40 tiles from home needs a 5-building chain that costs more than the node yields. The first
+   * version scored richness against distance and picked a 3,000 node **1,314 units** away over the 25,000 node 453 units away,
+   * then tried to chain to it — measured as **92 stone walls** and no second base at all.
+   *
+   * So the search is restricted to nodes within a reachable radius, and those are ranked by DISTANCE first: the cheapest expansion
+   * is the nearest one, and the richest node on this map is also the nearest, so the two criteria agree here.
+   */
+  /**
+   * How far a second base may be, in world units.
+   *
+   * Every start position has its richest node **already served** by its own refinery (measured: a spire 339 units from the 25,000
+   * node), so a genuinely separate base has to reach the next cluster, which is 979 units away — about 4 links of chain. Beyond
+   * that the chain costs more than the 3,000 mana node yields, so the radius is set to admit that one and no further.
+   */
+  const REACHABLE = TILE * 34;
+  let best: { x: number; y: number; d: number } | null = null;
+  for (const n of per.nodes) {
+    if (n.remaining <= 0) continue;
+    const covered = per.myBuildings.some((b) => Math.hypot(b.x - n.x, b.y - n.y) < BASE_CLUSTER);
+    if (covered) continue;
+    const d = Math.hypot(n.x - home.x, n.y - home.y);
+    if (d > REACHABLE) continue;
+    if (!best || d < best.d) best = { x: n.x, y: n.y, d };
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+
+
+/** Round a world point to the centre of its tile, which is where buildings are anchored. */
+function snapToTile(p: { x: number; y: number }): { x: number; y: number } {
+  return { x: Math.floor(p.x / TILE) * TILE + TILE / 2, y: Math.floor(p.y / TILE) * TILE + TILE / 2 };
+}
+
+/**
+ * Is this exact point a legal place for `def` — terrain free, node free, and inside the build zone?
+ *
+ * Uses the SAME predicates the build command validates with (`nav.canPlace`, `canBuildNearBase`) so a chain link the AI proposes can
+ * never be rejected by the sim.
+ */
+function isLegalBuildSpot(
+  state: GameState,
+  services: SimServices,
+  per: Perception,
+  registry: Registry,
+  def: BuildingDef,
+  x: number,
+  y: number,
+): boolean {
+  const half = (def.footprint * TILE) / 2;
+  const tx = Math.floor((x - half) / TILE);
+  const ty = Math.floor((y - half) / TILE);
+  if (!services.nav.canPlace(tx, ty, def.footprint)) return false;
+  if (!canBuildNearBase(state, services, per.playerId, tx, ty, def.footprint)) return false;
+  if (overlapsOwn(per, registry, x, y, def)) return false;
+  if (overlapsNode(per, registry, x, y, def, services)) return false;
+  return true;
 }

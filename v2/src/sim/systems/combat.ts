@@ -16,7 +16,7 @@ import {
   KIND_RESOURCE_NODE,
   KIND_UNIT,
   STATE_ATTACKING,
-  STATE_MOVING,
+
   STATE_GARRISONED,
   STATE_IDLE,
   STANCE_AGGRESSIVE,
@@ -519,9 +519,30 @@ function chase(state: GameState, ctx: StepContext, slot: number, targetSlot: num
    * teleported a frame's distance back toward its slot and the two systems fight forever. Marking the unit ATTACKING is the
    * signal movementSystem already respects for "this unit is busy fighting".
    */
-  if (store.state[slot] === STATE_MOVING || store.state[slot] === STATE_ATTACKING) {
-    store.state[slot] = STATE_ATTACKING;
-  }
+  /**
+   * ONLY CLAIM THE UNIT WHEN THE CHASE ACTUALLY MOVED IT.
+   *
+   * The state flag exists so `movementSystem` does not drag a chasing unit back to its formation slot. But it was set even when
+   * `chase` moved NOTHING — a blocked or stalled path — so the unit was marked "busy fighting" while standing still, and movement
+   * skipped it forever. Measured: an army unit froze at (2856,610) for **200 consecutive ticks** with a valid `move` order while
+   * holding `state = ATTACKING`.
+   *
+   * If the chase could not move the unit, it does not own the unit's motion this tick, and movementSystem should drive it from its
+   * order instead.
+   */
+  /**
+   * CHASE DOES NOT CLAIM THE UNIT'S STATE.
+   *
+   * The flag existed so `movementSystem` would not drag a chasing unit back toward its formation slot. But claiming the state made
+   * combat and movement FIGHT for the unit's position: combat moved it ~2 units toward the target, movement was then skipped, and the
+   * unit's own order never advanced it — measured as a unit frozen at (2856,610) for 200 ticks with a stale velocity, an acquired
+   * target 101 units away, and a weapon range of 18.
+   *
+   * The cancellation problem this flag was introduced for is now solved properly inside `movementSystem`, which skips a unit only
+   * when combat actually holds a target for it AND the chase step moved it. Combat therefore just moves the unit and leaves the state
+   * alone, so exactly one system owns position per tick.
+   */
+  void res;
 }
 
 export { isEnemyOwner };

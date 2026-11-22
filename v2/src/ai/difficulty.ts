@@ -72,6 +72,28 @@ export interface DifficultyProfile {
   readonly targetRefineries: number;
   /** How many production buildings it wants. */
   readonly targetProduction: number;
+  /**
+   * How many separate mining bases it will try to hold, including the starting one.
+   *
+   * 1 means "never expand": the AI keeps everything on its starting cluster. This is the difficulty lever that changes the SHAPE
+   * of play rather than a number — an AI holding three bases has three times the income and three places to lose, so it has to
+   * scout, defend and choose where to commit. That is why it separates difficulties where retuning worker counts does not.
+   */
+  readonly targetBases: number;
+  /**
+   * Minimum seconds before the first expansion is attempted.
+   *
+   * Hard expands early because it can defend the investment; Easy never expands at all, so its economy stops growing the moment
+   * its starting cluster is saturated.
+   */
+  readonly expandAfterSeconds: number;
+  /**
+   * How many army units it will keep near a new expansion while it is being established.
+   *
+   * 0 means the AI plants a base and hopes. A positive number means it actually defends the thing it spent 750 mana on, which is
+   * the difference between an expansion that pays for itself and one that is a gift.
+   */
+  readonly defendExpansions: number;
 }
 
 /**
@@ -102,6 +124,9 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     buildsDefenses: false,
     targetRefineries: 1,
     targetProduction: 1,
+    targetBases: 1,
+    expandAfterSeconds: 0,
+    defendExpansions: 0,
   },
   normal: {
     id: 'normal',
@@ -123,6 +148,9 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     buildsDefenses: true,
     targetRefineries: 2,
     targetProduction: 2,
+    targetBases: 2,
+    expandAfterSeconds: 180,
+    defendExpansions: 2,
   },
   hard: {
     /**
@@ -185,6 +213,16 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     buildsDefenses: true,
     targetRefineries: 2,
     targetProduction: 2,
+    /**
+     * HARD EXPANDS EARLIER, FURTHER AND DEFENDS IT.
+     *
+     * Three bases against Normal's two, starting 70 seconds sooner, with four units committed to holding a new site rather than
+     * two. This is the difference the brief asks for: expansion quality, not a resource bonus — the buildings cost the same and
+     * are paid for out of the same income.
+     */
+    targetBases: 3,
+    expandAfterSeconds: 110,
+    defendExpansions: 4,
   },
 };
 

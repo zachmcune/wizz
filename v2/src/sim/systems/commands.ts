@@ -17,6 +17,7 @@ import {
   STATE_HARVESTING,
   STATE_IDLE,
   STATE_MOVING,
+  STATE_RETURNING,
   STANCE_AGGRESSIVE,
   STANCE_HOLD,
   STANCE_STANDGROUND,
@@ -109,6 +110,21 @@ function prepareForOrder(state: GameState, slot: number): void {
   clearReservations(state, state.entities.id[slot]!);
   endChanneling(state, slot);
   state.entities.extras[slot]!.orders.length = 0;
+  /**
+   * A NEW ORDER CLEARS THE OLD STATE.
+   *
+   * `state` was never reset here, so a unit that had been ATTACKING and then received a `move` kept `STATE_ATTACKING` while holding a
+   * move order. `movementSystem` skips ATTACKING units on the assumption that `combat` is moving them — but combat only moves a unit
+   * it has a target for, so the unit held a valid order and never moved.
+   *
+   * Measured: a unit froze at (2856,610) for **200 consecutive ticks** in `state = ATTACKING` with `orders = [move to base]` and a
+   * stale velocity of -62.2 that nothing ever updated. That single bug is what kept a 26-unit army from ever crossing the map and left
+   * four matches unfinished at the 32-minute cap.
+   */
+  const st = state.entities.state[slot]!;
+  if (st === STATE_ATTACKING || st === STATE_HARVESTING || st === STATE_RETURNING || st === STATE_MOVING) {
+    state.entities.state[slot] = STATE_IDLE;
+  }
 }
 
 function groupMoveSpeed(state: GameState, ctx: StepContext, slots: number[]): number {
