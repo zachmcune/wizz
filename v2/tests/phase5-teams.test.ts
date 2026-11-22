@@ -164,17 +164,29 @@ describe('2v2 teams', () => {
     }
 
     /**
-     * TERMINATION IS NOT ASSERTED HERE, because team matches currently do not reliably terminate.
+     * TERMINATION IS ASSERTED. This was the deferred defect, now fixed and re-asserted here.
      *
-     * Known open issue: in a 2v2 the side with overwhelming force can fail to find the opponent's base and orbit a single scouted
-     * structure indefinitely — measured, `b1` holding **39 army against `a1`'s 11** for 40+ minutes with only a stone wall as a known
-     * target. That is a real defect in the 1v1-proven AI when the map has four players, and it is reported rather than hidden.
+     * The original failure: `b1` held **39 army against `a1`'s 11** for 40+ minutes with a single `stone_wall` as its only known
+     * target. Three separate bugs produced that, all now measured and fixed (see the commits and the notes on `pickAttackTarget`,
+     * the sweep predicate, and the wave lifecycle):
      *
-     * What IS asserted is the property this suite exists for: allies never damage allies, every player actually plays, and the match
-     * either resolves to a team or is still live rather than erroring.
+     *   • a ghost (a remembered building since destroyed) was a valid attack destination, so an army could walk to a corpse
+     *     forever — measured on the FFA scan, `p4` had 23 army and four `live=false` walls as its entire memory of the enemy;
+     *   • `brain.ts` and `military.ts` used DIFFERENT definitions of "we know where they live", so a 40-mana wall could
+     *     suppress the scouting sweep while the wave logic still fired at it;
+     *   • a wave was recalled on elapsed time alone, even while it was inside the enemy base grinding the sanctum down.
+     *
+     * With those fixed, a 2v2 terminates with one team standing well inside the cap. The budget is checked against the cap the
+     * requirement names (30 minutes), and the measured length is printed so a regression shows its number rather than a bare pass.
      */
-    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(30);
-  }, 600_000);
+    expect(outcome.ended, `the 2v2 did not finish inside ${outcome.minutes.toFixed(1)} min`).toBe(true);
+    expect(outcome.winnerTeam, 'the 2v2 ended without a winning team').not.toBeNull();
+    // The winner must be a TEAM, not an individual: both members of the winning side share that team id.
+    const winners = TEAMS_2V2.filter((p) => p.team === outcome.winnerTeam);
+    expect(winners.length, 'the winning team must have exactly two members').toBe(2);
+    console.log(`2v2 resolved: team ${outcome.winnerTeam} won after ${outcome.minutes.toFixed(1)} min`);
+    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThanOrEqual(30);
+  }, 900_000);
 });
 
 describe('4-player free-for-all', () => {
@@ -219,7 +231,7 @@ describe('4-player free-for-all', () => {
      * takes time to break with whatever army survived three earlier fights. The match RESOLVES — it is slow, not stuck — so the
      * budget is set well above the observed spread.
      */
-    const outcome = playMatch(9092, FFA_4, 25);
+    const outcome = playMatch(9092, FFA_4, 32);
     // With four mutually hostile players, damage must flow in more than one direction. If it did not, the "free-for-all"
     // would really be one player fighting everyone else while the rest idled.
     const attackers = new Set([...outcome.damagePairs].map((p) => p.split('>')[0]!));
@@ -228,8 +240,18 @@ describe('4-player free-for-all', () => {
     for (const p of FFA_4) {
       expect(outcome.peakArmy[p.id], `${p.id} never fielded an army`).toBeGreaterThan(0);
     }
-    // See the note in the 2v2 case: termination is the known open issue, so this asserts real multi-directional fighting rather than
-    // a winner.
-    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThan(30);
-  }, 1_200_000);
+    /**
+     * TERMINATION IS ASSERTED, and measured. The earlier version of this suite could not assert it: three of four players were
+     * eliminated and the last two then ground on past the cap, because the dominant side's army chased building GHOSTS (remembered
+     * structures since destroyed) instead of scouting for the real base — measured on the FFA scan, `p4` held 23 army and its
+     * entire memory of the enemy was four `live=false` walls, while both surviving sanctums sat at full health, never visited.
+     *
+     * With ghosts excluded from targeting and the sweep predicate unified, the free-for-all resolves to a single survivor inside
+     * the cap. Both the outcome and the length are asserted, and the length is printed.
+     */
+    expect(outcome.ended, `the free-for-all did not finish inside ${outcome.minutes.toFixed(1)} min`).toBe(true);
+    expect(outcome.winnerTeam, 'the free-for-all ended without a winner').not.toBeNull();
+    console.log(`FFA resolved: team ${outcome.winnerTeam} won after ${outcome.minutes.toFixed(1)} min`);
+    expect(outcome.minutes, 'the match ran an implausible length').toBeLessThanOrEqual(30);
+  }, 1_500_000);
 });
