@@ -179,10 +179,32 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
      *
      * `STATE_ATTACKING` is set by `chase` precisely to say "movement is already handled this tick", so skip here.
      */
-    if (store.state[slot] === STATE_ATTACKING) {
+    /**
+     * A CHASING UNIT IS MOVED BY COMBAT — BUT ONLY WHILE IT IS ACTUALLY CHASING.
+     *
+     * `combat` moves a unit directly at the target it has acquired, and this system skips such a unit so the two do not cancel
+     * (see the note below). The bug: `chase` only runs when a target is within reach, so a unit left in STATE_ATTACKING with NO
+     * target had neither system move it and froze permanently.
+     *
+     * Measured: an easy AI's rift_familiar sat at (506,604) for **200 consecutive ticks** with a valid `attackMove` to the enemy
+     * base and `state = ATTACKING`, while the base it was ordered to attack was 3000 units away and not yet in weapon range. Every
+     * one of that side's units did the same, so a 17-unit army never reached a 7-building base and the match ran 45 minutes without
+     * resolving.
+     *
+     * A unit is now only skipped when it genuinely holds an attack target; otherwise normal order-driven movement resumes and it
+     * closes the distance itself.
+     */
+    const attackOrder = ex.orders[0] as { type?: string; targetId?: number } | undefined;
+    const hasAttackTarget =
+      attackOrder?.type === 'attack' && attackOrder.targetId !== undefined && store.slotOf(attackOrder.targetId as EntityId) >= 0;
+    if (store.state[slot] === STATE_ATTACKING && hasAttackTarget) {
       store.velX[slot] = 0;
       store.velY[slot] = 0;
       continue;
+    }
+    if (store.state[slot] === STATE_ATTACKING && !hasAttackTarget) {
+      // No target to chase: hand the unit back to its order so it keeps marching.
+      store.state[slot] = STATE_MOVING;
     }
 
     const order = ex.orders[0] as
