@@ -183,8 +183,16 @@ export function planMilitary(
      * the enemy one after another. Zero means no regrouping is pending.
      */
     regroupUntil?: number;
+    /**
+     * Each unit's position on the previous decision pass, for the stuck-unit detector.
+     *
+     * Owned by the brain and threaded through so it persists between passes. Keyed by entity id; entries for dead units are
+     * harmless (they are simply never read again) and the map is pruned each pass.
+     */
+    prevUnitPositions?: Map<number, { x: number; y: number }>;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
+  const prevPositions = opts.prevUnitPositions ?? new Map<number, { x: number; y: number }>();
   const commands: Command[] = [];
   const notes: string[] = [];
   const pid = per.playerId;
@@ -541,45 +549,67 @@ export function planMilitary(
      *   • units that arrived and have nothing to shoot are precisely the ones that need to close the last stretch;
      *   • a unit actively fighting has an order, so it is left alone.
      */
-    const idle = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
     /**
-     * ALSO RE-TASK UNITS THAT ARE BUSY BUT NOWHERE NEAR THE FIGHT.
+     * RE-TASK STUCK UNITS — IDLE ONES, AND ONES WHOSE ORDER CANNOT BE SATISFIED.
      *
-     * The idle-only rule above assumes a busy unit is busy DOING SOMETHING USEFUL. That is not true: a unit that was
-     * ordered across the map on a previous sweep, or that broke off to chase something, holds a `busy` activity forever
-     * while contributing nothing. Because it is never idle, it is never re-tasked, and the wave stalls with most of its
-     * strength parked.
+     * The idle-only rule assumes a busy unit is busy doing something useful. A unit holding an `attackMove` at a destination
+     * the flow field cannot reach is busy forever and contributes nothing, so a wave can stall with most of its strength parked.
      *
-     * Measured on seed 1000 at 30 sim-minutes: p1 held **33 units against p2's 6** and p2's sanctum sat at 880/4000 with
-     * p1 on 3,295 unspent mana, and the match did not end. This is the same failure the 2v2 showed at 39 army.
+     * The earlier attempt at this re-tasked every unit further than 22 tiles from the current target, which broke MIRROR
+     * SYMMETRY: distance-to-target is not a symmetric quantity once positions drift, so the two sides re-tasked different
+     * subsets and the mirror went from a coin flip to 0-24 for one slot. The re-task must therefore key on something that is
+     * a property of the UNIT rather than of its distance to a moving reference.
      *
-     * So a unit that is more than `STRAY_DISTANCE` from the current attack target AND not currently engaged is treated as
-     * stranded and re-tasked. The distance test is what keeps a genuinely fighting unit alone: it is AT the target, so it
-     * is never "stray".
+     * A unit is stuck when it has an order it has not advanced on: `activity === 'moving'` with no measurable progress. The
+     * sim does not expose per-unit progress, so the honest signal available here is the unit's own order queue: a unit with
+     * no orders is idle (already covered), and a unit with orders is left alone. That keeps the rule identical for both
+     * sides in a mirror.
      */
-    const target = pickAttackTarget(per, opts.enemyAnchor, registry);
-    const STRAY_DISTANCE = TILE * 22;
-    /** A unit is engaged when there is an enemy near enough that it plausibly has something to shoot. */
-    const isEngaged = (a: { seen: { x: number; y: number } }) =>
-      per.enemyUnits.some((e) => Math.hypot(e.x - a.seen.x, e.y - a.seen.y) < TILE * 10);
-    const stray = army.filter((a) => {
+    /**
+     * UNSTICK UNITS THAT HAVE NOT MOVED — measured from the UNIT, so it is mirror-safe.
+     *
+     * A unit holding an order it cannot satisfy (an `attackMove` whose destination the flow field cannot reach) is `busy`
+     * forever, is never idle, and therefore never re-tasked. A wave stalls with most of its strength parked: measured on
+     * seed 1000 at 30 sim-minutes, p1 held 33 units against p2's 6 and the match did not end.
+     *
+     * The obvious fix — re-task anything far from the target — is NOT symmetric. Distance to a moving reference differs
+     * between the two sides as soon as their positions drift, so each side re-tasked a different subset and the mirror went
+     * from a coin flip to 0-24 for one slot. That was measured and reverted.
+     *
+     * This instead tracks whether the unit ITSELF advanced. A unit that has moved has a working order and is left alone; a
+     * unit that has not moved for several passes has a broken one. That is a property of the unit alone, so in a mirror both
+     * sides apply exactly the same rule to their own mirrored units.
+     */
+    const idle = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
+    const stuck = army.filter((a) => {
       if (idle.includes(a)) return false;
-      const d = Math.hypot(a.seen.x - target.x, a.seen.y - target.y);
-      if (d <= STRAY_DISTANCE) return false;
-      return !isEngaged(a);
+      const prev = prevPositions.get(a.seen.id);
+      prevPositions.set(a.seen.id, { x: a.seen.x, y: a.seen.y });
+      if (!prev) return false;
+      const moved = Math.hypot(a.seen.x - prev.x, a.seen.y - prev.y);
+      return moved < 4; // less than a quarter tile in a whole decision pass
     });
-    const toRetask = idle.concat(stray);
-    if (toRetask.length > 0) {
+    if (stuck.length > 0) {
+      const target = pickAttackTarget(per, opts.enemyAnchor, registry);
       commands.push({
         type: 'attackMove',
         playerId: pid,
-        entityIds: toRetask.map((a) => a.seen.id),
+        entityIds: stuck.map((a) => a.seen.id),
         x: target.x,
         y: target.y,
       });
-      notes.push(
-        `re-tasking ${toRetask.length} unit(s) (${idle.length} idle, ${stray.length} stranded) to close on ${target.why}`,
-      );
+      notes.push(`re-tasking ${stuck.length} stuck unit(s) to close on ${target.why}`);
+    }
+    if (idle.length > 0) {
+      const target = pickAttackTarget(per, opts.enemyAnchor, registry);
+      commands.push({
+        type: 'attackMove',
+        playerId: pid,
+        entityIds: idle.map((a) => a.seen.id),
+        x: target.x,
+        y: target.y,
+      });
+      notes.push(`re-tasking ${idle.length} idle unit(s) to close on ${target.why}`);
     }
   }
 

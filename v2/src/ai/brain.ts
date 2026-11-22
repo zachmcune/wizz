@@ -97,6 +97,13 @@ export interface BrainMemory {
    * so two players in the same match do not step through their producer lists in lockstep.
    */
   produceTick: number;
+  /**
+   * Each of our combat units' position on the previous decision pass.
+   *
+   * Used to detect a unit whose order it cannot satisfy: one that has not moved at all between passes is stuck, however
+   * `busy` it claims to be. Deliberately per-unit and per-player, so the rule is identical for both sides of a mirror.
+   */
+  prevUnitPositions: Map<number, { x: number; y: number }>;
 }
 
 
@@ -184,6 +191,7 @@ export class AiBrain {
     scoutLedger: [],
     scoutTarget: null,
     produceTick: 0,
+    prevUnitPositions: new Map(),
   };
   private readonly world: PerceivedWorld;
 
@@ -456,6 +464,7 @@ export class AiBrain {
        *
        * `knowsEnemyBase` in `planMilitary` mirrors this predicate exactly, so the two planners cannot disagree again.
        */
+      prevUnitPositions: this.memory.prevUnitPositions,
       searchTarget:
         per.enemyBuildings.filter((b) => b.live && b.defId !== 'stone_wall').length === 0
           ? this.searchObjective(per)
