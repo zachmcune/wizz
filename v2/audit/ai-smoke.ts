@@ -21,7 +21,14 @@ const TICK_HZ = 20;
  * A match must end inside this cap. The full bracket's worst observed seed is ~21 sim-minutes, so 30 leaves real headroom
  * while still failing loudly if the AI ever regresses into a non-terminating game.
  */
-const MAX_MINUTES = 30;
+/**
+ * 36 minutes.
+ *
+ * The cap was 30 when the bracket sat near 18 minutes. With AI expansion, Hard wins 100% of hard-vs-normal and a dominant side needs
+ * longer to close out an opponent turtling behind two bases and turrets — measured 30.6 min for that matchup, and 18.1 for the bracket
+ * as a whole. The smoke test asserts TERMINATION, so its cap sits above the slowest measured match rather than on the median target.
+ */
+const MAX_MINUTES = 36;
 /** No side may go this long without spending. Generous: a mined-out late game legitimately idles the economy. */
 const MAX_NO_SPEND_SECONDS = 900;
 /** No side may leave combat units without orders for this long. This is the v1 "idle army" failure. */
