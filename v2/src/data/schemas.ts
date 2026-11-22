@@ -335,6 +335,15 @@ export const balanceSchema = z.object({
   startingMana: z.number().nonnegative(),
   siphonPerSecond: z.number().positive(),
   manaNodeCapacity: z.number().positive(),
+  /**
+   * Passive mana per second per held HQ.
+   *
+   * A safety net against a dead economy: with zero workers a side has no income at all, so it can never afford the worker that
+   * would restore its income. Measured on seed 1000, p2 held 155 mana against a 200-cost worker and stayed exactly 45 short for
+   * the rest of the match while its opponent sat on 111,700 untouched mana. This trickle is deliberately tiny — it takes ~6
+   * minutes to fund one worker — so it is a floor under a disaster, not an income source that competes with mining.
+   */
+  sanctumTricklePerSecond: z.number().nonnegative(),
   vaultSiphonMultiplier: z.number().positive(),
   sellRefundRatio: z.number().min(0).max(1),
   repairManaPerHp: z.number().positive(),

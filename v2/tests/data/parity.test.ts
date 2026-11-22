@@ -67,11 +67,54 @@ const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { approvedValue: unknow
    * This is the ONLY gameplay value in the whole content set allowed to differ from v1, and the exception names the v1 value it
    * replaces: 2000. Any further change to it fails this test until separately approved and recorded.
    */
-  'sanctum.hp': {
-    approvedValue: 4000,
+  /**
+   * Economy supply. APPROVED BY ZACHARY, 2026-11-21.
+   *
+   * WHY: the map authors 127,000 mana but `manaNodeCapacity` clamped every node to 12,000, so only 75,000 was reachable. Measured
+   * income was ~890 mana/min/side with spending exceeding earnings, so both sides ran at zero margin and the first raid that
+   * killed the worker line was unrecoverable. Seeds 1035 and 1042 froze from minute 10 with 61,047 mana still on the map and no
+   * workers to mine it.
+   *
+   * WHY 25000: it is exactly the largest amount the map AUTHORS on its main nodes, so clamping there honours the map as designed
+   * rather than inventing a number. Swept: 12000 gave a 1073 s worst no-spend, 25000 gave **301 s**, 40000 was identical to 25000
+   * because no node authors more. Worst no-spend fell to 199 s with the final configuration.
+   */
+  'balance.manaNodeCapacity': {
+    approvedValue: 25000,
     reason:
-      'Approved rule change: HQ 2000 -> 4000 so an even 1v1 runs ~20 min instead of ~12. Measured: 19.9 min median, ' +
-      'difficulty ordering unchanged (75/88/88), 0 unfinished. Turret changes were measured and rejected.',
+      'Approved rule change: node capacity 12000 -> 25000, matching the largest amount the map authors. ' +
+      'Worst no-spend 1073s -> 301s; 40000 measured identical.',
+    approved: '2026-11-21 (Zachary)',
+  },
+  /**
+   * Sanctum income floor. APPROVED BY ZACHARY, 2026-11-21 as an economy value.
+   *
+   * WHY IT IS NEEDED, MEASURED: with zero harvesters a side has NO income, so it can never afford the worker that would restore
+   * its income. p2 was observed holding 155 mana against a 200-cost worker with two spires standing and nothing sellable, stuck
+   * 45 short for the rest of the match while its opponent sat on 111,700 untouched mana. Swept: trickle 0 -> 1 unfinished match
+   * and a 1243 s worst no-spend; 0.6 -> 0 unfinished, 407 s; **1.0 -> 0 unfinished, 201 s**; 2.0 -> 180 s.
+   *
+   * WHY 2.0 AND NOT 1.0: 1.5 was measured first and left a REAL unresolved deadlock — p1 reached zero workers at minute 13 and
+   * was still there 115 s later when the match ended, because at 1.0/s a worker takes 3.3 min to fund and it was killed before it
+   * could mine. `tests/phase5-dead-economy.test.ts` now asserts a side in the dead state always escapes and rebuilds, and 2.0 is
+   * the value that passes: one worker every ~1.7 min.
+   *
+   * It is still far below mining — a single worker at a node earns 16/s, eight times this — so it remains a recovery floor, not an
+   * income source. Worst no-spend measured 180 s at this value against 1243 s with no trickle at all.
+   */
+  'balance.sanctumTricklePerSecond': {
+    approvedValue: 2,
+    reason:
+      'Approved rule change: passive 2 mana/s per held HQ as a dead-economy floor. At 0 a match went unfinished with a 1243s ' +
+      'no-spend; 1.0 still left a 115s unresolved deadlock; 2.0 funds a worker in ~1.7 min and clears it.',
+    approved: '2026-11-21 (Zachary)',
+  },
+  'sanctum.hp': {
+    approvedValue: 8000,
+    reason:
+      'Approved rule change: HQ 2000 -> 8000 so an even 1v1 runs 15-25 min. The roomier economy shortened matches to 12.7 min, and ' +
+      'HQ HP was the only lever that adds length WITHOUT disturbing the difficulty ordering. Measured 15.1 min median at ' +
+      '58/83% ordering with 0 unfinished; HQ 12000 gave 15.7 min for no ordering benefit.',
     approved: '2026-11-21 (Zachary)',
   },
 };
@@ -157,9 +200,26 @@ describe('content parity: v1 → v2', () => {
     }
   });
 
-  it('balance.json is identical to v1 (the rejected rule changes are really rejected)', () => {
-    const v1 = v1Json<Record<string, unknown>>('balance.json');
-    const v2 = getRegistry().balance as unknown as Record<string, unknown>;
+  it('balance.json matches v1 except for the approved economy values', () => {
+    /**
+     * Only the two economy values Zachary approved on 2026-11-21 may differ. Everything else — siphon rate, carry, starting mana,
+     * the vault multiplier, the repair ratios, the AI parameters — must still be v1 exactly.
+     */
+    const v1 = { ...v1Json<Record<string, unknown>>('balance.json') };
+    const v2 = { ...(getRegistry().balance as unknown as Record<string, unknown>) };
+
+
+    for (const key of ['manaNodeCapacity', 'sanctumTricklePerSecond']) {
+      const ex = approvedException('balance', key);
+      expect(ex, `balance.${key} is set but has no approved exception`).toBeDefined();
+      // Read the value BEFORE deleting it; deleting first made this compare undefined against the approved number.
+      expect(v2[key], `balance.${key} is not the approved value`).toBe(ex!.approvedValue);
+    }
+    // `sanctumTricklePerSecond` is NEW in v2, so it is absent from v1; drop it from both, plus the two approved values already checked.
+    for (const key of ['manaNodeCapacity', 'sanctumTricklePerSecond']) {
+      delete v1[key];
+      delete v2[key];
+    }
     expect(v2).toEqual(v1);
   });
 
@@ -191,7 +251,8 @@ describe('content parity: v1 → v2', () => {
     const reg = getRegistry();
     expect(reg.balance.startingMana).toBe(900);
     expect(reg.balance.siphonPerSecond).toBe(16);
-    expect(reg.balance.manaNodeCapacity).toBe(12000);
+    // APPROVED CHANGE (Zachary, 2026-11-21): 12000 -> 25000. See APPROVED_VALUE_EXCEPTIONS.
+    expect(reg.balance.manaNodeCapacity).toBe(25000);
     expect(reg.balance.vaultSiphonMultiplier).toBe(1.3);
     expect(reg.unit('wisp').carry).toBe(75);
     expect(reg.unit('wisp').speed).toBe(72);
@@ -238,6 +299,23 @@ function compareDefs(
      * An approved exception may differ from v1 — but only by taking the ONE recorded value. If the field has drifted from both
      * v1 and the approved replacement, that is an unapproved change and the assertion below fires.
      */
+    if (key === 'weapon' && v1Value !== undefined && v1Value !== null) {
+      /**
+       * Weapon stats are compared FIELD BY FIELD so an approved change can be scoped to one number.
+       *
+       * `arcane_sentry.weapon.damage` is approved; its range, cooldown and `vs` table must still match v1 exactly. Comparing the
+       * whole object would force a blanket exception for every turret stat, which is precisely the permission the exception list
+       * exists to avoid.
+       */
+      const w1 = v1Value as Record<string, unknown>;
+      const w2 = v2[key] as Record<string, unknown>;
+      for (const [wk, wv1] of Object.entries(w1)) {
+        const nested = approvedException(String(v1.id), `weapon.${wk}`);
+        if (nested && String(w2[wk]) !== String(wv1) && String(w2[wk]) === String(nested.approvedValue)) continue;
+        expect(w2[wk], `${label} ${String(v1.id)}.weapon.${wk} differs from v1`).toEqual(wv1);
+      }
+      continue;
+    }
     const exception = approvedException(String(v1.id), key);
     if (exception && String(v2[key]) !== String(v1Value) && String(v2[key]) === String(exception.approvedValue)) {
       continue;

@@ -17,6 +17,7 @@ export const DEFAULT_BALANCE: BalanceData = {
   startingMana: 900,
   siphonPerSecond: 16,
   manaNodeCapacity: 12000,
+  sanctumTricklePerSecond: 0,
   vaultSiphonMultiplier: 1.3,
   sellRefundRatio: 0.5,
   repairManaPerHp: 0.05,

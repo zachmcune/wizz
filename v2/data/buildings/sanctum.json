@@ -6,7 +6,7 @@
   "kind": "building",
   "cost": 0,
   "buildTime": 1,
-  "hp": 4000,
+  "hp": 8000,
   "armor": "building",
   "sight": 220,
   "footprint": 3,

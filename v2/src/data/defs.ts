@@ -294,6 +294,8 @@ export interface BalanceData {
   startingMana: number;
   siphonPerSecond: number;
   manaNodeCapacity: number;
+  /** Passive mana per second per held HQ; a floor under a dead economy, not a substitute for mining. */
+  sanctumTricklePerSecond: number;
   vaultSiphonMultiplier: number;
   sellRefundRatio: number;
   repairManaPerHp: number;

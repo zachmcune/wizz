@@ -1,7 +1,7 @@
 {
   "startingMana": 900,
   "siphonPerSecond": 16,
-  "manaNodeCapacity": 12000,
+  "manaNodeCapacity": 25000,
   "vaultSiphonMultiplier": 1.3,
   "sellRefundRatio": 0.5,
   "repairManaPerHp": 0.05,
@@ -24,5 +24,6 @@
       "wispTarget": 4,
       "armyThreshold": 16
     }
-  }
+  },
+  "sanctumTricklePerSecond": 2
 }

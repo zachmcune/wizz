@@ -12,7 +12,7 @@ import { KIND_BUILDING, KIND_RESOURCE_NODE, KIND_UNIT, STATE_HARVESTING, STATE_I
 import { getHarvester, isChanneling } from '../capabilities';
 import { buildingHasPower } from '../power';
 import { resolveEconomyStat } from '../modifiers';
-import { getPlayer } from '../queries';
+import { getPlayer, hasHQ } from '../queries';
 import { makePathContext, moveTowardGoal } from '../pathing';
 
 /**
@@ -225,6 +225,32 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
       harvester.carry += take;
       store.amount[nodeSlot] = store.amount[nodeSlot]! - take;
       if (harvester.carry >= harvester.carryMax) store.state[slot] = STATE_RETURNING;
+    }
+  }
+
+  /**
+   * THE SANCTUM TRICKLE — a floor under a dead economy.
+   *
+   * With no harvesters a side has no income whatsoever, so it can never afford the worker that would restore its income. Measured
+   * on seed 1000: p2 held **155 mana** against a 200-cost worker with two attunement spires standing and stayed exactly 45 short
+   * for the rest of the match, while its opponent sat on 111,700 untouched mana. Nothing could be sold — the yard and both spires
+   * are load-bearing — so the game had no way to resolve.
+   *
+   * The rate is deliberately tiny (see `sanctumTricklePerSecond`): at 0.6/s it takes about six minutes to fund one worker, so it
+   * is a recovery floor after a disaster, not an income that competes with mining. Accrued per player per tick only while the
+   * player still holds an HQ, and credited only when it crosses a whole mana point so the bank stays an integer.
+   */
+  const trickle = registry.balance.sanctumTricklePerSecond;
+  if (trickle > 0) {
+    for (const player of state.players) {
+      if (player.defeated) continue;
+      if (!hasHQ(state, player.id)) continue;
+      const before = Math.floor(player.mana);
+      player.mana += trickle / TICK_HZ;
+      // Only emit an event when the visible integer changes, so a trickle does not flood the event stream.
+      if (Math.floor(player.mana) !== before) {
+        ctx.events.push({ type: 'manaChanged', playerId: player.id, mana: Math.floor(player.mana) });
+      }
     }
   }
 }

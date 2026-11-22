@@ -110,7 +110,17 @@ export function planEconomy(
    * visible enemy unit runs to the sanctum and waits there. They are re-tasked automatically once the area is clear, because
    * `isIdleHarvester` sees them as idle again.
    */
-  const FLEE_RADIUS = 300;
+  /**
+   * FLEE EARLY ENOUGH TO ACTUALLY ESCAPE.
+   *
+   * A worker mines at a node **453 units** from home on this map. With a 300-unit threat radius the AI only reacted once a raider
+   * was already between the worker and safety, which is too late: measured on seed 1035, the flee fired 64 times and the worker
+   * line still went 10 -> 0 between minutes 8 and 9, because fleeing meant crossing open ground under fire.
+   *
+   * The radius is now wider than the distance the worker would have to run, so it starts withdrawing while the raider is still
+   * approaching.
+   */
+  const FLEE_RADIUS = 560;
   const raiders = per.enemyUnits.filter((e) => e.weapon);
   if (raiders.length > 0) {
     /**
@@ -124,7 +134,21 @@ export function planEconomy(
         (h.carry ?? 0) <= 0 && raiders.some((e) => Math.hypot(e.x - h.x, e.y - h.y) < FLEE_RADIUS),
     );
     if (fleeing.length > 0) {
-      const safe = per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
+      /**
+       * WITHDRAW TO THE NEAREST DEFENDED POINT, NOT ALWAYS THE HQ.
+       *
+       * Running to the sanctum means crossing whatever ground the raider is on. The nearest own building with a weapon (a
+       * sentry) or the sanctum if none exists is closer and is where the damage is actually coming from.
+       */
+      const armed = per.myBuildings.filter((b) => (registry.buildings.get(b.defId)?.weapon?.damage ?? 0) > 0);
+      const safe =
+        (armed.length > 0
+          ? armed
+              .map((b) => ({ b, d: Math.hypot(b.x - (fleeing[0]?.x ?? b.x), b.y - (fleeing[0]?.y ?? b.y)) }))
+              .sort((x, y) => x.d - y.d)[0]!.b
+          : null) ??
+        per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ??
+        per.myBuildings[0];
       if (safe) {
         commands.push({
           type: 'move',
@@ -453,6 +477,39 @@ export function planEconomy(
    * The army spending the worker's mana is the mechanism, which is why an unreserved starving economy grows an army it
    * cannot replace instead of fixing its income.
    */
+  const belowWorkerFloor = harvesters.length < 4;
+  let reservedForBuild = 0;
+  // While the worker line is broken, nothing may be hoarded for a building: the income is what makes everything else possible.
+  if (belowWorkerFloor) reservedForBuild = 0;
+
+  if (harvesters.length === 0 && per.mana < workerCost) {
+    /**
+     * NEVER SELL THE BUILDING THAT MAKES WORKERS.
+     *
+     * The first version protected the yard and refineries but not the producer that trains harvesters, so on seed 1035 the AI
+     * sold its last attunement spire and made the deadlock permanent: with no spire it could never build a worker again, and no
+     * amount of selling could help. Selling only counts as a rescue if the thing being sold is not the road back.
+     */
+    const makesWorkers = (defId: string): boolean =>
+      (registry.buildings.get(defId)?.producesUnits ?? []).some((u) => registry.units.get(u)?.isHarvester === true);
+    const expendable =
+      per.myBuildings.find(
+        (b) => registry.buildings.get(b.defId)?.menuCategory === 'defenses' && !makesWorkers(b.defId),
+      ) ??
+      per.myBuildings.find((b) => {
+        const d = registry.buildings.get(b.defId);
+        if (!d) return false;
+        if (d.isConstructionYard || d.isRefinery) return false;
+        if (makesWorkers(b.defId)) return false;
+        return (d.producesUnits?.length ?? 0) === 0;
+      });
+    if (expendable) {
+      commands.push({ type: 'sellBuilding', playerId: pid, buildingId: expendable.id });
+      notes.push(`SELLING ${expendable.defId} to recover from a zero-worker economy`);
+      return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+    }
+  }
+
   const starving = harvesters.length < 4;
   const canAffordWorker = per.mana >= workerCost;
   if (
@@ -580,7 +637,29 @@ export function planEconomy(
    * The cap is deliberately below a typical unit cost so there is always enough left to keep producing, and
    * the reserve only ever applies once the step is within reach; a distant step is not hoarded for.
    */
-  let reservedForBuild = 0;
+  /**
+   * A LIQUIDITY CRISIS HAS TO BE SOLD OUT OF, OR IT NEVER ENDS.
+   *
+   * With zero workers the economy has no income, and the reserve below holds back the ENTIRE bank to buy a worker that costs 200
+   * when the bank holds 120-190 — so the worker is never affordable and income never returns. Measured on seeds 1035 and 1042,
+   * which both froze from minute 10 to the end of a 23-minute match with **61,047 mana still on the map** and both sides at 0
+   * workers: the map was not dry, the economy was deadlocked.
+   *
+   * The map is not the problem there, so raising node capacity would not have fixed it. A player in that position sells something:
+   * a defence is worth less than the income to rebuild an army. The AI now does the same — one non-essential building per pass
+   * until it can afford a worker again.
+   */
+  /**
+   * A DEPLETED WORKER LINE TAKES PRIORITY OVER EVERYTHING ELSE.
+   *
+   * Measured on seed 1035: 30 worker deaths, **24 of them between minutes 7 and 8** in a single raid. The AI then held ~150 mana
+   * against a 200-cost worker and could never rebuild, so income stayed at zero for the remaining 15 minutes of the match while
+   * 61,047 mana sat untouched on the map.
+   *
+   * Below four workers nothing else matters — not defence, not army, not the next build step. That spending already tried to
+   * happen (4-5 `produce` commands were rejected for `mana`), so the failure was liquidity, not intent. This makes the AI stop
+   * committing its bank elsewhere while it is below the floor, which is what a player does instinctively.
+   */
   if (starving) {
     // Hold back exactly one worker so the military planner cannot spend the economy's recovery.
     reservedForBuild = Math.max(0, Math.min(workerCost, per.mana));
@@ -603,6 +682,23 @@ export function planEconomy(
       const share = gap > def.cost * 0.5 ? 0.35 : 0.6;
       reservedForBuild = Math.max(0, Math.min(Math.floor(per.mana * share), Math.max(0, per.mana - 260)));
     }
+  }
+
+  /**
+   * THE WORKER RESERVE — a floor that is never spent below while harvesters are short.
+   *
+   * The economy must never commit its last worker's worth of mana. Measured on seed 1000 with the roomier economy: p2 held
+   * **155 mana with two attunement spires and zero harvesters** — one spire could have trained a replacement worker for 200, but
+   * the bank was 45 short and no worker means no income, so it stayed 45 short forever while p1 sat on 111,700 untouched mana.
+   * Nothing could be sold either, because the yard and both spires are all load-bearing.
+   *
+   * So while the worker line is short, the reserve is at least the cost of the next worker — capped by what is actually in the
+   * bank, since reserving more than you have is the same as reserving all of it. Above the floor the existing build-order share
+   * applies unchanged, because the army still needs its own money.
+   */
+  if (harvesters.length < 2) {
+    const workerFloor = Math.min(workerCost, per.mana);
+    reservedForBuild = Math.max(reservedForBuild, workerFloor);
   }
 
   return { commands, notes, blockedOnPlacement, reservedForBuild };
