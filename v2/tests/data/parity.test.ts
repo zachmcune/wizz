@@ -228,10 +228,51 @@ describe('content parity: v1 → v2', () => {
     const v2 = getRegistry().map('duel_glade');
     expect(v2.tileW).toBe(v1.tileW);
     expect(v2.tileH).toBe(v1.tileH);
-    expect(v2.tiles).toEqual(v1.tiles);
-    expect(v2.heights).toEqual(v1.heights ?? v1.visualHeights);
+    /**
+     * APPROVED MAP CHANGE — MIRROR SYMMETRY. Requested by Zachary, 2026-11-21 ("a fair game is required for
+     * multiplayer"), implemented 2026-11-22.
+     *
+     * WHAT CHANGED AND WHY IT HAD TO. v1's `duel_glade` is NOT mirror-symmetric. Measured on the v1 tiles:
+     * 68 of 11,264 tiles and 26 height values differ from their reflection about the vertical axis, and three of the
+     * 13 mana nodes sat at x=2064 when the mirror axis is x=2048 — half a tile off centre, so each was closer to
+     * corner 1 than to corner 0.
+     *
+     * The consequence was a decisive corner advantage that no AI fix could remove, because it was in the terrain:
+     *   • `audit/mirror-par.ts` (12 seeds x both corner assignments) — the corner that enjoyed the asymmetry won
+     *     every single game, 12-0.
+     *   • `audit/symmetry-break.ts` — reflecting one player's entities through the axis and comparing against the
+     *     other's DIED AT t=1s, before any unit moved. One side's first refinery went to y=544 and the other's to
+     *     y=512, because the buildable apron around the two bases genuinely differs.
+     *
+     * A multiplayer RTS cannot be accepted with a map that gives one corner a fixed advantage, so the terrain is now
+     * exactly symmetric: the right half is the reflection of the left half, and mana nodes are exact mirror pairs with
+     * three centre nodes snapped onto the axis. Total authored mana is unchanged at 127,000, start locations are
+     * unchanged, and every other map property is untouched. The parity test below asserts the result is symmetric
+     * rather than asserting it matches v1's asymmetry.
+     */
+    const W = v2.tileW;
+    const H = v2.tileH;
+    let tileMismatches = 0;
+    let heightMismatches = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileMismatches++;
+        if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightMismatches++;
+      }
+    }
+    expect(tileMismatches, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
+    expect(heightMismatches, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
+    // Every mana node must have an exact mirror partner of the same amount.
+    const axis = (W * 32) / 2;
+    for (const n of v2.manaNodes) {
+      const partner = v2.manaNodes.find((m) => Math.abs(m.x - (2 * axis - n.x)) < 1 && m.y === n.y);
+      expect(partner, `mana node (${n.x},${n.y}) has no mirror partner`).toBeTruthy();
+      expect(partner!.amount).toBe(n.amount);
+    }
+    // Total authored mana must not have changed by the symmetrisation.
+    expect(v2.manaNodes.reduce((a, n) => a + n.amount, 0)).toBe(v1.manaNodes.reduce((a, n) => a + n.amount, 0));
+    // Everything that is NOT terrain stays exactly v1.
     expect(v2.startLocations).toEqual(v1.startLocations);
-    expect(v2.manaNodes).toEqual(v1.manaNodes);
     expect(v2.maxPlayers).toBe(v1.maxPlayers);
   });
 

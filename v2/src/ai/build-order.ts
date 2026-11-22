@@ -99,48 +99,31 @@ export function openingFor(difficulty: string, variant = 0): readonly BuildStep[
    * longer opens on an unmeasured hunch.
    */
   const base = STANDARD_OPENING;
-  if (variant === 0) return base;
   /**
-   * Variant 1 adds an early defense; variant 2 adds a second refinery before the second producer. Both are legal orders a
-   * human might choose, and both change the shape of the early game enough to vary the match.
-   */
-  /**
-   * Variants must all be VIABLE, not merely different.
+   * THE SEEDED OPENING VARIANT IS GONE — IT WAS A FAIRNESS BUG, NOT A FEATURE.
    *
-   * Variant 2 used to insert a second attunement_spire (750 mana) BEFORE the first summoning circle. Measured by pinning each
-   * variant on the same match: variants 0 and 1 both reached their first summoning circle at 3.1 min and their first army at
-   * 3.4 min, while variant 2 reached **neither, ever** — its production was 1500 mana behind and it lost every game it
-   * opened. Since the variant is derived from the match seed, roughly a third of all games were decided by which opening the
-   * seed happened to pick, which is a large part of why difficulty could not separate: the outcome was set before either AI
-   * had made a strategic decision.
+   * `openingFor` used to return a different build order per match seed. The intent was variety ("an AI that always plays
+   * the identical opening makes every seed the same game"), but the variants were never equal in value, and because the
+   * variant came from the seed it turned a match into a lottery on the opening:
    *
-   * Each variant now differs in SHAPE without delaying the first producer: an earlier defense, a faster second producer, or
-   * a refinery immediately after the producer rather than before it.
+   *   • `audit/variant-bias.ts` — pinning each variant head-to-head measured variant 2 at **8-0** while variants 0 and 1
+   *     measured 4-4. Variant 2 originally inserted a second refinery before the first producer, putting its production
+   *     1500 mana behind.
+   *   • `audit/seed-collapse.ts` — in a mirror, every seed drawing variant 0 ended at exactly **16.1 minutes with team 1
+   *     winning**, while every seed drawing variant 1 or 2 **failed to finish inside 34 minutes**. Twelve seeds were
+   *     really three games repeated four times, so a per-seed win rate was not an independent sample.
+   *   • Equalising the multiset was not enough either: the planner executes the FIRST unsatisfied step, so an early
+   *     `arcane_sentry` transposed ahead of the 12 s `summoning_circle` delayed production and skewed the result again.
+   *
+   * A variant that changes strength is not a variation of strategy, it is a handicap applied by a coin flip. Fairness is
+   * a hard Phase 5 requirement and opening variety is not, so the seeded variant is removed. `variant` is kept in the
+   * signature because callers and tests pass it, and `tests/phase5-fairness.test.ts` now asserts that all three variants
+   * are byte-identical — so this cannot silently regress into a strength difference again.
+   *
+   * Match-to-match variety has to come from play that is symmetric in expectation (scouting routes, engagement choices),
+   * not from one side being handed a worse build.
    */
-  if (variant === 1) {
-    const out = [...base];
-    const insertAt = Math.min(2, out.length);
-    out.splice(insertAt, 0, {
-      defId: 'arcane_sentry',
-      notBeforeSeconds: 20,
-      pauseHarvesters: false,
-      why: 'early defense before committing to tech (seeded variant)',
-    });
-    return out;
-  }
-  if (variant === 2) {
-    // Greedy economy, but the producer comes FIRST so the army is never delayed.
-    const out = [...base];
-    const circleAt = out.findIndex((s) => s.defId === 'summoning_circle');
-    const insertAt = circleAt >= 0 ? circleAt + 1 : 2;
-    out.splice(insertAt, 0, {
-      defId: 'attunement_spire',
-      notBeforeSeconds: 30,
-      pauseHarvesters: false,
-      why: 'greedy second refinery straight after the first producer (seeded variant)',
-    });
-    return out;
-  }
+  void variant;
   return base;
 }
 

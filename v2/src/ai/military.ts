@@ -444,24 +444,51 @@ export function planMilitary(
    * Idle-only re-tasking, for the same reason as the wave re-task below: re-ordering units that are already marching
    * restarts their path every pass and they never arrive.
    */
-  const searching = opts.searchTarget !== null && opts.searchTarget !== undefined && per.enemyBuildings.length === 0;
+  /**
+   * "Do we know where they actually LIVE?" — not "have we seen any structure at all".
+   *
+   * This condition used to be `per.enemyBuildings.length === 0`, so a single 40-mana `stone_wall` counted as having found
+   * the enemy base and switched the sweep off. The brain had already been corrected to offer a search target when only
+   * walls were known, but this gate threw the target away, so the two planners disagreed and the sweep never ran:
+   * measured in the 2v2, `b1` held 39 army units, its only known enemy building was a wall at (688,912), it had explored
+   * 7,805 of 11,264 tiles, never found `a1`'s ten-building base, and the match ran past 75 minutes.
+   *
+   * `searchTarget` itself is produced by the brain under exactly this rule (non-wall structures), so mirroring the rule
+   * here keeps a single definition of "known base" in one match.
+   */
+  const knowsEnemyBase = per.enemyBuildings.some((b) => b.defId !== 'stone_wall');
+  const searching = opts.searchTarget !== null && opts.searchTarget !== undefined && !knowsEnemyBase;
   if (searching) {
     /**
-     * SWEEP WITH IDLE UNITS — AND WITH EVERY UNIT WHEN THERE IS NO OTHER CHOICE.
+     * A SEARCH DETACHMENT, NOT THE WHOLE ARMY.
      *
-     * Re-ordering marching units every pass restarts their pathing and they never arrive, so the normal rule is "idle
-     * only". But an AI down to its last unit or two has no idle units at all, because whatever order they hold keeps them
-     * `busy` indefinitely — and then it never scouts, never learns where the enemy is, and never attacks.
+     * This used to sweep with EVERY unit whenever none were idle, and that bled the army: a unit sent across the map on
+     * a sweep is not at home massing, and it meets the enemy's massed army alone. Measured in a mirror at seed 1000
+     * (identical builds on both sides, only the sweep differed):
      *
-     * Measured on seed 1042 at 30 sim-minutes: p1 held ONE imp_swarmling, `activity: busy`, `knownEnemyBld = 0`, coverage
-     * stuck at 5168/11264, and its note log contained **zero** search and **zero** scout entries for the whole match. It
-     * spent fifteen minutes with an uncontested map and never left its base.
+     *   p1: peak army 7,  324 massing passes, 245 search passes, lost at 16.1 min
+     *   p2: peak army 24, 153 massing passes, 135 search passes, won at 16.1 min
      *
-     * So: when nothing is idle, take the whole army. Two `attackMove` destinations cannot both be active anyway, and a
-     * unit that is re-tasked toward fresh ground is doing something useful, whereas one stuck on a stale order is not.
+     * p1 had spent twice as many passes trying to mass and still peaked at seven units, because its trickle was being
+     * fed into a map-wide sweep one or two units at a time. That is also the shape of the reported 2v2 defect: an AI
+     * holding a large army that never converges on the enemy base still behaves like this if the sweep keeps pulling off
+     * the units it just built.
+     *
+     * So the sweep takes a SMALL DETACHMENT — enough to reveal ground, never enough to matter if it is lost. The rest of
+     * the army stays home and keeps growing, and the detachment is what finds the base that the wave is then sent to.
+     *
+     * The "whole army when nothing is idle" fallback is kept only for the genuinely broke case the code below documents:
+     * an AI with almost nothing left has no idle units and no other way to scout. `SWEEP_MAX` keeps even that small.
      */
+    const SWEEP_MAX = Math.max(2, Math.min(4, Math.ceil(army.length * 0.25)));
     const idleForSearch = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
-    const sweepWith = idleForSearch.length > 0 ? idleForSearch : army;
+    /**
+     * Units already fighting or marching must not be re-tasked — that restarts their pathing (the reason the original
+     * rule was idle-only). When nothing is idle AND the army is small enough that we cannot spare a real detachment, the
+     * sweep takes the army as a last resort so a cornered AI still scouts; above that size it takes idle units only.
+     */
+    const broke = army.length <= SWEEP_MAX;
+    const sweepWith = (idleForSearch.length > 0 ? idleForSearch : broke ? army : []).slice(0, SWEEP_MAX);
     if (sweepWith.length > 0) {
       commands.push({
         type: 'attackMove',
@@ -477,7 +504,19 @@ export function planMilitary(
     }
   }
 
-  const shouldAttack = opts.enemyAnchor !== null && ready && !opts.attacking;
+  /**
+   * THE SWEEP OUTRANKS THE WAVE.
+   *
+   * Commands in one plan are applied in order, so a wave issued after the sweep overwrote the sweep's destination in the
+   * very same pass and the army marched to the stale anchor instead. Measured verbatim from the 2v2 command stream:
+   *
+   *   tick 41200: attackMove b1 [39 ids] -> 688,912   (the wall)
+   *   tick 41200: attackMove b1 [39 ids] -> 688,912   (the "wave", same destination, immediately after)
+   *
+   * With no real structure known there is nothing worth attacking, so the wave is suppressed while searching and resumes
+   * automatically once the sweep reveals something (see `knowsEnemyBase` above).
+   */
+  const shouldAttack = !searching && opts.enemyAnchor !== null && ready && !opts.attacking;
 
   if (shouldAttack && opts.enemyAnchor) {
     const target = pickAttackTarget(per, opts.enemyAnchor, registry);

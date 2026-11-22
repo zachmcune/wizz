@@ -25,7 +25,7 @@ import type { Registry } from '../data/registry';
 import type { BuildingDef, UnitDef } from '../data/defs';
 import type { GameState, Player, PlayerId, EntityId, TeamId } from '../sim/types';
 import { KIND_BUILDING, KIND_RESOURCE_NODE, KIND_UNIT, STATE_HARVESTING, STATE_IDLE, STATE_RETURNING } from '../sim/entity-store';
-import { MAX_UNITS_PER_PLAYER } from '../core/constants';
+import { MAX_UNITS_PER_PLAYER, TILE } from '../core/constants';
 import type { SimServices } from '../sim/context';
 import { isAlly, isEnemy, ownerOf } from '../sim/queries';
 import { isBuildingInLiveSight, isTileVisible, radarActive } from '../sim/fog';
@@ -123,10 +123,19 @@ export interface Perception {
   completedResearch: ReadonlySet<string>;
   factionId: string;
 
-  /** Our units. */
+  /** Our units. STRICTLY ours — a teammate's units are in `alliedUnits`, because we cannot command them. */
   myUnits: SeenUnit[];
-  /** Our buildings, complete and under construction. */
+  /** Our buildings. STRICTLY ours — a teammate's buildings are in `alliedBuildings`. */
   myBuildings: SeenBuilding[];
+  /**
+   * A TEAMMATE'S UNITS AND BUILDINGS, kept separate from our own.
+   *
+   * These are fully visible (teams share sight) but we cannot give them orders and must not count them as our economy,
+   * our base, or our army. They exist so coordination can use them — a teammate's army near a target, a teammate's base
+   * to defend — without the planners mistaking them for their own.
+   */
+  alliedUnits: SeenUnit[];
+  alliedBuildings: SeenBuilding[];
   /** Enemy units currently in sight. Units that leave sight vanish — no tracking through fog. */
   enemyUnits: SeenUnit[];
   /** Enemy buildings in live sight PLUS remembered ghosts. `live` distinguishes them. */
@@ -153,6 +162,24 @@ export interface Perception {
    * units from the goal, never exploring.
    */
   tileWalkable: (tx: number, ty: number) => boolean;
+  /**
+   * Static map landmarks: every start location and every mana node, in world units.
+   *
+   * These are PUBLIC, like the cliffs and the resource nodes themselves — the lobby shows you the start positions
+   * before the match begins, and nodes are already exposed in full through `nodes` (they are terrain, not units).
+   * Nothing here depends on fog: it is the same class of information as `tileWalkable`, which the AI has always used
+   * to avoid sending armies into cliffs.
+   *
+   * The AI needs them because "sweep unexplored ground" alone is not a search *plan*. A base is not uniformly
+   * likely to be anywhere on the map: it is at a start location, and failing that it is near a node cluster, because
+   * every economy in the game must sit beside mana. Ranking unexplored ground by "how likely is an enemy base here"
+   * instead of merely "how far away is it" is what turns a random walk into a systematic search.
+   *
+   * The enemy's actual *presence* at those locations is still discovered through fog. Measured in the 2v2: `b1`
+   * explored only 7,805 of 11,264 tiles in 75 minutes while holding 39 army units, because nothing directed it to the
+   * four places a base could plausibly be.
+   */
+  landmarks: { starts: { x: number; y: number }[]; nodes: { x: number; y: number }[] };
   /** True when a powered radar building is up. */
   radar: boolean;
 }
@@ -188,6 +215,8 @@ export class PerceivedWorld {
 
     const myUnits: SeenUnit[] = [];
     const myBuildings: SeenBuilding[] = [];
+    const alliedUnits: SeenUnit[] = [];
+    const alliedBuildings: SeenBuilding[] = [];
     const enemyUnits: SeenUnit[] = [];
     const enemyBuildings: SeenBuilding[] = [];
     const nodes: SeenNode[] = [];
@@ -211,7 +240,22 @@ export class PerceivedWorld {
 
       if (kind === KIND_UNIT) {
         if (friendly) {
-          myUnits.push(this.unitView(st, slot, owner, defId, true));
+          /**
+           * `myUnits` IS STRICTLY *MY* UNITS — allies go in `alliedUnits`.
+           *
+           * Both used to be pushed into `myUnits`, and every consumer assumes ownership: the economy counts these as
+           * workers it can re-task, the army counts them as units it can order, and `planMilitary` issues commands with
+           * them. In a team game that meant a brain believed its teammate's army was its own and tried to command it,
+           * and believed its teammate's buildings were its own base:
+           *
+           *   measured, 2v2 seed 2005 after 10 s — `a2` saw 3 "my" buildings (a1:2, a2:1) and 5 "my" units
+           *   (a1:3, a2:2) while it actually owned 2 buildings. It sized its refineries and worker count from the TEAM
+           *   total and anchored its build search on its teammate's base, so it could neither place structures nor
+           *   produce: 1 unit and 2 buildings for 28 minutes with 8,325 unspent mana.
+           */
+          const view = this.unitView(st, slot, owner, defId, true);
+          if (owner === playerId) myUnits.push(view);
+          else alliedUnits.push(view);
         } else if (this.canSee(st, slot, playerId, nav)) {
           enemyUnits.push(this.unitView(st, slot, owner, defId, false));
         }
@@ -221,7 +265,9 @@ export class PerceivedWorld {
 
       if (kind === KIND_BUILDING) {
         if (friendly) {
-          myBuildings.push(this.buildingView(st, slot, owner, defId, true, true));
+          const view = this.buildingView(st, slot, owner, defId, true, true);
+          if (owner === playerId) myBuildings.push(view);
+          else alliedBuildings.push(view);
         } else if (isBuildingInLiveSight(st, playerId, slot, nav)) {
           enemyBuildings.push(this.buildingView(st, slot, owner, defId, false, true));
         }
@@ -282,6 +328,8 @@ export class PerceivedWorld {
       factionId: me.factionId ?? 'arcane',
       myUnits,
       myBuildings,
+      alliedUnits,
+      alliedBuildings,
       enemyUnits,
       enemyBuildings,
       nodes,
@@ -292,9 +340,31 @@ export class PerceivedWorld {
       mapW: this.nav.w,
       mapH: this.nav.h,
       tileWalkable: (tx: number, ty: number) => this.services.nav.canPlace(tx, ty, 1),
+      landmarks: this.landmarksFor(st),
       radar: radarActive(st, registry, playerId),
     };
   }
+
+  /**
+   * The map's published start locations and mana nodes, in world units.
+   *
+   * Read from the map definition (static level data), never from player or entity fog state. Cached because a map
+   * definition does not change during a match, and this is called on every decision pass.
+   */
+  private landmarksFor(st: GameState): { starts: { x: number; y: number }[]; nodes: { x: number; y: number }[] } {
+    const key = st.mapId;
+    const cached = this.landmarkCache.get(key);
+    if (cached) return cached;
+    const map = this.registry.maps.get(key);
+    const value = {
+      starts: (map?.startLocations ?? []).map((s) => ({ x: s.x * TILE, y: s.y * TILE })),
+      nodes: (map?.manaNodes ?? []).map((n) => ({ x: n.x * TILE, y: n.y * TILE })),
+    };
+    this.landmarkCache.set(key, value);
+    return value;
+  }
+
+  private readonly landmarkCache = new Map<string, { starts: { x: number; y: number }[]; nodes: { x: number; y: number }[] }>();
 
   /** Can this player see that entity right now? Allies and own units are always visible. */
   private canSee(st: GameState, slot: number, playerId: PlayerId, nav: { w: number; h: number }): boolean {

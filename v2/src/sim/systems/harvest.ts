@@ -42,8 +42,10 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
   const owner = store.ownerId(store.ownerIndex[unitSlot]!);
   let best = -1;
   let bestD = Infinity;
+  let bestRank = 0;
   let yard = -1;
   let yardD = Infinity;
+  let yardRank = 0;
   for (let slot = 0; slot < store.count; slot++) {
     if (store.dead[slot] || store.kind[slot] !== KIND_BUILDING) continue;
     if (store.ownerId(store.ownerIndex[slot]!) !== owner) continue;
@@ -55,9 +57,10 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
     const dy = store.posY[slot]! - store.posY[unitSlot]!;
     const d = dx * dx + dy * dy;
     if (bdef.isRefinery) {
-      if (d < bestD) {
+      if (d < bestD || (d === bestD && positionRank(store.posX[slot]!, store.posY[slot]!) < bestRank)) {
         bestD = d;
         best = slot;
+        bestRank = positionRank(store.posX[slot]!, store.posY[slot]!);
       }
     } else if (bdef.isConstructionYard) {
       /**
@@ -73,29 +76,60 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
        * player placed deliberately), so refinery placement still matters — which is what keeps the §5.5
        * decision about refinery distance intact.
        */
-      if (d < yardD) {
+      if (d < yardD || (d === yardD && positionRank(store.posX[slot]!, store.posY[slot]!) < yardRank)) {
         yardD = d;
         yard = slot;
+        yardRank = positionRank(store.posX[slot]!, store.posY[slot]!);
       }
     }
   }
   return best >= 0 ? best : yard;
 }
 
+/**
+ * A SYMMETRIC TIE-BREAK FOR "NEAREST", BECAUSE SLOT ORDER IS NOT NEUTRAL.
+ *
+ * Both `nearestNode` and `nearestRefinery` scan the entity store in ascending slot order and kept the FIRST entity on a
+ * distance tie (`d < bestD`). Slots are allocated in spawn order, and the map is authored from the top-left, so the
+ * lower slot index is systematically the entity further LEFT and UP. Two workers exactly between two nodes therefore
+ * both chose the lower-indexed one — which for one base is the node on its left and for the other base is the node
+ * toward the map centre. The mirror measured 16/16 to the lower-x corner (`audit/mirror4way.ts`), independent of player
+ * id and of creation order, which is what a positional bias looks like.
+ *
+ * The tie-break is now a hash of the tile position: deterministic across replays, and carrying no preference for left,
+ * right, up or down. A collision is harmless — it just means slot order decides between two exactly equidistant nodes.
+ */
+function positionRank(x: number, y: number): number {
+  const tx = Math.floor(x / TILE);
+  const ty = Math.floor(y / TILE);
+  let h = Math.imul(tx | 0, 0x27d4eb2d) ^ Math.imul(ty | 0, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 function nearestNode(state: GameState, unitSlot: number): number {
   const store = state.entities;
   let best = -1;
   let bestD = Infinity;
+  let bestRank = 0;
   for (let slot = 0; slot < store.count; slot++) {
     if (store.dead[slot] || store.kind[slot] !== KIND_RESOURCE_NODE) continue;
     if (store.amount[slot]! <= 0) continue;
     const dx = store.posX[slot]! - store.posX[unitSlot]!;
     const dy = store.posY[slot]! - store.posY[unitSlot]!;
     const d = dx * dx + dy * dy;
-    if (d < bestD) {
-      bestD = d;
+    if (d > bestD) continue;
+    if (d === bestD) {
+      const rank = positionRank(store.posX[slot]!, store.posY[slot]!);
+      if (rank >= bestRank) continue;
+      bestRank = rank;
       best = slot;
+      continue;
     }
+    bestD = d;
+    best = slot;
+    bestRank = positionRank(store.posX[slot]!, store.posY[slot]!);
   }
   return best;
 }

@@ -43,7 +43,23 @@ import {
   setProjectile,
 } from '../capabilities';
 
+/**
+ * Two separate scratch buffers, because these queries NEST.
+ *
+ * `acquireTarget` iterates its candidate list while calling `swarmScore` for each candidate, and `swarmScore` runs its
+ * own `queryRadius`. `queryRadius` CLEARS the `out` array before filling it, so when both used one module-level array the
+ * inner call truncated the outer loop's candidate list mid-iteration and rewrote its contents with a different entity
+ * set. The outer loop's `i < ids.length` then compared against the *new* length, so candidates were silently skipped and
+ * the loop could even terminate early.
+ *
+ * Which candidates survived depended on the weapon (`swarmScore` only runs for `preferSwarms`) and on iteration order,
+ * which is ascending slot order — and slots are allocated player by player, so the truncation landed differently on each
+ * side. That is exactly the shape of a slot-order advantage.
+ *
+ * Separate buffers make nesting safe.
+ */
 const scratch: number[] = [];
+const scratchInner: number[] = [];
 
 export function weaponOfSlot(registry: Registry, store: EntityStore, slot: number): WeaponDef | null {
   const ex = store.extras[slot]!;
@@ -133,7 +149,7 @@ function swarmScore(
   const tx = store.posX[targetSlot]!;
   const ty = store.posY[targetSlot]!;
   let score = 0;
-  const ids = ctx.services.spatial.queryRadius(tx, ty, radius, scratch);
+  const ids = ctx.services.spatial.queryRadius(tx, ty, radius, scratchInner);
   for (const slot of ids) {
     if (store.dead[slot]) continue;
     const kind = store.kind[slot]!;

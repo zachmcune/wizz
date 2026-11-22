@@ -914,14 +914,24 @@ function orderNodeOf(u: SeenUnit): number | null {
 function nearestFreeNode(u: SeenUnit, nodes: SeenNode[], claimed: Set<number>): SeenNode | null {
   let best: SeenNode | null = null;
   let bestScore = Infinity;
+  let bestHash = 0;
   for (const n of nodes) {
     const crowded = claimed.has(n.id);
     const d = Math.hypot(n.x - u.x, n.y - u.y);
     // Crowding is a large penalty rather than an exclusion, so an all-claimed set still yields a target.
     const score = d + (crowded ? 4000 : 0) - Math.min(2000, n.remaining / 10);
-    if (score < bestScore) {
+    /**
+     * SYMMETRIC TIE-BREAK, not array order.
+     *
+     * `score < bestScore` kept the first node on a tie, and `nodes` is built in entity-slot order — which is node
+     * allocation order, a fixed geographic sequence. Two workers equidistant from two nodes would therefore always pick
+     * the lower-indexed one, and in a mirror that is a different compass direction for each base. The position hash
+     * carries no directional bias and is stable across replays.
+     */
+    if (score < bestScore || (score === bestScore && spotHash(n.x, n.y) < bestHash)) {
       bestScore = score;
       best = n;
+      bestHash = spotHash(n.x, n.y);
     }
   }
   return best;
@@ -973,7 +983,6 @@ export function findBuildSpot(
 
   const yardH = groundHeightAt(services, yard.x, yard.y);
   const half = (def.footprint * TILE) / 2;
-  const grid = TILE;
   const maxRadiusTiles = 14;
   /**
    * Where the threat is, for placing defenses on the side that matters.
@@ -1019,12 +1028,36 @@ export function findBuildSpot(
         // Only the ring's perimeter, so we spiral outwards instead of rescanning the interior.
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
         /**
+       * BUILD CANDIDATES ARE TILE-ALIGNED ON THE FOOTPRINT ORIGIN, NOT OFFSET FROM THE YARD CENTRE.
+       *
+       * This used to be `x = anchor.x + dx * TILE`, a world-unit offset from the yard's CENTRE. Placement then goes
+       * through `buildingOrigin`, which is `floor((x - footprint*TILE/2) / TILE)`. For an EVEN footprint that floor is not
+       * mirror-covariant: a 2x2 spire at x=528 resolves to tiles [15,16], but the mirror position x=3568 resolves to
+       * [110,111] when the mirror of [15,16] is [111,112]. The rounding is one tile off, and always toward -x.
+       *
+       * The effect was that the two bases had genuinely different buildable aprons. `audit/symmetry-break.ts` caught it
+       * as the first divergence of a mirror match, at t=1s, before any unit moved:
+       *
+       *   p1  attunement_spire at (544,544)
+       *   p2  attunement_spire at (544,512) after reflection — one tile row apart
+       *
+       * and `audit/mirror4way.ts` measured the consequence: the lower-x corner won 16 of 16 games, regardless of which
+       * player id or creation index occupied it. That is the positional bias this whole investigation started from.
+       *
+       * Working in TILE space instead removes the rounding entirely: the candidate origin is the yard's own origin tile
+       * plus (dx, dy), so the candidate set is exactly mirror-covariant. The world position is then the centre of that
+       * footprint, reconstructing the same coordinate the sim will compute.
+       */
+      /**
        * ECONOMY buildings cluster on the yard; DEFENSES cluster on the economy they are protecting.
        */
-      const anchorX = def.menuCategory === 'defenses' ? defenseAnchor.x : yard.x;
-      const anchorY = def.menuCategory === 'defenses' ? defenseAnchor.y : yard.y;
-      const x = anchorX + dx * grid;
-      const y = anchorY + dy * grid;
+      const anchor = def.menuCategory === 'defenses' ? defenseAnchor : { x: yard.x, y: yard.y };
+      const yardOriginX = Math.floor((anchor.x - half) / TILE);
+      const yardOriginY = Math.floor((anchor.y - half) / TILE);
+      const originTx = yardOriginX + dx;
+      const originTy = yardOriginY + dy;
+      const x = (originTx + def.footprint / 2) * TILE;
+      const y = (originTy + def.footprint / 2) * TILE;
         if (x - half < TILE || y - half < TILE) continue;
         if (x + half > (per.mapW - 1) * TILE || y + half > (per.mapH - 1) * TILE) continue;
         if (groundHeightAt(services, x, y) !== yardH) continue;
@@ -1099,9 +1132,58 @@ export function findBuildSpot(
     if (candidates.length > 0 && ring >= ringCap) break;
   }
   if (candidates.length === 0) return null;
+  /**
+   * PLACEMENT TIES MUST NOT RESOLVE BY SCAN ORDER — IT WAS A MIRROR BIAS.
+   *
+   * The scan walks rings outward and, within a ring, `dy` then `dx` from `-ring` upward. Keeping the first candidate with a
+   * strictly better score therefore broke every tie toward the TOP-LEFT of the ring, i.e. toward negative x and negative y.
+   * In a mirror the two bases face opposite directions, so "toward -y" is a different part of each base's neighbourhood:
+   * one side put its first refinery one tile row above the sanctum and the other one below.
+   *
+   * Measured with `audit/symmetry-break.ts`, which reflects one player's entities through the map's vertical axis and
+   * compares against the other player's. The FIRST divergence of a mirror match was at t=1s, before any unit had moved:
+   *
+   *   p1  attunement_spire at y=544
+   *   p2  attunement_spire at y=512   (its mirror image would be 544)
+   *
+   * Every base after that inherited a slightly different geometry — different wall exposure, different refinery-to-node
+   * distance — and the mirror result was 12-0 to whichever corner the scan favoured.
+   *
+   * So the tie-break is now a SYMMETRIC position hash rather than scan order: it is stable for a given tile (so a replay is
+   * identical) and gives no direction any systematic preference.
+   */
   let best = candidates[0]!;
-  for (const c of candidates) if (c.score > best.score) best = c;
+  let bestTie = Math.min(best.x, best.y) | 0;
+  let bestHash = spotHash(best.x, best.y);
+  for (const c of candidates) {
+    if (c.score > best.score) {
+      best = c;
+      bestHash = spotHash(c.x, c.y);
+      continue;
+    }
+    if (c.score < best.score) continue;
+    const h = spotHash(c.x, c.y);
+    if (h < bestHash) {
+      best = c;
+      bestHash = h;
+    }
+  }
+  void bestTie;
   return { x: best.x, y: best.y };
+}
+
+/**
+ * A symmetric, position-only tie-break value.
+ *
+ * Derived from the tile coordinates and nothing else, so it is deterministic across replays and carries no directional bias
+ * (unlike "first in a scan that runs top-left outward"). Two different candidate tiles are overwhelmingly unlikely to
+ * collide, and a collision merely means the scan order decides between two equally good spots.
+ */
+function spotHash(x: number, y: number): number {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 function footprintTiles(footprint: number): number[] {

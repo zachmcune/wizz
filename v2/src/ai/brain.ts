@@ -56,6 +56,38 @@ export interface BrainMemory {
   passesWithoutProgress: number;
   /** Highest enemy-building destruction count we have observed, to detect progress. */
   enemyBuildingsLost: number;
+  /**
+   * Where the search has already been sent, as coarse tile stamps.
+   *
+   * `nextUnexplored` ranks candidates by how likely a base is there (start locations, then node clusters, then
+   * unexplored ground), which means the same high-value candidate stays top-ranked until it is actually explored. If
+   * its destination turns out to be unreachable, or the army is re-tasked before arriving, the search re-picks it
+   * forever and never looks anywhere else. The ledger records each destination at the moment it is chosen, and a
+   * candidate within `LEDGER_RADIUS` of a stamp is skipped in favour of the next one — so the search sweeps a
+   * SEQUENCE of objectives rather than oscillating around a single one.
+   *
+   * It only ever stores destinations the AI itself picked, so it is not a record of hidden information.
+   */
+  scoutLedger: { tx: number; ty: number }[];
+  /**
+   * The search objective the army is currently committed to, so it is not re-chosen every decision pass.
+   *
+   * `nextUnexplored` re-ranks candidates by likelihood, so the same top candidate is produced until it is actually
+   * explored. That is correct for choosing, but it must not be a NEW order every pass: re-issuing an `attackMove` to
+   * the same point restarts pathing and the army never arrives (measured earlier — that exact bug froze exploration at
+   * 2029 of 11264 tiles). Keeping the objective here lets the planner emit an order only when the target changes.
+   *
+   * `expiresAt` retires an objective that has been held too long, which covers the case where its destination is
+   * unreachable: the ledger stamp then pushes the search on to the next candidate instead of retrying forever.
+   */
+  scoutTarget: { x: number; y: number; expiresAt: number } | null;
+  /**
+   * This player's own production-pass counter, for the producer round-robin.
+   *
+   * Deliberately NOT the shared match tick: see the note at its use site. A per-player counter keeps the rotation local
+   * so two players in the same match do not step through their producer lists in lockstep.
+   */
+  produceTick: number;
 }
 
 
@@ -95,6 +127,16 @@ const STALEMATE_PASSES = 90;
  */
 const DESPERATION_SECONDS = 20 * 60;
 
+/**
+ * How long one search objective is held before the search gives up on it and moves on, in sim seconds.
+ *
+ * A cross-map march on `duel_glade` takes roughly 60-90 seconds, so this allows several attempts at the same
+ * objective (in case the army is intercepted) while still guaranteeing that an unreachable destination cannot consume
+ * the rest of the match. Combined with the scout ledger — which marks each objective the moment it is chosen — this is
+ * what makes the search a sequence rather than an oscillation.
+ */
+const SEARCH_OBJECTIVE_SECONDS = 75;
+
 export interface BrainTickResult {
   commands: Command[];
   notes: string[];
@@ -104,10 +146,14 @@ export interface BrainTickResult {
 export class AiBrain {
   readonly profile: DifficultyProfile;
   /**
-   * Seeded opening variant for this player in this match.
+   * Seeded opening variant for this match.
    *
-   * Derived from the match seed and the player id so it is reproducible: the same seed always yields the same opening, and
-   * two AI players in the same match get independent picks. Set on first observation of the seed.
+   * Derived from the match seed ALONE so it is reproducible (same seed, same opening) and, critically, symmetric: every
+   * player in a given match draws the same variant. Hashing the player id in here (as this did originally) made mirror
+   * opponents play *different* openings against each other, which is a structural first-player advantage no amount of
+   * average-strength balancing can remove: `audit/variant-bias.ts` measured the variants at equal strength head-to-head
+   * (4-4, 4-4, 4-4 after equalisation) but `audit/pairs.ts` still showed the better-drawing slot winning. Variety across
+   * matches is preserved because the seed still varies.
    */
   private openingVariant = 0;
   private variantSeed = -1;
@@ -124,6 +170,9 @@ export class AiBrain {
     regroupUntil: 0,
     passesWithoutProgress: 0,
     enemyBuildingsLost: 0,
+    scoutLedger: [],
+    scoutTarget: null,
+    produceTick: 0,
   };
   private readonly world: PerceivedWorld;
 
@@ -164,8 +213,18 @@ export class AiBrain {
     if (this.variantSeed !== state.seed) {
       this.variantSeed = state.seed;
       let h = (state.seed >>> 0) ^ 0x9e3779b9;
-      for (let i = 0; i < this.playerId.length; i++) h = Math.imul(h ^ this.playerId.charCodeAt(i), 0x85ebca6b) >>> 0;
-      this.openingVariant = h % 3;
+      h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+      /**
+       * The final fold must be coerced UNSIGNED before the modulo.
+       *
+       * `h ^ (h >>> 16)` is a bitwise XOR, so its result is a SIGNED 32-bit int and can be negative. `% 3` on a negative
+       * number is negative in JavaScript, which produced variants of -2 and -1 — values `openingFor` has no branch for, so
+       * they silently fell through to the base order. Measured: `audit/variant-h2h.ts` reported "variant -2 = seed 2",
+       * meaning a third of the seed space was quietly playing variant 0 while the mirror analysis assumed three distinct
+       * variants were being compared.
+       */
+      this.openingVariant = ((h ^ (h >>> 16)) >>> 0) % 3;
     }
 
     if (this.memory.cooldown > 0) {
@@ -353,7 +412,9 @@ export class AiBrain {
        * 75 minutes while it chewed scaffolding.
        */
       searchTarget:
-        per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length === 0 ? nextUnexplored(per) : null,
+        per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length === 0
+          ? this.searchObjective(per)
+          : null,
     });
     commands.push(...mil.commands);
     notes.push(...mil.notes);
@@ -450,8 +511,20 @@ export class AiBrain {
       const armyNow = per.myUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
       const aboveReserve = target !== null && spendable > Math.max(150, target.cost * 2);
       if (target && aboveReserve && armyNow < armyTarget && per.supplyUsed < per.supplyCap) {
-        // Round-robin across producers so neither sits idle.
-        const b = producers[per.tick % producers.length]!;
+        /**
+         * ROUND-ROBIN ACROSS PRODUCERS, COUNTED FROM THIS PLAYER'S OWN PASSES.
+         *
+         * This used `producers[per.tick % producers.length]`, and `per.tick` is the shared match tick — the same number for
+         * every player in the match. Two players with the same number of producers therefore picked the SAME index on
+         * every pass, and since producers are ordered by building id (allocation order), that index resolved to a
+         * different position within each player's base. The two sides then preferred different buildings in their own
+         * lineup, which is a per-player production pattern driven by nothing but the clock.
+         *
+         * A per-player counter keeps the intent — "rotate, so no producer sits idle" — without making the rotation a
+         * function of shared state.
+         */
+        this.memory.produceTick += 1;
+        const b = producers[this.memory.produceTick % producers.length]!;
         const def = this.registry.buildings.get(b.defId);
         if (def?.producesUnits?.includes(target.id)) {
           commands.push({ type: 'produce', playerId: pid, buildingId: b.id, defId: target.id });
@@ -549,7 +622,7 @@ export class AiBrain {
            * So the order is only refreshed when the unit is actually free to take a new one.
            */
           const free = scouts.filter((u) => u.activity === 'idle' || u.activity === undefined);
-          const target = nextUnexplored(per);
+          const target = this.searchObjective(per);
           if (target && free.length > 0) {
             commands.push({
               type: 'move',
@@ -634,6 +707,44 @@ export class AiBrain {
    * cheapest research whose prerequisites are met and whose building we own, rather than hoarding for the most
    * expensive one.
    */
+  /**
+   * The army's current search objective, held stable across decision passes.
+   *
+   * Returns a destination and records it in the ledger the first time it is chosen. The objective is kept until it is
+   * reached (which reveals ground), until it expires, or until a real enemy structure is found — at which point the
+   * normal wave logic takes over and the search stops entirely. Only re-chosen when it changes, so the planner does not
+   * restart the army's pathing every pass.
+   */
+  private searchObjective(per: Perception): { x: number; y: number } | null {
+    const now = per.tick;
+    const held = this.memory.scoutTarget;
+
+    // Arrived (or near enough that walking further would not reveal anything new): rotate to the next objective.
+    const arrived =
+      held !== null &&
+      (Math.hypot((per.myUnits[0]?.x ?? 0) - held.x, (per.myUnits[0]?.y ?? 0) - held.y) < TILE * 3 ||
+        per.exploredTiles.has(Math.floor(held.y / TILE) * per.mapW + Math.floor(held.x / TILE)));
+
+    if (held && !arrived && now < held.expiresAt) return { x: held.x, y: held.y };
+
+    const next = nextUnexplored(per, this.memory.scoutLedger);
+    if (!next) {
+      this.memory.scoutTarget = null;
+      return null;
+    }
+    /**
+     * STAMP THE OBJECTIVE BEFORE LOOKING FOR THE NEXT ONE.
+     *
+     * The stamp is what guarantees forward progress: with this candidate marked, the next call to `nextUnexplored`
+     * skips it and proposes the one after it, so a chain of objectives is walked even if the army is pulled away
+     * before any of them is reached. Bounded so a long match cannot grow the ledger without limit.
+     */
+    this.memory.scoutLedger.push({ tx: Math.floor(next.x / TILE), ty: Math.floor(next.y / TILE) });
+    if (this.memory.scoutLedger.length > 96) this.memory.scoutLedger.shift();
+    this.memory.scoutTarget = { x: next.x, y: next.y, expiresAt: now + SEARCH_OBJECTIVE_SECONDS * 20 };
+    return next;
+  }
+
   private planResearch(per: Perception, notes: string[], spendableRef: number): Command[] {
     const out: Command[] = [];
     const buildings = per.myBuildings.filter((b) => b.buildProgress === undefined);
@@ -724,14 +835,102 @@ export class AiBrain {
  *
  * `exploredTiles` is what the player's own vision has revealed, so this remains entirely legal information.
  */
-function nextUnexplored(per: Perception): { x: number; y: number } | null {
+function nextUnexplored(
+  per: Perception,
+  ledger?: readonly { tx: number; ty: number }[],
+): { x: number; y: number } | null {
   if (per.exploredTiles.size >= per.mapW * per.mapH) return null;
   const from = per.myBuildings[0] ?? per.myUnits[0];
   const cx = from ? Math.floor(from.x / TILE) : Math.floor(per.mapW / 2);
   const cy = from ? Math.floor(from.y / TILE) : Math.floor(per.mapH / 2);
 
   /**
-   * SWEEP THE MAP IN COARSE CELLS, FARTHEST FIRST.
+   * SYSTEMATIC SEARCH: START LOCATIONS, THEN NODE CLUSTERS, THEN WHATEVER IS LEFT.
+   *
+   * "Head for the farthest unexplored ground" is a heuristic, not a search plan. It treats every unseen tile as equally
+   * likely to hold an enemy base, which is false: a base is at a start location, or failing that beside mana, because
+   * every economy in this game must mine. That difference is what leaves an AI wandering: measured in the 2v2, `b1`
+   * explored 7,805 of 11,264 tiles over 75 minutes while holding 39 army units and never found `a1`'s ten-building base,
+   * because nothing told it the four places a base could be.
+   *
+   * So candidates are ranked by "how likely is a base here", with distance only breaking ties:
+   *
+   *   1. an UNSEEN START LOCATION — the single highest-value place to look, and the first thing a human checks;
+   *   2. an UNSEEN NODE CLUSTER — a base must sit by mana, so a node nobody has looked at is the next best bet
+   *      (a large cluster is worth more than a lone node, and a far one is more likely to be the enemy's, since our
+   *      own expansion already covers the nearby ones);
+   *   3. otherwise the farthest mostly-unexplored block, which is the old behaviour and now only the fallback.
+   *
+   * Every candidate is checked against the `ledger`, which remembers where the scout has ALREADY been sent, so the
+   * search cannot re-pick the same spot forever when its destination turns out to be unreachable or already covered
+   * by the time the army arrives. The ledger is a set of visit stamps on a coarse world grid, supplied by the brain
+   * and never derived from hidden state.
+   *
+   * Legality: start locations, node positions and terrain are all published map data (the lobby shows starts before the
+   * match, and nodes are already exposed in full through `per.nodes`). Whether an enemy is actually AT one is still
+   * discovered through fog like anything else.
+   */
+  const LEDGER_RADIUS = 6; // tiles: a candidate within this many tiles of a stamp counts as visited
+  const visited = (tx: number, ty: number): boolean => {
+    if (!ledger) return false;
+    return ledger.some((v) => Math.abs(v.tx - tx) <= LEDGER_RADIUS && Math.abs(v.ty - ty) <= LEDGER_RADIUS);
+  };
+  /** Is a world point already revealed? A candidate we can already see is not worth walking to. */
+  const revealed = (wx: number, wy: number): boolean => {
+    const tx = Math.floor(wx / TILE);
+    const ty = Math.floor(wy / TILE);
+    if (tx < 0 || ty < 0 || tx >= per.mapW || ty >= per.mapH) return true;
+    return per.exploredTiles.has(ty * per.mapW + tx);
+  };
+  /** Nearest walkable tile to a world point, so a candidate on a cliff is still usable. */
+  const walkableNear = (wx: number, wy: number): { x: number; y: number } | null => {
+    const tx0 = Math.floor(wx / TILE);
+    const ty0 = Math.floor(wy / TILE);
+    for (let r = 0; r <= 8; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const tx = tx0 + dx;
+          const ty = ty0 + dy;
+          if (tx < 0 || ty < 0 || tx >= per.mapW || ty >= per.mapH) continue;
+          if (!per.tileWalkable(tx, ty)) continue;
+          return { x: tx * TILE, y: ty * TILE };
+        }
+      }
+    }
+    return null;
+  };
+
+  // ---- 1. unseen start locations, nearest first (they are all equally likely to be the enemy's)
+  let bestStart: { x: number; y: number; d: number } | null = null;
+  for (const s of per.landmarks.starts) {
+    if (revealed(s.x, s.y) || visited(Math.floor(s.x / TILE), Math.floor(s.y / TILE))) continue;
+    // Our own start is not a candidate: we know exactly what is there.
+    if (from && Math.hypot(s.x - from.x, s.y - from.y) < TILE * 10) continue;
+    const spot = walkableNear(s.x, s.y);
+    if (!spot) continue;
+    const d = Math.hypot(spot.x - cx * TILE, spot.y - cy * TILE);
+    if (!bestStart || d < bestStart.d) bestStart = { ...spot, d };
+  }
+  if (bestStart) return { x: bestStart.x, y: bestStart.y };
+
+  // ---- 2. unseen node clusters, scored by cluster size then distance from home
+  let bestNode: { x: number; y: number; score: number } | null = null;
+  for (const n of per.landmarks.nodes) {
+    if (revealed(n.x, n.y) || visited(Math.floor(n.x / TILE), Math.floor(n.y / TILE))) continue;
+    const spot = walkableNear(n.x, n.y);
+    if (!spot) continue;
+    let cluster = 0;
+    for (const m of per.landmarks.nodes) if (Math.hypot(m.x - n.x, m.y - n.y) <= TILE * 10) cluster++;
+    const d = Math.hypot(spot.x - cx * TILE, spot.y - cy * TILE);
+    // Prefer a big cluster, and among those prefer the one furthest from home (our own neighbourhood is already ours).
+    const score = cluster * 1000 + d * 0.001;
+    if (!bestNode || score > bestNode.score) bestNode = { ...spot, score };
+  }
+  if (bestNode) return { x: bestNode.x, y: bestNode.y };
+
+  /**
+   * 3. FALLBACK: THE FARTHEST MOSTLY-UNEXPLORED BLOCK.
    *
    * Ranking individual tiles produced a pathological result: the "furthest unexplored tile" was often a thin
    * unexplored sliver only ~124 units away (a gap between explored patches), so the scout was sent to tidy up a
@@ -783,6 +982,7 @@ function nextUnexplored(per: Perception): { x: number; y: number } | null {
         }
         if (!found) continue;
       }
+      if (visited(bxC, byC)) continue;
       const d = Math.hypot(bxC - cx, byC - cy);
       if (!best || d > best.d) best = { x: bxC * TILE, y: byC * TILE, d };
     }
