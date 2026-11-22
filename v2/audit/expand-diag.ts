@@ -7,12 +7,12 @@ import { countBases } from '../src/ai/economy';
 import { KIND_UNIT } from '../src/sim/entity-store';
 
 const reg = loadRegistry();
-for (const diff of ['normal', 'hard'] as const) {
+for (const diff of ['hard', 'normal'] as const) {
   const { state, services } = initMatch(reg, {
     mapId: 'duel_glade', seed: 1000, oneSuperweaponPerPlayer: false,
     players: [
       { id: 'p1', controller: 'ai', aiDifficulty: diff, team: 0, color: '#4f9dff', factionId: 'arcane', startIndex: 0 },
-      { id: 'p2', controller: 'ai', aiDifficulty: 'easy', team: 1, color: '#ff5d5d', factionId: 'arcane', startIndex: 1 },
+      { id: 'p2', controller: 'ai', aiDifficulty: 'normal', team: 1, color: '#ff5d5d', factionId: 'arcane', startIndex: 1 },
     ],
   } as never);
   const drv = new AiDriver(reg, services);

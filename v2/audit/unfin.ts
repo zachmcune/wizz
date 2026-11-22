@@ -6,7 +6,7 @@ import { KIND_BUILDING, KIND_UNIT } from '../src/sim/entity-store';
 
 const reg = loadRegistry();
 const { state, services } = initMatch(reg, {
-  mapId: 'duel_glade', seed: 1000, oneSuperweaponPerPlayer: false,
+  mapId: 'duel_glade', seed: 1035, oneSuperweaponPerPlayer: false,
   players: [
     { id: 'p1', controller: 'ai', aiDifficulty: 'hard', team: 0, color: '#4f9dff', factionId: 'arcane', startIndex: 1 },
     { id: 'p2', controller: 'ai', aiDifficulty: 'easy', team: 1, color: '#ff5d5d', factionId: 'arcane', startIndex: 0 },

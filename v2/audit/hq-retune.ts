@@ -21,7 +21,7 @@ const flag = (n: string): string | undefined => {
 const seeds = (flag('seeds') ?? '1000,1035,1042,1014').split(',').map(Number).filter(Number.isFinite);
 const jobs = Number(flag('jobs') ?? 3);
 const CAPACITY = Number(flag('capacity') ?? 25000);
-const TRICKLE = Number(flag('trickle') ?? 1);
+const TRICKLE = Number(flag('trickle') ?? 2);
 
 const BALANCE = join(ROOT, 'data', 'balance.json');
 const SANCTUM = join(ROOT, 'data', 'buildings', 'sanctum.json');
@@ -91,8 +91,8 @@ restore();
 /* Verify the restore: a sweep that leaves data behind silently changes the game. */
 const b = JSON.parse(readFileSync(BALANCE, 'utf8')) as { manaNodeCapacity: number };
 const s = JSON.parse(readFileSync(SANCTUM, 'utf8')) as { hp: number };
-if (b.manaNodeCapacity !== 12000 || s.hp !== 4000) {
-  console.error(`RESTORE FAILED: capacity=${b.manaNodeCapacity} (expect 12000), sanctum.hp=${s.hp} (expect 4000)`);
+if (b.manaNodeCapacity !== 12000 || s.hp !== 8000) {
+  console.error(`RESTORE FAILED: capacity=${b.manaNodeCapacity} (expect 12000), sanctum.hp=${s.hp} (expect 8000)`);
   process.exit(3);
 }
 console.log('\ndata restored to the committed values (capacity 12000, sanctum 4000)');

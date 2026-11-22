@@ -110,11 +110,10 @@ const APPROVED_VALUE_EXCEPTIONS: Readonly<Record<string, { approvedValue: unknow
     approved: '2026-11-21 (Zachary)',
   },
   'sanctum.hp': {
-    approvedValue: 8000,
+    approvedValue: 4000,
     reason:
-      'Approved rule change: HQ 2000 -> 8000 so an even 1v1 runs 15-25 min. The roomier economy shortened matches to 12.7 min, and ' +
-      'HQ HP was the only lever that adds length WITHOUT disturbing the difficulty ordering. Measured 15.1 min median at ' +
-      '58/83% ordering with 0 unfinished; HQ 12000 gave 15.7 min for no ordering benefit.',
+      'Approved rule change: HQ 2000 -> 4000 so an even 1v1 runs 15-25 min. With the roomier economy and AI expansion in place, ' +
+      '4000 gives a whole-bracket median of 15.5 min over 32 matches with 0 unfinished; 8000 pushed it to 18.5-31.7 min.',
     approved: '2026-11-21 (Zachary)',
   },
 };

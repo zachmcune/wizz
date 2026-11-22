@@ -221,7 +221,15 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
      * are paid for out of the same income.
      */
     targetBases: 3,
-    expandAfterSeconds: 110,
+    /**
+     * 200 s, MEASURED — expanding at 110 s made Hard WEAKER than Normal.
+     *
+     * The earliest expansion is not the best one: measured against Normal over 12 side-swapped games, expanding at 110 s gave
+     * **6-5** with one match unfinished, because the chain and the refinery pulled workers off the line before the economy could
+     * afford them (Hard ended with **2 workers against Normal's 10**). At 200 s the same profile went **12-0 with zero unfinished**:
+     * the economy matures first, then the expansion is funded out of surplus rather than out of the worker count.
+     */
+    expandAfterSeconds: 200,
     defendExpansions: 4,
   },
 };

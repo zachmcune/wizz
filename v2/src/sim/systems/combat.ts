@@ -462,8 +462,19 @@ export function combatSystem(state: GameState, ctx: StepContext): void {
      * dropped when it leaves sight, so a unit cannot follow a scout into the fog. Pursuing a target that is still visible
      * and within sight range is just the unit finishing its job.
      */
+    /**
+     * CHASE MUST NOT CANCEL A UNIT'S OWN ORDER.
+     *
+     * Combat runs AFTER movement and wrote the unit's position directly, so chasing an out-of-range target exactly undid whatever
+     * movement had just done in the other direction. Measured, one unit moved 4.40 units toward its destination in `movementSystem`
+     * and was moved 4.40 back by `combatSystem`, tick after tick, for 200 ticks — a perfect deadlock that no state flag or velocity
+     * check could reveal, because both systems were working correctly in isolation.
+     *
+     * So pursuit only applies when the unit is actually on a pursuing order. A plain `move` means the player (or the AI) has
+     * decided where this unit goes; combat may shoot what comes into range, but it may not steer.
+     */
     if (kind === KIND_UNIT) {
-      const pursuingOrder = order?.type === 'attack' || order?.type === 'attackMove' || stance === STANCE_AGGRESSIVE;
+      const pursuingOrder = order?.type === 'attack' || order?.type === 'attackMove';
       if (pursuingOrder) chase(state, ctx, slot, targetSlot);
     }
   }
