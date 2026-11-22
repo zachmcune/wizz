@@ -56,6 +56,15 @@ export interface BrainMemory {
   passesWithoutProgress: number;
   /** Highest enemy-building destruction count we have observed, to detect progress. */
   enemyBuildingsLost: number;
+  /** Total HP across known enemy structures on the previous pass. A DROP means our damage is landing. */
+  enemyStructureHp: number;
+  /**
+   * Consecutive passes with no enemy structure damaged AND no structure destroyed.
+   *
+   * Distinct from `passesWithoutProgress`, which also counts passes with no enemy visible at all. This one only measures
+   * "an assault that is achieving nothing", which is the condition that should recall a wave.
+   */
+  passiveProgress: number;
   /**
    * Where the search has already been sent, as coarse tile stamps.
    *
@@ -170,6 +179,8 @@ export class AiBrain {
     regroupUntil: 0,
     passesWithoutProgress: 0,
     enemyBuildingsLost: 0,
+    enemyStructureHp: 0,
+    passiveProgress: 0,
     scoutLedger: [],
     scoutTarget: null,
     produceTick: 0,
@@ -324,10 +335,30 @@ export class AiBrain {
      * Only structures that matter are counted, so chewing on walls cannot masquerade as winning.
      */
     const enemyAlive = per.enemyBuildings.filter((b) => b.defId !== 'stone_wall').length;
-    if (enemyAlive < this.memory.enemyBuildingsLost) {
+    /**
+     * HP LANDING IS PROGRESS, NOT JUST A KILL.
+     *
+     * This counted only DESTROYED buildings. A wave that had broken into the enemy base and ground the sanctum from 4000 to
+     * 850 hp registered no progress at all, because nothing had died yet — so the wave timed out and was recalled, the
+     * defender rebuilt, and the same half-finished assault was repeated. Measured on seed 1000 at 26 sim-minutes: p1 held 19
+     * army inside p2's base with the sanctum at 850/4000 and three sentries still standing, and the match still would not
+     * end.
+     *
+     * Damage on a real structure is unambiguous evidence that the wave is doing its job, so a drop in total enemy
+     * structure HP also resets the no-progress counter. Walls are excluded for the same reason they are excluded above:
+     * chewing scaffolding must not read as winning.
+     */
+    const enemyStructureHp = per.enemyBuildings
+      .filter((b) => b.defId !== 'stone_wall')
+      .reduce((a, b) => a + Math.max(0, b.hp), 0);
+    const hpDropped = this.memory.enemyStructureHp > 0 && enemyStructureHp < this.memory.enemyStructureHp;
+    this.memory.enemyStructureHp = enemyStructureHp;
+    if (enemyAlive < this.memory.enemyBuildingsLost || hpDropped) {
       this.memory.passesWithoutProgress = 0;
+      this.memory.passiveProgress = 0;
     } else {
       this.memory.passesWithoutProgress += 1;
+      this.memory.passiveProgress += 1;
     }
     this.memory.enemyBuildingsLost = Math.max(this.memory.enemyBuildingsLost, enemyAlive);
 
@@ -449,7 +480,30 @@ export class AiBrain {
        */
       const armyNow = per.myUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
       const lostMostOfIt = armyNow < Math.max(3, this.memory.lastWaveSize * 0.5);
-      const beenOutLongEnough = this.memory.waveAge >= WAVE_MAX_PASSES;
+      /**
+       * A WINNING WAVE MUST NOT TIME OUT — THIS WAS THE LAST TERMINATION BUG.
+       *
+       * `beenOutLongEnough` ended a wave purely on elapsed passes, with no regard for whether the wave was winning. So a
+       * wave that had broken into the enemy base and was killing it was recalled to "regroup" two minutes after it set
+       * out, the defender rebuilt behind its static defences, and the whole cycle repeated. Measured on seed 1000 at 30
+       * sim-minutes: p1 held **19 army against p2's 2** and its own note stream read `wave of 19 attacking Sanctum`,
+       * then `wave timed out, regrouping`, over and over — a won game that could not be finished, which is exactly the
+       * failure the 39-army 2v2 exhibited.
+       *
+       * A wave is now judged on OUTCOME before it is judged on TIME. It has clearly succeeded while the enemy is
+       * materially outnumbered on the field, and the recall is suppressed until that stops being true. An attack that is
+       * merely stalled (equal armies, no kills) still times out, so passivity is not rewarded and a genuine stalemate
+       * still hands control back.
+       */
+      const enemyArmyNow = per.enemyUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
+      const winning = this.memory.attacking && enemyArmyNow <= Math.max(2, Math.floor(armyNow * 0.5));
+      /**
+       * A wave also counts as winning once it has actually reduced the enemy's building count, because that is the only
+       * thing that ends a match: an army sitting on the enemy base killing structures must keep going even if the enemy
+       * still has a comparable army elsewhere.
+       */
+      const razingBase = this.memory.passiveProgress < WAVE_MAX_PASSES;
+      const beenOutLongEnough = this.memory.waveAge >= WAVE_MAX_PASSES && !winning && !razingBase;
       if (lostMostOfIt || beenOutLongEnough) {
         this.memory.attacking = false;
         /**

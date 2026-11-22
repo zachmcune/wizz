@@ -542,16 +542,44 @@ export function planMilitary(
      *   • a unit actively fighting has an order, so it is left alone.
      */
     const idle = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
-    if (idle.length > 0) {
-      const target = pickAttackTarget(per, opts.enemyAnchor, registry);
+    /**
+     * ALSO RE-TASK UNITS THAT ARE BUSY BUT NOWHERE NEAR THE FIGHT.
+     *
+     * The idle-only rule above assumes a busy unit is busy DOING SOMETHING USEFUL. That is not true: a unit that was
+     * ordered across the map on a previous sweep, or that broke off to chase something, holds a `busy` activity forever
+     * while contributing nothing. Because it is never idle, it is never re-tasked, and the wave stalls with most of its
+     * strength parked.
+     *
+     * Measured on seed 1000 at 30 sim-minutes: p1 held **33 units against p2's 6** and p2's sanctum sat at 880/4000 with
+     * p1 on 3,295 unspent mana, and the match did not end. This is the same failure the 2v2 showed at 39 army.
+     *
+     * So a unit that is more than `STRAY_DISTANCE` from the current attack target AND not currently engaged is treated as
+     * stranded and re-tasked. The distance test is what keeps a genuinely fighting unit alone: it is AT the target, so it
+     * is never "stray".
+     */
+    const target = pickAttackTarget(per, opts.enemyAnchor, registry);
+    const STRAY_DISTANCE = TILE * 22;
+    /** A unit is engaged when there is an enemy near enough that it plausibly has something to shoot. */
+    const isEngaged = (a: { seen: { x: number; y: number } }) =>
+      per.enemyUnits.some((e) => Math.hypot(e.x - a.seen.x, e.y - a.seen.y) < TILE * 10);
+    const stray = army.filter((a) => {
+      if (idle.includes(a)) return false;
+      const d = Math.hypot(a.seen.x - target.x, a.seen.y - target.y);
+      if (d <= STRAY_DISTANCE) return false;
+      return !isEngaged(a);
+    });
+    const toRetask = idle.concat(stray);
+    if (toRetask.length > 0) {
       commands.push({
         type: 'attackMove',
         playerId: pid,
-        entityIds: idle.map((a) => a.seen.id),
+        entityIds: toRetask.map((a) => a.seen.id),
         x: target.x,
         y: target.y,
       });
-      notes.push(`re-tasking ${idle.length} idle unit(s) to close on ${target.why}`);
+      notes.push(
+        `re-tasking ${toRetask.length} unit(s) (${idle.length} idle, ${stray.length} stranded) to close on ${target.why}`,
+      );
     }
   }
 
