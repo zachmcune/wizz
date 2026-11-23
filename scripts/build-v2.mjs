@@ -117,6 +117,24 @@ if (!v2Index.includes(`"${BASE}assets/`)) fail(`dist/v2/index.html does not refe
 if (v1Index.includes(`${BASE}assets/`)) fail('v1 index.html unexpectedly references the v2 bundle');
 if (!existsSync(join(V1_DIST, 'atlas-final', 'units.json'))) fail('dist/atlas-final/units.json is missing');
 if (!existsSync(join(OUT, 'spectate.html'))) fail('dist/v2/spectate.html is missing');
+
+/**
+ * Every asset each v2 entry references must exist on disk.
+ *
+ * This is the SPA-fallback trap, and it is why this check is here rather than trusted to a manual
+ * curl: Cloudflare Pages answers a MISS with v1's `index.html` and status 200, so a wrong base or an
+ * entry that Vite did not emit looks like a successful load until the browser fails to parse HTML as
+ * JavaScript. Checking the files exist at build time turns that silent deploy into a red build.
+ */
+for (const entry of ['index.html', 'spectate.html', 'gallery.html', 'styleguide.html', 'ui-proof.html', 'app.html']) {
+  const html = readFileSync(join(OUT, entry), 'utf8');
+  const refs = [...html.matchAll(/(?:src|href)="(\/v2\/[^"]+)"/g)].map((m) => m[1]);
+  if (refs.length === 0) fail(`dist/v2/${entry} references no ${BASE} assets`);
+  for (const ref of refs) {
+    if (!existsSync(join(OUT, ref.slice(BASE.length)))) fail(`dist/v2/${entry} references missing ${ref}`);
+  }
+}
+
 const v2Js = readdirSync(join(OUT, 'assets')).filter((f) => f.endsWith('.js'));
 if (v2Js.length === 0) fail('dist/v2/assets contains no JavaScript');
 
