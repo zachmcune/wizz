@@ -381,35 +381,71 @@ page accepts `?seed=&d0=&d1=&speed=`; player ids are `p1`/`p2` and must match th
 
 ## 7. Known open issues and caveats
 
-### 7.1 Phase 5 targets that are NOT met
+### 7.0 Phase 6 re-measurement — read this before quoting any Phase 5 number
 
-These are measured, not suspected. Do not claim Phase 5 is fully green without addressing them.
+Three sim defects were found in Phase 6 that suppressed the real Phase 5 numbers, and they are fixed. **Every
+Phase 5 balance figure quoted anywhere in this document was measured on a build with the first of them in it.**
 
-1. **Median match length is ~12 min, target 15–25.** The termination fixes made matches decisive at
-   the first army break, and the sanctum-HP lever no longer controls length: measured 4000 → 12.0 min,
-   6000 → 12.1, 8000 → 12.6. Restoring length needs a lever other than HQ HP. Note the committed
-   Phase 5 report (`docs/proof/phase-5/ai/report.md`) shows different numbers from an earlier build
-   (median 18.5, mirror 71%) — those were measured before the termination and fairness fixes.
+1. **NaN velocity from an order-type fall-through.** `movementSystem` read `order.x`/`order.y` unconditionally, but
+   `harvest`, `attack` and `hold` orders carry no coordinates. Every harvesting worker computed
+   `goalX = undefined + offset = NaN` and wrote NaN to `velX`, `velY` and `facing`. `audit/nan-guard.ts` measured
+   **282,204 non-finite values in one match**, first at tick 19. `facing` is in `hashState` (so the lockstep hash
+   was a function of NaN bits) and is read by turret arcs. It also changed outcomes: seed 1000's mirror ran 13.0 min
+   before the fix and 18.2 min after. Fixed, and gated by `tests/sim/finite-state.test.ts`.
+2. **Navigation ties preferred +x.** `bestNeighborSteer` kept the first neighbour that improved on the current
+   cost, and `NEIGHBORS` is ordered `[1,0],[-1,0],...` — so every exact cost tie broke toward +x. **595 of 1221
+   sampled tiles steered differently from their own reflection.** Fixed with a reflection-invariant `mirrorRank`;
+   now **41,516/41,516 symmetric**.
+3. **The map was symmetric on one axis only.** 40 tiles and 32 heights differed about the HORIZONTAL axis, 24 of
+   them at the nav level. Corners 0/1 are the top edge and 2/3 the bottom, so the bottom half was a different game:
+   `audit/corner-pairs.ts` measured corner 3 beating every other corner in both directions. Fixed by reflecting the
+   top-left quadrant; `tests/data/parity.test.ts` now asserts both axes where it previously asserted only one.
 
-2. **The mirror is not reproducibly 50%.** The committed fairness test passes — first-listed 7-5 of
-   12, **58.3%, 95% CI 32.0%–80.7%, contains 50%** — but a 40-game run on the same build measured
-   **70% (95% CI 54.6–81.9%)**, outside 50%. The two samples disagree and the larger one should be
-   trusted less loosely than the smaller. Slot bias is fixed in the specific mechanisms that were
-   found (creation order no longer decides; corner pairings are reciprocal), but the aggregate is not
-   yet clean. **This is the single most important thing to re-measure before multiplayer.**
+**The full re-measurement is in `docs/proof/phase-5/ai/phase6-fairness.md`.** Numbers from it, which supersede
+anything in §7.1:
 
-3. **The overview capture shows one base, not two.** The surviving side reaches a decisive army at
-   ~10 minutes, before it finishes expanding, so "both bases of the surviving side" is not
-   obtainable. The caption reports the real count (1 base, 10 buildings, …) rather than implying a
-   second base exists. Making this shot possible means making the AI actually expand.
+| Target | Result | Met |
+|---|---|---|
+| Mirror, 44 games, 95% CI contains 50% | **61.4%, CI 46.6–74.3%**, 0 unfinished | **yes** |
+| Median 1v1 length 15–25 min | **~12.7 min** (12.0 hard/normal, 12.7 mirror), 1 unfinished in one 20-game cell | **no** |
+| Difficulty ladder ≥ 70% each | Hard>Normal **60.0%**, Normal>Easy **90.0%** | **half** |
 
-4. **The AI does not expand to a second base before winning.** `targetBases` is 2 for Normal and 3
-   for Hard, and the expansion machinery exists (build-zone bridging with `stone_wall`, then a
-   forward refinery), but observed play ends first. Worth knowing: expansion needs roughly 5 walls
-   (40 each) plus a 750 refinery *while* fighting, and the AI rarely has that slack.
+### 7.1 Phase 5 targets that are NOT met (re-measured in Phase 6)
 
-5. **Phase 2's perf target was missed and reported.** See `docs/PHASE_2_REPORT.md`; the sim is within
-   budget but the phase's stated goal was stricter. Do not silently reclassify it as met.
+1. **Median match length is ~12.7 min, target 15–25.** HQ HP is confirmed dead as a lever on this build: 4000 →
+   12.7 min, 6000 → 13.3, 8000 → 13.6. Production capacity is also dead: `targetProduction` 2/3/4 → 12.7 / 13.2 /
+   12.6. `audit/match-timeline.ts` shows why: the match is decided when the **worker line dies** (10 → 4 workers at
+   minute 9 on seed 1000), not when the HQ falls; the HQ follows ~1.5 min later. Lengthening it needs a comeback
+   mechanic (a RULE change, v1 has none), a genuinely better defensive AI, or combat/stat changes. **None was
+   made**, because each is a rule change requiring approval or a large AI project. Do not re-sweep HQ HP.
+2. **Hard over Normal is 60%, target 70%.** Phase 5 shipped Hard with `targetBases: 3`; a 20-game-per-variant
+   ablation measured that as **33.3%**, and `targetBases: 2` as **66.7%** — a third base splits the army and Hard
+   arrived weaker than Normal. That is fixed, and the sweep is recorded at the source in `difficulty.ts`. The
+   remaining ~10 points were swept on `minWaveSize` (4 → 60%, 5 → 60%, 6 → 50%, 7 → 45%) and are not there.
+   **Hard is ~60% and that is the honest number.**
+3. **The AI does not expand, so the "both bases with expansions" shot is unobtainable.** Phase 5 said the AI "does
+   not expand before winning"; Phase 6 measured it precisely and the answer is stronger — **the AI never expands at
+   all**. Printing every refinery and construction-yard position over a whole match on seed 1000:
+
+   ```
+   t=6m  p1: sanctum@(464,464) attunement_spire@(544,544) attunement_spire@(480,544)
+   t=18m p1: sanctum@(464,464) attunement_spire@(544,544) attunement_spire@(480,544)
+   ```
+
+   Nothing is placed outside the starting cluster at any point. (An intermediate harness counted "3 bases" and
+   appeared to prove otherwise; it was grouping refineries within 12 tiles, and those three anchors are the sanctum
+   plus two refineries 64 units apart inside the same base. The wrong reading is recorded in
+   `audit/capture-expansion.ts` so it is not repeated.)
+
+   Step 0(d) therefore **cannot be met as literally specified**. What is committed instead is
+   `docs/proof/phase-5/ai/footprint-{phone,chromebook}-11min.png`: the widest footprint a side actually holds,
+   framed so a reviewer sees everything it owns, with the true counts burned into the frame ("1 base, 10 buildings,
+   6 workers, 6 army"). A shot implying a second base would be false.
+4. **Phase 2's perf target was missed and reported.** See `docs/PHASE_2_REPORT.md`; the sim is within budget but
+   the phase's stated goal was stricter. Do not silently reclassify it as met.
+5. **4-player free-for-all can fail to resolve.** Two of six seeds tried (1014, 1049) ran to the 34-minute cap with
+   no winner. Peers stayed perfectly in sync on those, so this is a balance question, not a networking one. Worth
+   fixing in Phase 8 (§8), not a Phase 6 defect.
 
 ### 7.2 Things that will bite you
 
@@ -445,21 +481,53 @@ These are measured, not suspected. Do not claim Phase 5 is fully green without a
 
 From `v2/docs/REBUILD_PLAN.md` §8. Summary, with the done-criteria that gate each phase.
 
-### Phase 6 — Multiplayer (2–4 players)
+### Phase 6 — Multiplayer (2–4 players) — **COMPLETE**
 
-**Build:** a lockstep client with rejoin and stall policy, keeping the **v1 wire protocol** so the
-existing Railway relay needs no change; host/guest lobby sync, ready states, claim, seed negotiation;
-per-tick checksum comparison; desync capture with replay; reconnect with backoff.
+**Built:** `v2/src/net/` — protocol, lockstep client, session, in-process relay, harness, lobby, stall policy,
+WebSocket transport, bot client — plus `v2/src/sim/snapshot.ts` for rejoin, a multiplayer screen, and
+`NetworkedMatch` to give the existing HUD a lockstep-backed match. **The v1 relay is unmodified.**
 
-**Done-criteria:** 2, 3 and 4 real browser peers stay in sync for 5 minutes (checksums equal every ACK
-window); a forced desync is detected and reported with a serialised replay; background/resume does not
-trip the stall banner but a genuine stall does; rejoin restores a live match mid-game; the unchanged
-v1 relay (`relay/server.mjs`) serves v2 peers.
+**Done-criteria, measured:**
 
-**Before you start:** re-measure the mirror (§7.1 item 2). A fair game is a prerequisite for
-multiplayer, and the current aggregate is not clean.
+| Criterion | Result |
+|---|---|
+| 2, 3, 4 peers in sync | headless: 2, 3, 4-FFA and 2v2 all reach a decided match with identical hashes and 0 desyncs. Browsers: **38 common ticks compared, 0 mismatched** |
+| Forced desync detected with a replay | detected at the forced tick; capture carries both hashes, seed, map, slots and a command log from tick 0. A clean-match **control** proves the detector is not always-on |
+| Background/resume does not trip the banner; a real stall does | 10 pure cases: hidden tab forgiven, freeze jump forgiven, genuine stall shows the hint, catch-up says "syncing" |
+| Rejoin restores a live match | drops of 3 s, 20 s and 15 s in a 4-player match all end in sync; snapshot restore continues identically for 200 ticks |
+| The unchanged v1 relay serves v2 peers | 48 wire cases through the relay's own validator, including all 23 command variants, with a drift guard on the copied validator |
 
-**Note:** `src/net/` does not exist yet. v2 currently has no networking at all.
+**Evidence:** `v2/docs/proof/phase-6/README.md` (screenshots, video, `browser-match.json`, run logs).
+
+**How to run the browser proof:** see §5.1.
+
+### Phase 7 — PWA, content completion, polish, performance
+
+**Build:** manifest, service worker, cache headers, icons, install prompt, orientation lock, resume;
+**5 maps** completed and map-linted; **3 factions** with real filtering; research-tree content wired
+into both AI and UI; an audio pass; bundle splitting to hit the gzip budget.
+
+**Done-criteria:** installable on Android Chrome and desktop Chromium (documented manual check); cold
+TTI ≤ 6 s on throttled Fast 3G; **main chunk ≤ 150 kB gzip** (v1: 236.7 kB); all 5 maps pass map-lint;
+all 3 factions buildable and playable with Arcane numbers still byte-identical to v1; 20-minute memory
+soak ≤ 250 MB.
+
+**Carry these into Phase 7 — they are measured, not guesses:**
+
+1. **Multiplayer needs no relay change, but it does need a relay URL.** `src/app/screens/multiplayer.ts`
+   resolves it from the page origin and accepts `?relay=ws://host:port`. The deployed Pages project will
+   need the Railway relay reachable from it, and `public/_headers` already carries the `/v2/` cache rules.
+2. **`tests/net/` has no unit-test budget yet.** The suites there total ~25 minutes of CPU
+   (`lockstep-relay` alone is ~14). They must go in a slow job, not `test:unit`. Suggested split: everything
+   except `lockstep-relay.test.ts`, `desync.test.ts`, `latency-jitter.test.ts` and `rejoin.test.ts` can run
+   with the unit gate; those four belong beside `test:slow-ai`.
+3. **The browser spec is not in CI.** It needs a relay on 8787 and the app on 5343. `playwright.config.ts`
+   exists and `npm run test:browser` is wired; CI does not start the relay, so it is a documented manual
+   proof for now. Adding it means installing `ws`+`zod` for the relay (see §5.1) in the workflow.
+4. **`docs/proof/phase-6/video/*.webm` is 18 MB.** Consider whether the final evidence pack should carry it
+   or a trimmed clip.
+5. **The 4-player FFA can stall** (2 of 6 seeds hit the cap). Not a Phase 7 blocker, but if Phase 7 ships
+   4-player maps this will be visible.
 
 ### Phase 7 — PWA, content completion, polish, performance
 

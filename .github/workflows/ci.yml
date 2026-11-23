@@ -116,6 +116,12 @@ jobs:
       # do with the UI being tested. Ordering them first makes the browser gates measure the UI in a quiet environment.
       - name: Slow AI suites (fairness, teams) — isolated, no browser running
         run: npm run test:slow-ai
+      # THE SLOW MULTIPLAYER SUITES. Phase 6's lockstep tests drive 2-4 full headless matches through the relay,
+      # injecting latency, jitter, drops and a deliberate desync. Together they are ~25 minutes of CPU and are
+      # excluded from `test:unit` for exactly the reason the slow AI suites are: run alongside the browser gates
+      # they would starve the page loads and produce navigation timeouts that look like product failures.
+      - name: Slow multiplayer suites (lockstep through the relay, desync, jitter, rejoin)
+        run: npm run test:slow-net
       # Everything EXCEPT the perf gate (already run alone above) and the slow AI suites (just run). Re-running them here would
       # measure them under browser contention and produce a meaningless number.
       - name: Unit and proof tests (including the live UI gates)

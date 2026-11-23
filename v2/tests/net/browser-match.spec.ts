@@ -43,8 +43,20 @@ interface NetState {
 /** Read the live networked match out of a page. */
 async function readNet(page: Page): Promise<NetState | null> {
   return page.evaluate(() => {
+    /**
+     * The page's `__v2Net` is typed loosely here on purpose: this code runs INSIDE the browser, where the real
+     * `GameState` type is not available to the spec's evaluator. A narrow structural view is used instead, so a
+     * field rename on the game side breaks the test loudly rather than silently reading `undefined`.
+     */
+    type St = {
+      tick: number;
+      ended: boolean;
+      winnerTeam: number | null;
+      players: { id: string; mana: number; defeated: boolean }[];
+      entities: { count: number; dead: Uint8Array; ownerIndex: Int16Array; kind: Uint8Array };
+    };
     const w = window as unknown as {
-      __v2Net?: { state: any; playerId: string; hash: () => string };
+      __v2Net?: { state: St; playerId: string; hash: () => string };
     };
     const net = w.__v2Net;
     if (!net) return null;
@@ -53,7 +65,7 @@ async function readNet(page: Page): Promise<NetState | null> {
     // reimplementation here would be a different function and would therefore not be evidence.
     const hash = net.hash();
     const store = st.entities;
-    const players = st.players.map((p: any, idx: number) => {
+    const players = st.players.map((p, idx) => {
       let units = 0;
       for (let s = 0; s < store.count; s++) {
         if (store.dead[s]) continue;

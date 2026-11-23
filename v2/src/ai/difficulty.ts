@@ -218,7 +218,8 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
      *
      * Phase 5 shipped Hard with `targetBases: 3` and `expandAfterSeconds: 200`, on an ablation that measured a third
      * base as an improvement. That measurement was taken on a build whose mirror sample had an effective size of
-     * about nine games (see the note in `brain.ts` on cooldown jitter), and it does not survive a larger sample.
+     * about nine games — a collapse that Phase 6 traced to the NaN bug and the map asymmetry, NOT to insufficient AI
+     * variety — and it does not survive a larger sample.
      *
      * Re-measured in Phase 6 with `audit` over 10 seeds x 2 side-swaps (20 games each) against Normal, forcing one
      * lever at a time back to Normal's value:

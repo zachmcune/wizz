@@ -1,4 +1,4 @@
-phone 844x390 t=9.2m zoom=0.61 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/overview-phone-9min.png
-   p1 — 1 base, 10 buildings, 8 workers, 20 army @ (2424,450)  |  enemy: 8 bld  |  t=9.2 min, seed 1000 (hard vs normal), overview
-chromebook 1366x768 t=9.3m zoom=0.61 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/overview-chromebook-9min.png
-   p1 — 1 base, 10 buildings, 8 workers, 20 army @ (2417,449)  |  enemy: 8 bld  |  t=9.3 min, seed 1000 (hard vs normal), overview
+phone 844x390 t=18.3m zoom=0.51 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/overview-phone-18min.png
+   p1 — 1 base, 11 buildings, 9 workers, 12 army @ (2795,395)  |  enemy: 10 bld  |  t=18.3 min, seed 1000 (hard vs normal), overview
+chromebook 1366x768 t=18.5m zoom=0.53 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/overview-chromebook-19min.png
+   p1 — 1 base, 11 buildings, 11 workers, 8 army @ (2699,392)  |  enemy: 10 bld  |  t=18.5 min, seed 1000 (hard vs normal), overview
