@@ -58,6 +58,14 @@ export interface SessionOptions {
   onDesync?: (report: DesyncCapture) => void;
   /** Called when the match reaches a winner. */
   onEnd?: (winnerTeam: number | null) => void;
+  /**
+   * Called with every event the simulation emitted for a tick.
+   *
+   * Exists for OBSERVABILITY, not for game logic: the browser match proof asserts that a match was
+   * active by counting damage events and deaths from the simulation's own stream, which a UI-only
+   * counter could not honestly claim. Cheap because the event array already exists.
+   */
+  onEvents?: (events: import('../sim/types').GameEvent[], tick: number) => void;
 }
 
 export interface DesyncCapture {
@@ -86,6 +94,7 @@ export class LockstepSession {
   private readonly slots: SlotSpec[];
   private readonly onDesync: ((r: DesyncCapture) => void) | undefined;
   private readonly onEnd: ((w: number | null) => void) | undefined;
+  private readonly onEvents: ((events: import('../sim/types').GameEvent[], tick: number) => void) | undefined;
   private readonly ai: AiDriver;
   private readonly checksumInterval: number;
 
@@ -112,6 +121,7 @@ export class LockstepSession {
     this.localPlayerId = opts.localPlayerId;
     this.onDesync = opts.onDesync;
     this.onEnd = opts.onEnd;
+    this.onEvents = opts.onEvents;
     this.checksumInterval = opts.checksumInterval ?? CHECKSUM_INTERVAL_TICKS;
 
     const { state, services } = initMatch(opts.registry, {
@@ -185,7 +195,8 @@ export class LockstepSession {
      * so this costs no bandwidth and cannot itself diverge — which is the property that makes AI fill-in safe.
      */
     const aiCommands = this.ai.hook(this.state, this.services);
-    stepSimulation(this.state, this.services, [...cmds, ...aiCommands]);
+    const res = stepSimulation(this.state, this.services, [...cmds, ...aiCommands]);
+    if (this.onEvents && res.events.length > 0) this.onEvents(res.events, tick);
 
     if (this.state.tick % this.checksumInterval === 0) {
       const tickJustFinished = this.state.tick - 1;

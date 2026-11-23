@@ -42,6 +42,13 @@ export interface NetworkedMatchOptions {
   onDesync: (capture: import('../net/session').DesyncCapture) => void;
   /** Called when the stall policy wants the HUD to say something. */
   onStallHint: (hint: string) => void;
+  /**
+   * Called with every simulation event for a tick.
+   *
+   * Passed straight through from the session so an observer (the match proof, a diagnostic overlay) can
+   * count what actually happened in the world rather than what the UI believes it did.
+   */
+  onEvents?: (events: import('../sim/types').GameEvent[], tick: number) => void;
 }
 
 export class NetworkedMatch {
@@ -69,6 +76,7 @@ export class NetworkedMatch {
       transport: opts.transport,
       onDesync: opts.onDesync,
       onEnd: opts.onEnd,
+      ...(opts.onEvents ? { onEvents: opts.onEvents } : {}),
     });
 
     const renderer = new Renderer(opts.registry, opts.registry.map(opts.mapId));

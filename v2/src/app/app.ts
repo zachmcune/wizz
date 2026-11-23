@@ -325,6 +325,12 @@ export class App {
         (window as unknown as { __v2Desync?: unknown }).__v2Desync = capture;
       },
       onStallHint: (hint) => this.hud?.note('warn', hint),
+      onEvents: (events) => {
+        for (const ev of events) {
+          if (ev.type === 'damageDealt' || ev.type === 'attackFired') counters.damage++;
+          else if (ev.type === 'entityDied') counters.kills++;
+        }
+      },
     });
 
     this.netMatch = net;
@@ -334,10 +340,31 @@ export class App {
     this.frameOnMyBase();
     this.selectFirstOwned();
 
+    /**
+     * Instrumentation the match proof reads: commands issued, damage events and deaths.
+     *
+     * A proof that asserted "the match was active" from a clock alone would pass on a match where nobody
+     * did anything, which is exactly the failure this replaces. These counters are incremented from the
+     * simulation's own EVENT stream, so they cannot be inflated by a UI that thinks it did something.
+     */
+    const counters = { issued: 0, damage: 0, kills: 0 };
+    const originalIssue = net.issue.bind(net);
+    net.issue = (cmd) => {
+      const ok = originalIssue(cmd);
+      if (ok) counters.issued++;
+      return ok;
+    };
+
     (window as unknown as { __v2Net?: unknown }).__v2Net = {
       state: net.state,
       session: net.session,
       playerId: join.playerId,
+      /** Commands this peer accepted, from the app's own command path. */
+      issued: () => counters.issued,
+      /** Damage events seen by this peer's simulation. */
+      damage: () => counters.damage,
+      /** Deaths seen by this peer's simulation. */
+      kills: () => counters.kills,
       /**
        * The canonical state hash, computed by the SAME function lockstep compares.
        *
