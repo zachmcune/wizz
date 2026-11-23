@@ -1,0 +1,501 @@
+# HANDOFF — Arcane Dominion v2
+
+**Written:** 2026-11-23, at the end of Phase 5, on branch `cursor/rebuild-v2-5642`.
+**Reader:** a new agent picking up Phase 6 with no history of this branch.
+**Scope of this document:** enough context to continue without re-deriving anything. Every number here
+was measured on this branch; where something is unresolved it says so instead of smoothing it over.
+
+**If you read only three sections:** §0.2 (the working rules), §7 (the open issues — three Phase 5
+targets are *not* met and one of them gates Phase 6), and §8 (what Phase 6 asks for).
+
+---
+
+## 0. Read this first
+
+### 0.1 What this project is
+
+Arcane Dominion — a mobile-first, landscape, 2.5D (dimetric / RA2-style oblique) real-time strategy
+game. TypeScript + Vite + PixiJS, tested with Vitest. It is a **static, client-only** app: there is
+no backend and no database.
+
+**v1** is the original game at the repository root (`src/`, `data/`, `tests/`). It shipped and is
+what `main` serves.
+
+**`v2/` is the rebuild**, and it is where all new work happens. It is a self-contained project with
+its own `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts` and `eslint.config.js`.
+It never imports from v1 and v1 never imports from it — `v2/tests/isolation.test.ts` enforces that.
+
+### 0.2 Working rules — these are not negotiable
+
+1. **`v2/` only.** Do not modify v1 (`src/`, `data/`, `tests/`, `public/`, `relay/` at the root).
+2. **Never merge.** Do not merge this branch to `main`, do not enable auto-merge.
+3. **Never touch `main`.** Do not commit to it or force-push it.
+4. **Prove every claim.** A claim is not accepted because the code looks right. Every number in this
+   document came from a command that was run, and the harness that produced it is committed in
+   `v2/audit/`. If you cannot measure something, say so.
+5. **Repo-relative paths** in docs and comments (`v2/src/ai/brain.ts`), never absolute paths from a
+   container.
+6. **All CI green.** The `v2` job in `.github/workflows/ci.yml` must pass before you claim a phase is
+   done. It typechecks, lints, runs the isolated gates, runs the browser UI gates, and builds.
+7. **Every turn makes a tool call.** Never narrate a wait; use one blocking command with a long
+   timeout instead.
+
+### 0.3 Where the plan lives
+
+`v2/docs/REBUILD_PLAN.md` (1398 lines) is the authoritative plan: measured baselines, settled rule
+decisions, architecture, per-phase done-criteria, risks, and an evidence index. Read §8 for the phase
+definitions and §3 for the rule decisions. `v2/docs/FEATURE_INVENTORY.md` is the completeness
+checklist.
+
+---
+
+## 1. Phase status
+
+Phases 0–5 are complete. Phase 6 has not started.
+
+| Phase | What it proved | Proof lives in |
+|---|---|---|
+| **0 — Audit** | v1 measured and understood before rebuilding: sim CPU per tick, frame pacing at 4 viewports, economy pacing, and the AI's failures. Established that v1's sim is *not* the bottleneck (14% of budget worst case) and that the AI is where it collapses. | `v2/docs/REBUILD_PLAN.md` §1–2, §10–12; `v2/docs/baseline-perf.json`; `v2/docs/baseline-screenshots/` |
+| **1 — Foundation** | An independent project scaffold; a typed, validated data pipeline; determinism with named seeded RNG streams; v2 cannot import v1. | `v2/docs/PHASE_1_REPORT.md`; `v2/docs/proof/phase-1/` (4 viewport boot shots + `proof.json` + `phase-1-boot.mp4`) |
+| **2 — Simulation core** | A fully headless, deterministic 20 Hz simulation with a fixed-order system pipeline; replayable; hash-stable; within CPU budget. One performance target was missed and reported honestly (see §7.1). | `v2/docs/PHASE_2_REPORT.md`; `v2/docs/proof/phase-2/` (4 viewport sim shots, `headless-match-log.md`, `phase-2-match.mp4`) |
+| **3 — Renderer & art pipeline** | A 2.5D dimetric renderer and an offline 3D→2D sprite pipeline that produces every sprite in code (no image generation). Art proof includes a before/after against v1. | `v2/docs/PHASE_3_REPORT.md`; `v2/docs/proof/phase-3/`, `phase-3-final/` (`README.md`, `proof-index.json`, `gallery/`, `sprites/`, `phase3-final-gameplay.webm`), `phase-3-pilot/` (v1-vs-v2 comparison), `atlas-archive/` |
+| **4 — UI, HUD, screens** | Real rendered layout gates: HUD area, zone overlap, the Place button being topmost, `.hud-cmd` height, unit separation — measured at 4 viewports in a real browser. The "Obsidian & Brass" style, with the no-purple rule enforced on both chrome and baked art. | `v2/docs/PHASE_4_REPORT.md`; `v2/docs/proof/phase-4/` (`README.md`, `screens/`, `hud-geometry.json`, `phase4-proof.json`, `phase4-full-flow.webm`), `phase-4-polish/` (alignment grids), `ui-style/` (`README.md`, `styleguide-*.png`, `ui-proof.json`) |
+| **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`) |
+
+**Phase 5 caveats are real and are listed in §7.** Do not read "Phase 5 complete" as "every target
+met" — three targets are not met, and §7 names them with numbers.
+
+---
+
+## 2. Approved rule changes — the complete list
+
+v2 is measured against v1 field-for-field. The **only** gameplay values allowed to differ are the
+three below, each recorded in `v2/tests/data/parity.test.ts` in `APPROVED_VALUE_EXCEPTIONS`, keyed
+`<defId>.<field>`, **naming the exact replacement value**. That keying is deliberate: an exception
+covers one number, so any further change to that field fails the parity test until it is itself
+approved and recorded. All three were approved by **Zachary on 2026-11-21**.
+
+| Key | v1 value | Approved value | Why it changed (measured) |
+|---|---|---|---|
+| `sanctum.hp` | 2000 | **4000** | At 2000 an even 1v1 was decided in 11.8 min because the first credible push killed the HQ as soon as the defending army was spent. Swept: 3000 → 12.9 min, **4000 → 19.9 min**, 8000 → 18.5–31.7 min. 4000 is the smallest value inside the 15–25 min band. Turret damage was swept first and **rejected**: at damage 7 the difficulty ordering collapsed and 12 matches stopped finishing inside the cap, because stronger static defence substitutes for good decisions. Turrets therefore stay at v1 (hp 600, damage 3, range 165). |
+| `balance.manaNodeCapacity` | 12000 | **25000** | The map authors 127,000 mana but a 12,000 clamp made only 75,000 reachable, so income had no margin and the first raid that killed the worker line was unrecoverable. Swept: 12000 → 1073 s worst no-spend, **25000 → 301 s**, 40000 identical (no node authors more). 25000 is exactly the largest amount the map authors, so it honours the map as designed rather than inventing a number. |
+| `balance.sanctumTricklePerSecond` | 0 (absent) | **2 / s** | A side with zero harvesters has no income, so it can never afford the worker that would restore its income. Observed: a player holding 155 mana against a 200-cost worker, stuck 45 short for the rest of the match while its opponent sat on 111,700 unspent mana. Swept: 0 → 1 unfinished match and a 1243 s no-spend; 0.6 → 407 s; 1.0 → 201 s but left a **real 115 s deadlock** (at 1.0/s a worker takes 3.3 min to fund and was killed first); **2.0 → 180 s, no deadlock**. It is still eight times below mining (a single worker earns 16/s), so it is a recovery floor, not an income source. |
+
+### 2.1 Accepted design decisions (not number changes)
+
+**No AI fog cheating at any difficulty — ACCEPTED (2026-11-21).** No AI difficulty may read any
+entity, position or building the player could not see. Enforced structurally: the AI receives a
+`PerceivedWorld` façade, never `GameState`, and `v2/tests/phase5-maphack.test.ts` proves
+non-dependence two ways — indistinguishability (perturb every hidden entity; the commands must be
+byte-identical) and a throwing proxy. Difficulty is expressed **only** through legal levers: reaction
+latency, scout count, build order, wave size, retreat thresholds, spell use. Hard is given speed and
+discipline, never information.
+
+**Surface what the Astral Spire unlocks — ACCEPTED (2026-11-21).** Content and UI only; no numbers
+change. The build menu shows on the Astral Spire entry the four spells it unlocks (`meteor_storm`,
+`aegis_ward`, `blink_gate`, `astral_lance`) with their cooldowns; locked spell chips name the
+prerequisite chain (`Arcane Nexus → Astral Spire`) instead of a generic "unlocks later"; the tech tree
+shows the same dependency.
+
+### 2.2 Rejected proposals (rules kept exactly as v1)
+
+Zachary reviewed six proposals and accepted two. The rejected four and what v2 does instead:
+
+| Proposal | Decision | v2 treatment |
+|---|---|---|
+| Harvest pacing retune | **REJECTED** | `siphonPerSecond: 16`, `wisp.carry: 75`, `wisp.speed: 72`, `vaultSiphonMultiplier: 1.3`, starting mana 900 — all verbatim. The 16/s rate was verified to be implemented exactly (carry 0→16→32→48→64→75 at 1 s intervals); the low whole-economy number was a round-trip average on a badly-placed refinery, which is the intended RA2 model. v2 fixes the **AI's placement** and adds a placement readout showing effective mana/s — presentation and AI, never the rule. |
+| Soft harvester cap | **REJECTED** | No cap beyond the existing per-refinery docking behaviour. v2 compensates only through AI quality and map design. |
+| Bankruptcy elimination | **REJECTED** | `winCheckSystem` keeps v1 semantics: a player is defeated only when holding no HQ. Stalls are fixed at their real cause (AI economy bugs), never by adding an elimination rule. |
+| Slower projectiles | **REJECTED** | `arcane_bolt` stays at 1200 u/s; all projectile speeds, damage and cooldowns unchanged. Readability is solved in the renderer with motion streaks and an impact flash. |
+
+### 2.3 Art and UI decisions (Zachary)
+
+These were chosen by Zachary and are held consistently. They are enforced by tests, not by
+convention.
+
+- **"Obsidian & Brass"** is the UI style, documented in `v2/docs/UI_STYLE_GUIDE.md`. Dark machined
+  plates, warm brass/copper fittings, bone type. Flat achromatic steel in five elevation steps,
+  chamfered rectangles (a hard 45° corner cut, not a rounded corner), 1px inset ring plus a bevel.
+  Copper appears **only** where the player can act. Nothing glows, nothing blurs, nothing floats.
+- **No purple.** Hue **250–330° is banned outright** — violet through magenta. One definition governs
+  both chrome and art: `v2/tests/ui-tokens.test.ts` parses every UI colour to HSL and rejects that
+  band, and `v2/tests/art-no-purple.test.ts` measures the share of visible pixels in baked sprites
+  falling in the same band. The reason is that the old UI used the same violet as the game's own
+  Arcane faction, so chrome and battlefield content read as the same material — and it is the
+  generic "AI-generated app" look.
+- **Code-built art only. No AI-generated images anywhere in the pipeline.** Every sprite is a small
+  assembly of 3D primitives with per-part materials, rendered offline by a real rasteriser. Every
+  vertex is produced by a function in `v2/art/`. See `v2/docs/ART_DIRECTION.md`.
+- Additional bans from the same brief: no glassmorphism, no neon glow, no default rounded pills, no
+  emoji, one deliberate style held consistently. The reasoning is in `v2/docs/UI_STYLE_GUIDE.md` §1.
+
+**2.5D only.** There is no Classic 2D, top-down or ortho view, and you must not add one — no 2D mode,
+no lobby toggle, no `?view=` override. The simulation stays in 2D world units; `v2/src/core/projection.ts`
+is the only world↔screen mapping.
+
+---
+
+## 3. Parity exceptions
+
+There are exactly **three**, all in `v2/tests/data/parity.test.ts`:
+
+```text
+balance.manaNodeCapacity        -> 25000
+balance.sanctumTricklePerSecond -> 2
+sanctum.hp                      -> 4000
+```
+
+Everything else in the content set must match v1 field-for-field. `PLAN_ADDITIONS` in the same file
+lists the fields v2 adds on purpose (`units.factions`, `buildings.factions`, `spells.factions`,
+`maps.visualHeights`) — additions, not changes.
+
+### 3.1 The map — read this before touching `duel_glade.json`
+
+`duel_glade` is **parity-locked except for its terrain symmetry**. This one needs the history,
+because the obvious next step is wrong:
+
+- v1's terrain is **not** mirror-symmetric: 68 of 11,264 tiles and 26 heights differ from their
+  reflection about the vertical axis (and 40 tiles / 34 heights about the horizontal one). That
+  asymmetry decided mirrors outright — with identical AIs, **corner 1 beat corner 0 in 12 of 12
+  games** (`v2/audit/cornerhard.ts`), an effect far larger than any difficulty lever.
+- **Symmetrising the terrain AND rebuilding the mana nodes was tried and reverted.** It fixed the
+  mirror but **inverted the difficulty ladder**: Hard vs Normal went 12-0 → 0-12, because rebuilding
+  the nodes moved 5 of the 13 and reshaped the economy every balance measurement was taken against.
+- **The shipped configuration is terrain-only symmetrisation**: the right half of the terrain is the
+  reflection of the left, and **every mana node keeps its exact v1 position and amount**. Measured:
+  mirror corners 8-4 (was 0-12), Hard vs Normal 79%, 0 unfinished.
+
+`v2/tests/data/parity.test.ts` asserts **both** halves of that: terrain symmetry about the vertical
+axis **and** exact node equality with v1. Do not "improve" the map without re-measuring both the
+mirror and the difficulty ladder.
+
+---
+
+## 4. Architecture map
+
+The dependency direction is load-bearing and lint-enforced: **`src/sim/**` may not import render, ui,
+audio, input or storage layers, and may not use `Math.random`, `Date.now`, `window`, `document` or
+`performance`.** Breaking that fails `npm run lint`. Keep the simulation core pure and headless.
+
+```text
+v2/
+  src/
+    core/        constants.ts · coords.ts · math.ts · projection.ts · ramp-slope.ts · rng.ts
+                 Pure helpers. `projection.ts` is the ONLY world<->screen mapping (2.5D dimetric).
+                 `rng.ts` is the ONLY randomness: named, seeded streams (map, ai, spawn, cosmetic).
+    sim/         The game. Pure, headless, deterministic, 20 Hz (TICK_HZ = 20).
+                 step.ts            SYSTEM_ORDER — 16 systems, and the order is load-bearing:
+                                    applyCommands, aiHook, production, morph, movement, visibility,
+                                    combat, beamWeapon, garrison, projectile, superweapon, aura,
+                                    harvest, channel, death, winCheck
+                                    (v1 had a 17th, `sandboxCheats`, which v2 does not carry.)
+                 types.ts           GameState, Command, GameEvent
+                 context.ts         SimServices / StepContext (registry, nav, flow, spatial)
+                 entity-store.ts    Structure-of-arrays; KIND_UNIT=0, KIND_BUILDING=1,
+                                    KIND_PROJECTILE=2, KIND_RESOURCE_NODE=3. Slots are stable and
+                                    monotonic; compaction is a stable filter at end of tick.
+                 factory.ts         initMatch — map, nodes, starting base, and the sanctioned RNG
+                 nav-grid.ts        passability, height rule, gates, canPlace
+                 pathing.ts         flow-field stepping; flow-field.ts is a bounded LRU keyed by
+                                    (owner-passability-class, goal tile)
+                 spatial-grid.ts    uniform grid for radius queries (CSR layout)
+                 fog.ts             isVisibleTo, isBuildingInLiveSight, radarActive
+                 build-zone.ts      Chebyshev build zone (BUILD_ZONE_TILES = 7)
+                 power.ts · modifiers.ts · capabilities.ts · combat-util.ts · queries.ts
+                 garrison.ts · resource-nodes.ts · hash.ts (state hash for determinism) ·
+                 headless.ts (run a match with no renderer)
+                 systems/           one file per system above
+    ai/          The AI. Reads ONLY `PerceivedWorld`.
+                 perception.ts  THE FAÇADE. `PerceivedWorld.build(state, playerId)` returns a
+                                `Perception` — the only thing AI code may read. Own units are
+                                strictly `myUnits`/`myBuildings`; a teammate's are `alliedUnits`/
+                                `alliedBuildings` (visible but not commandable). Enemy units leave
+                                sight and are forgotten; enemy BUILDINGS persist as ghosts (`live:false`).
+                 brain.ts       AiBrain: memory, tick/decide, scouting, wave lifecycle
+                 economy.ts     planEconomy — harvesters, build order, production, defence, expansion
+                 military.ts    planMilitary — defence, waves, micro, target choice
+                 difficulty.ts  the three profiles (see below)
+                 build-order.ts the standard opening (one order; see the note in the file)
+                 driver.ts      AiDriver → the sim's AiHook; the only place that touches GameState
+    render/      PixiJS. renderer.ts, terrain.ts, terrain2.ts, atlas.ts, camera.ts
+    ui/          tokens.css · components.css · screens.css · styleguide.css · fonts.css · icons.ts · kit.ts
+                 Obsidian & Brass tokens. Hue 250–330 is banned by test, not by convention.
+    app/         The real game UI: app.ts, match.ts, hud.ts, state.ts, screens/
+    styles/      shared CSS
+    data/        registry.ts · loader.ts · defs.ts · schemas.ts (zod) · validate-registry.ts
+    art/         the offline 3D->2D sprite pipeline (see docs/ART_DIRECTION.md)
+  art/           pipeline scripts and baked output
+  data/          units/ buildings/ spells/ projectiles/ maps/ match/ balance.json
+  audit/         126 measurement harnesses. This is the evidence base — see §6.
+  tests/         39 test files across tests/, tests/sim/, tests/core/, tests/data/
+  docs/          REBUILD_PLAN.md · FEATURE_INVENTORY.md · PHASE_{1,2,3}_REPORT.md ·
+                 ART_DIRECTION.md · UI_STYLE_GUIDE.md · proof/ (per-phase evidence)
+```
+
+**Vite entries** (`v2/vite.config.ts`): `index.html` (main), `gallery.html` (sprite gallery),
+`styleguide.html` (UI style), `ui-proof.html` (one mockup at one density, for proof captures),
+`app.html` (**the real game UI**). CI asserts all four deployed entries plus the atlas manifest and
+fonts exist in `dist/`, because a missing entry succeeds in dev and 404s only after a build.
+
+### 4.1 Difficulty profiles
+
+`v2/src/ai/difficulty.ts`. The distinction lives **entirely in the profile** — every difficulty uses
+the same opening, because the aggressive opening was measured worse (see the note in
+`build-order.ts`). Measured levers, for orientation: Easy thinks every 2 s (`decisionInterval: 40`,
+`reactionDelay: 60`, `scoutCount: 0`, `minWaveSize: 7`, `targetBases: 1`); Normal every 1 s (20 / 24 /
+1 / 7 / 2); Hard every 1 s (20 / **8** / 1 / **5** / 3). Hard's only measured-positive lever is the
+smaller first wave (`minWaveSize: 5`) — a faster cadence measured *worse*, and Hard's "advanced"
+extras (kiting, harass, counters, superweapon) measured neutral individually and **negative in
+combination**, so they are off. Do not add an unmeasured lever to a difficulty; the ablation in
+`v2/docs/proof/phase-5/ai/ablation.md` records what each candidate actually did.
+
+### 4.2 Two traps that have already cost this branch days
+
+Both are documented at length in the source; they are repeated here because a new agent will hit them.
+
+1. **Shared mutable scratch arrays do not survive nesting.** `acquireTarget` iterates its candidate
+   list while calling `swarmScore`, which runs its own `queryRadius`; `queryRadius` **clears** its
+   `out` array. One shared buffer meant the inner call truncated the outer loop mid-iteration. Use a
+   separate buffer per nesting level.
+2. **A remembered building is not a target.** Ghosts (`live:false`) exist so the renderer can draw
+   them. An army sent to one walks to a corpse. This was the 75-minute 2v2 with 39 units. Every
+   "where do I attack" and "do I know where they live" decision must require `live === true` **and**
+   a non-wall def — and `pickAttackTarget` and the sweep predicate must use the *same* rule, because
+   they diverged once and it cost a phase.
+
+---
+
+## 5. Running things
+
+All commands are relative to `v2/`.
+
+```bash
+cd v2
+npm ci
+
+npm run dev            # http://localhost:5173/  (add `-- --host` to reach it from another device)
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint, includes the sim purity rules and the UI style rules
+npm test               # vitest, everything (~few minutes; the slow AI suites dominate)
+npm run build          # tsc --noEmit && vite build  — a type error fails the build
+```
+
+Focused runs, which you will use constantly:
+
+```bash
+npx vitest run tests/sim tests/core tests/data tests/map-lint.test.ts   # fast core, seconds
+npx vitest run tests/sim/perf.test.ts                                  # perf gate — run ALONE
+npm run test:slow-ai                                                   # fairness + teams only
+npm run test:unit                                                      # everything except perf + slow AI
+npx vitest run --exclude tests/ui-phase4.test.ts                       # fast sweep during development
+```
+
+**The perf gate measures wall clock, so it must run alone.** Under CPU contention (six Playwright
+sessions) it has measured 114.8× against a 90× ceiling while the same code measures 42–48× on a quiet
+machine. CI runs it first, isolated, for exactly this reason. If it fails, check what else is running
+before assuming a regression.
+
+**The browser UI gates need the app served.** They read `PROOF_BASE`:
+
+```bash
+npx vite --host 127.0.0.1 --port 5343 --strictPort &
+PROOF_BASE=http://127.0.0.1:5343 npm run test:unit
+```
+
+**Note on `vite-node` and CLI arguments.** `vite-node script.ts --seeds a,b` passes the flag through
+to the runner, so `process.argv.indexOf('--seeds')` can resolve to the runner's own copy and yield
+`NaN`. Prefer positional arguments in new harnesses, or read `process.argv.slice(2)` and filter out
+`--` prefixed tokens.
+
+---
+
+## 6. The tournament and the proof captures
+
+### 6.1 The AI tournament
+
+```bash
+npm run tournament:ai     # 12 seeds x 2 sides x 4 matchups = 96 matches, hours of CPU
+npm run proof:ai          # regenerate docs/proof/phase-5/ai/report.md from tournament.json
+```
+
+`tournament:ai` writes `docs/proof/phase-5/ai/tournament.json`; `proof:ai` renders `report.md` from
+it. **Do not hand-edit `report.md`** — it is generated, and `tests/phase5-tournament.test.ts` checks
+the committed JSON against the contract.
+
+Every matchup is **side-swapped**: each seed is played twice, once with difficulty A in corner 0 and
+once in corner 1. That is what separates a slot bias from a corner bias. Keep it.
+
+Faster harnesses for iteration (all in `v2/audit/`, all print their own numbers):
+
+| Harness | What it measures |
+|---|---|
+| `ai-tournament-cli.ts` | the full bracket, `--seeds --minutes --jobs --json` |
+| `ai-tournament-parallel.ts` | the worker pool (`runPool`, `summarise`); parallelism is proven not to change results by `tests/ai-parallel.test.ts` |
+| `ai-smoke.ts` | **the CI gate**: 4 short matches asserting termination, no stalls, no idle army, same-seed determinism. Deliberately not a balance measurement. |
+| `mirror-par.ts` | mirror with Wilson CI, both corner assignments per seed — **the fairness instrument** |
+| `corner-pairs.ts` | every ordered corner pairing; reciprocal pairings are the signature of a symmetric game |
+| `symmetry-break.ts` | reflects one player's entities through the axis and reports the first divergence of a mirrored match |
+| `team-termination.ts` | 2v2 and 4-FFA termination with per-seed lengths |
+| `ai-termination-scan.ts` | per-seed termination, no-spend and idle-army for one matchup |
+| `capture-midgame.ts` / `capture-overview.ts` / `record-match.ts` | proof captures (see below) |
+
+### 6.2 Proof captures
+
+```bash
+PROOF_BASE=http://127.0.0.1:5343 npx vite-node audit/capture-overview.ts
+CAPTURE_SEED=1000 CAPTURE_D0=hard CAPTURE_D1=normal OVERVIEW_MIN=9 OVERVIEW_SIDE=0 \
+  PROOF_BASE=http://127.0.0.1:5343 npx vite-node audit/capture-overview.ts
+PROOF_BASE=http://127.0.0.1:5343 npx vite-node audit/capture-midgame.ts
+RECORD_SEED=1000 RECORD_D0=hard RECORD_D1=normal PROOF_BASE=http://127.0.0.1:5343 \
+  npx vite-node audit/record-match.ts
+```
+
+Captures **wait on the simulation clock**, not on wall time, so a shot labelled "t=9.3 min" really
+was taken at 9.3 minutes. `capture-overview.ts` also burns the live counts into the overlay, so the
+caption's numbers are the numbers in the frame. If a match ends before the target minute, the file is
+named with the actual time rather than mislabelled.
+
+The in-page hook `window.__v2` exposes `{ state, renderer, registry }` for harnesses. The spectate
+page accepts `?seed=&d0=&d1=&speed=`; player ids are `p1`/`p2` and must match the tournament's.
+
+**Restart the dev server after editing `src/main.ts`** — it is not always picked up by HMR.
+
+### 6.3 CI
+
+`.github/workflows/ci.yml`, the `v2` job. In order, and the order matters:
+
+1. `npm ci`, install Chromium
+2. `npm run typecheck`
+3. `npm run lint` (sim purity + UI style + no purple)
+4. start Vite on 5343 in the background
+5. **`tests/sim/perf.test.ts` alone** — wall clock, must not share a CPU
+6. **`audit/ai-smoke.ts`** — termination, stalls, determinism
+7. **`npm run test:slow-ai` alone** — fairness and teams, before any browser opens, because fourteen
+   Playwright sessions starved them of CPU and produced `page.goto` timeouts that had nothing to do
+   with the assertion
+8. `npm run test:unit` with `PROOF_BASE` — everything else, including the live UI gates
+9. stop Vite
+10. `npm run build`, then assert every deployed entry, the atlas manifest and the fonts exist
+
+---
+
+## 7. Known open issues and caveats
+
+### 7.1 Phase 5 targets that are NOT met
+
+These are measured, not suspected. Do not claim Phase 5 is fully green without addressing them.
+
+1. **Median match length is ~12 min, target 15–25.** The termination fixes made matches decisive at
+   the first army break, and the sanctum-HP lever no longer controls length: measured 4000 → 12.0 min,
+   6000 → 12.1, 8000 → 12.6. Restoring length needs a lever other than HQ HP. Note the committed
+   Phase 5 report (`docs/proof/phase-5/ai/report.md`) shows different numbers from an earlier build
+   (median 18.5, mirror 71%) — those were measured before the termination and fairness fixes.
+
+2. **The mirror is not reproducibly 50%.** The committed fairness test passes — first-listed 7-5 of
+   12, **58.3%, 95% CI 32.0%–80.7%, contains 50%** — but a 40-game run on the same build measured
+   **70% (95% CI 54.6–81.9%)**, outside 50%. The two samples disagree and the larger one should be
+   trusted less loosely than the smaller. Slot bias is fixed in the specific mechanisms that were
+   found (creation order no longer decides; corner pairings are reciprocal), but the aggregate is not
+   yet clean. **This is the single most important thing to re-measure before multiplayer.**
+
+3. **The overview capture shows one base, not two.** The surviving side reaches a decisive army at
+   ~10 minutes, before it finishes expanding, so "both bases of the surviving side" is not
+   obtainable. The caption reports the real count (1 base, 10 buildings, …) rather than implying a
+   second base exists. Making this shot possible means making the AI actually expand.
+
+4. **The AI does not expand to a second base before winning.** `targetBases` is 2 for Normal and 3
+   for Hard, and the expansion machinery exists (build-zone bridging with `stone_wall`, then a
+   forward refinery), but observed play ends first. Worth knowing: expansion needs roughly 5 walls
+   (40 each) plus a 750 refinery *while* fighting, and the AI rarely has that slack.
+
+5. **Phase 2's perf target was missed and reported.** See `docs/PHASE_2_REPORT.md`; the sim is within
+   budget but the phase's stated goal was stricter. Do not silently reclassify it as met.
+
+### 7.2 Things that will bite you
+
+- **The full tournament takes hours.** Use `ai-smoke.ts` for a fast signal and
+  `ai-tournament-parallel.ts --jobs 4` for real numbers. On a 4-core box, four workers is the useful
+  maximum.
+- **`runPool` returns a same-length array**, so a failed worker leaves `undefined` at its index.
+  Always guard before indexing.
+- **Sweeps that edit `data/*.json` must restore from v1 (`../data/`) afterwards** and verify. Never
+  leave dirty data files. Avoid globs like `rm -f audit/*.ts` — that has already deleted a harness
+  set once.
+- **A `profileFor` override object is shared unless copied.** Sweeps rely on per-brain overrides;
+  `profileFor` returns `{...base}` so an override cannot leak between players.
+- **Two players at the same start corner is not a legal configuration** — the second sanctum fails to
+  spawn and the match is meaningless. Do not use it as a fairness test.
+- **The sim allocates four RNG streams but almost nothing draws from them.** Seed variation currently
+  comes from a symmetric decision-pass phase derived from the seed. If you add randomness, add it to a
+  **named stream** and make it symmetric in expectation, or you will recreate the fairness bug.
+
+### 7.3 Caveats about the evidence
+
+- Frame-pacing numbers in the plan are **SwiftShader** (software rasteriser) figures. They are useful
+  only as an internally-comparable baseline, never as a claim about Chromebook or phone GPUs.
+- Several older proof images predate the current build. `docs/proof/phase-5/ai/report.md` is generated
+  and its numbers reflect the build at generation time — regenerate it rather than quoting it.
+- `v2/audit/` contains 126 harnesses, many from earlier phases. Not all still reflect current
+  behaviour. Each one prints its own numbers; treat a harness as evidence only if you re-ran it on
+  the current commit.
+
+---
+
+## 8. What comes next — Phases 6 to 8
+
+From `v2/docs/REBUILD_PLAN.md` §8. Summary, with the done-criteria that gate each phase.
+
+### Phase 6 — Multiplayer (2–4 players)
+
+**Build:** a lockstep client with rejoin and stall policy, keeping the **v1 wire protocol** so the
+existing Railway relay needs no change; host/guest lobby sync, ready states, claim, seed negotiation;
+per-tick checksum comparison; desync capture with replay; reconnect with backoff.
+
+**Done-criteria:** 2, 3 and 4 real browser peers stay in sync for 5 minutes (checksums equal every ACK
+window); a forced desync is detected and reported with a serialised replay; background/resume does not
+trip the stall banner but a genuine stall does; rejoin restores a live match mid-game; the unchanged
+v1 relay (`relay/server.mjs`) serves v2 peers.
+
+**Before you start:** re-measure the mirror (§7.1 item 2). A fair game is a prerequisite for
+multiplayer, and the current aggregate is not clean.
+
+**Note:** `src/net/` does not exist yet. v2 currently has no networking at all.
+
+### Phase 7 — PWA, content completion, polish, performance
+
+**Build:** manifest, service worker, cache headers, icons, install prompt, orientation lock, resume;
+**5 maps** completed and map-linted; **3 factions** with real filtering; research-tree content wired
+into both AI and UI; an audio pass; bundle splitting to hit the gzip budget.
+
+**Done-criteria:** installable on Android Chrome and desktop Chromium (documented manual check); cold
+TTI ≤ 6 s on throttled Fast 3G; **main chunk ≤ 150 kB gzip** (v1: 236.7 kB); all 5 maps pass map-lint;
+all 3 factions buildable and playable with Arcane numbers still byte-identical to v1; 20-minute memory
+soak ≤ 250 MB.
+
+### Phase 8 — Balance, conformance re-run, deploy, final proof
+
+**Build:** a full conformance re-run against v1 for every unchanged rule; a balance pass against the
+20-minute target; deployment to a **separate** Cloudflare Pages project `wizz-aw8-v2`, leaving
+`wizz-aw8` (which serves v1) untouched.
+
+**Done-criteria:** every unchanged rule matches v1 and every changed rule is asserted as the new
+behaviour with a link to its decision; balance harness shows median 1v1 14–24 min and no faction above
+a 60% win rate over 20 matches; v2 is live on `wizz-aw8-v2` and `wizz-aw8` still serves v1 (verified);
+the final evidence pack has before/after tables, the full video suite, and the inventory checklist
+fully marked.
+
+---
+
+## 9. Where to look first
+
+| I want to… | Go to |
+|---|---|
+| understand a rule decision | `v2/docs/REBUILD_PLAN.md` §3 |
+| see what a phase actually proved | `v2/docs/PHASE_{1,2,3}_REPORT.md`, `v2/docs/proof/phase-4/README.md`, `v2/docs/proof/phase-5/ai/README.md` |
+| understand the AI | `v2/src/ai/perception.ts` first (it defines what the AI may know), then `brain.ts`, `economy.ts`, `military.ts`, `difficulty.ts` |
+| understand a tick | `v2/src/sim/step.ts` — the comment block on `SYSTEM_ORDER` |
+| know what the AI may NOT do | `v2/tests/phase5-maphack.test.ts` |
+| know what is allowed to differ from v1 | `v2/tests/data/parity.test.ts` (`APPROVED_VALUE_EXCEPTIONS`) |
+| add a UI component | `v2/docs/UI_STYLE_GUIDE.md` then `v2/src/ui/tokens.css` |
+| add a sprite | `v2/docs/ART_DIRECTION.md` then `v2/art/` |
+| measure something | `v2/audit/` — read a nearby harness and copy its shape; they all print their own numbers |
