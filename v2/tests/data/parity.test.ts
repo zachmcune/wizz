@@ -229,40 +229,60 @@ describe('content parity: v1 → v2', () => {
     expect(v2.tileW).toBe(v1.tileW);
     expect(v2.tileH).toBe(v1.tileH);
     /**
-     * APPROVED TERRAIN-ONLY SYMMETRISATION — measured, and surgical.
+     * APPROVED TERRAIN-ONLY SYMMETRISATION — measured, and surgical. NOW ON BOTH AXES.
      *
-     * v1's `duel_glade` is not mirror-symmetric: 68 of 11,264 tiles and 26 heights differ from their reflection about the
-     * vertical axis. That asymmetry decided mirrors outright — `audit/cornerhard.ts` measured **corner 1 beating corner 0
-     * in 12 of 12 games** with identical AIs, and the effect was far larger than any difficulty lever, so Hard vs Normal
-     * measured a coin flip (50%) no matter how the profiles were tuned.
+     * v1's `duel_glade` was not mirror-symmetric: 68 of 11,264 tiles and 26 heights differed from their reflection
+     * about the vertical axis. That asymmetry decided mirrors outright — `audit/cornerhard.ts` measured **corner 1
+     * beating corner 0 in 12 of 12 games** with identical AIs.
      *
-     * Two symmetrisations were measured before choosing this one:
+     * Two symmetrisations were measured before choosing the vertical one:
      *
      *   • terrain AND nodes (right half := left, nodes rebuilt as exact pairs) — fixed the mirror but INVERTED the
-     *     difficulty ladder: Hard vs Normal went 12-0 -> 0-12, because rebuilding the nodes moved 5 of 13 and reshaped
-     *     the economy every balance measurement was taken against.
-     *   • TERRAIN ONLY (this one) — fixes the mirror without touching the economy.
+     *     difficulty ladder: Hard vs Normal went 12-0 -> 0-12, because rebuilding the nodes moved 5 of 13 and
+     *     reshaped the economy every balance measurement was taken against.
+     *   • TERRAIN ONLY — fixes the vertical mirror without touching the economy. That is what shipped in Phase 5.
      *
-     * Measured with this configuration:
-     *   mirror corner distribution   corner0 8 - corner1 4     (was 0 - 12)
-     *   Hard vs Normal, 24 games     Hard 19 - 5 = 79%         (needs >= 65%)
-     *   unfinished                   0
+     * THE HORIZONTAL AXIS WAS MISSED, AND IT IS THE ONE THE FOUR-CORNER MAP NEEDS.
      *
-     * So the right half of the terrain is the reflection of the left, and EVERY mana node — position and amount — is
-     * exactly v1. The node assertion below is what keeps that honest.
+     * Phase 6 re-measured with `audit/corner-pairs.ts` on the Phase 5 build and found the reciprocals did not
+     * cancel: `p1@c1 vs p2@c0` was 3-3 while its mirror `p1@c0 vs p2@c1` was 0-6, and `p1@c3 vs p2@c0` was 6-0
+     * while `p1@c0 vs p2@c3` was 0-6. **Corner 3 beat every other corner in both directions.** The cause was 40
+     * tiles and 32 heights that differed from their reflection about the HORIZONTAL axis, of which 24 tiles
+     * differed at the NAV grid after `canStep` propagation — i.e. genuinely reachable terrain, not decoration:
+     * tile (39,26) was passable while its mirror (39,61) was blocked. Corners 0/1 sit on the top edge and 2/3 on
+     * the bottom, so the bottom corners played a different map.
+     *
+     * The fix canonicalises the TOP-LEFT QUADRANT and reflects it into the other three. Choosing the top-left as
+     * the source is deliberate: it is untouched, so the opening that every Phase 5 measurement was taken against is
+     * unchanged, and only the 20 tiles and 16 heights that were already asymmetric move.
+     *
+     * Measured with this configuration: 0 tile and 0 height mismatches on BOTH axes, 0 nav-level asymmetry, and the
+     * mirror/corner/difficulty numbers are re-measured in `docs/proof/phase-5/ai/phase6-fairness.md`.
+     *
+     * EVERY mana node — position and amount — is still exactly v1, which is what keeps the difficulty ladder honest.
      */
     const W = v2.tileW;
     const H = v2.tileH;
-    let tileMismatches = 0;
-    let heightMismatches = 0;
+    let tileV = 0;
+    let heightV = 0;
+    let tileH = 0;
+    let heightH = 0;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileMismatches++;
-        if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightMismatches++;
+        if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileV++;
+        if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightV++;
+        if (v2.tiles[y * W + x] !== v2.tiles[(H - 1 - y) * W + x]) tileH++;
+        if (v2.heights[y * W + x] !== v2.heights[(H - 1 - y) * W + x]) heightH++;
       }
     }
-    expect(tileMismatches, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
-    expect(heightMismatches, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
+    expect(tileV, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
+    expect(heightV, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
+    /**
+     * The horizontal axis is what makes the four-corner map fair: corners 0/1 are the top edge and 2/3 the bottom,
+     * so an asymmetric row means the bottom half of the map is a different game from the top half.
+     */
+    expect(tileH, 'terrain must be mirror-symmetric about the horizontal axis').toBe(0);
+    expect(heightH, 'elevation must be mirror-symmetric about the horizontal axis').toBe(0);
     // The economy is NOT symmetrised — every node is exactly v1, which is what preserves the difficulty ladder.
     expect(v2.manaNodes).toEqual(v1.manaNodes);
     expect(v2.startLocations).toEqual(v1.startLocations);

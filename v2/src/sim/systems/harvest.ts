@@ -13,7 +13,7 @@ import { getHarvester, isChanneling } from '../capabilities';
 import { buildingHasPower } from '../power';
 import { resolveEconomyStat } from '../modifiers';
 import { getPlayer, hasHQ } from '../queries';
-import { makePathContext, moveTowardGoal } from '../pathing';
+import { makePathContext, moveTowardGoal, mirrorRank } from '../pathing';
 
 /**
  * Distance from a point to a building's *footprint rectangle* (0 when inside).
@@ -39,6 +39,8 @@ function distanceToFootprint(
 
 function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): number {
   const store = state.entities;
+  const mapW = ctx.services.nav.w;
+  const mapH = ctx.services.nav.h;
   const owner = store.ownerId(store.ownerIndex[unitSlot]!);
   let best = -1;
   let bestD = Infinity;
@@ -57,10 +59,10 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
     const dy = store.posY[slot]! - store.posY[unitSlot]!;
     const d = dx * dx + dy * dy;
     if (bdef.isRefinery) {
-      if (d < bestD || (d === bestD && positionRank(store.posX[slot]!, store.posY[slot]!) < bestRank)) {
+      if (d < bestD || (d === bestD && positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH) < bestRank)) {
         bestD = d;
         best = slot;
-        bestRank = positionRank(store.posX[slot]!, store.posY[slot]!);
+        bestRank = positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH);
       }
     } else if (bdef.isConstructionYard) {
       /**
@@ -76,10 +78,10 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
        * player placed deliberately), so refinery placement still matters — which is what keeps the §5.5
        * decision about refinery distance intact.
        */
-      if (d < yardD || (d === yardD && positionRank(store.posX[slot]!, store.posY[slot]!) < yardRank)) {
+      if (d < yardD || (d === yardD && positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH) < yardRank)) {
         yardD = d;
         yard = slot;
-        yardRank = positionRank(store.posX[slot]!, store.posY[slot]!);
+        yardRank = positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH);
       }
     }
   }
@@ -96,19 +98,22 @@ function nearestRefinery(state: GameState, ctx: StepContext, unitSlot: number): 
  * toward the map centre. The mirror measured 16/16 to the lower-x corner (`audit/mirror4way.ts`), independent of player
  * id and of creation order, which is what a positional bias looks like.
  *
- * The tie-break is now a hash of the tile position: deterministic across replays, and carrying no preference for left,
- * right, up or down. A collision is harmless — it just means slot order decides between two exactly equidistant nodes.
+ * THE TIE-BREAK MUST BE INVARIANT UNDER REFLECTION, NOT MERELY UNBIASED ON AVERAGE.
+ *
+ * This used to be an FNV hash of the tile coordinates. That is deterministic and has no preference for left, right, up
+ * or down *in aggregate* — but it gives a tile and its mirror image unrelated ranks. So a worker at (x,y) and its
+ * mirror at (W−x,y), equidistant between two nodes, would break the tie DIFFERENTLY: one picked the node on its left,
+ * the other the node toward the map centre. The mirror audit then measured 18.2% (95% CI 9.5–32.0%) with 0 unfinished,
+ * and that effect was large enough to hide the same defect in `bestNeighborSteer` (see `mirrorRank` in `pathing.ts`).
+ *
+ * Distances from the map midlines are unchanged by a reflection, so ordering by them makes the choice a true
+ * reflection of the other side's choice. That is the property the mirror gate actually needs.
  */
-function positionRank(x: number, y: number): number {
-  const tx = Math.floor(x / TILE);
-  const ty = Math.floor(y / TILE);
-  let h = Math.imul(tx | 0, 0x27d4eb2d) ^ Math.imul(ty | 0, 0x165667b1);
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  return (h ^ (h >>> 16)) >>> 0;
+function positionRank(x: number, y: number, mapW: number, mapH: number): number {
+  return mirrorRank(Math.floor(x / TILE), Math.floor(y / TILE), mapW, mapH);
 }
 
-function nearestNode(state: GameState, unitSlot: number): number {
+function nearestNode(state: GameState, unitSlot: number, mapW: number, mapH: number): number {
   const store = state.entities;
   let best = -1;
   let bestD = Infinity;
@@ -121,7 +126,7 @@ function nearestNode(state: GameState, unitSlot: number): number {
     const d = dx * dx + dy * dy;
     if (d > bestD) continue;
     if (d === bestD) {
-      const rank = positionRank(store.posX[slot]!, store.posY[slot]!);
+      const rank = positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH);
       if (rank >= bestRank) continue;
       bestRank = rank;
       best = slot;
@@ -129,7 +134,7 @@ function nearestNode(state: GameState, unitSlot: number): number {
     }
     bestD = d;
     best = slot;
-    bestRank = positionRank(store.posX[slot]!, store.posY[slot]!);
+    bestRank = positionRank(store.posX[slot]!, store.posY[slot]!, mapW, mapH);
   }
   return best;
 }
@@ -221,7 +226,7 @@ export function harvestSystem(state: GameState, ctx: StepContext): void {
     // ---- harvesting (moving to the node, then siphoning)
     let nodeSlot = order.nodeId !== undefined ? store.slotOf(order.nodeId) : -1;
     if (nodeSlot < 0 || store.kind[nodeSlot] !== KIND_RESOURCE_NODE || store.amount[nodeSlot]! <= 0 || store.dead[nodeSlot]) {
-      nodeSlot = nearestNode(state, slot);
+      nodeSlot = nearestNode(state, slot, ctx.services.nav.w, ctx.services.nav.h);
       if (nodeSlot < 0) {
         ex.orders.length = 0;
         store.state[slot] = STATE_IDLE;

@@ -87,7 +87,22 @@ export class LockstepClient {
 
   private ingestTick(tick: number, cmds: Command[]): void {
     if (tick < 0) return;
-    if (this.confirmed.has(tick)) return; // duplicates are harmless; keep the first
+    /**
+     * A LATE ARRIVAL WITH REAL COMMANDS MUST NOT BE DISCARDED.
+     *
+     * Duplicates used to be dropped unconditionally, which is right for an exact re-delivery. But a tick can
+     * legitimately arrive twice: once as a GAP FILLER (an empty list synthesized because the relay had already
+     * moved on) and once for real, when a delayed message finally lands. The old code kept the empty filler and
+     * threw away the actual commands, so that tick was simulated with no orders on this peer and with orders on
+     * every other — a guaranteed desync.
+     *
+     * The rule is therefore: an EMPTY list never replaces a non-empty one.
+     */
+    const existing = this.confirmed.get(tick);
+    if (existing !== undefined) {
+      if (existing.length === 0 && cmds.length > 0) this.confirmed.set(tick, cmds);
+      return;
+    }
 
     if (this.lastReceivedTick >= 0 && tick > this.lastReceivedTick + 1) {
       /**

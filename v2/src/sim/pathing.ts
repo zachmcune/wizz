@@ -15,6 +15,26 @@ import type { NavGrid } from './nav-grid';
 import { len, normalize } from '../core/math';
 import type { Relation } from './types';
 
+/**
+ * Neighbour scan order for the flat-field escape hatch.
+ *
+ * THE ORDER IS A TIE-BREAK, AND A FIXED ORDER IS NOT SYMMETRIC. This array used to be
+ * `[1,0],[-1,0],[0,1],[0,-1],...` — ascending x first — and `bestNeighborSteer` keeps the FIRST neighbour
+ * that strictly improves on the current cost. When two neighbours are exactly level (which is common: flow
+ * costs are integers, so plateaus and 45-degree ties are everywhere), the winner was decided by array order,
+ * i.e. by "prefer +x, then −x, then +y, then −y".
+ *
+ * That preference does not reflect. A unit at (x,y) and its mirror at (W−x,y) facing the mirrored goal saw the
+ * same plateau resolve in OPPOSITE world directions, so the two bases pathed differently through identical
+ * terrain. Measured with `audit/neighbor-symmetry.ts`: **595 of 1221 sampled tiles steered differently from
+ * their own reflection** on one flow field. That is what put the mirror win rate at 18.2% (95% CI 9.5–32.0%)
+ * with 0 unfinished, and it is why raising HQ HP or tuning the AI could never fix fairness.
+ *
+ * The fix is not a better fixed order — no fixed order can be mirror-covariant, because +x and −x must be
+ * treated equally. The tie is broken by a hash of the CANDIDATE TILE POSITION instead (see
+ * `bestNeighborSteer`), which is symmetric in expectation: a tile and its reflection get unrelated but equally
+ * distributed ranks, so neither side of the map is systematically preferred.
+ */
 const NEIGHBORS: readonly [number, number][] = [
   [1, 0],
   [-1, 0],
@@ -25,6 +45,31 @@ const NEIGHBORS: readonly [number, number][] = [
   [-1, 1],
   [-1, -1],
 ];
+
+/**
+ * A tile rank that is INVARIANT under reflection about the vertical midline.
+ *
+ * `bestNeighborSteer` needs it for cost ties: the choice must be identical (as a reflection) for a unit at
+ * (x,y) and its mirror at (W−x,y), or two identical bases on symmetric halves of the map path differently.
+ *
+ * A hash of the tile coordinates does not have that property — it gives unrelated values to a tile and its
+ * mirror, so it is symmetric only in aggregate (measured 51.3% per-tile agreement). Comparing distances from
+ * the two midlines does: `|2x − (w−1)|` maps to itself when x maps to `w−1−x`, and likewise for y. The row and
+ * column are the tie-breakers, and both are invariant as well.
+ *
+ * Ordering is by `dMin` then `dMax` then `ty` then `tx`, chosen so that the centre of the map sorts first and
+ * movement tends to stay near the diagonal rather than hugging one edge — a purely aesthetic choice that the
+ * symmetry allows, because it treats all four quadrants identically.
+ */
+export function mirrorRank(tx: number, ty: number, w: number, h: number): number {
+  const dx = Math.abs(2 * tx - (w - 1));
+  const dy = Math.abs(2 * ty - (h - 1));
+  const dMin = Math.min(dx, dy);
+  const dMax = Math.max(dx, dy);
+  // Pack into a single comparable integer: each term is bounded by the map size, so this is exact.
+  const scale = 1_000_000;
+  return dMin * scale * scale * scale + dMax * scale * scale + ty * scale + tx;
+}
 
 const UNREACHABLE = 0xffff;
 
@@ -54,8 +99,10 @@ export function bestNeighborSteer(
   if (here === UNREACHABLE) return { x: 0, y: 0 };
 
   let bestC = here;
+  let bestRank = 0;
   let bx = 0;
   let by = 0;
+  let found = false;
   for (const [dx, dy] of NEIGHBORS) {
     const nx = tx + dx;
     const ny = ty + dy;
@@ -65,13 +112,38 @@ export function bestNeighborSteer(
       if (isTileBlocked(tx + dx, ty) || isTileBlocked(tx, ty + dy)) continue;
     }
     const nc = field.cost[ny * nav.w + nx]!;
-    if (nc < bestC) {
+    /**
+     * TIES ARE BROKEN BY A MIRROR-INVARIANT RANK, NOT BY SCAN ORDER.
+     *
+     * The guard is unchanged: a candidate must strictly improve on where we stand, which is what stops a unit
+     * on a plateau from stepping sideways forever. Among improving candidates the lowest cost wins.
+     *
+     * Among candidates of EQUAL cost, the old code let `NEIGHBORS` order decide, which prefers +x over −x and
+     * therefore cannot survive reflection: a unit and its mirror image resolved the same plateau in opposite
+     * world directions, so the two bases pathed differently through identical terrain. Measured with
+     * `audit/neighbor-symmetry.ts`: 595 of 1221 sampled tiles steered differently from their own reflection.
+     *
+     * A hash of the candidate tile fixes the *aggregate* but not the *individual* case — it is symmetric only in
+     * expectation, measured at 51.3% agreement, which is no use when the property required is that a mirrored
+     * match plays out identically. What is needed is a rank that is INVARIANT under the reflection, so a tile and
+     * its mirror always rank the same way relative to the other candidates.
+     *
+     * `mirrorRank` compares the tile's distance from the vertical and horizontal midlines, then its row and
+     * column. Both are unchanged when x is reflected about the midline, so the choice a unit makes at (x,y) and
+     * the choice its mirror makes at (W−x,y) are reflections of each other. It is a pure function of the tile, so
+     * replays and lockstep are unaffected.
+     */
+    if (nc >= here) continue;
+    const rank = mirrorRank(nx, ny, nav.w, nav.h);
+    if (!found || nc < bestC || (nc === bestC && rank < bestRank)) {
       bestC = nc;
+      bestRank = rank;
       bx = dx;
       by = dy;
+      found = true;
     }
   }
-  if (bx === 0 && by === 0) return { x: 0, y: 0 };
+  if (!found) return { x: 0, y: 0 };
   const l = Math.hypot(bx, by);
   return { x: bx / l, y: by / l };
 }
