@@ -1,12 +1,12 @@
 # HANDOFF — Arcane Dominion v2
 
-**Written:** 2026-11-23, at the end of Phase 5, on branch `cursor/rebuild-v2-5642`.
-**Reader:** a new agent picking up Phase 6 with no history of this branch.
+**Written:** 2026-11-23, at the end of Phase 6, on branch `cursor/rebuild-v2-5642`.
+**Reader:** a new agent picking up Phase 7 with no history of this branch.
 **Scope of this document:** enough context to continue without re-deriving anything. Every number here
 was measured on this branch; where something is unresolved it says so instead of smoothing it over.
 
-**If you read only three sections:** §0.2 (the working rules), §7 (the open issues — three Phase 5
-targets are *not* met and one of them gates Phase 6), and §8 (what Phase 6 asks for).
+**If you read only three sections:** §0.2 (the working rules), §7 (the open issues — one Step 0 target
+is not obtainable, and the reasons are measured), and §8 (what Phase 6 did and what Phase 7 asks for).
 
 ---
 
@@ -51,7 +51,7 @@ checklist.
 
 ## 1. Phase status
 
-Phases 0–5 are complete. Phase 6 has not started.
+Phases 0–6 are complete. Phase 7 has not started.
 
 | Phase | What it proved | Proof lives in |
 |---|---|---|
@@ -60,10 +60,11 @@ Phases 0–5 are complete. Phase 6 has not started.
 | **2 — Simulation core** | A fully headless, deterministic 20 Hz simulation with a fixed-order system pipeline; replayable; hash-stable; within CPU budget. One performance target was missed and reported honestly (see §7.1). | `v2/docs/PHASE_2_REPORT.md`; `v2/docs/proof/phase-2/` (4 viewport sim shots, `headless-match-log.md`, `phase-2-match.mp4`) |
 | **3 — Renderer & art pipeline** | A 2.5D dimetric renderer and an offline 3D→2D sprite pipeline that produces every sprite in code (no image generation). Art proof includes a before/after against v1. | `v2/docs/PHASE_3_REPORT.md`; `v2/docs/proof/phase-3/`, `phase-3-final/` (`README.md`, `proof-index.json`, `gallery/`, `sprites/`, `phase3-final-gameplay.webm`), `phase-3-pilot/` (v1-vs-v2 comparison), `atlas-archive/` |
 | **4 — UI, HUD, screens** | Real rendered layout gates: HUD area, zone overlap, the Place button being topmost, `.hud-cmd` height, unit separation — measured at 4 viewports in a real browser. The "Obsidian & Brass" style, with the no-purple rule enforced on both chrome and baked art. | `v2/docs/PHASE_4_REPORT.md`; `v2/docs/proof/phase-4/` (`README.md`, `screens/`, `hud-geometry.json`, `phase4-proof.json`, `phase4-full-flow.webm`), `phase-4-polish/` (alignment grids), `ui-style/` (`README.md`, `styleguide-*.png`, `ui-proof.json`) |
-| **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`) |
+| **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. **Re-measured in Phase 6 after three sim defects were fixed — see §7.0.** | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`, **`phase6-fairness.md`**, `footprint-*.png`) |
+| **6 — Multiplayer** | Deterministic 2–4 player lockstep over the **unmodified v1 relay**: lobby create/join, input delay, desync detection with replay capture, reconnect and clean drop, stall policy, AI fill-in. 2/3/4 headless peers reach decided matches with zero desyncs; two real browser contexts stayed in sync across **38 compared ticks with 0 mismatches**. | `v2/docs/proof/phase-6/` (`README.md`, `BALANCE_PROPOSALS.md`, 7 screenshots, `video/two-browser-lockstep-match.webm`, `browser-match.json`, `browser-match.log`) |
 
-**Phase 5 caveats are real and are listed in §7.** Do not read "Phase 5 complete" as "every target
-met" — three targets are not met, and §7 names them with numbers.
+**Phase 5's remaining caveats are real and are listed in §7**, with the Phase 6 re-measurement in §7.0. One
+Step 0 target (the "both bases with expansions" shot) is not obtainable; the rest are met.
 
 ---
 
@@ -220,22 +221,31 @@ v2/
     render/      PixiJS. renderer.ts, terrain.ts, terrain2.ts, atlas.ts, camera.ts
     ui/          tokens.css · components.css · screens.css · styleguide.css · fonts.css · icons.ts · kit.ts
                  Obsidian & Brass tokens. Hue 250–330 is banned by test, not by convention.
-    app/         The real game UI: app.ts, match.ts, hud.ts, state.ts, screens/
+    app/         The real game UI: app.ts, match.ts, networked-match.ts, hud.ts, state.ts, screens/
+    net/         Multiplayer. protocol.ts (wire types) · protocol-constants.ts (typed copy of the shared
+                 values, drift-tested) · lockstep.ts (input delay, tick confirmation, gap filling, ack
+                 pacing, desync compare) · session.ts (one peer's match: sim + AI fill-in + desync
+                 capture + snapshot adopt) · in-process-relay.ts (the relay's merge semantics, no
+                 sockets) · harness.ts (N peers with injectable latency/jitter/drops) · lobby.ts
+                 (create/join/ready/start validation/AI fill-in) · stall.ts (pure HUD policy) ·
+                 ws-transport.ts (the browser pipe, with rejoin on reconnect) · bot-client.ts (a
+                 headless player whose AI commands travel over the network)
     styles/      shared CSS
     data/        registry.ts · loader.ts · defs.ts · schemas.ts (zod) · validate-registry.ts
     art/         the offline 3D->2D sprite pipeline (see docs/ART_DIRECTION.md)
   art/           pipeline scripts and baked output
   data/          units/ buildings/ spells/ projectiles/ maps/ match/ balance.json
-  audit/         126 measurement harnesses. This is the evidence base — see §6.
-  tests/         39 test files across tests/, tests/sim/, tests/core/, tests/data/
-  docs/          REBUILD_PLAN.md · FEATURE_INVENTORY.md · PHASE_{1,2,3}_REPORT.md ·
+  audit/         140+ measurement harnesses. This is the evidence base — see §6.
+  tests/         test files across tests/, tests/sim/, tests/core/, tests/data/, tests/net/
+  docs/          REBUILD_PLAN.md · FEATURE_INVENTORY.md · PHASE_{1,2,3,4}_REPORT.md ·
                  ART_DIRECTION.md · UI_STYLE_GUIDE.md · proof/ (per-phase evidence)
 ```
 
 **Vite entries** (`v2/vite.config.ts`): `index.html` (main), `gallery.html` (sprite gallery),
 `styleguide.html` (UI style), `ui-proof.html` (one mockup at one density, for proof captures),
-`app.html` (**the real game UI**). CI asserts all four deployed entries plus the atlas manifest and
-fonts exist in `dist/`, because a missing entry succeeds in dev and 404s only after a build.
+`app.html` (**the real game UI**, and the entry the multiplayer screen ships from). CI asserts all five
+deployed entries plus the atlas manifest and fonts exist in `dist/`, because a missing entry succeeds in
+dev and 404s only after a build.
 
 ### 4.1 Difficulty profiles
 
@@ -249,9 +259,9 @@ extras (kiting, harass, counters, superweapon) measured neutral individually and
 combination**, so they are off. Do not add an unmeasured lever to a difficulty; the ablation in
 `v2/docs/proof/phase-5/ai/ablation.md` records what each candidate actually did.
 
-### 4.2 Two traps that have already cost this branch days
+### 4.2 Traps that have already cost this branch days
 
-Both are documented at length in the source; they are repeated here because a new agent will hit them.
+All are documented at length in the source; repeated here because a new agent will hit them.
 
 1. **Shared mutable scratch arrays do not survive nesting.** `acquireTarget` iterates its candidate
    list while calling `swarmScore`, which runs its own `queryRadius`; `queryRadius` **clears** its
@@ -262,6 +272,28 @@ Both are documented at length in the source; they are repeated here because a ne
    "where do I attack" and "do I know where they live" decision must require `live === true` **and**
    a non-wall def — and `pickAttackTarget` and the sweep predicate must use the *same* rule, because
    they diverged once and it cost a phase.
+3. **A tie-break is a fairness decision, and scan order is never neutral.** `bestNeighborSteer` kept the
+   first neighbour that improved on the current cost, and `NEIGHBORS` is ordered `[1,0],[-1,0],…` — so
+   every exact cost tie resolved toward +x. Measured: **595 of 1221 tiles steered differently from their
+   own reflection**, and the mirror was 18.2% instead of a coin flip. The same defect existed in the
+   harvest system's "nearest node" hash. Order ties by a **reflection-invariant** quantity
+   (`mirrorRank` in `pathing.ts`), never by iteration order, and never by a hash of the coordinates — a
+   hash is symmetric only in aggregate, which is not the property a mirrored match needs.
+4. **`movementSystem` must not receive an order with no coordinates.** `harvest`, `attack` and `hold`
+   orders carry no `x`/`y`; reading them produced `undefined + offset = NaN`, which every comparison
+   lets through and which then poisons `velX`, `velY` **and `facing`** — and `facing` is in `hashState`
+   and is read by turret arcs. 282,204 non-finite values in one match. If you add an order type, add it
+   to the guard in `movement.ts`; there is a throwing finite check as a tripwire.
+5. **The relay validates every frame and silently drops one it does not recognise.** It runs v1's zod
+   schema, so a v2 command variant it does not enumerate makes the WHOLE `commands` frame vanish — every
+   order that tick, not just the unknown one. `tests/net/wire-compat.test.ts` feeds one of each variant
+   through the relay's actual validator for exactly this reason. Run it after touching
+   `src/net/protocol.ts`.
+6. **A fake network must not reorder messages.** A WebSocket is a TCP stream, so tick N always arrives
+   before N+1. The first test harness allowed jitter to overtake, the lockstep client gap-filled the
+   skipped tick with an empty list, and the real commands for it were then discarded — a desync that was
+   a defect in the *harness*. Delivery is monotonic now, and the client also promotes a late non-empty
+   list over an empty filler.
 
 ---
 
@@ -373,9 +405,41 @@ page accepts `?seed=&d0=&d1=&speed=`; player ids are `p1`/`p2` and must match th
 7. **`npm run test:slow-ai` alone** — fairness and teams, before any browser opens, because fourteen
    Playwright sessions starved them of CPU and produced `page.goto` timeouts that had nothing to do
    with the assertion
-8. `npm run test:unit` with `PROOF_BASE` — everything else, including the live UI gates
-9. stop Vite
-10. `npm run build`, then assert every deployed entry, the atlas manifest and the fonts exist
+8. **`npm run test:slow-net` alone** — the Phase 6 lockstep suites (2–4 peers through the relay, desync,
+   latency/jitter, rejoin). ~12 minutes of CPU, excluded from `test:unit` for the same reason as above.
+9. `npm run test:unit` with `PROOF_BASE` — everything else, including the live UI gates
+10. stop Vite
+11. `npm run build`, then assert all five deployed entries, the atlas manifest and the fonts exist
+
+### 6.4 Running a multiplayer match by hand
+
+The relay needs `ws` and `zod`. Neither is installed under `v2/` (the relay is v1 code and v2 must not
+depend on it), so link them into the repository root's `node_modules` — this is a dev-only step and
+`node_modules` is gitignored:
+
+```bash
+cd /agent/repos/wizz
+mkdir -p node_modules
+ln -sfn "$(cd v2 && node -p 'require.resolve("zod") + "/.."')" node_modules/zod
+npm install ws --no-save            # or link an existing ws
+node --experimental-strip-types relay/server.mjs    # relay on :8787, health at /health
+
+cd v2 && npx vite --host 127.0.0.1 --port 5343      # app on :5343
+```
+
+Then open `http://127.0.0.1:5343/app.html?screen=multiplayer&relay=ws://127.0.0.1:8787`, press
+**Create a room**, and open the resulting `?room=CODE` URL in a second browser. The second player
+presses **Ready**; the host presses **Start**. `window.__v2Net` exposes `{ state, session, playerId,
+hash(), hashAt(t), hashTicks() }` for harnesses.
+
+The Playwright proof drives that whole flow automatically:
+
+```bash
+cd v2 && MP_PLAY_SECONDS=60 npx playwright test tests/net/browser-match.spec.ts
+```
+
+**`v2/docs/proof/phase-6/` is the reference for what a real run looks like** — screenshots, video, and
+the per-tick hash comparison in `browser-match.log`.
 
 ---
 
@@ -575,7 +639,11 @@ fully marked.
 | understand the AI | `v2/src/ai/perception.ts` first (it defines what the AI may know), then `brain.ts`, `economy.ts`, `military.ts`, `difficulty.ts` |
 | understand a tick | `v2/src/sim/step.ts` — the comment block on `SYSTEM_ORDER` |
 | know what the AI may NOT do | `v2/tests/phase5-maphack.test.ts` |
+| **understand multiplayer** | `v2/src/net/lockstep.ts` (the buffering rule), then `session.ts` (what one peer owns), then `README.md` in `docs/proof/phase-6/` for what was actually proven |
+| **know why a desync is reported** | `LockstepSession.stepOne` — the comparison, the two-consecutive-reports rule, and `DesyncCapture` (the replay) |
+| **add a network message** | `v2/src/net/protocol.ts`, then run `tests/net/wire-compat.test.ts`: the relay validates every frame and silently drops one it does not recognise |
 | know what is allowed to differ from v1 | `v2/tests/data/parity.test.ts` (`APPROVED_VALUE_EXCEPTIONS`) |
 | add a UI component | `v2/docs/UI_STYLE_GUIDE.md` then `v2/src/ui/tokens.css` |
 | add a sprite | `v2/docs/ART_DIRECTION.md` then `v2/art/` |
 | measure something | `v2/audit/` — read a nearby harness and copy its shape; they all print their own numbers |
+| **see the fairness and balance numbers** | `v2/docs/proof/phase-5/ai/phase6-fairness.md` — the authoritative mirror, length and ladder measurement, including the three sim defects that invalidated the Phase 5 figures |
