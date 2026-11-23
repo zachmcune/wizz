@@ -155,11 +155,17 @@ storage, separate WebSocket, no shared JS), the real `app.html` bundle, the real
 **unmodified v1 relay** (`relay/server.mjs`) running locally.
 
 Flow: host creates a room → guest joins by invite URL → guest presses **Ready** → host presses **Start** → both
-land in a networked match → the host issues a real canvas click → the match runs.
+land in a networked match → the host issues a real canvas click → the match runs (60 s of wall time).
 
-**Result: 38 common ticks compared across both peers, 0 mismatched**, both at 19 entities, no desync reported by
-either peer. The comparison uses `hashState` — the same function the desync detector uses — so each of those 38
-ticks is a full-board comparison of both worlds.
+**Result: 38 common ticks compared across both peers, 0 mismatched.** `browser-match.json` records the state at the
+end of sampling, and `browser-match.log` is the full run log including the per-tick comparison. The comparison uses
+`hashState` — the same function the desync detector uses — so each of those 38 ticks is a full-board comparison of
+both worlds.
+
+Note the tick samples in the log: the two peers are read sequentially, so they are always a few ticks apart (e.g.
+host 1967, guest 1985). That is the sampler's latency, not drift — the two are within one second of each other
+throughout, and the authoritative comparison is the common-tick hash history, which matched on every tick both peers
+recorded.
 
 Artifacts in this directory:
 
@@ -170,11 +176,11 @@ Artifacts in this directory:
 | `lobby-host-ready.png` | host's Start button enabled after the guest readied |
 | `match-host-start.png`, `match-guest-start.png` | both peers in the match at kickoff (1366×768 and 667×375) |
 | `match-host-late.png`, `match-guest-late.png` | the same match later, both peers |
-| `video/*.webm` | the host's screen for the whole run |
+| `video/two-browser-lockstep-match.webm` | the host's screen for the whole run (18 MB) |
 | `browser-match.json` | final tick, entity count, per-player counts, sample count |
 | `browser-match.log` | the run log, including the common-tick hash comparison |
 
-Run: `npx playwright test tests/net/browser-match.spec.ts` → **1 passed**.
+Run: `npx playwright test tests/net/browser-match.spec.ts` → **1 passed** (1.9 min).
 
 ### What it took to make it pass
 
@@ -204,13 +210,24 @@ both viewport classes, not that they were tested on the devices.
 
 ## 10. Not met, stated plainly
 
+- **Step 0(d), "both bases with expansions", is not obtainable.** The AI never expands: every refinery and
+  construction-yard position across a whole match stays inside the starting cluster. The evidence for that, and the
+  honest alternative capture (`docs/proof/phase-5/ai/footprint-*.png`), are in
+  `docs/proof/phase-5/ai/phase6-fairness.md` §2 and the capture's own header.
 - **The deployed-branch-preview match was not run.** The brief allowed either the deployed preview
   (`https://cursor-rebuild-v2-5642.wizz-aw8.pages.dev/v2/`) or a local build; this proof is the **local build**
-  against a local relay. Deploying the relay needs Railway account access that this run does not have, and
+  against a **local relay**. Deploying the relay needs Railway account access that this run does not have, and
   deploying the Pages project is a separate step. No credentials were invented.
-- **The relay is the local `relay/server.mjs`, not the production Railway instance.** It is the same file, and
-  `wire-compat` proves the protocol, but "the deployed relay served these peers" is not claimed.
-- **3- and 4-peer matches were proven headless, not in browsers.** The browser proof is 2 peers. Adding a third
-  and fourth context is mechanically the same flow and would take ~3 minutes of wall time per run; it was not
-  done here, so the 3- and 4-peer evidence is `tests/net/lockstep-relay.test.ts` and
-  `tests/net/rejoin.test.ts` only.
+- **The relay is the local `relay/server.mjs`, not the production Railway instance.** It is the same unmodified
+  file, and `wire-compat` proves the protocol against the relay's own validator, but "the deployed relay served
+  these peers" is not claimed here.
+- **3- and 4-peer matches were proven headless, not in browsers.** The browser proof is 2 peers. Adding a third and
+  fourth context is mechanically the same flow and would take ~3 minutes of wall time per run; it was not done, so
+  the 3- and 4-peer evidence is `tests/net/lockstep-relay.test.ts` and `tests/net/rejoin.test.ts` only.
+- **Real Chromebook and phone hardware was not available.** The two contexts run at those viewport classes
+  (1366×768 and 667×375) with touch emulation on the phone one, and the networking holds at both — but this VM has
+  no GPU, so neither rendering performance nor real touch input on those devices is claimed.
+- **The browser proof needs a relay, so it is not in CI.** `playwright.config.ts` exists and
+  `npm run test:browser` is wired; CI does not start a relay on 8787. Making it a CI gate means installing `ws` and
+  `zod` for the relay process in the workflow (see `HANDOFF.md` §8 for the exact steps), which was judged a Phase 7
+  task rather than something to bolt on here.
