@@ -1131,11 +1131,24 @@ export function findBuildSpot(
        * Choosing by side rather than adding a constant keeps the left base's scan identical to what it always was, so no
        * measured behaviour on the left half changes; only the mirrored base's offset is corrected.
        */
+      /**
+       * THE PARITY CORRECTION IS NEEDED ON BOTH AXES, AND MUST BE 180-DEGREE COVARIANT.
+       *
+       * The sanctum is 3-wide and the refinery 2-wide in BOTH axes, so the offset relation `dx' = 1 - dx` applies to y as
+       * well as x. Correcting only x left the diagonal pairing (corner 0 against corner 3, which are a 180-degree mirror
+       * pair) unequal: `audit/corner-pairs.ts` measured `p1@c0 vs p2@c3` at 2/8 while `p1@c3 vs p2@c0` was 8/8, with the
+       * map itself verified invariant under 180-degree rotation (0 tile and 0 height mismatches, all 13 mana nodes paired).
+       *
+       * Selecting the corrected side by "right half OR bottom half" keeps the rule covariant under that rotation, because
+       * 180 degrees maps the right half onto the left and the bottom onto the top — so exactly one base in each mirrored
+       * pair takes the delta on each axis, whichever quadrant it starts in.
+       */
       const mapTilesWide = per.mapW;
-      const onRightHalf = anchorTx * 2 > mapTilesWide;
-      const sideShift = onRightHalf ? parityDelta : 0;
-      const originTx = anchorTx + dx + sideShift;
-      const originTy = anchorTy + dy;
+      const mapTilesHigh = per.mapH;
+      const shiftX = anchorTx * 2 > mapTilesWide ? parityDelta : 0;
+      const shiftY = anchorTy * 2 > mapTilesHigh ? parityDelta : 0;
+      const originTx = anchorTx + dx + shiftX;
+      const originTy = anchorTy + dy + shiftY;
       const x = (originTx + def.footprint / 2) * TILE;
       const y = (originTy + def.footprint / 2) * TILE;
       if (x - half < TILE || y - half < TILE) continue;

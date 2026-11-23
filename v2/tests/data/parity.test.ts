@@ -254,20 +254,43 @@ describe('content parity: v1 → v2', () => {
     const H = v2.tileH;
     let tileMismatches = 0;
     let heightMismatches = 0;
+    let tileMismatchesY = 0;
+    let heightMismatchesY = 0;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileMismatches++;
         if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightMismatches++;
+        if (v2.tiles[y * W + x] !== v2.tiles[(H - 1 - y) * W + x]) tileMismatchesY++;
+        if (v2.heights[y * W + x] !== v2.heights[(H - 1 - y) * W + x]) heightMismatchesY++;
       }
     }
+    /**
+     * BOTH AXES, because one is not enough.
+     *
+     * Symmetrising only the vertical axis leaves the north and south halves different, and that is not a theoretical
+     * concern: measured with `audit/corner-pairs.ts` before this was fixed, the map was 0/0 on the vertical axis but 40
+     * tile and 32 height values differed across the horizontal one, and 3 of the 13 mana nodes had no north-south partner.
+     * The consequence was that the two NORTH corners — which are a vertical-axis mirror pair and should therefore be
+     * equivalent — faced different terrain relative to the south half, and corner 1 beat corner 0 in 10 of 12 games.
+     */
     expect(tileMismatches, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
     expect(heightMismatches, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
-    // Every mana node must have an exact mirror partner of the same amount.
+    expect(tileMismatchesY, 'terrain must be mirror-symmetric about the horizontal axis').toBe(0);
+    expect(heightMismatchesY, 'elevation must be mirror-symmetric about the horizontal axis').toBe(0);
+    // Every mana node must have x, y and 180-degree mirror partners of the same amount.
     const axis = (W * 32) / 2;
+    const axisY = (H * 32) / 2;
     for (const n of v2.manaNodes) {
-      const partner = v2.manaNodes.find((m) => Math.abs(m.x - (2 * axis - n.x)) < 1 && m.y === n.y);
-      expect(partner, `mana node (${n.x},${n.y}) has no mirror partner`).toBeTruthy();
-      expect(partner!.amount).toBe(n.amount);
+      const partners: { x: number; y: number }[] = [
+        { x: 2 * axis - n.x, y: n.y },
+        { x: n.x, y: 2 * axisY - n.y },
+        { x: 2 * axis - n.x, y: 2 * axisY - n.y },
+      ];
+      for (const p of partners) {
+        const found = v2.manaNodes.find((m) => Math.abs(m.x - p.x) < 1 && Math.abs(m.y - p.y) < 1);
+        expect(found, `mana node (${n.x},${n.y}) has no mirror partner at (${p.x},${p.y})`).toBeTruthy();
+        expect(found!.amount).toBe(n.amount);
+      }
     }
     // Total authored mana must not have changed by the symmetrisation.
     expect(v2.manaNodes.reduce((a, n) => a + n.amount, 0)).toBe(v1.manaNodes.reduce((a, n) => a + n.amount, 0));
