@@ -91,8 +91,21 @@ export function initMatch(registry: Registry, config: MatchConfig): InitializedM
       applyBuildingNav(state, services, sanctumSlot);
       unlockTech(state, p.id, 'sanctum');
     }
-    spawnUnitAt(state, services, 'wisp', p.id, start.x - TILE * 2, start.y + TILE * 2, ctx);
-    spawnUnitAt(state, services, 'wisp', p.id, start.x + TILE * 2, start.y + TILE * 2, ctx);
+    /**
+     * STARTING WISPS SPAWN TOWARD THE MAP CENTRE, NOT ALWAYS "DOWN".
+     *
+     * This was `start.y + TILE * 2` — a fixed downward offset. On a map with north and south start positions that is NOT a
+     * mirror: a north base's wisps move INWARD (y 464 -> 528, i.e. 528 from the top edge), while a south base's wisps move
+     * OUTWARD (y 2352 -> 2416, only 400 from the bottom edge). The south corners therefore began 128 units closer to the
+     * map boundary than the north corners, and `audit/corner-pairs.ts` measured the consequence: the north corners won
+     * their head-to-head against the south corners in every pairing.
+     *
+     * Pointing the offset at the map centre makes the spawn symmetric under both axes: each base's wisps move the same
+     * distance toward the middle of the map, whichever corner it occupies.
+     */
+    const towardCentreY = start.y <= (map.tileH * TILE) / 2 ? TILE * 2 : -TILE * 2;
+    spawnUnitAt(state, services, 'wisp', p.id, start.x - TILE * 2, start.y + towardCentreY, ctx);
+    spawnUnitAt(state, services, 'wisp', p.id, start.x + TILE * 2, start.y + towardCentreY, ctx);
   }
 
   recomputePower(state, registry);
