@@ -226,8 +226,34 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
     const order = ex.orders[0] as
       | { type: 'move' | 'attackMove' | 'moveInOrder'; x: number; y: number; groupSpeed?: number }
       | { type: 'garrison'; buildingId: EntityId }
+      | { type: 'attack'; targetId: EntityId }
+      | { type: 'harvest'; nodeId?: EntityId }
+      | { type: 'hold' }
       | undefined;
     if (!order) {
+      store.velX[slot] = 0;
+      store.velY[slot] = 0;
+      continue;
+    }
+
+    /**
+     * ONLY ORDERS THAT CARRY A DESTINATION MAY REACH THE STEERING CODE BELOW.
+     *
+     * The steering path reads `order.x`/`order.y` unconditionally. `harvest`, `attack`, `channel` and `hold` orders
+     * carry no coordinates, so a harvesting worker fell straight through into it and computed
+     * `goalX = undefined + slot2.x`, i.e. **NaN**. `Math.hypot(NaN, NaN)` is NaN, every `>`/`<=` comparison against
+     * NaN is false, so the NaN sailed past the arrival check, past the overspeed clamp, and into `store.velX/velY`
+     * AND `store.facing` via `Math.atan2`.
+     *
+     * Measured with `audit/nan-guard.ts` on seed 1000: **282,204 non-finite values** in one match, first at tick 19 on
+     * the starting wisps, and the poison then spreads to `facing` because `applyVelocityMove` derives it from the same
+     * vector. `facing` IS in the lockstep hash, so this makes every hash containing a harvesting unit depend on NaN
+     * bits — the one thing the hash exists to make impossible — and it draws every worker at a garbage orientation.
+     *
+     * Harvest movement is owned by `harvestSystem`, attack chasing by `combatSystem` (both run after this one). So the
+     * correct behaviour here is to leave such a unit alone rather than to invent a goal for it.
+     */
+    if (order.type === 'harvest' || order.type === 'attack' || order.type === 'hold') {
       store.velX[slot] = 0;
       store.velY[slot] = 0;
       continue;
@@ -300,6 +326,17 @@ export function movementSystem(state: GameState, ctx: StepContext): void {
      * iteration order, so the whole thing stays deterministic and replay-safe.
      */
     const slot2 = formationSlot(store.id[slot]!, (store.radius[slot] ?? 8) * VISUAL_SEPARATION);
+    /**
+     * DEFENSIVE FINITE CHECK. The order-type guard above is the fix; this is the tripwire that stops a future order
+     * shape from silently poisoning velocity and facing again. It throws instead of continuing, because a NaN here is a
+     * programming error in the order vocabulary, not a gameplay condition — and a loud failure at the tick it happens is
+     * worth far more than a hash that quietly contains NaN bits for the rest of the match.
+     */
+    if (!Number.isFinite(order.x) || !Number.isFinite(order.y)) {
+      throw new Error(
+        `movementSystem: ${order.type} order for entity ${store.id[slot]} (${ex.defId}) has a non-finite destination`,
+      );
+    }
     const goalX = order.x + slot2.x;
     const goalY = order.y + slot2.y;
     const dx = goalX - store.posX[slot]!;
