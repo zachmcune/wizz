@@ -223,35 +223,50 @@ describe('content parity: v1 → v2', () => {
     expect(v2).toEqual(v1);
   });
 
-  it('the parity map (duel_glade) is identical to v1', () => {
+  it('the parity map (duel_glade) keeps v1 economy and is mirror-symmetric in terrain', () => {
     const v1 = v1Json<MapData & { visualHeights?: number[] }>('maps', 'duel_glade.json');
     const v2 = getRegistry().map('duel_glade');
     expect(v2.tileW).toBe(v1.tileW);
     expect(v2.tileH).toBe(v1.tileH);
-    expect(v2.tiles).toEqual(v1.tiles);
-    expect(v2.heights).toEqual(v1.heights ?? v1.visualHeights);
-    expect(v2.startLocations).toEqual(v1.startLocations);
-    expect(v2.manaNodes).toEqual(v1.manaNodes);
-    expect(v2.maxPlayers).toBe(v1.maxPlayers);
     /**
-     * WHY THE MAP IS LEFT ASYMMETRIC — A MEASURED DECISION, REVERSED AFTER MEASUREMENT.
+     * APPROVED TERRAIN-ONLY SYMMETRISATION — measured, and surgical.
      *
-     * `duel_glade` is NOT mirror-symmetric in v1: 68 of 11,264 tiles and 26 heights differ from their reflection about the
-     * vertical axis, and 3 of the 13 mana nodes sit at x=2064 when the axis is x=2048. That asymmetry is real and it does
-     * tilt a mirror, so it was symmetrised — the right half was replaced by the reflection of the left, the bottom half by
-     * the reflection of the top, and the nodes rebuilt as exact pairs.
+     * v1's `duel_glade` is not mirror-symmetric: 68 of 11,264 tiles and 26 heights differ from their reflection about the
+     * vertical axis. That asymmetry decided mirrors outright — `audit/cornerhard.ts` measured **corner 1 beating corner 0
+     * in 12 of 12 games** with identical AIs, and the effect was far larger than any difficulty lever, so Hard vs Normal
+     * measured a coin flip (50%) no matter how the profiles were tuned.
      *
-     * That changed only 50 tiles and 29 heights. It moved 5 of 13 mana nodes, and that reshaped the economy enough to
-     * INVERT THE DIFFICULTY ORDERING: measured over 12 side-swapped games, Hard vs Normal went from **12-0 with the
-     * original map** to **0-12 with the symmetrised one** (median match 9.0 min). The difficulty ladder is a hard Phase 5
-     * requirement and the map is the parity-locked baseline every balance measurement in this project was taken against, so
-     * the original terrain is restored and the parity assertion is back to exact equality.
+     * Two symmetrisations were measured before choosing this one:
      *
-     * Fairness is therefore pursued in the ENGINE rather than the terrain, where it can be fixed without moving the
-     * economy: the slot bias is gone (measured 50.0%, 95% CI 35.2-64.8%), creation order no longer decides, and the build
-     * placement is exactly covariant under x-reflection, y-reflection and 180-degree rotation (asserted directly in
-     * `audit/diag` style probes and in the notes on `findBuildSpot`).
+     *   • terrain AND nodes (right half := left, nodes rebuilt as exact pairs) — fixed the mirror but INVERTED the
+     *     difficulty ladder: Hard vs Normal went 12-0 -> 0-12, because rebuilding the nodes moved 5 of 13 and reshaped
+     *     the economy every balance measurement was taken against.
+     *   • TERRAIN ONLY (this one) — fixes the mirror without touching the economy.
+     *
+     * Measured with this configuration:
+     *   mirror corner distribution   corner0 8 - corner1 4     (was 0 - 12)
+     *   Hard vs Normal, 24 games     Hard 19 - 5 = 79%         (needs >= 65%)
+     *   unfinished                   0
+     *
+     * So the right half of the terrain is the reflection of the left, and EVERY mana node — position and amount — is
+     * exactly v1. The node assertion below is what keeps that honest.
      */
+    const W = v2.tileW;
+    const H = v2.tileH;
+    let tileMismatches = 0;
+    let heightMismatches = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileMismatches++;
+        if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightMismatches++;
+      }
+    }
+    expect(tileMismatches, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
+    expect(heightMismatches, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
+    // The economy is NOT symmetrised — every node is exactly v1, which is what preserves the difficulty ladder.
+    expect(v2.manaNodes).toEqual(v1.manaNodes);
+    expect(v2.startLocations).toEqual(v1.startLocations);
+    expect(v2.maxPlayers).toBe(v1.maxPlayers);
   });
 
   it('every v1 match preset exists with the same map, seed and players', () => {
