@@ -111,11 +111,10 @@ export class NetworkedMatch {
     for (let s = 0; s < st.entities.count; s++) {
       if (st.entities.dead[s] || st.entities.kind[s] !== 1) continue;
       if (st.entities.ownerIndex[s] !== myIndex) continue;
-      this.renderer.camera.centerOn(st.entities.posX[s]!, st.entities.posY[s]!);
+      this.renderer.camera.frameOn(st.entities.posX[s]!, st.entities.posY[s]!);
       break;
     }
     if (myIndex >= 0) this.renderer.setViewer(teamIdForColor(st.players[myIndex]!.color));
-    this.renderer.camera.setZoom(1);
   }
 
   setPaused(paused: boolean): void {

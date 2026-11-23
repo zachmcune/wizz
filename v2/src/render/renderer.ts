@@ -117,7 +117,7 @@ export class Renderer {
 
   async init(host: HTMLElement, atlas: LoadedAtlas): Promise<void> {
     await this.app.init({
-      background: '#0d0b16',
+      background: '#0e1013',
       resizeTo: host,
       antialias: true,
       resolution: Math.min(2, window.devicePixelRatio || 1),
@@ -130,6 +130,33 @@ export class Renderer {
     const worldW = this.map.tileW * TILE;
     const worldH = this.map.tileH * TILE;
     this.camera = new Camera(this.app.screen.width, this.app.screen.height, worldW, worldH);
+
+    /**
+     * THE TABLE THE MAP SITS ON.
+     *
+     * A projected map is a DIAMOND, so a rectangular viewport can never be filled by it — near a corner
+     * there is always some area outside the board. That area used to render as flat black, which is
+     * exactly the "giant empty void above the map" in the report: the eye reads black as "nothing is
+     * here / the renderer failed", not as "the edge of the world".
+     *
+     * It is now a machined table: a dark steel plane with a faint engineered grid, drawn in world space so
+     * it pans and zooms with the board rather than sliding under it. The map's own terrain is opaque and
+     * sits on top, so this layer is only ever visible outside the board's silhouette — where it reads as
+     * the surface the map is laid out on.
+     */
+    const table = new Graphics();
+    const pw = this.map.tileW * TILE * 0.5;
+    const ph = this.map.tileH * TILE * 0.5;
+    const pad = pw + ph;
+    table.rect(-pw - pad, -ph - pad, pw * 2 + pad * 2, ph * 2 + pad * 2).fill({ color: 0x101318, alpha: 1 });
+    const GRID = 2 * TILE;
+    for (let gx = -pw - pad; gx < pw + pad; gx += GRID) {
+      table.moveTo(gx, -ph - pad).lineTo(gx, ph + pad).stroke({ width: 1, color: 0x1b2027, alpha: 0.9 });
+    }
+    for (let gy = -ph - pad; gy < ph + pad; gy += GRID) {
+      table.moveTo(-pw - pad, gy).lineTo(pw + pad, gy).stroke({ width: 1, color: 0x1b2027, alpha: 0.9 });
+    }
+    this.world.addChild(table);
 
     this.terrain = buildTerrain(this.map);
     this.groundLayer.addChild(this.terrain.container);
@@ -399,11 +426,63 @@ export class Renderer {
     }
 
     this.drawFog(state);
+    this.drawPlacement(state);
 
     this.stats = { cpuMs: performance.now() - t0, drawn, total, fogQuads: this.lastFogQuads };
   }
 
   private lastFogQuads = 0;
+
+  /**
+   * The building placement preview: a footprint outline coloured by validity, plus the build zone.
+   *
+   * Drawn in the OVERLAY layer, above entities, because a ghost hidden behind a unit reads as "the tap
+   * did nothing". The zone is drawn as a thin tinted boundary so a player can see where they are allowed
+   * to build without a mode switch — v1's biggest placement complaint was that a rejected spot looked
+   * identical to a valid one until the command was refused.
+   */
+  private placement: import('../app/input/board-input').PlacementGhost | null = null;
+  private zones: { tx: number; ty: number }[] = [];
+  private placementLayer = new Graphics();
+
+  /** Set the ghost and build-zone tiles the renderer should draw. Pass null to clear. */
+  setPlacement(ghost: import('../app/input/board-input').PlacementGhost | null, zones: { tx: number; ty: number }[] = []): void {
+    this.placement = ghost;
+    this.zones = zones;
+  }
+
+  private drawPlacement(_state: GameState): void {
+    const g = this.placementLayer;
+    g.clear();
+    if (!g.parent) this.overlayLayer.addChild(g);
+
+    if (this.zones.length > 0 && this.placement) {
+      for (const t of this.zones) {
+        const p = this.tileQuad(t.tx, t.ty, heightLevelAt(this.map, t.tx * TILE + TILE / 2, t.ty * TILE + TILE / 2), 1);
+        g.poly(p.flatMap((q) => [q.x, q.y]));
+      }
+      g.fill({ color: 0x8c5a2b, alpha: 0.06 });
+    }
+
+    const ghost = this.placement;
+    if (!ghost) return;
+    const level = heightLevelAt(this.map, ghost.x, ghost.y);
+    for (let dy = 0; dy < ghost.footprint; dy++) {
+      for (let dx = 0; dx < ghost.footprint; dx++) {
+        const p = this.tileQuad(ghost.tx + dx, ghost.ty + dy, level, 1);
+        g.poly(p.flatMap((q) => [q.x, q.y]));
+      }
+    }
+    // Valid is bone/green-ish; invalid is the desaturated bad signal. Both are hard-edged fills, no glow.
+    g.fill({ color: ghost.valid ? 0x8ef7c6 : 0xb05a4a, alpha: 0.22 });
+    for (let dy = 0; dy < ghost.footprint; dy++) {
+      for (let dx = 0; dx < ghost.footprint; dx++) {
+        const p = this.tileQuad(ghost.tx + dx, ghost.ty + dy, level, 1);
+        g.poly(p.flatMap((q) => [q.x, q.y]));
+      }
+    }
+    g.stroke({ width: 2, color: ghost.valid ? 0x8ef7c6 : 0xb05a4a, alpha: 0.95 });
+  }
 
   /** Reusable selection rings, one per selected entity. */
   private ensureRing(id: number, x: number, y: number, zoom: number): void {

@@ -117,10 +117,9 @@ export class MatchController {
       break;
     }
     if (found >= 0) {
-      this.renderer.camera.centerOn(st.entities.posX[found]!, st.entities.posY[found]!);
+      this.renderer.camera.frameOn(st.entities.posX[found]!, st.entities.posY[found]!);
     }
     this.renderer.setViewer(teamIdForColor(st.players[myIndex]!.color));
-    this.renderer.camera.setZoom(1);
   }
 
   setSpeed(speed: number): void {

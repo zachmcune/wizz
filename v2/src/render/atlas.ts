@@ -30,6 +30,18 @@ export interface LoadedAtlas {
   pivots: Map<string, { x: number; y: number }>;
   /** Frame key -> source rect, for debugging and the gallery. */
   frames: Map<string, FrameRect>;
+  /**
+   * Source metadata for the DOM side of the UI.
+   *
+   * The build sidebar shows the SAME baked sprites the battlefield draws, as CSS background crops of
+   * the atlas pages (`src/ui/thumbnails.ts`). That needs the page URLs and pixel sizes, which the
+   * texture map alone does not carry.
+   *
+   * `pageBase` is the index of this manifest's first page within `pages`, so a frame's `page` field
+   * addresses `pages` directly.
+   */
+  pageUrls: string[];
+  pageSizes: { width: number; height: number }[];
 }
 
 export function unitFrameKey(defId: string, teamId: string, facing: number): string {
@@ -40,7 +52,15 @@ export function buildingFrameKey(defId: string, teamId: string): string {
   return `building/${defId}/${teamId}/0`;
 }
 
-async function loadOne(baseUrl: string, name: string): Promise<{ textures: Map<string, Texture>; pivots: Map<string, { x: number; y: number }>; frames: Map<string, FrameRect> }> {
+interface OneAtlas {
+  textures: Map<string, Texture>;
+  pivots: Map<string, { x: number; y: number }>;
+  frames: Map<string, FrameRect>;
+  pageUrls: string[];
+  pageSizes: { width: number; height: number }[];
+}
+
+async function loadOne(baseUrl: string, name: string): Promise<OneAtlas> {
   const manifest = (await (await fetch(`${baseUrl}${name}.json`)).json()) as AtlasManifest;
   const pageTextures: Texture[] = [];
   for (const page of manifest.pages) {
@@ -60,7 +80,13 @@ async function loadOne(baseUrl: string, name: string): Promise<{ textures: Map<s
     pivots.set(key, { x: r.pivotX, y: r.pivotY });
     frames.set(key, r);
   }
-  return { textures, pivots, frames };
+  return {
+    textures,
+    pivots,
+    frames,
+    pageUrls: manifest.pages.map((p) => `${baseUrl}${p.file}`),
+    pageSizes: manifest.pages.map((p) => ({ width: p.width, height: p.height })),
+  };
 }
 
 /**
@@ -74,6 +100,20 @@ export async function loadAtlas(baseUrl = '/atlas-final/'): Promise<LoadedAtlas>
   const [units, buildings] = await Promise.all([loadOne(baseUrl, 'units'), loadOne(baseUrl, 'buildings')]);
   const textures = new Map([...units.textures, ...buildings.textures]);
   const pivots = new Map([...units.pivots, ...buildings.pivots]);
-  const frames = new Map([...units.frames, ...buildings.frames]);
-  return { textures, pivots, frames };
+  /**
+   * The buildings manifest's page indices are OFFSET by the units manifest's page count, because a
+   * building frame saying `page: 0` means the first BUILDINGS page — not the first units page. Without
+   * the offset every building thumbnail cropped the wrong image.
+   */
+  const offset = units.pageUrls.length;
+  const buildingFrames = new Map<string, FrameRect>();
+  for (const [key, r] of buildings.frames) buildingFrames.set(key, { ...r, page: r.page + offset });
+  const frames = new Map<string, FrameRect>([...units.frames, ...buildingFrames]);
+  return {
+    textures,
+    pivots,
+    frames,
+    pageUrls: [...units.pageUrls, ...buildings.pageUrls],
+    pageSizes: [...units.pageSizes, ...buildings.pageSizes],
+  };
 }

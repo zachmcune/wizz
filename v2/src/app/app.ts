@@ -1,17 +1,24 @@
-// THE APP — Phase 4's real UI shell.
+// THE APP — the shell: router, match lifecycle, and the touch/mouse input binding.
 //
-// One root element, one screen at a time, all of it composed from the Obsidian & Brass design system.
-// Screens are plain functions that build DOM and return a cleanup callback; the router owns which one is
-// mounted, so no screen needs to know about any other.
+// One root element, one screen at a time, composed from the Obsidian & Brass design system. Screens are
+// plain functions that build DOM and return a cleanup callback; the router owns which one is mounted, so
+// no screen needs to know about any other.
 //
-// Everything here is wired to the live simulation: the lobby creates a real `MatchController`, the HUD
-// reads real `GameState` every tick, the build/train/research panels issue real `Command`s, and the
-// results screen reads the real winner.
+// INPUT IS ONE PATH FOR BOTH INPUT DEVICES. A mouse is a pointer with one button, so the same gesture
+// recogniser that gives a phone tap-to-select / drag-to-pan / pinch-to-zoom also gives desktop
+// click-to-select / drag-to-box / wheel-to-zoom. Keyboard panning and shortcuts run alongside. That is
+// not an economy — it means a bug fixed on touch is fixed on desktop, and the Playwright proofs can
+// drive one code path instead of two.
+//
+// FRAMING IS INSET-AWARE. The camera is told the measured HUD insets on every mount and resize, so
+// "centre on my Sanctum" puts it in the middle of the BATTLEFIELD rather than in the middle of the
+// window, where the sidebar would cover it.
 import '../ui/fonts.css';
 import '../ui/tokens.css';
 import '../ui/components.css';
 import '../ui/screens.css';
 import './app.css';
+import './console.css';
 import './hud.css';
 
 import { loadRegistry } from '../data/loader';
@@ -35,6 +42,10 @@ import { NetworkedMatch } from './networked-match';
 import { WebSocketTransport } from '../net/ws-transport';
 import type { SlotSpec } from '../net/session';
 import type { LobbyStateWire } from '../net/protocol';
+import { GestureRecognizer } from './input/gesture';
+import { BoardInput } from './input/board-input';
+import { PointerBinder } from './input/pointer-binder';
+import type { Camera } from '../render/camera';
 
 /** Everything a networked match needs to exist, produced by the multiplayer lobby. */
 export interface MultiplayerJoin {
@@ -55,6 +66,18 @@ export interface AppDeps {
   atlas: LoadedAtlas;
 }
 
+/** The live match, whether local or networked. Both classes implement this surface. */
+export interface LiveMatch {
+  state: import('../sim/types').GameState;
+  services: import('../sim/context').SimServices;
+  me: import('../sim/types').PlayerId;
+  camera: Camera;
+  rend: import('../render/renderer').Renderer;
+  readonly elapsedSeconds: number;
+  issue: (cmd: import('./match').CommandPayload) => boolean;
+  myUnits: () => number[];
+}
+
 export class App {
   private deps: AppDeps;
   private state: AppState;
@@ -67,6 +90,23 @@ export class App {
   private hudHost: HTMLElement | null = null;
   private researchOverlay: HTMLElement | null = null;
   private researchDestroy: (() => void) | null = null;
+
+  // ---- input
+  private gesture: GestureRecognizer | null = null;
+  private binder: PointerBinder | null = null;
+  private boardInput: BoardInput | null = null;
+  private boxEl: HTMLElement | null = null;
+  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+  /**
+   * Frame driver for the gesture recogniser's clock.
+   *
+   * The recogniser promotes a HELD press into a box select after 400 ms of stillness, and it can only do
+   * that if something calls `update(now)`. Without this loop the long-press path was dead code in the app
+   * while passing its unit tests — the exact gap a unit-tested state machine leaves. The renderer already
+   * runs its own rAF; this is a second, tiny one that does nothing but hand over the clock, so it cannot
+   * interfere with rendering.
+   */
+  private gestureRaf = 0;
 
   constructor(root: HTMLElement, deps: AppDeps) {
     this.root = root;
@@ -100,8 +140,13 @@ export class App {
     return this.deps.atlas;
   }
 
-  get controller(): MatchController | null {
-    return this.match;
+  get controller(): LiveMatch | null {
+    return (this.match ?? this.netMatch) as LiveMatch | null;
+  }
+
+  /** The board-input layer, for screens and proofs that drive orders. */
+  get input(): BoardInput | null {
+    return this.boardInput;
   }
 
   private onResize = (): void => {
@@ -110,7 +155,16 @@ export class App {
       this.state.density = d;
       setDensity(d);
     }
+    this.hud?.syncLayout();
+    this.applyHudInsets();
   };
+
+  /** Tell the camera how much of the screen the HUD is covering, then re-frame if nothing is selected. */
+  private applyHudInsets(): void {
+    const cam = this.controller?.camera;
+    if (!cam || !this.hud) return;
+    cam.setInsets(this.hud.safeInsets());
+  }
 
   // ───────────────────────────────────────────────────────────────────────── routing
 
@@ -175,12 +229,6 @@ export class App {
   // ───────────────────────────────────────────────────────────────────────── match lifecycle
 
   /**
-   * Start a match from the current lobby config.
-   *
-   * Async because the renderer needs a WebGL context and the atlas is already loaded; the caller
-   * (`lobby`) awaits it so a failure can be shown on the lobby rather than silently doing nothing.
-   */
-  /**
    * Start a match in sandbox mode and land ON the sandbox screen.
    *
    * `startMatch()` navigates to the match screen, which is right for the lobby but wrong for the
@@ -216,9 +264,10 @@ export class App {
   /**
    * Join a lockstep match announced by the relay.
    *
-   * Kept separate from `startMatch` because the two differ in what drives the clock: a local match accumulates
-   * wall time, a networked one steps only on relay-confirmed ticks. `NetworkedMatch` owns that difference; this
-   * method's job is only to build the slot list from the lobby and install the renderer.
+   * Kept separate from `startMatch` because the two differ in what drives the clock: a local match
+   * accumulates wall time, a networked one steps only on relay-confirmed ticks. `NetworkedMatch` owns
+   * that difference; this method's job is only to build the slot list from the lobby and install the
+   * renderer.
    */
   startMultiplayerMatch(join: MultiplayerJoin): void {
     void this.mountMultiplayerMatch(join);
@@ -231,19 +280,12 @@ export class App {
 
   private async mountMultiplayerMatch(join: MultiplayerJoin): Promise<void> {
     this.teardownMatch();
-    this.teardownNetMatch();
     this.state.screen = 'match';
     this.current?.destroy?.();
     this.current = null;
     this.screenRoot.replaceChildren();
 
-    const host = el('div', 'match-root') as HTMLElement;
-    host.className = 'match-root';
-    const canvasHost = document.createElement('div');
-    canvasHost.className = 'match-canvas';
-    canvasHost.dataset.testid = 'game-canvas-host';
-    host.append(canvasHost);
-    this.screenRoot.append(host);
+    const { host, canvasHost } = this.buildMatchHost();
 
     const slots: SlotSpec[] = join.lobby.slots
       .filter((s) => s.kind !== 'closed')
@@ -286,17 +328,11 @@ export class App {
     });
 
     this.netMatch = net;
-    this.hud = new Hud(net as unknown as MatchController, this.deps.registry, this.state, {
-      onOpenResearch: () => this.openResearchTree(),
-      onPause: () => this.go('pause'),
-    });
-    this.hudHost = this.hud.root;
-    host.append(this.hud.root);
-
-    this.attachBoardInput(canvasHost);
-    this.attachKeyboard();
+    this.installHud(net as unknown as LiveMatch, host);
     net.start();
-    this.hud.update(net.state);
+    this.hud!.update(net.state);
+    this.frameOnMyBase();
+    this.selectFirstOwned();
 
     (window as unknown as { __v2Net?: unknown }).__v2Net = {
       state: net.state,
@@ -315,12 +351,13 @@ export class App {
       hashTicks: () => net.session.hashTicks(),
     };
 
-    this.current = { root: host, destroy: () => this.teardownNetMatch() };
-  }
-
-  private teardownNetMatch(): void {
-    this.netMatch?.destroy();
-    this.netMatch = null;
+    this.current = {
+      root: host,
+      destroy: () => {
+        if (this.state.screen === 'results' || this.state.screen === 'pause') return;
+        this.teardownMatch();
+      },
+    };
   }
 
   private mountMatch(): Screen {
@@ -337,14 +374,7 @@ export class App {
   }
 
   private async mountMatchAsync(): Promise<void> {
-    const host = document.createElement('div');
-    host.className = 'match-root';
-    this.screenRoot.replaceChildren(host);
-
-    const canvasHost = document.createElement('div');
-    canvasHost.className = 'match-canvas';
-    canvasHost.dataset.testid = 'game-canvas-host';
-    host.append(canvasHost);
+    const { host, canvasHost } = this.buildMatchHost();
 
     this.match = await MatchController.create(this.deps.registry, this.deps.atlas, this.state.lobby, canvasHost, {
       onTick: (st) => this.hud?.update(st),
@@ -352,19 +382,10 @@ export class App {
       onReject: (reason) => this.hud?.note('warn', humanizeReject(reason)),
     });
 
-    this.hud = new Hud(this.match, this.deps.registry, this.state, {
-      onOpenResearch: () => this.openResearchTree(),
-      onPause: () => this.go('pause'),
-    });
-    this.hudHost = this.hud.root;
-    host.append(this.hud.root);
-
-    this.attachBoardInput(canvasHost);
-    this.attachKeyboard();
-
+    this.installHud(this.match as unknown as LiveMatch, host);
     this.match.start();
-    const st = this.match.state;
-    this.hud.update(st);
+    this.hud!.update(this.match.state);
+    this.frameOnMyBase();
 
     // Selection starts on the player's first building so the HUD is populated — the v1 lobby dropped
     // the player into an empty screen with no hint of what to do.
@@ -383,6 +404,211 @@ export class App {
     };
   }
 
+  /** The match host: a full-bleed canvas plus the HUD's own layer, in one positioned box. */
+  private buildMatchHost(): { host: HTMLElement; canvasHost: HTMLElement } {
+    const host = el('div', 'match-root') as HTMLElement;
+    host.className = 'match-root';
+    const canvasHost = document.createElement('div');
+    canvasHost.className = 'match-canvas';
+    canvasHost.dataset.testid = 'game-canvas-host';
+    host.append(canvasHost);
+    this.screenRoot.append(host);
+    return { host, canvasHost };
+  }
+
+  /**
+   * Build and attach the HUD and the whole input stack for a live match.
+   *
+   * One function for both controllers: the HUD, the gestures and the picking are all identical offline
+   * and online, because both controllers implement the same surface. A second wiring for multiplayer is
+   * how the two would drift.
+   */
+  private installHud(match: LiveMatch, host: HTMLElement): void {
+    const map = this.deps.registry.map(match.state.mapId);
+    this.boxEl = el('div', 'hud-box');
+    this.boxEl.dataset.testid = 'hud-box';
+
+    this.boardInput = new BoardInput({
+      getState: () => match.state,
+      getServices: () => match.services,
+      registry: this.deps.registry,
+      map: () => map,
+      me: () => match.me,
+      viewport: () => ({ w: window.innerWidth, h: window.innerHeight }),
+      camera: () => match.camera,
+      app: this.state,
+      issue: (cmd) => match.issue(cmd),
+      note: (kind, text) => this.hud?.note(kind, text),
+      onChange: () => {
+        this.syncPlacementOverlay();
+        this.hud?.refresh(match.state);
+      },
+    });
+
+    this.hud = new Hud(match as unknown as MatchController, this.deps.registry, this.state, {
+      atlas: this.deps.atlas,
+      input: this.boardInput,
+      onOpenResearch: () => this.openResearchTree(),
+      onPause: () => this.go('pause'),
+    });
+    this.hudHost = this.hud.root;
+    host.append(this.hud.root, this.boxEl);
+
+    // Gestures. Touch defaults to drag-to-PAN, which is what a phone player expects; a long press still
+    // starts a box select, and desktop gets drag-to-box because a mouse drag on the board has always
+    // meant "select". The `?drag=` override exists for the proof harness to drive both.
+    const dragMode = new URLSearchParams(window.location.search).get('drag') === 'pan' ? 'pan' : touchDefaultDrag();
+    let boxOrigin: { x: number; y: number } | null = null;
+    this.gesture = new GestureRecognizer(
+      {
+        onTap: (p) => this.boardInput?.tap(p),
+        onDoubleTap: (p) => this.boardInput?.doubleTap(p),
+        onPanMove: (dx, dy) => this.boardInput?.pan(dx, dy),
+        onTwoFingerPan: (dx, dy) => this.boardInput?.pan(dx, dy),
+        onPinch: (factor, center) => this.boardInput?.pinch(factor, center),
+        onBoxStart: (p) => {
+          boxOrigin = { ...p };
+          this.boardInput?.showBox({ x: p.x, y: p.y, w: 0, h: 0 });
+        },
+        onBoxMove: (p) => {
+          if (!boxOrigin) return;
+          this.boardInput?.showBox(normaliseBoxFromStart(boxOrigin, p));
+        },
+        onBoxEnd: (a, b) => {
+          boxOrigin = null;
+          this.boardInput?.showBox(null);
+          this.boardInput?.boxSelect(a, b);
+        },
+        onLongPress: () => {
+          // A long press is a deliberate box select even in pan mode; the HUD says so.
+          this.hud?.note('info', 'Drag to select');
+        },
+      },
+      dragMode,
+    );
+
+    const canvas = match.rend.app.canvas;
+    this.binder = new PointerBinder({
+      canvas,
+      gesture: this.gesture,
+      input: this.boardInput,
+      isInert: () => match.state.ended || this.state.screen !== 'match',
+    });
+    this.binder.attach();
+
+    this.boardInput.attachBox(this.boxEl);
+    // The box is `position: fixed`, so it belongs to the app root rather than to the HUD's grid.
+    this.root.append(this.boxEl);
+
+    // Drive the recogniser's clock (see `gestureRaf`).
+    const pump = (now: number): void => {
+      this.gesture?.update(now);
+      this.gestureRaf = requestAnimationFrame(pump);
+    };
+    this.gestureRaf = requestAnimationFrame(pump);
+
+    this.hud.syncLayout();
+    this.applyHudInsets();
+    this.attachKeyboard(match);
+    this.syncPlacementOverlay();
+  }
+
+  /**
+   * Push the current placement ghost into the renderer.
+   *
+   * Called on every input change rather than every frame: the ghost only moves when the pointer moves or
+   * the selection changes, and rebuilding a Graphics per frame for a static ghost is waste.
+   */
+  private syncPlacementOverlay(): void {
+    const match = this.controller;
+    const input = this.boardInput;
+    if (!match) return;
+    match.rend.setPlacement(input?.ghost ?? null, input?.zoneTiles ?? []);
+  }
+
+  private attachKeyboard(match: LiveMatch): void {
+    this.detachKeyboard();
+    const onKey = (e: KeyboardEvent): void => {
+      if (this.state.screen !== 'match' && this.state.screen !== 'sandbox') return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const cam = match.camera;
+      const step = 60;
+      switch (e.key) {
+        case 'Escape':
+          if (this.boardInput?.armed) this.boardInput.disarm();
+          else if (this.state.placing) this.boardInput?.cancelPlacement();
+          else this.go('pause');
+          e.preventDefault();
+          return;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          if (e.key === 'a' && !e.ctrlKey && !e.metaKey) {
+            this.boardInput?.arm('attackMove');
+            e.preventDefault();
+            return;
+          }
+          cam.panByScreen(step, 0);
+          e.preventDefault();
+          return;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          cam.panByScreen(-step, 0);
+          e.preventDefault();
+          return;
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          cam.panByScreen(0, step);
+          e.preventDefault();
+          return;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          cam.panByScreen(0, -step);
+          e.preventDefault();
+          return;
+        case '+':
+        case '=':
+          cam.zoomBy(1.15);
+          e.preventDefault();
+          return;
+        case '-':
+        case '_':
+          cam.zoomBy(1 / 1.15);
+          e.preventDefault();
+          return;
+        case ' ':
+          if (e.shiftKey) {
+            cam.centerInSafeArea(match.state.players[0] ? match.state.entities.posX[0]! : 0, match.state.entities.posY[0]!);
+            e.preventDefault();
+          }
+          return;
+        default:
+          break;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        this.state.selection = new Set(match.myUnits());
+        this.hud?.refresh(match.state);
+        return;
+      }
+      if (e.key === 'Home') {
+        this.frameOnMyBase();
+        e.preventDefault();
+      }
+    };
+    this.keyboardHandler = onKey;
+    window.addEventListener('keydown', onKey);
+  }
+
+  private detachKeyboard(): void {
+    if (this.keyboardHandler) window.removeEventListener('keydown', this.keyboardHandler);
+    this.keyboardHandler = null;
+  }
+
   private liveMatchScreen(): Screen {
     // Not used directly; `mountMatchAsync` installs `this.current`.
     const host = document.createElement('div');
@@ -390,6 +616,16 @@ export class App {
   }
 
   private teardownMatch(): void {
+    this.detachKeyboard();
+    if (this.gestureRaf) cancelAnimationFrame(this.gestureRaf);
+    this.gestureRaf = 0;
+    this.binder?.detach();
+    this.binder = null;
+    this.gesture = null;
+    this.boardInput = null;
+    this.boxEl?.remove();
+    this.boxEl = null;
+    this.hud?.destroy();
     this.netMatch?.destroy();
     this.netMatch = null;
     this.match?.destroy();
@@ -433,182 +669,80 @@ export class App {
     return this.hud;
   }
 
-  // ───────────────────────────────────────────────────────────────────────── board input
-
-  private attachBoardInput(canvasHost: HTMLElement): void {
-    const ctrl = this.match;
-    if (!ctrl) return;
-    const canvas = ctrl.rend.app.canvas;
-
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    let downX = 0;
-    let downY = 0;
-
-    canvas.addEventListener('pointerdown', (e) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      downX = e.clientX;
-      downY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      ctrl.camera.panByScreen(e.clientX - lastX, e.clientY - lastY);
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
-
-    canvas.addEventListener('pointerup', (e) => {
-      dragging = false;
-      canvas.releasePointerCapture(e.pointerId);
-      // A click is a press and release in nearly the same place; anything else was a pan.
-      const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
-      if (moved > 6) return;
-      const rect = canvas.getBoundingClientRect();
-      const world = ctrl.rend.screenToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      this.handleBoardClick(world.x, world.y, e.shiftKey);
-    });
-
-    canvas.addEventListener(
-      'wheel',
-      (e) => {
-        e.preventDefault();
-        ctrl.camera.zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12);
-      },
-      { passive: false },
-    );
-
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    void canvasHost;
-  }
-
-  /** Resolve a board click to a selection change or to an armed order. */
-  private handleBoardClick(worldX: number, worldY: number, additive: boolean): void {
-    const ctrl = this.match;
-    if (!ctrl) return;
-    const st = ctrl.state;
-
-    // An armed order takes precedence over selection.
-    if (this.state.placing) {
-      const hit = this.entityAt(worldX, worldY);
-      this.hud?.onBoardClick(worldX, worldY, hit);
-      return;
-    }
-
-    const hit = this.entityAt(worldX, worldY);
-    const myIndex = st.players.findIndex((p) => p.id === ctrl.me);
-
-    if (hit !== null) {
-      let slot = -1;
-      for (let s = 0; s < st.entities.count; s++) if (st.entities.id[s] === hit) slot = s;
-      if (slot >= 0 && st.entities.ownerIndex[slot] === myIndex) {
-        if (!additive) this.state.selection.clear();
-        this.state.selection.add(hit);
-        this.hud?.update(st);
-        return;
-      }
-      // Clicking an enemy with units selected issues an attack; otherwise it just clears selection.
-      if (this.state.selection.size > 0) {
-        const ids = [...this.state.selection];
-        ctrl.issue({ type: 'attack', entityIds: ids, targetId: hit });
-        return;
-      }
-    }
-
-    if (!additive) this.state.selection.clear();
-    this.hud?.update(st);
-  }
-
-  /** Nearest entity within a screen-space radius of the click, in world units. */
-  private entityAt(worldX: number, worldY: number): number | null {
-    const ctrl = this.match;
-    if (!ctrl) return null;
-    const st = ctrl.state;
-    let best: number | null = null;
-    let bestD = Infinity;
-    // 26 world units is a comfortable tap radius at default zoom (~24 screen px).
-    const MAX = 26;
+  /**
+   * Centre the camera on the local player's Sanctum, inside the HUD-free playable rect.
+   *
+   * Called on mount and after a resize. The Sanctum is the anchor because it is the one thing every
+   * player must be able to find instantly; v1 centred there too.
+   */
+  frameOnMyBase(): void {
+    const match = this.controller;
+    if (!match) return;
+    applyHudInsetsToCamera(match.camera, this.hud);
+    const st = match.state;
+    const myIndex = st.players.findIndex((p) => p.id === match.me);
+    if (myIndex < 0) return;
+    let sx = 0;
+    let sy = 0;
+    let found = false;
     for (let s = 0; s < st.entities.count; s++) {
       if (st.entities.dead[s]) continue;
-      const d = Math.hypot(st.entities.posX[s]! - worldX, st.entities.posY[s]! - worldY);
-      if (d < MAX && d < bestD) {
-        bestD = d;
-        best = st.entities.id[s]!;
-      }
+      if (st.entities.kind[s] !== 1) continue;
+      if (st.entities.ownerIndex[s] !== myIndex) continue;
+      const def = this.deps.registry.buildings.get(st.entities.extras[s]!.defId);
+      if (!def?.isConstructionYard) continue;
+      sx = st.entities.posX[s]!;
+      sy = st.entities.posY[s]!;
+      found = true;
+      break;
     }
-    return best;
-  }
-
-  private attachKeyboard(): void {
-    const onKey = (e: KeyboardEvent): void => {
-      const ctrl = this.match;
-      if (!ctrl) return;
-      if (e.key === 'Escape') {
-        this.go('pause');
-        return;
-      }
-      if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        this.state.selection = new Set(ctrl.myUnits());
-        this.hud?.update(ctrl.state);
-        return;
-      }
-      const step = 60;
-      if (e.key === 'ArrowLeft') ctrl.camera.panByScreen(step, 0);
-      else if (e.key === 'ArrowRight') ctrl.camera.panByScreen(-step, 0);
-      else if (e.key === 'ArrowUp') ctrl.camera.panByScreen(0, step);
-      else if (e.key === 'ArrowDown') ctrl.camera.panByScreen(0, -step);
-      else if (e.key === '+' || e.key === '=') ctrl.camera.zoomBy(1.15);
-      else if (e.key === '-') ctrl.camera.zoomBy(1 / 1.15);
-    };
-    window.addEventListener('keydown', onKey);
+    if (!found) return;
+    match.camera.frameOn(sx, sy);
   }
 
   private selectFirstOwned(): void {
-    const ctrl = this.match;
-    if (!ctrl) return;
-    const st = ctrl.state;
-    const myIndex = st.players.findIndex((p) => p.id === ctrl.me);
+    const match = this.controller;
+    if (!match) return;
+    const st = match.state;
+    const myIndex = st.players.findIndex((p) => p.id === match.me);
     for (let s = 0; s < st.entities.count; s++) {
       if (st.entities.dead[s] || st.entities.kind[s] !== 1) continue;
       if (st.entities.ownerIndex[s] !== myIndex) continue;
       this.state.selection = new Set([st.entities.id[s]!]);
-      this.hud?.update(st);
+      this.hud?.refresh(st);
       return;
     }
   }
 
   /** Resume from pause: re-enter the live match without rebuilding it. */
   resume(): void {
-    if (!this.match) {
+    const live = this.controller;
+    if (!live) {
       void this.startMatch();
       return;
     }
     this.current?.destroy?.();
     this.current = null;
     this.screenRoot.replaceChildren();
-    const host = document.createElement('div');
-    host.className = 'match-root';
-    const canvasHost = document.createElement('div');
-    canvasHost.className = 'match-canvas';
-    host.append(canvasHost);
+    const { host, canvasHost } = this.buildMatchHost();
 
     // The renderer's canvas is reused — moving it into the new host keeps the WebGL context alive, which
     // is both faster and avoids context-loss churn when pausing repeatedly.
-    const existing = this.match.rend.app.canvas;
+    const existing = live.rend.app.canvas;
     canvasHost.append(existing);
     if (this.hudHost) host.append(this.hudHost);
+    if (this.boxEl) host.append(this.boxEl);
 
     this.screenRoot.append(host);
     this.state.screen = 'match';
-    this.match.setPaused(false);
-    // The match screen's teardown must NOT destroy a session that a following screen still needs. When
-    // the router is navigating to `results` or `pause`, `go()` handles the lifecycle; this callback only
-    // frees the renderer when the match screen is genuinely being replaced.
+    if (this.match) this.match.setPaused(false);
+    if (this.netMatch) this.netMatch.setPaused(false);
+
+    // Re-arm the input on the (unchanged) canvas: the listeners were on the canvas and survive a
+    // re-parent, but the binder holds a reference to the canvas element only, so nothing needs rewiring.
+    this.hud?.syncLayout();
+    this.applyHudInsets();
+    this.attachKeyboard(live);
     this.current = {
       root: host,
       destroy: () => {
@@ -634,16 +768,56 @@ export class App {
   }
 }
 
+/** Apply the HUD's measured insets to a camera, tolerating a missing HUD (sandbox, tests). */
+function applyHudInsetsToCamera(cam: Camera, hud: Hud | null): void {
+  if (!hud) {
+    cam.setInsets({ left: 0, top: 0, right: 0, bottom: 0 });
+    return;
+  }
+  cam.setInsets(hud.safeInsets());
+}
+
+/**
+ * What a one-finger drag means by default for this device.
+ *
+ * A coarse pointer (a finger) pans, because looking around is the most common gesture on a phone and a
+ * select-drag that pans instead is the single most irritating thing a touch RTS can do. A fine pointer
+ * boxes, because that is what a mouse drag has always meant. Both are still available on both: a long
+ * press starts a box on touch, and `?drag=` overrides for the proof harness.
+ */
+function touchDefaultDrag(): 'pan' | 'select' {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches ? 'pan' : 'select';
+  } catch {
+    return 'select';
+  }
+}
+
+/** Normalise two viewport points into a rect. Local to the input wiring. */
+function normaliseBoxFromStart(a: { x: number; y: number }, b: { x: number; y: number }): { x: number; y: number; w: number; h: number } {
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+}
+
 /** Turn a sim rejection code into something a player can act on. */
 export function humanizeReject(reason: string): string {
   const map: Record<string, string> = {
     not_enough_mana: 'Not enough mana.',
+    mana: 'Not enough mana.',
     unit_cap: 'Unit cap reached.',
+    limit: 'You already have one.',
     invalid_placement: 'Cannot build there.',
     blocked: 'That spot is blocked.',
+    range: 'Too far from your base.',
     no_power: 'Not enough power.',
     requires_tech: 'Research required.',
+    requires: 'Research required.',
+    faction: 'Not available to your faction.',
     queue_full: 'Production queue is full.',
+    capacity: 'That structure is full.',
+    duplicate: 'Already queued.',
+    cooldown: 'Still recharging.',
+    busy: 'That structure is busy.',
+    cannot_sell: 'That cannot be sold.',
     invalid_target: 'Invalid target.',
     no_such_entity: 'That no longer exists.',
     cannot_afford: 'Cannot afford that.',

@@ -1,10 +1,17 @@
-// SETTINGS — display, audio and accessibility. Every control writes a persisted preference.
+// SETTINGS — display, audio, and controls, as a command console.
 //
-// Preferences are stored in localStorage under one versioned key so a schema change cannot corrupt an
-// old save. They are applied immediately (density, reduced motion, volume) rather than on a Save button,
-// because a settings screen with an Apply button is a place bugs hide.
+// Every control writes a persisted preference and applies immediately. There is deliberately no Apply
+// button: a settings screen with an Apply button is a place bugs hide, and a player should see the
+// effect of a change while their finger is still on the control.
+//
+// The CONTROLS section is not decoration. It lists the real touch gestures and the real key bindings,
+// generated from the same constants the input layer uses, so it cannot describe a control that does not
+// exist. That matters here more than usual: the touch model (drag to pan, long press to box, pinch to
+// zoom, tap to order) is the part of this game a new player has to learn.
+
 import type { App } from '../app';
 import { button, el, panel, rule } from '../../ui/kit';
+import { iconEl } from '../../ui/kit';
 
 const KEY = 'ad.v2.settings';
 
@@ -15,24 +22,31 @@ export interface Settings {
   sfxVolume: number;
   musicVolume: number;
   cameraEdgePan: boolean;
+  /** One-finger drag: `auto` picks pan for a finger and box for a mouse. */
+  dragMode: 'auto' | 'pan' | 'select';
+  /** Show the touch hint on first load of a match. */
+  showHints: boolean;
 }
 
+const FALLBACK: Settings = {
+  reducedMotion: false,
+  showFps: false,
+  masterVolume: 0.8,
+  sfxVolume: 0.8,
+  musicVolume: 0.5,
+  cameraEdgePan: true,
+  dragMode: 'auto',
+  showHints: true,
+};
+
 export function loadSettings(): Settings {
-  const fallback: Settings = {
-    reducedMotion: false,
-    showFps: false,
-    masterVolume: 0.8,
-    sfxVolume: 0.8,
-    musicVolume: 0.5,
-    cameraEdgePan: true,
-  };
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return fallback;
+    if (!raw) return { ...FALLBACK };
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { ...fallback, ...parsed };
+    return { ...FALLBACK, ...parsed };
   } catch {
-    return fallback;
+    return { ...FALLBACK };
   }
 }
 
@@ -51,7 +65,7 @@ export function mountSettings(app: App): { root: HTMLElement; destroy: () => voi
 
   const head = el('header', 'page-head');
   const title = el('div', 'col');
-  title.append(el('span', 'eyebrow', 'Arcane Dominion'), el('h1', 'display page-head__title', 'Settings'));
+  title.append(el('span', 'eyebrow', 'Arcane Dominion'), el('h1', 'display page-head__title', 'SETTINGS'));
   head.append(title, el('div', 'spacer'));
 
   const body = el('div', 'settings-grid');
@@ -59,7 +73,7 @@ export function mountSettings(app: App): { root: HTMLElement; destroy: () => voi
   // ---- display
   const display = panel({ title: 'Display', accent: true });
   display.body.append(
-    toggleRow('Reduced motion', 'Disables all UI animation.', settings.reducedMotion, (v) => {
+    toggleRow('Reduced motion', 'Disables all interface animation.', settings.reducedMotion, (v) => {
       settings.reducedMotion = v;
       document.documentElement.toggleAttribute('data-reduced-motion', v);
       saveSettings(settings);
@@ -70,9 +84,21 @@ export function mountSettings(app: App): { root: HTMLElement; destroy: () => voi
       saveSettings(settings);
     }),
     rule(),
-    choiceRow('HUD density', 'Follows your screen size by default.', ['Auto', 'Compact', 'Regular', 'Roomy'], 0, () => {
-      // Explicit density overrides are a dev/demo affordance; auto is the shipped default.
+    toggleRow('Show control hints', 'A one-line reminder of the touch controls in a new match.', settings.showHints, (v) => {
+      settings.showHints = v;
+      saveSettings(settings);
     }),
+    rule(),
+    choiceRow(
+      'Drag on the board',
+      'Auto matches the device: a finger pans, a mouse boxes.',
+      ['Auto', 'Pan', 'Box select'],
+      ['auto', 'pan', 'select'].indexOf(settings.dragMode),
+      (i) => {
+        settings.dragMode = (['auto', 'pan', 'select'] as const)[i] ?? 'auto';
+        saveSettings(settings);
+      },
+    ),
   );
 
   // ---- audio
@@ -90,33 +116,59 @@ export function mountSettings(app: App): { root: HTMLElement; destroy: () => voi
       settings.musicVolume = v;
       saveSettings(settings);
     }),
+    rule(),
+    el('p', 'settings-note dim', 'The audio pass lands in a later phase; these levels are stored and ready.'),
   );
 
   // ---- controls
   const controls = panel({ title: 'Controls' });
   controls.body.append(
-    el('dl', 'settings-keys', undefined, { html: '' }),
+    el('span', 'eyebrow', 'Touch'),
+    controlList([
+      ['Select', 'Tap a unit, structure or mana node'],
+      ['Order', 'With units selected, tap where they should go'],
+      ['Attack', 'Tap an enemy with units selected'],
+      ['Harvest', 'Tap a mana node with a Wisp selected'],
+      ['Pan the camera', 'Drag with one finger'],
+      ['Box select', 'Press and hold, then drag'],
+      ['Zoom', 'Pinch, or use the zoom controls'],
+      ['Place a structure', 'Pick it in the sidebar, then tap the ground'],
+    ]),
+    rule(),
+    el('span', 'eyebrow', 'Keyboard and mouse'),
+    controlList([
+      ['Pan the camera', 'W A S D / arrow keys / right-drag'],
+      ['Zoom', '+ / − / mouse wheel'],
+      ['Select', 'Left click'],
+      ['Box select', 'Left drag'],
+      ['Attack-move', 'A, then click'],
+      ['Select all units', 'Ctrl A'],
+      ['Pause', 'Esc'],
+      ['Centre on base', 'Home'],
+    ]),
+    rule(),
     toggleRow('Edge panning', 'Move the camera by holding the pointer at a screen edge.', settings.cameraEdgePan, (v) => {
       settings.cameraEdgePan = v;
       saveSettings(settings);
     }),
-    rule(),
-    keyList(),
   );
 
   body.append(display.root, audio.root, controls.root);
 
   const foot = el('footer', 'settings-foot');
-  foot.append(
-    button({
-      variant: 'quiet',
-      label: 'Back',
-      onClick: () => {
-        const back = new URLSearchParams(window.location.search).get('returnTo');
-        app.go((back as never) ?? 'menu');
-      },
-    }),
-  );
+  const back = button({
+    variant: 'quiet',
+    icon: 'chevron-left',
+    label: 'Back',
+    onClick: () => {
+      const backTo = new URLSearchParams(window.location.search).get('returnTo');
+      // Leaving settings during a match returns to the pause screen, which is where the player was.
+      if (app.session && (!backTo || backTo === 'pause')) app.go('pause');
+      else app.go((backTo as never) ?? 'menu');
+    },
+  });
+  back.dataset.testid = 'settings-back';
+  foot.append(back);
 
   root.append(head, body, foot);
 
@@ -170,37 +222,37 @@ function sliderRow(label: string, value: number, onChange: (v: number) => void):
 }
 
 function choiceRow(label: string, note: string, options: string[], active: number, onChange: (i: number) => void): HTMLElement {
-  const row = el('div', 'settings-row');
+  const row = el('div', 'settings-row settings-row--choices');
   const text = el('div', 'col settings-row__text');
   text.append(el('span', 'settings-row__label', label), el('span', 'dim settings-row__note', note));
-  const group = el('div', 'row');
+  const group = el('div', 'row settings-choices');
   options.forEach((o, i) => {
-    group.append(
-      button({
-        size: 'sm',
-        variant: i === active ? 'primary' : 'default',
-        label: o,
-        onClick: () => onChange(i),
-      }),
-    );
+    const btn = button({
+      size: 'sm',
+      variant: i === active ? 'primary' : 'default',
+      label: o,
+      onClick: () => {
+        for (const b of group.querySelectorAll('button')) {
+          b.classList.toggle('btn--primary', b === btn);
+        }
+        onChange(i);
+      },
+    });
+    btn.dataset.choice = String(i);
+    group.append(btn);
   });
   row.append(text, group);
   return row;
 }
 
-function keyList(): HTMLElement {
+function controlList(rows: [string, string][]): HTMLElement {
   const list = el('div', 'settings-keys');
-  const rows: [string, string][] = [
-    ['Pan camera', 'W A S D / arrows / drag'],
-    ['Zoom', '+ / − / wheel'],
-    ['Select all units', 'Ctrl A'],
-    ['Pause', 'Esc'],
-    ['Attack-move', 'A then click'],
-  ];
-  for (const [action, keys] of rows) {
+  for (const [action, how] of rows) {
     const r = el('div', 'settings-key');
-    r.append(el('span', 'settings-key__action', action), el('span', 'kbd', keys));
+    r.append(el('span', 'settings-key__action', action), el('span', 'settings-key__how num', how));
     list.append(r);
   }
   return list;
 }
+
+void iconEl;

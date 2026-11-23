@@ -1,4 +1,8 @@
-// LOBBY — 2 to 4 players, factions, map, AI difficulty, live match start.
+// SKIRMISH LOBBY — the match setup console.
+//
+// The shape is the C&C skirmish screen: a seat list down one side, the map selection beside it, and one
+// primary Start control anchored in a fixed place. Everything a player changes is a big tap target with
+// a visible current value, and nothing requires scrolling to reach the action.
 //
 // Fixes the v1 lobby's two reported defects by construction:
 //   • [E21] red error before user input: there is NO validation banner on first render. Players are
@@ -7,12 +11,13 @@
 //   • corners are auto-assigned (`assignStartIndices`) and re-assigned whenever the player count
 //     changes, so two players can never collide on load.
 //
-// The Start button is pinned bottom-right and never moves as settings change; the configuration scrolls
-// behind it.
+// The map preview is a real minimap drawn from the map's own tile data — the same pixels the radar
+// draws — rather than a placeholder box. A player picking a map should see its shape.
+
 import type { App } from '../app';
-import { LOBBY_COLORS, type LobbyPlayer } from '../state';
-import { badge, button, el, iconEl, panel, rule, teamChip, tabs } from '../../ui/kit';
-import { icon } from '../../ui/icons';
+import { LOBBY_COLORS, assignStartIndices, type LobbyPlayer } from '../state';
+import { badge, button, el, panel, rule, teamChip } from '../../ui/kit';
+import { iconEl } from '../../ui/kit';
 
 const FACTION_NAMES: Record<string, string> = {
   arcane: 'Arcane Dominion',
@@ -20,15 +25,22 @@ const FACTION_NAMES: Record<string, string> = {
   verdant: 'Verdant Concord',
 };
 
+const FACTION_NOTES: Record<string, string> = {
+  arcane: 'Balanced summons and ley economy',
+  obsidian: 'Heavy siege and fortification',
+  verdant: 'Fast troops and healing groves',
+};
+
 export function mountLobby(app: App): { root: HTMLElement; destroy: () => void } {
   const root = el('div', 'screen screen--lobby');
   const registry = app.registry;
-  let tab: 'map' | 'players' | 'rules' = 'map';
+  let tab: 'map' | 'seats' | 'rules' = 'map';
   let busy = false;
 
-  const head = el('header', 'page-head');
+  // ── chrome
+  const head = el('header', 'page-head lobby-head');
   const titleBlock = el('div', 'col');
-  titleBlock.append(el('span', 'eyebrow', 'Arcane Dominion'), el('h1', 'display page-head__title', 'Skirmish'));
+  titleBlock.append(el('span', 'eyebrow', 'Arcane Dominion'), el('h1', 'display page-head__title', 'SKIRMISH'));
   const headRight = el('div', 'row');
   const countBadge = badge('2 players');
   headRight.append(countBadge);
@@ -36,25 +48,28 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
 
   const grid = el('div', 'lobby');
 
-  // ---- players panel (always visible: it is the thing people change most)
-  const players = panel({ title: 'Players', accent: true, className: 'lobby__players' });
-  const playerList = el('div', 'col lobby-players');
-  players.body.append(playerList);
+  // ── seats panel
+  const seats = panel({ title: 'Commanders', accent: true, className: 'lobby__seats' });
+  const seatList = el('div', 'col lobby-seats');
+  seats.body.append(seatList);
 
   const addRow = el('div', 'row lobby-add');
   const addAi = button({ variant: 'quiet', icon: 'train', label: 'Add AI', size: 'sm' });
+  addAi.dataset.testid = 'lobby-add-ai';
   const removeLast = button({ variant: 'quiet', icon: 'close', label: 'Remove', size: 'sm' });
+  removeLast.dataset.testid = 'lobby-remove';
   addRow.append(addAi, removeLast);
-  players.body.append(rule(), addRow);
+  seats.body.append(rule(), addRow);
 
-  // ---- settings panel
-  const settings = panel({ title: 'Match settings', className: 'lobby__settings' });
-  const tabStripHost = el('div');
+  // ── settings panel
+  const settings = panel({ title: 'Match setup', className: 'lobby__settings' });
+  const tabStripHost = el('div', 'lobby-tabs');
   const body = el('div', 'col lobby-settings');
   settings.body.append(tabStripHost, body);
 
   const foot = el('footer', 'lobby__foot');
-  const back = button({ variant: 'quiet', label: 'Back', onClick: () => app.go('menu') });
+  const back = button({ variant: 'quiet', icon: 'chevron-left', label: 'Back', onClick: () => app.go('menu') });
+  back.dataset.testid = 'lobby-back';
   const start = button({
     variant: 'primary',
     size: 'lg',
@@ -76,15 +91,16 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     },
   });
   start.dataset.testid = 'start-match';
-  foot.append(back, el('div', 'spacer'), start);
+  foot.append(back, el('div', 'spacer'), el('span', 'lobby__summary', ''), start);
 
   const errorBox = el('div', 'lobby-error');
   errorBox.dataset.testid = 'lobby-error';
 
-  grid.append(players.root, settings.root);
+  grid.append(seats.root, settings.root);
   root.append(head, errorBox, grid, foot);
 
-  // ───────────────────────────────────────────────────────────────────── error surface
+  const summary = foot.querySelector('.lobby__summary') as HTMLElement;
+
   function showError(msg: string): void {
     errorBox.textContent = msg;
     errorBox.classList.add('is-on');
@@ -94,22 +110,24 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     errorBox.classList.remove('is-on');
   }
 
-  // ───────────────────────────────────────────────────────────────────── render
-  function renderPlayers(): void {
+  // ── seat rendering
+  function renderSeats(): void {
     const cfg = app.appState.lobby;
-    playerList.replaceChildren();
+    seatList.replaceChildren();
     for (let i = 0; i < cfg.players.length; i++) {
       const p = cfg.players[i]!;
-      const row = el('div', 'lobby-player');
+      const row = el('div', 'lobby-seat');
       row.dataset.player = p.id;
 
-      // Team colour as an edge bar only; all text stays achromatic.
-      const chip = teamChip(p.name, colorName(p.color), p.controller === 'ai' ? p.aiDifficulty ?? 'ai' : 'you');
+      const chip = teamChip(p.name, colorName(p.color), p.controller === 'ai' ? (p.aiDifficulty ?? 'ai') : 'you');
       row.append(chip);
 
-      // Faction picker
+      const controls = el('div', 'lobby-seat__controls');
+
+      // Faction
       const fac = el('select', 'lobby-select');
       fac.dataset.testid = `faction-${p.id}`;
+      fac.setAttribute('aria-label', `Faction for ${p.name}`);
       for (const fid of registry.factions.keys()) {
         const o = el('option', undefined, FACTION_NAMES[fid] ?? fid);
         o.value = fid;
@@ -119,12 +137,14 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
       fac.addEventListener('change', () => {
         p.factionId = fac.value;
         clearError();
+        renderSeats();
       });
-      row.append(fac);
+      controls.append(fac);
 
-      // Controller toggle: human/AI. The first player is always human — someone has to play.
+      // Controller: the first seat is always human — someone has to play.
       if (i > 0) {
         const ctrl = el('select', 'lobby-select lobby-select--ctrl');
+        ctrl.setAttribute('aria-label', `Controller for ${p.name}`);
         for (const [v, lbl] of [
           ['ai', 'AI'],
           ['human', 'Human'],
@@ -136,12 +156,15 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
         }
         ctrl.addEventListener('change', () => {
           p.controller = ctrl.value as 'human' | 'ai';
-          renderPlayers();
+          renderSeats();
+          clearError();
         });
-        row.append(ctrl);
+        controls.append(ctrl);
 
         if (p.controller === 'ai') {
           const diff = el('select', 'lobby-select lobby-select--diff');
+          diff.dataset.testid = `difficulty-${p.id}`;
+          diff.setAttribute('aria-label', `Difficulty for ${p.name}`);
           for (const d of ['easy', 'normal', 'hard'] as const) {
             const o = el('option', undefined, d[0]!.toUpperCase() + d.slice(1));
             o.value = d;
@@ -151,12 +174,12 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
           diff.addEventListener('change', () => {
             p.aiDifficulty = diff.value as 'easy' | 'normal' | 'hard';
           });
-          row.append(diff);
+          controls.append(diff);
         }
 
-        // Team picker for 3+ players.
         if (cfg.players.length > 2) {
           const team = el('select', 'lobby-select lobby-select--team');
+          team.setAttribute('aria-label', `Team for ${p.name}`);
           for (const t of [0, 1] as const) {
             const o = el('option', undefined, `Team ${t + 1}`);
             o.value = String(t);
@@ -166,18 +189,27 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
           team.addEventListener('change', () => {
             p.team = Number(team.value) as 0 | 1;
             reassignColors();
-            renderPlayers();
+            renderSeats();
+            clearError();
           });
-          row.append(team);
+          controls.append(team);
         }
       }
 
-      playerList.append(row);
+      row.append(controls);
+      seatList.append(row);
     }
     countBadge.textContent = `${cfg.players.length} players`;
     addAi.disabled = cfg.players.length >= 4;
     removeLast.disabled = cfg.players.length <= 2;
-    void icon;
+    updateSummary();
+  }
+
+  function updateSummary(): void {
+    const cfg = app.appState.lobby;
+    const map = registry.map(cfg.mapId);
+    const humans = cfg.players.filter((p) => p.controller === 'human').length;
+    summary.textContent = `${map.name} · ${cfg.players.length} players · ${humans === 1 ? '1 human vs AI' : `${humans} humans`}`;
   }
 
   function colorName(hex: string): 'blue' | 'red' | 'green' | 'gold' {
@@ -211,7 +243,9 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     cfg.players.push(p);
     reassignColors();
     normalizeTeams();
-    renderPlayers();
+    assignCorners();
+    renderSeats();
+    renderSettings();
     clearError();
   }
 
@@ -221,7 +255,9 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     cfg.players.pop();
     reassignColors();
     normalizeTeams();
-    renderPlayers();
+    assignCorners();
+    renderSeats();
+    renderSettings();
     clearError();
   }
 
@@ -234,24 +270,41 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     }
   }
 
-  function renderTabs(): void {
-    tabStripHost.replaceChildren(
-      tabs(
-        [
-          { id: 'map', label: 'Map' },
-          { id: 'players', label: 'Teams' },
-          { id: 'rules', label: 'Rules' },
-        ],
-        tab,
-        (id) => {
-          tab = id as typeof tab;
-          renderTabs();
-          renderSettings();
-        },
-      ),
-    );
+  /** Corners are the lobby's job so no two players can collide on load (v1's red-error bug). */
+  function assignCorners(): void {
+    const cfg = app.appState.lobby;
+    const map = registry.map(cfg.mapId);
+    cfg.players = assignStartIndices(cfg.players, map.startLocations.length);
   }
 
+  // ── tabs
+  function renderTabs(): void {
+    tabStripHost.replaceChildren();
+    const strip = el('div', 'tabs', undefined, { role: 'tablist' });
+    for (const t of [
+      { id: 'map', label: 'Map' },
+      { id: 'seats', label: 'Teams' },
+      { id: 'rules', label: 'Rules' },
+    ] as const) {
+      const b = el('button', 'tab', undefined, {
+        type: 'button',
+        role: 'tab',
+        'aria-selected': String(tab === t.id),
+      });
+      b.dataset.tab = t.id;
+      b.dataset.testid = `lobby-tab-${t.id}`;
+      b.append(el('span', undefined, t.label));
+      b.addEventListener('click', () => {
+        tab = t.id;
+        renderTabs();
+        renderSettings();
+      });
+      strip.append(b);
+    }
+    tabStripHost.append(strip);
+  }
+
+  // ── per-tab settings
   function renderSettings(): void {
     body.replaceChildren();
     const cfg = app.appState.lobby;
@@ -262,21 +315,31 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
         const on = m.id === cfg.mapId;
         const card = el('button', `lobby-mapcard${on ? ' is-on' : ''}`, undefined, { type: 'button' });
         card.dataset.map = m.id;
-        card.append(
+        card.dataset.testid = `map-${m.id}`;
+        // A REAL minimap from the map's own tiles: a player choosing a map should see its shape.
+        const preview = el('canvas', 'lobby-mapcard__preview') as HTMLCanvasElement;
+        preview.width = 96;
+        preview.height = 66;
+        drawMapPreview(preview, m.tiles, m.tileW, m.tileH);
+        card.append(preview);
+        const text = el('span', 'lobby-mapcard__text');
+        text.append(
           el('span', 'lobby-mapcard__name', m.name),
-          el('span', 'lobby-mapcard__note dim', `${m.maxPlayers} players · ${m.tileW}×${m.tileH}`),
+          el('span', 'lobby-mapcard__note dim', `${m.maxPlayers} players · ${m.tileW}×${m.tileH} tiles`),
         );
+        card.append(text);
         if (on) card.append(badge('Selected', 'ok'));
         card.addEventListener('click', () => {
           cfg.mapId = m.id;
+          assignCorners();
           renderSettings();
+          renderSeats();
           clearError();
         });
         list.append(card);
       }
-      body.append(el('span', 'eyebrow', 'Map'), list);
+      body.append(el('span', 'eyebrow', 'Battlefield'), list);
 
-      // Warn (neutrally, not in red) when the player count exceeds what the map supports.
       const map = registry.map(cfg.mapId);
       if (map.maxPlayers < cfg.players.length) {
         body.append(el('p', 'lobby-hint', `${map.name} supports up to ${map.maxPlayers} players.`));
@@ -284,7 +347,7 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
       return;
     }
 
-    if (tab === 'players') {
+    if (tab === 'seats') {
       body.append(
         el('span', 'eyebrow', 'Team assignment'),
         el('p', 'lobby-hint muted', 'Spawn corners are assigned automatically so no two players share one.'),
@@ -292,9 +355,11 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
       const teams = el('div', 'lobby-teams');
       for (const t of [0, 1] as const) {
         const col = el('div', 'lobby-team');
-        col.append(el('span', 'eyebrow', `Team ${t + 1}`));
+        const bar = el('span', 'lobby-team__bar');
+        bar.style.setProperty('--team', LOBBY_COLORS[t * 1]?.color ?? LOBBY_COLORS[0]!.color);
+        col.append(bar, el('span', 'eyebrow', `Team ${t + 1}`));
         for (const p of cfg.players.filter((x) => x.team === t)) {
-          col.append(el('span', 'lobby-team__member', p.name));
+          col.append(el('span', 'lobby-team__member', `${p.name} · corner ${p.startIndex + 1}`));
         }
         teams.append(col);
       }
@@ -302,9 +367,9 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
       return;
     }
 
-    const speedRow = el('div', 'row row--between');
-    const speedVal = el('span', 'num', `${cfg.speed.toFixed(2)}×`);
-    const speedBtns = el('div', 'row');
+    const speedRow = el('div', 'lobby-option');
+    const speedVal = el('span', 'num lobby-option__value', `${cfg.speed.toFixed(2)}×`);
+    const speedBtns = el('div', 'row lobby-choices');
     for (const s of [0.5, 1, 1.5, 2] as const) {
       speedBtns.append(
         button({
@@ -318,8 +383,21 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
         }),
       );
     }
-    speedRow.append(el('span', 'dim', 'Game speed'), speedBtns, speedVal);
+    speedRow.append(el('span', 'lobby-option__label', 'Game speed'), speedBtns, speedVal);
     body.append(speedRow, rule());
+
+    // The faction blurbs belong here: a player choosing a side needs to know what it does.
+    const facList = el('div', 'lobby-factions');
+    for (const f of registry.factions.values()) {
+      const card = el('div', 'lobby-faction');
+      card.append(
+        iconEl(factionIcon(f.id) as never, 18),
+        el('span', 'lobby-faction__name', FACTION_NAMES[f.id] ?? f.name),
+        el('span', 'lobby-faction__note dim', f.playstyle ?? FACTION_NOTES[f.id] ?? f.description),
+      );
+      facList.append(card);
+    }
+    body.append(el('span', 'eyebrow', 'Factions'), facList, rule());
 
     body.append(
       el('p', 'lobby-hint muted',
@@ -328,11 +406,17 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
     );
   }
 
+  function factionIcon(id: string): string {
+    const map: Record<string, string> = { arcane: 'crystal', obsidian: 'shield', verdant: 'research' };
+    return map[id] ?? 'flag';
+  }
+
   addAi.addEventListener('click', addPlayer);
   removeLast.addEventListener('click', removePlayer);
 
+  assignCorners();
   renderTabs();
-  renderPlayers();
+  renderSeats();
   renderSettings();
   clearError();
 
@@ -344,10 +428,23 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
   };
 }
 
-/** Small helper so the lobby can show a faction emblem without new art. */
-export function factionGlyph(factionId: string): string {
-  const map: Record<string, string> = { arcane: 'crystal', obsidian: 'shield', verdant: 'research' };
-  return icon((map[factionId] ?? 'flag') as never, { size: 16 });
+/** Draw a map's passability as a two-tone preview. The same data the radar uses. */
+export function drawMapPreview(canvas: HTMLCanvasElement, tiles: number[], tileW: number, tileH: number): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const sx = W / tileW;
+  const sy = H / tileH;
+  const blocked = getComputedStyle(document.documentElement).getPropertyValue('--ink-500').trim() || '#3e4650';
+  const ground = getComputedStyle(document.documentElement).getPropertyValue('--ink-800').trim() || '#1e2228';
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = blocked;
+  for (let ty = 0; ty < tileH; ty++) {
+    for (let tx = 0; tx < tileW; tx++) {
+      if (tiles[ty * tileW + tx] !== 1) continue;
+      ctx.fillRect(tx * sx, ty * sy, Math.ceil(sx), Math.ceil(sy));
+    }
+  }
 }
-
-void iconEl;
