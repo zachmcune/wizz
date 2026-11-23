@@ -190,6 +190,14 @@ export function planMilitary(
      * harmless (they are simply never read again) and the map is pruned each pass.
      */
     prevUnitPositions?: Map<number, { x: number; y: number }>;
+    /**
+     * True when the AI has been unable to make progress for a long stretch — nothing damaged, nothing killed.
+     *
+     * This is the only condition under which an army with no idle units is re-tasked wholesale onto a search sweep. A
+     * freshly-ordered army is all `moving` and has no idle units either, so keying the sweep on idleness alone cancelled
+     * the wave it had just launched.
+     */
+    stuckLongEnough?: boolean;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
   const prevPositions = opts.prevUnitPositions ?? new Map<number, { x: number; y: number }>();
@@ -509,8 +517,21 @@ export function planMilitary(
      * So when there is nothing else to do, the whole army sweeps. It is the same reasoning as the small-army case: a unit
      * re-tasked toward fresh ground is doing something useful, whereas one holding a stale order in its own base is not.
      */
+    /**
+     * ONLY A TRULY STUCK ARMY GOES LOOKING — not merely one with no idle units.
+     *
+     * The condition used to be "no idle units", which is almost always true for an army that has just been ordered
+     * somewhere: every unit is `moving`, so `idleForSearch` is empty and the whole army was re-tasked on the very next pass.
+     * That destroyed the wave it had just launched, and it hit the EARLIER-attacking difficulty hardest — Hard opens at 5
+     * units instead of 7, so its first wave was the one being cancelled. Measured: Hard 0 - 12 Normal while this condition
+     * was in place, against a 65% requirement.
+     *
+     * An army is only "stuck" when it has been unable to make progress for a long time — the `passesWithoutProgress`
+     * counter, which already means "nothing is being damaged and nothing is dying". By then a wave that was going to work
+     * has had its chance, and sending the army to look for a new target loses nothing.
+     */
     const broke = army.length <= SWEEP_MAX;
-    const sweepAll = idleForSearch.length === 0 && army.length > SWEEP_MAX;
+    const sweepAll = idleForSearch.length === 0 && army.length > SWEEP_MAX && opts.stuckLongEnough === true;
     const sweepWith = (idleForSearch.length > 0 ? idleForSearch : broke || sweepAll ? army : []).slice(
       0,
       sweepAll ? army.length : SWEEP_MAX,

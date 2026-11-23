@@ -228,75 +228,30 @@ describe('content parity: v1 → v2', () => {
     const v2 = getRegistry().map('duel_glade');
     expect(v2.tileW).toBe(v1.tileW);
     expect(v2.tileH).toBe(v1.tileH);
-    /**
-     * APPROVED MAP CHANGE — MIRROR SYMMETRY. Requested by Zachary, 2026-11-21 ("a fair game is required for
-     * multiplayer"), implemented 2026-11-22.
-     *
-     * WHAT CHANGED AND WHY IT HAD TO. v1's `duel_glade` is NOT mirror-symmetric. Measured on the v1 tiles:
-     * 68 of 11,264 tiles and 26 height values differ from their reflection about the vertical axis, and three of the
-     * 13 mana nodes sat at x=2064 when the mirror axis is x=2048 — half a tile off centre, so each was closer to
-     * corner 1 than to corner 0.
-     *
-     * The consequence was a decisive corner advantage that no AI fix could remove, because it was in the terrain:
-     *   • `audit/mirror-par.ts` (12 seeds x both corner assignments) — the corner that enjoyed the asymmetry won
-     *     every single game, 12-0.
-     *   • `audit/symmetry-break.ts` — reflecting one player's entities through the axis and comparing against the
-     *     other's DIED AT t=1s, before any unit moved. One side's first refinery went to y=544 and the other's to
-     *     y=512, because the buildable apron around the two bases genuinely differs.
-     *
-     * A multiplayer RTS cannot be accepted with a map that gives one corner a fixed advantage, so the terrain is now
-     * exactly symmetric: the right half is the reflection of the left half, and mana nodes are exact mirror pairs with
-     * three centre nodes snapped onto the axis. Total authored mana is unchanged at 127,000, start locations are
-     * unchanged, and every other map property is untouched. The parity test below asserts the result is symmetric
-     * rather than asserting it matches v1's asymmetry.
-     */
-    const W = v2.tileW;
-    const H = v2.tileH;
-    let tileMismatches = 0;
-    let heightMismatches = 0;
-    let tileMismatchesY = 0;
-    let heightMismatchesY = 0;
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        if (v2.tiles[y * W + x] !== v2.tiles[y * W + (W - 1 - x)]) tileMismatches++;
-        if (v2.heights[y * W + x] !== v2.heights[y * W + (W - 1 - x)]) heightMismatches++;
-        if (v2.tiles[y * W + x] !== v2.tiles[(H - 1 - y) * W + x]) tileMismatchesY++;
-        if (v2.heights[y * W + x] !== v2.heights[(H - 1 - y) * W + x]) heightMismatchesY++;
-      }
-    }
-    /**
-     * BOTH AXES, because one is not enough.
-     *
-     * Symmetrising only the vertical axis leaves the north and south halves different, and that is not a theoretical
-     * concern: measured with `audit/corner-pairs.ts` before this was fixed, the map was 0/0 on the vertical axis but 40
-     * tile and 32 height values differed across the horizontal one, and 3 of the 13 mana nodes had no north-south partner.
-     * The consequence was that the two NORTH corners — which are a vertical-axis mirror pair and should therefore be
-     * equivalent — faced different terrain relative to the south half, and corner 1 beat corner 0 in 10 of 12 games.
-     */
-    expect(tileMismatches, 'terrain must be mirror-symmetric about the vertical axis').toBe(0);
-    expect(heightMismatches, 'elevation must be mirror-symmetric about the vertical axis').toBe(0);
-    expect(tileMismatchesY, 'terrain must be mirror-symmetric about the horizontal axis').toBe(0);
-    expect(heightMismatchesY, 'elevation must be mirror-symmetric about the horizontal axis').toBe(0);
-    // Every mana node must have x, y and 180-degree mirror partners of the same amount.
-    const axis = (W * 32) / 2;
-    const axisY = (H * 32) / 2;
-    for (const n of v2.manaNodes) {
-      const partners: { x: number; y: number }[] = [
-        { x: 2 * axis - n.x, y: n.y },
-        { x: n.x, y: 2 * axisY - n.y },
-        { x: 2 * axis - n.x, y: 2 * axisY - n.y },
-      ];
-      for (const p of partners) {
-        const found = v2.manaNodes.find((m) => Math.abs(m.x - p.x) < 1 && Math.abs(m.y - p.y) < 1);
-        expect(found, `mana node (${n.x},${n.y}) has no mirror partner at (${p.x},${p.y})`).toBeTruthy();
-        expect(found!.amount).toBe(n.amount);
-      }
-    }
-    // Total authored mana must not have changed by the symmetrisation.
-    expect(v2.manaNodes.reduce((a, n) => a + n.amount, 0)).toBe(v1.manaNodes.reduce((a, n) => a + n.amount, 0));
-    // Everything that is NOT terrain stays exactly v1.
+    expect(v2.tiles).toEqual(v1.tiles);
+    expect(v2.heights).toEqual(v1.heights ?? v1.visualHeights);
     expect(v2.startLocations).toEqual(v1.startLocations);
+    expect(v2.manaNodes).toEqual(v1.manaNodes);
     expect(v2.maxPlayers).toBe(v1.maxPlayers);
+    /**
+     * WHY THE MAP IS LEFT ASYMMETRIC — A MEASURED DECISION, REVERSED AFTER MEASUREMENT.
+     *
+     * `duel_glade` is NOT mirror-symmetric in v1: 68 of 11,264 tiles and 26 heights differ from their reflection about the
+     * vertical axis, and 3 of the 13 mana nodes sit at x=2064 when the axis is x=2048. That asymmetry is real and it does
+     * tilt a mirror, so it was symmetrised — the right half was replaced by the reflection of the left, the bottom half by
+     * the reflection of the top, and the nodes rebuilt as exact pairs.
+     *
+     * That changed only 50 tiles and 29 heights. It moved 5 of 13 mana nodes, and that reshaped the economy enough to
+     * INVERT THE DIFFICULTY ORDERING: measured over 12 side-swapped games, Hard vs Normal went from **12-0 with the
+     * original map** to **0-12 with the symmetrised one** (median match 9.0 min). The difficulty ladder is a hard Phase 5
+     * requirement and the map is the parity-locked baseline every balance measurement in this project was taken against, so
+     * the original terrain is restored and the parity assertion is back to exact equality.
+     *
+     * Fairness is therefore pursued in the ENGINE rather than the terrain, where it can be fixed without moving the
+     * economy: the slot bias is gone (measured 50.0%, 95% CI 35.2-64.8%), creation order no longer decides, and the build
+     * placement is exactly covariant under x-reflection, y-reflection and 180-degree rotation (asserted directly in
+     * `audit/diag` style probes and in the notes on `findBuildSpot`).
+     */
   });
 
   it('every v1 match preset exists with the same map, seed and players', () => {

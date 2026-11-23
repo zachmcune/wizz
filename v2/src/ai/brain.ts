@@ -498,6 +498,7 @@ export class AiBrain {
        * `knowsEnemyBase` in `planMilitary` mirrors this predicate exactly, so the two planners cannot disagree again.
        */
       prevUnitPositions: this.memory.prevUnitPositions,
+      stuckLongEnough: this.memory.passesWithoutProgress >= STALEMATE_PASSES,
       searchTarget:
         per.enemyBuildings.filter((b) => b.live && b.defId !== 'stone_wall').length === 0
           ? this.searchObjective(per)
