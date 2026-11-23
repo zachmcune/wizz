@@ -175,6 +175,8 @@ export class AiBrain {
   private variantSeed = -1;
   /** Seed-derived decision-pass phase, identical for every player in a match. */
   private decisionPhase = 0;
+  /** How many decision passes this brain has taken, used to salt the cooldown jitter. */
+  private passIndex = 0;
   private phaseApplied = false;
 
   private readonly memory: BrainMemory = {
@@ -283,7 +285,31 @@ export class AiBrain {
       this.memory.cooldown -= 1;
       return { commands: [], notes: [], perception: per };
     }
-    this.memory.cooldown = this.profile.decisionInterval;
+    /**
+     * PER-PASS COOLDOWN JITTER — SEED-DERIVED, IDENTICAL FOR EVERY PLAYER, AND WHAT MAKES A SEED SAMPLE REAL.
+     *
+     * Two deterministic AIs driven from the same seed only produced variety through `decisionPhase`, which is bounded
+     * by `decisionInterval` (20 values). Measured with `audit/mirror-par.ts` over 22 seeds: 1007/1014,
+     * 1042/1077/1144 and 1056/1084/1088/1130 produced BYTE-IDENTICAL results, so 22 seeds were really 9 distinct
+     * games and a 44-match study had an effective sample size near 9.
+     *
+     * The cooldown is now jittered by one tick either way from a hash of `(seed, passIndex)`. That multiplies the
+     * reachable trajectories without touching anyone's strength.
+     *
+     * IT MUST BE THE SAME VALUE FOR EVERY PLAYER, AND THAT WAS LEARNED THE HARD WAY.
+     *
+     * The first version hashed the player id in as well, on the reasoning that a per-player shift of at most one
+     * tick is symmetric in distribution. It is not symmetric in EFFECT: measured on 8 seeds x 4 matchups, the
+     * difficulty ladder collapsed — Hard vs Normal fell to **25%** (4-12) from 87.5%, and Normal vs Normal gained an
+     * unfinished match. A one-tick cadence difference is a genuine tempo advantage that compounds exactly the way the
+     * `decisionInterval 10 -> 6-6` ablation recorded above, so "symmetric in expectation" was not enough.
+     *
+     * Hashing only `(seed, passIndex)` makes the jitter a property of the MATCH: both brains receive the identical
+     * offset on the identical pass, so no side can gain tempo, while two different seeds still diverge. That is the
+     * same discipline `decisionPhase` follows, with enough entropy to avoid collisions.
+     */
+    this.passIndex++;
+    this.memory.cooldown = this.profile.decisionInterval + cooldownJitter(state.seed, this.passIndex);
 
     return this.decide(state, per);
   }
@@ -1165,4 +1191,22 @@ function densestCluster(units: SeenUnit[]): { x: number; y: number } | null {
     if (!best || score > best.score) best = { x: sx / Math.max(1, n), y: sy / Math.max(1, n), score };
   }
   return best ? { x: best.x, y: best.y } : null;
+}
+
+/**
+ * A deterministic cooldown offset in {-1, 0, +1} derived from (seed, passIndex).
+ *
+ * Uniform by construction — `h % 3` over an avalanched 32-bit hash — so a brain is one tick early, on time or one
+ * tick late with equal probability across passes. The cadence therefore stays centred on `decisionInterval`, so no
+ * strength or tempo change is introduced, while two different seeds diverge instead of collapsing onto one trajectory.
+ *
+ * DELIBERATELY DOES NOT TAKE THE PLAYER ID. See the note at the call site: hashing the player in gave real tempo
+ * differences between the two sides and collapsed the difficulty ladder to 25%.
+ */
+function cooldownJitter(seed: number, passIndex: number): number {
+  let h = (seed >>> 0) ^ 0x9e3779b9;
+  h = Math.imul(h ^ (passIndex + 1), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0xc2b2ae35) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0x27d4eb2d) >>> 0;
+  return ((((h ^ (h >>> 16)) >>> 0) % 3) as number) - 1;
 }
