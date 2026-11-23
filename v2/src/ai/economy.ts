@@ -1074,28 +1074,71 @@ export function findBuildSpot(
        */
       const anchor = def.menuCategory === 'defenses' ? defenseAnchor : { x: yard.x, y: yard.y };
       /**
-       * ORIGINS ARE COMPUTED FROM THE YARD'S ORIGIN TILE, NOT FROM ITS CENTRE.
+       * THE ANCHOR'S OWN FOOTPRINT SETS THE PARITY OF THE CHILD'S OFFSET.
        *
-       * `Math.floor((centre - footprint/2) / TILE)` cannot be mirror-covariant for an EVEN footprint. The yard's centre
-       * sits on a half tile (a 3-wide sanctum at x=464 has its centre at tile 14.5), so `centre - fp/2` lands on a
-       * half-tile boundary for even fp and `floor` breaks toward -x on both sides of the map. Verified exhaustively over
-       * floor / round / ceil and dx = -4..+4: every rounding of an even footprint failed the mirror test, because
-       * origin(left) + origin(right) came out 125 when it must be 128 - fp = 126.
+       * A mirror maps a tile at `o` to `mapTiles - fp - o`. Anchoring a child on the parent's ORIGIN and stepping by
+       * `dx` therefore only mirrors correctly when the parent's footprint and the child's have the same parity. Here the
+       * parent is a 3-wide sanctum and the most important child is a 2-wide refinery, so it does not:
        *
-       * Anchoring on the yard's ORIGIN tile instead makes the arithmetic integral and therefore exactly covariant:
-       * origin(left, +dx) and origin(right, -dx) sum to `mapTiles - footprint` by construction. World coordinates are
-       * then the centre of the resulting footprint, which is the same point the sim reconstructs from `buildingOrigin`.
+       *   left sanctum origin 13, child at dx = -2  -> child origin 11, whose mirror is 126 - 11 = 115
+       *   right sanctum origin 112, chosen at dx = +2 -> child origin 114         (one tile short of 115)
        *
-       * This was the last positional asymmetry: `audit/symmetry-break.ts` still caught one side's first refinery a tile
-       * row away from the other's, and `audit/mirror4way.ts` measured the lower-x corner winning every game.
+       * That one tile moved the whole buildable apron, and it showed up as the entire remaining positional bias: with both
+       * halves of the map byte-identical and the nodes exact mirror pairs, `audit/corner-pairs.ts` still found corner 1
+       * beating corner 0 in 11 of 11 games, and `audit/symmetry-break.ts` still caught one side's first refinery a tile
+       * away from the other's at t=1s.
+       *
+       * The fix is to anchor on the parent's footprint CENTRE in half-tiles and rebuild the child origin from that, which
+       * makes the offset relation `dx' = (parentFootprint - childFootprint) - dx` and is exactly covariant for any parity
+       * combination:
+       *
+       *   dx' = (3 - 2) - dx = 1 - dx      for a 2-wide child of a 3-wide sanctum
        */
-      const anchorTx = Math.floor((anchor.x - half) / TILE);
-      const anchorTy = Math.floor((anchor.y - half) / TILE);
-      const originTx = anchorTx + dx;
+      const anchorFootprint = (() => {
+        const b = per.myBuildings.find((x2) => x2.x === anchor.x && x2.y === anchor.y);
+        const d = b ? registry.buildings.get(b.defId) : undefined;
+        return d?.footprint ?? def.footprint;
+      })();
+      const anchorTx = Math.floor((anchor.x - (anchorFootprint * TILE) / 2) / TILE);
+      const anchorTy = Math.floor((anchor.y - (anchorFootprint * TILE) / 2) / TILE);
+      /**
+       * THE REFLECTION OFFSET IS `(anchorFootprint - childFootprint)`, AND IT ONLY BITES WHEN PARITIES DIFFER.
+       *
+       * Under an x-mirror a tile at `o` maps to `mapTiles - footprint - o`. If the left base scans `dx` and the right base
+       * scans `dx'`, the two child origins are `anchorTx + dx` and `anchorTx' + dx'`, whose sum must be
+       * `mapTiles - childFootprint`. Since the anchor origins themselves satisfy
+       * `anchorTx + anchorTx' = mapTiles - anchorFootprint`, the offsets must satisfy
+       *
+       *   dx + dx' = anchorFootprint - childFootprint
+       *
+       * so `dx' = (anchorFootprint - childFootprint) - dx`. When the two footprints have the SAME parity that difference is
+       * even and plain `-dx` is off by a whole tile whenever it is not zero — which is exactly the 3-wide sanctum with a
+       * 2-wide refinery: `dx' = 1 - dx`, not `-dx`.
+       *
+       * The scan therefore walks the left base's offsets and derives the child origin from the ANCHOR-FOOTPRINT grid, with
+       * the parity difference folded in. Applying it as a flat `-dx - 0.5` (as an earlier attempt did) rounds straight back
+       * to `-dx` and changes nothing.
+       */
+      const parityDelta = anchorFootprint - def.footprint;
+      /**
+       * APPLY THE PARITY DELTA ON THE SIDE THAT NEEDS IT.
+       *
+       * The condition `dx + dx' = anchorFootprint - childFootprint` has to hold across the two bases, so it is enough to
+       * shift ONE side by `parityDelta` and leave the other scanning exactly `dx`. The side is chosen from the base's own
+       * position relative to the map's vertical axis, which is published map data — the same class of information as
+       * `tileWalkable` and the start locations.
+       *
+       * Choosing by side rather than adding a constant keeps the left base's scan identical to what it always was, so no
+       * measured behaviour on the left half changes; only the mirrored base's offset is corrected.
+       */
+      const mapTilesWide = per.mapW;
+      const onRightHalf = anchorTx * 2 > mapTilesWide;
+      const sideShift = onRightHalf ? parityDelta : 0;
+      const originTx = anchorTx + dx + sideShift;
       const originTy = anchorTy + dy;
       const x = (originTx + def.footprint / 2) * TILE;
       const y = (originTy + def.footprint / 2) * TILE;
-        if (x - half < TILE || y - half < TILE) continue;
+      if (x - half < TILE || y - half < TILE) continue;
         if (x + half > (per.mapW - 1) * TILE || y + half > (per.mapH - 1) * TILE) continue;
         if (groundHeightAt(services, x, y) !== yardH) continue;
         /**
