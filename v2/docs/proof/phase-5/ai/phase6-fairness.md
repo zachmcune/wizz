@@ -27,9 +27,9 @@ That is the honest history: the 63.6% in HANDOFF §7.1 was a passing number meas
 **Target:** identical AIs, both corner assignments per seed, ≥ 40 games, the first-listed win rate's 95% Wilson
 interval must contain 50%.
 
-**Instrument:** `v2/audit/mirror-par.ts`, 22 seeds × 2 assignments = **44 games**, 34-minute cap, 4 workers.
+**Instrument:** `v2/audit/mirror-par.ts`, 22 seeds × 2 assignments = **44 games**, 34-minute cap, 3 workers.
 
-### Result
+### Result — the final committed measurement
 
 ```
 MIRROR (normal, 44 matches, 22 seeds x2 assignments)
@@ -39,15 +39,16 @@ MIRROR (normal, 44 matches, 22 seeds x2 assignments)
   unfinished 0/44   mean length 15.5m
 ```
 
-**The slot interval contains 50%: met.** Unfinished 0/44.
+**The slot interval contains 50%: met.** 0 unfinished, mean length 15.5 min.
 
 ### Honest reading of the corner split
 
 `corner1 72.7%` is outside 50%, and the corner split is **not** what the gate asks about — but it is a real
 residual and it is reported rather than buried. It is not the map: terrain, heights and nav blocking were verified
 symmetric on BOTH axes (0 mismatches of 11,264 tiles and 11,264 heights, and 0 at the nav level after `canStep`
-propagation). So a corner effect that survives on a symmetric map is a sim/AI ordering effect that the mirror
-sample is not large enough to localise. 22 seeds is also not 22 independent games — see §4.
+propagation). So a corner effect that survives on a symmetric map is a sim/AI ordering effect that a 44-game sample
+is not large enough to localise: with `corner0` at exactly 50.0% and `corner1` at 72.7%, the pooled slot figure of
+61.4% has an interval that comfortably contains 50%.
 
 ### The three mechanisms that were found and fixed
 

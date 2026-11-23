@@ -136,7 +136,7 @@ jobs:
       - name: Assert every deployed entry and font exists in the build output
         run: |
           set -e
-          for f in dist/index.html dist/gallery.html dist/styleguide.html dist/ui-proof.html; do
+          for f in dist/index.html dist/gallery.html dist/styleguide.html dist/ui-proof.html dist/app.html; do
             test -f "$f" || { echo "missing build entry: $f"; exit 1; }
           done
           test -f dist/atlas-final/units.json || { echo "missing atlas manifest"; exit 1; }

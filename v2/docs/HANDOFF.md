@@ -412,20 +412,29 @@ anything in §7.1:
 
 ### 7.1 Phase 5 targets that are NOT met (re-measured in Phase 6)
 
-1. **Median match length is ~12.7 min, target 15–25.** HQ HP is confirmed dead as a lever on this build: 4000 →
-   12.7 min, 6000 → 13.3, 8000 → 13.6. Production capacity is also dead: `targetProduction` 2/3/4 → 12.7 / 13.2 /
-   12.6. `audit/match-timeline.ts` shows why: the match is decided when the **worker line dies** (10 → 4 workers at
-   minute 9 on seed 1000), not when the HQ falls; the HQ follows ~1.5 min later. Lengthening it needs a comeback
-   mechanic (a RULE change, v1 has none), a genuinely better defensive AI, or combat/stat changes. **None was
-   made**, because each is a rule change requiring approval or a large AI project. Do not re-sweep HQ HP.
-2. **Hard over Normal is 60%, target 70%.** Phase 5 shipped Hard with `targetBases: 3`; a 20-game-per-variant
-   ablation measured that as **33.3%**, and `targetBases: 2` as **66.7%** — a third base splits the army and Hard
-   arrived weaker than Normal. That is fixed, and the sweep is recorded at the source in `difficulty.ts`. The
-   remaining ~10 points were swept on `minWaveSize` (4 → 60%, 5 → 60%, 6 → 50%, 7 → 45%) and are not there.
-   **Hard is ~60% and that is the honest number.**
+**Step 0's four gates, final status:**
+
+| Gate | Result | Met |
+|---|---|---|
+| (a) Mirror ≥40 games, 95% Wilson CI contains 50% | **61.4%, CI 46.6–74.3%**, 0 unfinished, 44 games | **yes** |
+| (b) Median 1v1 in 15–25 min, 0 unfinished | mirror **19.3 min**, 0 unfinished | **yes** |
+| (c) Hard>Normal and Normal>Easy both ≥70% | **85.0%** and **85.0%**, 0 unfinished | **yes** |
+| (d) Overview shot showing both bases WITH EXPANSIONS | **not obtainable — see item 3** | **no** |
+
+Remaining issues, with numbers:
+
+1. **Match length is in band for an even 1v1 but shorter for mismatched pairings**: hard/normal 12.6 min,
+   normal/easy 9.0, hard/easy 12.8 — all 0 unfinished. HQ HP is confirmed dead as a lever (4000 → 12.7, 6000 →
+   13.3, 8000 → 13.6) and so is production capacity (`targetProduction` 2/3/4 → 12.7 / 13.2 / 12.6). Lengthening
+   the mismatched cells needs a comeback mechanic or a better defensive AI; both are written up as **Proposal 1**
+   in `docs/proof/phase-6/BALANCE_PROPOSALS.md` and neither was implemented, because the first is a rule change and
+   the second is a real AI project. Do not re-sweep HQ HP.
+2. **The corner split is 50.0% / 72.7%.** The pooled slot figure the gate asks about is 61.4% with a CI containing
+   50%, and the map is verified symmetric on both axes (0 mismatches at the tile, height and nav levels), so this is
+   an ordering effect a 44-game sample cannot localise. Reported, not explained away.
 3. **The AI does not expand, so the "both bases with expansions" shot is unobtainable.** Phase 5 said the AI "does
    not expand before winning"; Phase 6 measured it precisely and the answer is stronger — **the AI never expands at
-   all**. Printing every refinery and construction-yard position over a whole match on seed 1000:
+   all**. Every refinery and construction-yard position over a whole match on seed 1000:
 
    ```
    t=6m  p1: sanctum@(464,464) attunement_spire@(544,544) attunement_spire@(480,544)
@@ -443,9 +452,12 @@ anything in §7.1:
    6 workers, 6 army"). A shot implying a second base would be false.
 4. **Phase 2's perf target was missed and reported.** See `docs/PHASE_2_REPORT.md`; the sim is within budget but
    the phase's stated goal was stricter. Do not silently reclassify it as met.
-5. **4-player free-for-all can fail to resolve.** Two of six seeds tried (1014, 1049) ran to the 34-minute cap with
-   no winner. Peers stayed perfectly in sync on those, so this is a balance question, not a networking one. Worth
-   fixing in Phase 8 (§8), not a Phase 6 defect.
+5. **4-player free-for-all termination is knife-edge.** The committed seed resolves (27.1 min) and `normal`-only
+   FFA is fine, but 2 of 7 seeds tested ran to the cap, and the outcome is sensitive to ANY change in the AI
+   decision cadence (measured: per-pass jitter, 1-in-16 jitter and a constant offset all broke it, which is why the
+   jitter was reverted). Peers stay perfectly in sync on the stalled seeds, so this is a balance issue, not a
+   networking one. **Proposal 3** in `docs/proof/phase-6/BALANCE_PROPOSALS.md` suggests making the existing
+   `allIn` path fire sooner in 3+ team games.
 
 ### 7.2 Things that will bite you
 
