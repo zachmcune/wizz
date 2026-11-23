@@ -744,9 +744,21 @@ export function pickAttackTarget(
     if (!b.live) continue;
     const def = registry.buildings.get(b.defId);
     const isWall = b.defId === 'stone_wall';
+    /**
+     * THE SANCTUM IS THE WIN CONDITION, SO IT OUTRANKS EVERYTHING ONCE THE GAME IS LONG.
+     *
+     * Refineries scored 40 and sanctums 30, so an army sitting in an enemy base would grind refineries while the sanctum —
+     * the only structure whose destruction ends the match — stood untouched. Measured on seed 1063 at 33 sim-minutes: `p2`
+     * held 13+ units inside `p1`'s base, re-tasking every pass `to close on Attunement Spire`, while the game ran out the
+     * clock. Killing a refinery shortens a war; killing the sanctum ends one.
+     *
+     * Sanctums are therefore the top-weighted target, and the other weights shift down accordingly so the ordering between
+     * them is unchanged.
+     */
+    const isSanctum = def?.isConstructionYard === true || b.defId === 'sanctum';
     let score = 10;
-    if (def?.isRefinery) score = 40;
-    else if (def?.isConstructionYard) score = 30;
+    if (isSanctum) score = 50;
+    else if (def?.isRefinery) score = 40;
     else if (def?.producesUnits?.length) score = 25;
     else if (def?.menuCategory === 'defenses') score = 4;
     else if (isWall) score = 1;

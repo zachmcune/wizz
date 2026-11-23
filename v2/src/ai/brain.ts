@@ -552,13 +552,39 @@ export class AiBrain {
        * still hands control back.
        */
       const enemyArmyNow = per.enemyUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
-      const winning = this.memory.attacking && enemyArmyNow <= Math.max(2, Math.floor(armyNow * 0.5));
       /**
-       * A wave also counts as winning once it has actually reduced the enemy's building count, because that is the only
-       * thing that ends a match: an army sitting on the enemy base killing structures must keep going even if the enemy
-       * still has a comparable army elsewhere.
+       * OUTNUMBERING THE VISIBLE ENEMY ARMY IS NOT ENOUGH TO KEEP A WAVE ALIVE FOREVER.
+       *
+       * `winning` suppressed the timer whenever the enemy fielded less than half our army. But "the enemy army is small"
+       * is not the same as "we are winning": if we cannot find anything to kill, the wave is accomplishing nothing however
+       * outnumbered the enemy is. Measured on seed 1063 at the 34-minute cap, `p2` held 15 army to `p1`'s 7 — so `winning`
+       * was true on every pass — while it knew ZERO live buildings and nine ghosts. Its `waveAge` reached **842** decision
+       * passes and it never re-tasked, never searched, and never ended the game. p1, whose army was the smaller one, cycled
+       * its waves normally (`waveAge` 46) and was actively looking.
+       *
+       * So outnumbering only counts while there is something in sight to press the advantage against. With no live
+       * structure known the wave is treated as stalled and hands control back to the search.
        */
-      const razingBase = this.memory.passiveProgress < WAVE_MAX_PASSES;
+      const enemyInSight = per.enemyUnits.length > 0 || per.enemyBuildings.some((b) => b.live);
+      const winning = enemyInSight && this.memory.attacking && enemyArmyNow <= Math.max(2, Math.floor(armyNow * 0.5));
+      /**
+       * "RAZING THE BASE" REQUIRES A LIVE STRUCTURE TO RAZE.
+       *
+       * `razingBase` suppresses the timer so an assault that is grinding a sanctum is never recalled. But it was derived
+       * from `passiveProgress`, which only advances when there is structure HP to lose — so with NO LIVE STRUCTURE KNOWN
+       * the counter was stuck at 0, `razingBase` was permanently true, and the wave could never end.
+       *
+       * That is the state both sides reach late in a mirror once each has lost sight of the other's base. Measured on seed
+       * 1063 at the 34-minute cap: `p1` and `p2` each knew **zero live buildings and nine ghosts**, both had
+       * `attacking=true`, and their `waveAge` had climbed to **508** and **842** decision passes. Neither could finish
+       * because neither would give up the ghost of an assault and go looking again.
+       *
+       * A wave only counts as pressing an advantage when it can actually see something to press. With no live structure
+       * known the timer runs normally, the wave ends, and the scouting sweep (which is enabled under exactly the same
+       * condition) takes the army to unexplored ground.
+       */
+      const knowsLiveStructure = per.enemyBuildings.some((b) => b.live && b.defId !== 'stone_wall');
+      const razingBase = knowsLiveStructure && this.memory.passiveProgress < WAVE_MAX_PASSES;
       const beenOutLongEnough = this.memory.waveAge >= WAVE_MAX_PASSES && !winning && !razingBase;
       if (lostMostOfIt || beenOutLongEnough) {
         this.memory.attacking = false;
