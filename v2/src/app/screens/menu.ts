@@ -27,6 +27,7 @@ export function mountMenu(app: App): { root: HTMLElement; destroy: () => void } 
   const actions = el('div', 'menu-actions');
   actions.append(
     button({ variant: 'primary', size: 'lg', icon: 'sword', label: 'Skirmish', block: true, onClick: () => app.go('lobby') }),
+    button({ size: 'lg', icon: 'flag', label: 'Multiplayer', block: true, onClick: () => app.go('multiplayer') }),
     button({ size: 'lg', icon: 'grid', label: 'Sandbox', block: true, onClick: () => app.go('sandbox') }),
     button({ size: 'lg', icon: 'crystal', label: 'Entity designs', block: true, onClick: () => app.go('gallery') }),
     button({ size: 'lg', icon: 'gear', label: 'Settings', block: true, onClick: () => app.go('settings') }),

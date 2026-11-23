@@ -1006,3 +1006,38 @@
   background: var(--ink-900);
   box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── MULTIPLAYER */
+/*
+ * The multiplayer lobby reuses the single-player lobby's panels and typography; only the layout of the
+ * room/status area is new. Colours come exclusively from tokens, so the no-purple rule and the Obsidian &
+ * Brass palette hold here exactly as they do everywhere else (tests/ui-tokens.test.ts parses every colour).
+ */
+.mp-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.mp-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+}
+.mp-slot {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+  letter-spacing: 0.02em;
+}
+/*
+ * A status line that can carry a connection failure. Uses the same `--signal-bad` as the lobby error so
+ * "the relay is unreachable" reads with the same weight as "this configuration is invalid".
+ */
+.lobby-hint.is-error {
+  color: var(--bone-100);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset var(--border-thick) 0 0 var(--signal-bad);
+}

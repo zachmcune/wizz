@@ -214,21 +214,40 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyProfile> = {
     targetRefineries: 2,
     targetProduction: 2,
     /**
-     * HARD EXPANDS EARLIER, FURTHER AND DEFENDS IT.
+     * HARD EXPANDS LIKE NORMAL — A MEASURED CORRECTION THAT REVERSED A PHASE 5 CONCLUSION.
      *
-     * Three bases against Normal's two, starting 70 seconds sooner, with four units committed to holding a new site rather than
-     * two. This is the difference the brief asks for: expansion quality, not a resource bonus — the buildings cost the same and
-     * are paid for out of the same income.
-     */
-    targetBases: 3,
-    /**
-     * 200 s, MEASURED — expanding at 110 s made Hard WEAKER than Normal.
+     * Phase 5 shipped Hard with `targetBases: 3` and `expandAfterSeconds: 200`, on an ablation that measured a third
+     * base as an improvement. That measurement was taken on a build whose mirror sample had an effective size of
+     * about nine games (see the note in `brain.ts` on cooldown jitter), and it does not survive a larger sample.
      *
-     * The earliest expansion is not the best one: measured against Normal over 12 side-swapped games, expanding at 110 s gave
-     * **6-5** with one match unfinished, because the chain and the refinery pulled workers off the line before the economy could
-     * afford them (Hard ended with **2 workers against Normal's 10**). At 200 s the same profile went **12-0 with zero unfinished**:
-     * the economy matures first, then the expansion is funded out of surplus rather than out of the worker count.
+     * Re-measured in Phase 6 with `audit` over 10 seeds x 2 side-swaps (20 games each) against Normal, forcing one
+     * lever at a time back to Normal's value:
+     *
+     *   Hard as shipped (3 bases, 200 s)        hard 4-8    33.3%
+     *   targetBases 2                           hard 8-4    66.7%
+     *   expandAfterSeconds 180                  hard 7-5    58.3%
+     *   defendExpansions 2                      hard 4-8    33.3%
+     *   reactionDelay 24                        hard 4-8    33.3%
+     *   both bases 2 and expand 180             hard 6-6    50.0%
+     *
+     * A third base SPLITS the army. It needs a wall chain, a refinery and four units parked to hold it, all paid out
+     * of the same income that funds the push — so Hard arrives with a smaller army than Normal and loses. That is the
+     * same failure the 110-second note below records, one step further out: the lever is not "expansion quality", it
+     * is "spending on a third site instead of on units".
+     *
+     * With `targetBases: 2` at 20 games Hard measured 60.0% (12-8, 0 unfinished), against 33.3% as shipped. The
+     * remaining gap to the 70% target is the wave-size lever, swept separately:
+     *
+     *   minWaveSize 5 (shipped)   60.0%
+     *   minWaveSize 6             50.0%
+     *   minWaveSize 7 (Normal)    45.0%
+     *   minWaveSize 4             60.0%
+     *
+     * So 5 stays — it is not the problem — and the honest statement is that Hard is ~60% against Normal, which is
+     * a visible ordering but short of the 70% the brief asks for. Recorded as unmet in the Phase 6 report rather
+     * than papered over by re-tuning until a single sample passed.
      */
+    targetBases: 2,
     expandAfterSeconds: 200,
     defendExpansions: 4,
   },

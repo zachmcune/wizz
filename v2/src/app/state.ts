@@ -15,7 +15,16 @@ import type { GameState } from '../sim/types';
 import type { SimServices } from '../sim/context';
 import type { Registry } from '../data/registry';
 
-export type ScreenId = 'menu' | 'lobby' | 'settings' | 'match' | 'pause' | 'results' | 'sandbox' | 'gallery';
+export type ScreenId =
+  | 'menu'
+  | 'lobby'
+  | 'multiplayer'
+  | 'settings'
+  | 'match'
+  | 'pause'
+  | 'results'
+  | 'sandbox'
+  | 'gallery';
 
 export type Density = 'compact' | 'regular' | 'roomy';
 
@@ -114,7 +123,17 @@ export function createAppState(registry: Registry, density: Density): AppState {
   };
 }
 
-const SCREENS: readonly ScreenId[] = ['menu', 'lobby', 'settings', 'match', 'pause', 'results', 'sandbox', 'gallery'];
+const SCREENS: readonly ScreenId[] = [
+  'menu',
+  'lobby',
+  'multiplayer',
+  'settings',
+  'match',
+  'pause',
+  'results',
+  'sandbox',
+  'gallery',
+];
 
 function initialScreen(): ScreenId {
   if (typeof window === 'undefined') return 'menu';

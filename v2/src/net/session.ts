@@ -91,6 +91,15 @@ export class LockstepSession {
 
   /** Every merged tick actually simulated, kept for the desync replay. Bounded, see `pruneLog`. */
   private readonly commandLog: { tick: number; cmds: Command[] }[] = [];
+  /**
+   * Hash history, `tick -> hash`, recorded at every checksum interval.
+   *
+   * Kept so an external observer (the browser proof, a support tool) can compare two peers AT THE SAME TICK
+   * without racing them. Polling two live pages sequentially can never observe a common tick — the relay advances
+   * the match 20 times a second between the two reads — so the comparison has to be done against recorded history
+   * instead. Bounded to the same window as the command log.
+   */
+  private readonly hashHistory = new Map<number, string>();
   /** Consecutive ticks at which a peer disagreed. A transient single report does not condemn a match. */
   private desyncStreak = 0;
   private ended = false;
@@ -179,7 +188,15 @@ export class LockstepSession {
     stepSimulation(this.state, this.services, [...cmds, ...aiCommands]);
 
     if (this.state.tick % this.checksumInterval === 0) {
-      const report = this.lockstep.reportChecksum(this.state.tick - 1, hashState(this.state));
+      const tickJustFinished = this.state.tick - 1;
+      const hash = hashState(this.state);
+      this.hashHistory.set(tickJustFinished, hash);
+      if (this.hashHistory.size > 400) {
+        // Keep the newest window only; the oldest entry is the cheapest to drop and nothing reads far back.
+        const oldest = [...this.hashHistory.keys()].sort((a, b) => a - b)[0];
+        if (oldest !== undefined) this.hashHistory.delete(oldest);
+      }
+      const report = this.lockstep.reportChecksum(tickJustFinished, hash);
       if (report) {
         /**
          * Confirm over consecutive reports before condemning the match. Two independently-hashed ticks
@@ -199,6 +216,21 @@ export class LockstepSession {
       this.ended = true;
       this.onEnd?.(this.state.winnerTeam ?? null);
     }
+  }
+
+  /** Peer hash for a tick, for the desync UI and for tests. */
+  hashAt(tick: number): string | undefined {
+    return this.hashHistory.get(tick);
+  }
+
+  /** Ticks for which this peer recorded a hash, newest last. */
+  hashTicks(): number[] {
+    return [...this.hashHistory.keys()].sort((a, b) => a - b);
+  }
+
+  /** How far this peer has got, for an external observer. */
+  get currentTick(): number {
+    return this.state.tick;
   }
 
   /**

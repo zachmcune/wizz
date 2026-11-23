@@ -58,6 +58,14 @@ export interface MatchHarnessOptions {
   checksumInterval?: number;
   /** Inject a divergence deliberately, to prove detection works. Called with the session's player id. */
   corruptPeer?: (playerId: string, tick: number, session: LockstepSession) => void;
+  /**
+   * Disconnect and later rejoin a peer, to prove recovery.
+   *
+   * `atTick` is a relay tick. The listed peer stops receiving broadcasts at that tick and is reconnected at
+   * `backAtTick`, at which point it must both catch up and stay in sync — the whole point of the rejoin path.
+   */
+  dropPeer?: { playerId: string; atTick: number; backAtTick: number };
+  /** Recorded so a test can assert the drop and rejoin actually happened. */
 }
 
 export interface PeerOutcome {
@@ -238,6 +246,18 @@ export function runMatchThroughRelay(opts: MatchHarnessOptions): MatchHarnessRes
       const session = sessions.get(pid)!;
       session.pump();
       opts.corruptPeer?.(pid, session.state.tick, session);
+    }
+
+    /**
+     * DISCONNECT / REJOIN. The peer's transport is paused, so it accumulates held messages exactly as a real
+     * socket buffers nothing while the tab is gone; on rejoin the held ticks are flushed in order and the peer
+     * catches up from its own confirmed buffer. If it fell too far behind, the caller's snapshot path is what
+     * rescues it — which is why the assertion is "it is in sync afterwards", not "it replayed everything".
+     */
+    if (opts.dropPeer) {
+      const { playerId, atTick, backAtTick } = opts.dropPeer;
+      if (room.tick === atTick) room.disconnect(playerId);
+      if (room.tick === backAtTick) room.reconnect(playerId);
     }
 
     if ([...sessions.values()].every((s) => s.finished)) break;

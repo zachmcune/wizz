@@ -17,6 +17,7 @@ import './hud.css';
 import { loadRegistry } from '../data/loader';
 import type { Registry } from '../data/registry';
 import { loadAtlas, type LoadedAtlas } from '../render/atlas';
+import { hashState } from '../sim/hash';
 import { densityFor, el, setDensity } from '../ui/kit';
 import { createAppState, type AppState, type ScreenId } from './state';
 import { MatchController } from './match';
@@ -29,6 +30,22 @@ import { mountResults } from './screens/results';
 import { mountSandbox } from './screens/sandbox';
 import { mountGallery } from './screens/gallery';
 import { mountResearchTree } from './screens/research';
+import { mountMultiplayer } from './screens/multiplayer';
+import { NetworkedMatch } from './networked-match';
+import { WebSocketTransport } from '../net/ws-transport';
+import type { SlotSpec } from '../net/session';
+import type { LobbyStateWire } from '../net/protocol';
+
+/** Everything a networked match needs to exist, produced by the multiplayer lobby. */
+export interface MultiplayerJoin {
+  room: string;
+  relayUrl: string;
+  connId: string;
+  playerId: string;
+  seed: number;
+  startTick: number;
+  lobby: LobbyStateWire;
+}
 
 /** A screen builder returns its root plus a teardown for anything it owns (listeners, RAF, renderer). */
 export type Screen = { root: HTMLElement; destroy?: () => void };
@@ -45,6 +62,7 @@ export class App {
   private screenRoot: HTMLElement;
   private current: Screen | null = null;
   private match: MatchController | null = null;
+  private netMatch: NetworkedMatch | null = null;
   private hud: Hud | null = null;
   private hudHost: HTMLElement | null = null;
   private researchOverlay: HTMLElement | null = null;
@@ -137,6 +155,8 @@ export class App {
         return mountMenu(this);
       case 'lobby':
         return mountLobby(this);
+      case 'multiplayer':
+        return mountMultiplayer(this);
       case 'settings':
         return mountSettings(this);
       case 'match':
@@ -189,6 +209,118 @@ export class App {
     this.screenRoot.replaceChildren();
 
     await this.mountMatchAsync();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────── multiplayer
+
+  /**
+   * Join a lockstep match announced by the relay.
+   *
+   * Kept separate from `startMatch` because the two differ in what drives the clock: a local match accumulates
+   * wall time, a networked one steps only on relay-confirmed ticks. `NetworkedMatch` owns that difference; this
+   * method's job is only to build the slot list from the lobby and install the renderer.
+   */
+  startMultiplayerMatch(join: MultiplayerJoin): void {
+    void this.mountMultiplayerMatch(join);
+  }
+
+  /** Resume an in-progress match after a rejoin, adopting the host's state. */
+  resumeMultiplayer(join: MultiplayerJoin): void {
+    void this.mountMultiplayerMatch(join);
+  }
+
+  private async mountMultiplayerMatch(join: MultiplayerJoin): Promise<void> {
+    this.teardownMatch();
+    this.teardownNetMatch();
+    this.state.screen = 'match';
+    this.current?.destroy?.();
+    this.current = null;
+    this.screenRoot.replaceChildren();
+
+    const host = el('div', 'match-root') as HTMLElement;
+    host.className = 'match-root';
+    const canvasHost = document.createElement('div');
+    canvasHost.className = 'match-canvas';
+    canvasHost.dataset.testid = 'game-canvas-host';
+    host.append(canvasHost);
+    this.screenRoot.append(host);
+
+    const slots: SlotSpec[] = join.lobby.slots
+      .filter((s) => s.kind !== 'closed')
+      .map((s, i) => ({
+        id: s.id,
+        controller: s.kind === 'ai' ? 'ai' : 'human',
+        team: i,
+        color: s.color,
+        factionId: s.factionId,
+        startIndex: s.startIndex ?? i,
+        ...(s.aiDifficulty ? { aiDifficulty: s.aiDifficulty } : {}),
+      }));
+
+    const socket = new WebSocket(join.relayUrl);
+    const transport = new WebSocketTransport(socket);
+    transport.enableReconnect({ url: join.relayUrl, room: join.room, connId: join.connId });
+    socket.addEventListener('open', () => {
+      transport.sendRaw({ t: 'rejoin', room: join.room.toUpperCase(), connId: join.connId });
+    });
+
+    const net = await NetworkedMatch.create({
+      registry: this.deps.registry,
+      atlas: this.deps.atlas,
+      host: canvasHost,
+      transport,
+      mapId: join.lobby.mapId,
+      seed: join.seed,
+      slots,
+      localPlayerId: join.playerId,
+      onTick: (st) => this.hud?.update(st),
+      onEnd: () => this.go('results'),
+      onReject: (reason) => this.hud?.note('warn', humanizeReject(reason)),
+      onDesync: (capture) => {
+        // A desync is reported to the player AND captured, because reproducing it offline is the only way it
+        // gets fixed. The capture carries the command log from tick 0.
+        this.hud?.note('bad', `Desync detected at tick ${capture.tick}. The match can continue but peers disagree.`);
+        (window as unknown as { __v2Desync?: unknown }).__v2Desync = capture;
+      },
+      onStallHint: (hint) => this.hud?.note('warn', hint),
+    });
+
+    this.netMatch = net;
+    this.hud = new Hud(net as unknown as MatchController, this.deps.registry, this.state, {
+      onOpenResearch: () => this.openResearchTree(),
+      onPause: () => this.go('pause'),
+    });
+    this.hudHost = this.hud.root;
+    host.append(this.hud.root);
+
+    this.attachBoardInput(canvasHost);
+    this.attachKeyboard();
+    net.start();
+    this.hud.update(net.state);
+
+    (window as unknown as { __v2Net?: unknown }).__v2Net = {
+      state: net.state,
+      session: net.session,
+      playerId: join.playerId,
+      /**
+       * The canonical state hash, computed by the SAME function lockstep compares.
+       *
+       * Exposed so the browser proof can assert agreement on exactly the quantity that matters. A test that
+       * recomputed a hash of its own would be asserting a different thing — and a simpler one — than the live
+       * desync detector.
+       */
+      hash: () => hashState(net.state),
+      /** Recorded `tick -> hash` history, so an external observer can compare peers at the same tick. */
+      hashAt: (t: number) => net.session.hashAt(t),
+      hashTicks: () => net.session.hashTicks(),
+    };
+
+    this.current = { root: host, destroy: () => this.teardownNetMatch() };
+  }
+
+  private teardownNetMatch(): void {
+    this.netMatch?.destroy();
+    this.netMatch = null;
   }
 
   private mountMatch(): Screen {
@@ -258,6 +390,8 @@ export class App {
   }
 
   private teardownMatch(): void {
+    this.netMatch?.destroy();
+    this.netMatch = null;
     this.match?.destroy();
     this.match = null;
     this.hud = null;
