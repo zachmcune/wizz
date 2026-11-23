@@ -1246,7 +1246,6 @@ export function findBuildSpot(
    * identical) and gives no direction any systematic preference.
    */
   let best = candidates[0]!;
-  let bestTie = Math.min(best.x, best.y) | 0;
   let bestHash = spotHash(best.x, best.y);
   for (const c of candidates) {
     if (c.score > best.score) {
@@ -1261,7 +1260,6 @@ export function findBuildSpot(
       bestHash = h;
     }
   }
-  void bestTie;
   return { x: best.x, y: best.y };
 }
 

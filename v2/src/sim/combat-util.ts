@@ -37,8 +37,8 @@ export function symmetricRank(chooserId: number, candidateId: number): number {
    * sampling noise of a coin flip. The function is still a pure, deterministic function of the two ids, so replays are
    * unchanged in spirit: same inputs, same rank, every time.
    */
-  let x = Math.imul(chooserId + 0x9e3779b9, 0x85ebca6b) >>> 0;
-  let y = Math.imul(candidateId + 0x7f4a7c15, 0xc2b2ae35) >>> 0;
+  const x = Math.imul(chooserId + 0x9e3779b9, 0x85ebca6b) >>> 0;
+  const y = Math.imul(candidateId + 0x7f4a7c15, 0xc2b2ae35) >>> 0;
   let h = (x + y) >>> 0;
   h = Math.imul(h ^ (h >>> 16), 0x7feb352d) >>> 0;
   h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0;
