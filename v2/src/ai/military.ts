@@ -491,12 +491,30 @@ export function planMilitary(
     const SWEEP_MAX = Math.max(2, Math.min(4, Math.ceil(army.length * 0.25)));
     const idleForSearch = army.filter((a) => a.seen.activity === 'idle' || a.seen.activity === undefined);
     /**
-     * Units already fighting or marching must not be re-tasked — that restarts their pathing (the reason the original
-     * rule was idle-only). When nothing is idle AND the army is small enough that we cannot spare a real detachment, the
-     * sweep takes the army as a last resort so a cornered AI still scouts; above that size it takes idle units only.
+     * WHEN NOTHING IS IDLE AND NOTHING IS KNOWN, THE ARMY ITSELF MUST GO LOOKING.
+     *
+     * The "small army only" rule exists so a massing army is not dragged across the map in dribs. But a LARGE army that
+     * has no enemy anchor and no idle units has nothing to mass FOR: it is not marching, it is standing in its base while
+     * the opponent stands in theirs.
+     *
+     * Measured on seed 1088 (p1 on the right corner) at the 34-minute cap, a perfectly symmetric deadlock:
+     *
+     *   p1: 10 buildings, 22 army, 1890 mana, 0 live enemy buildings known
+     *   p2: 10 buildings, 22 army, 2415 mana, 0 live enemy buildings known
+     *   both: attacking=false, waveAge=0, EMPTY notes
+     *
+     * Neither was attacking and neither was searching, because every unit was `busy` holding a stale order and the sweep
+     * refused to take a non-idle unit from a large army. The match could not end because nothing was moving.
+     *
+     * So when there is nothing else to do, the whole army sweeps. It is the same reasoning as the small-army case: a unit
+     * re-tasked toward fresh ground is doing something useful, whereas one holding a stale order in its own base is not.
      */
     const broke = army.length <= SWEEP_MAX;
-    const sweepWith = (idleForSearch.length > 0 ? idleForSearch : broke ? army : []).slice(0, SWEEP_MAX);
+    const sweepAll = idleForSearch.length === 0 && army.length > SWEEP_MAX;
+    const sweepWith = (idleForSearch.length > 0 ? idleForSearch : broke || sweepAll ? army : []).slice(
+      0,
+      sweepAll ? army.length : SWEEP_MAX,
+    );
     if (sweepWith.length > 0) {
       commands.push({
         type: 'attackMove',
