@@ -30,8 +30,22 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
+        /**
+         * v2 is deployed from the same `dist` (see `scripts/build-v2.mjs`) but it is a separate app
+         * with its own bundle, atlas and entry pages. Precaching it here would make every v1 player
+         * download v2 as well and would put v2's HTML in the v1 cache under this worker's `/` scope.
+         */
+        globIgnores: ['v2/**', 'atlas-final/**'],
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
+        /**
+         * `/v2/` is the rebuilt game, deployed from this same `dist` (see `v2/` and
+         * `scripts/build-v2.mjs`). This service worker is scoped to `/`, so without a denylist it
+         * would answer a navigation to `/v2/` with the cached v1 `index.html` — every returning
+         * player would get v1 at the v2 URL until the SW updated. The fallback is for v1's own
+         * history URLs only.
+         */
+        navigateFallbackDenylist: [/^\/v2\//],
         skipWaiting: true,
         clientsClaim: true,
       },
