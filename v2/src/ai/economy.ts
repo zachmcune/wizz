@@ -1692,6 +1692,20 @@ export function expansionGoal(
    */
   const army = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester).length;
   if (army < 3) return null;
+  /**
+   * THE EXPANSION WINDOW CLOSES, AND THAT IS A TERMINATION GUARANTEE.
+   *
+   * Saving for the forward base holds mana the army would otherwise spend, so an AI that keeps saving forever never fields
+   * the army that ends the match. That is not hypothetical: with an unbounded window, `tests/phase5-teams.test.ts` measured
+   * the **4-player free-for-all running past its 32-minute cap**, where the same seed resolved at 27.1 min before this
+   * change. A four-way map has no safe moment to save, so a side that always intends to expand always intends and never
+   * fights.
+   *
+   * 300 seconds is long enough to fund a 1000-mana pair out of normal income (measured: 6.7 min from a 200 s start) and
+   * short enough that a game which is not going to get there stops holding money. After the window the AI plays on with
+   * whatever it has, which is what the Phase 6 build did and is the behaviour the termination gate depends on.
+   */
+  if (elapsedSeconds > profile.expandAfterSeconds + 300) return null;
   return bestExpansionSite(per, registry, services);
 }
 
