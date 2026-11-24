@@ -672,9 +672,15 @@ landscape splits console-left/scene-right, portrait spans the console over a dim
 
 **Multiplayer** (`screens/multiplayer.ts`). `resolveRelayUrl` now defaults to `wss://wizzrts.up.railway.app`,
 honours `VITE_RELAY_URL` and `?relay=`, and normalises pasted URLs. The room screen has copy-code and
-copy-invite buttons and a real connection state. **The VM can reach the live relay directly** — verified
-with a real `join` that returned `player0` as host — and the two-browser proof still runs against the LOCAL
-relay so it stays deterministic.
+copy-invite buttons and a real connection state. **The VM can reach the live relay directly**, verified by
+`audit/live-relay-check.ts` (output committed as
+`docs/proof/phase-7/multiplayer/live-relay-check.log`): two independent clients are seated as different
+players in one room on one seed, and the room is released when they leave. The two-browser match proof still
+runs against the LOCAL relay so its timings stay deterministic.
+
+One factual correction worth keeping: the brief stated `/health` sends `Access-Control-Allow-Origin: *`.
+Measured, it does not. That is harmless — CORS does not apply to WebSocket upgrades — so the harness asserts
+health and seating instead of a header the protocol does not need.
 
 **The two-browser proof** (`tests/net/browser-match.spec.ts`) now plays a real match: both peers build the
 tech chain in order, queue combat units, march to the map centre through the HUD, and engage. It measures
@@ -780,6 +786,7 @@ fully marked.
 | **change the camera** | `v2/src/render/camera.ts`. `frameOn` is a viewport-derived zoom plus an inset-aware centring; the arithmetic is covered by `tests/touch/camera.test.ts` and the result by `tests/ui-camera.test.ts` |
 | **point a build at a different relay** | `resolveRelayUrl` in `v2/src/app/screens/multiplayer.ts`; `?relay=` beats `VITE_RELAY_URL` beats the localhost default beats Railway |
 | **see what a real multiplayer match looks like** | `v2/docs/proof/phase-7/multiplayer/browser-match.log` — the timeline of a 150 s match with damage and marches |
+| **check the live relay** | `cd v2 && npx vite-node audit/live-relay-check.ts` — needs outbound network, so it is not in CI |
 | add a sprite | `v2/docs/ART_DIRECTION.md` then `v2/art/` |
 | measure something | `v2/audit/` — read a nearby harness and copy its shape; they all print their own numbers |
 | **see the fairness and balance numbers** | `v2/docs/proof/phase-5/ai/phase6-fairness.md` — the authoritative mirror, length and ladder measurement, including the three sim defects that invalidated the Phase 5 figures |

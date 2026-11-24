@@ -65,13 +65,38 @@ into a false red.
 
 ## Against the live relay
 
-The same client talks to the deployed relay. Verified from this VM with a real `join` against
-`wss://wizzrts.up.railway.app`, which returned `player0` as host with a server-assigned seed:
+The automated match proof deliberately stays on the LOCAL relay so its timings are deterministic. A
+separate harness answers the other question — is the DEPLOYED relay alive and serving the same protocol —
+and its committed output is `live-relay-check.log`:
 
-```
-recv {"t":"joined","connId":"98bfd381dcc7d489","playerId":"player0","seed":4219289120,"startTick":0,"isHost":true,...}
-OK joined as player0 host=true seed=4219289120
+```bash
+cd v2 && npx vite-node audit/live-relay-check.ts
 ```
 
-The automated proof deliberately stays on the LOCAL relay so its timings are deterministic; the deployed
-build resolves `wss://wizzrts.up.railway.app` by default (see `resolveRelayUrl`).
+Latest run, against `wss://wizzrts.up.railway.app`:
+
+```text
+GET /health -> 200 {"ok":true,"rooms":0} (ACAO: absent)
+host:  seated as player0 host=true  seed=2173422503 map=duel_glade
+guest: seated as player1 host=false seed=2173422503 map=duel_glade
+
+PASS  health is 200 and ok
+PASS  the WebSocket upgrade succeeded from a non-browser client
+PASS  both clients were seated
+PASS  they were given different seats
+PASS  they share one seed
+PASS  they share one map
+PASS  rooms released after both clients left (rooms=0)
+```
+
+**This VM reaches the live relay directly**, over `wss://`, with no proxy. Two independent clients are
+seated as different players in one room on one seed, and the room is released when they leave.
+
+**One correction to the brief this pass was given.** It stated that `GET /health` returns
+`Access-Control-Allow-Origin: *`. It does not — the live response carries only `content-type`, `date`,
+`server` and Railway's edge headers. That is harmless: CORS does not apply to WebSocket upgrades, and
+nothing in the game fetches `/health` from a browser. It is recorded here rather than silently worked
+around, because a claim in a brief that does not match the deployment is worth knowing about.
+
+The deployed build resolves `wss://wizzrts.up.railway.app` by default via `resolveRelayUrl`; nothing needs
+configuring for a Pages deploy.
