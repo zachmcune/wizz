@@ -1,14 +1,16 @@
 # HANDOFF — Arcane Dominion v2
 
 **Written:** 2026-11-23, at the end of Phase 6, on branch `cursor/rebuild-v2-5642`.
-**Updated:** 2026-11-24, after the playtest-response pass (§8.0) that rebuilt the HUD, the menus and the
-touch controls, and wired multiplayer to the live relay.
+**Updated:** 2026-11-24, after the Phase 7 pass — the HUD clipping fixes (§8.1) and the AI expansion
+restoration (§8.2), which also produced the most important open finding on the branch (§7.4: the
+starting corner decides cross-difficulty matches).
 **Reader:** a new agent picking up the next phase with no history of this branch.
 **Scope of this document:** enough context to continue without re-deriving anything. Every number here
 was measured on this branch; where something is unresolved it says so instead of smoothing it over.
 
-**If you read only three sections:** §0.2 (the working rules), §7 (the open issues — one Step 0 target
-is not obtainable, and the reasons are measured), and §8 (what Phase 6 did and what Phase 7 asks for).
+**If you read only three sections:** §0.2 (the working rules), §7 (the open issues — one Step 0 target is
+not obtainable, the corner split makes the Hard>Normal cell unmeasurable, and the reasons are measured), and §8
+(what each pass did and what comes next).
 
 ---
 
@@ -65,6 +67,7 @@ Phases 0–6 are complete. Phase 7 has not started.
 | **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. **Re-measured in Phase 6 after three sim defects were fixed — see §7.0.** | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`, **`phase6-fairness.md`**, `footprint-*.png`) |
 | **6 — Multiplayer** | Deterministic 2–4 player lockstep over the **unmodified v1 relay**: lobby create/join, input delay, desync detection with replay capture, reconnect and clean drop, stall policy, AI fill-in. 2/3/4 headless peers reach decided matches with zero desyncs; two real browser contexts stayed in sync across **38 compared ticks with 0 mismatches**. | `v2/docs/proof/phase-6/` (`README.md`, `BALANCE_PROPOSALS.md`, 7 screenshots, `video/two-browser-lockstep-match.webm`, `browser-match.json`, `browser-match.log`) |
 | **7a — Playtest response** | Zachary's live-playtest report answered point by point: the HUD is a docked C&C command console, the menus are command consoles, the touch model is v1's (re-derived inside `v2/`), the starting camera frames the base in the battlefield, and multiplayer is wired to the live Railway relay and proven with **two browser contexts playing a real match** — both building, training, marching and fighting, with **132 common ticks compared and 0 mismatches**. | `v2/docs/proof/phase-7/` (`ui/` 75 captures + `ui-proof.json` + `README.md`; `multiplayer/` 10 screenshots, `browser-match.json`, `browser-match.log`) |
+| **7b — HUD clipping + AI expansion** | Every reported HUD defect fixed (Radar label, "Atk-Move", tile overflow, unreadable unit thumbnails, unexplained radar OFFLINE) plus an automated label-truncation gate across five viewports. The AI expands again — **8 independent causes found**, a forward refinery on 6 of 6 traced seeds at 6.7 min (was 0), and a 100-game mirror at **exactly 50.0%**. See §8.1 and §8.2, and **§7.4 for the corner finding**. | `v2/docs/proof/phase-7/ui/`, `v2/docs/proof/phase-7/ai/` (`README.md`, `PROPOSALS.md`, `mirror-n100.txt`, `ladder-n40.txt`, `ladder-n40-baseline.txt`, `captures/`) |
 
 **Phase 5's remaining caveats are real and are listed in §7**, with the Phase 6 re-measurement in §7.0. One
 Step 0 target (the "both bases with expansions" shot) is not obtainable; the rest are met.
@@ -541,24 +544,21 @@ Remaining issues, with numbers:
 2. **The corner split is 50.0% / 72.7%.** The pooled slot figure the gate asks about is 61.4% with a CI containing
    50%, and the map is verified symmetric on both axes (0 mismatches at the tile, height and nav levels), so this is
    an ordering effect a 44-game sample cannot localise. Reported, not explained away.
-3. **The AI does not expand, so the "both bases with expansions" shot is unobtainable.** Phase 5 said the AI "does
-   not expand before winning"; Phase 6 measured it precisely and the answer is stronger — **the AI never expands at
-   all**. Every refinery and construction-yard position over a whole match on seed 1000:
+3. **The AI did not expand — FIXED in Phase 7b, see §8.2.** Phase 6 measured it precisely: **the AI never expanded
+   at all**. Every refinery and construction-yard position over a whole match on seed 1000 stayed inside the starting
+   cluster:
 
    ```
    t=6m  p1: sanctum@(464,464) attunement_spire@(544,544) attunement_spire@(480,544)
    t=18m p1: sanctum@(464,464) attunement_spire@(544,544) attunement_spire@(480,544)
    ```
 
-   Nothing is placed outside the starting cluster at any point. (An intermediate harness counted "3 bases" and
-   appeared to prove otherwise; it was grouping refineries within 12 tiles, and those three anchors are the sanctum
-   plus two refineries 64 units apart inside the same base. The wrong reading is recorded in
-   `audit/capture-expansion.ts` so it is not repeated.)
+   That measurement was correct, and Phase 7b found **eight independent causes** (§8.2). It is kept here because the
+   *lesson* still applies: no single threshold change fixes it, and an intermediate harness that counted "3 bases" by
+   grouping refineries within 12 tiles was wrong for exactly the reason `countBases` was wrong. The "both bases with
+   expansions" shot is now obtainable and is committed in `docs/proof/phase-7/ai/captures/overview-*-7min.png` — a
+   forward refinery at 7.2 min with the true count burned into the frame.
 
-   Step 0(d) therefore **cannot be met as literally specified**. What is committed instead is
-   `docs/proof/phase-5/ai/footprint-{phone,chromebook}-11min.png`: the widest footprint a side actually holds,
-   framed so a reviewer sees everything it owns, with the true counts burned into the frame ("1 base, 10 buildings,
-   6 workers, 6 army"). A shot implying a second base would be false.
 4. **Phase 2's perf target was missed and reported.** See `docs/PHASE_2_REPORT.md`; the sim is within budget but
    the phase's stated goal was stricter. Do not silently reclassify it as met.
 5. **4-player free-for-all termination is knife-edge.** The committed seed resolves (27.1 min) and `normal`-only
@@ -614,9 +614,44 @@ Remaining issues, with numbers:
   only as an internally-comparable baseline, never as a claim about Chromebook or phone GPUs.
 - Several older proof images predate the current build. `docs/proof/phase-5/ai/report.md` is generated
   and its numbers reflect the build at generation time — regenerate it rather than quoting it.
-- `v2/audit/` contains 126 harnesses, many from earlier phases. Not all still reflect current
+- `v2/audit/` contains 130+ harnesses, many from earlier phases. Not all still reflect current
   behaviour. Each one prints its own numbers; treat a harness as evidence only if you re-ran it on
   the current commit.
+
+### 7.4 The starting corner decides cross-difficulty matches — the most important open defect
+
+**Read this before quoting any Hard-vs-Normal number anywhere in this document, including §7.0.**
+
+Measured on `cursor/rebuild-v2-5642` with `audit/ladder-par.ts`, identical seed block (5000–5133), 20 seeds x 2 corner
+assignments per cell:
+
+```
+hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m
+             [corner0 0 / corner1 20]
+normal>easy: 33/40 = 82.5%  95% CI 68.0-91.3%  unfinished 0/40  median 8.7m
+             [corner0 20 / corner1 13]
+```
+
+`corner0 0 / corner1 20` means Hard **lost all twenty games from the top-left corner and won all twenty from the
+top-right**. The corner decides the game by more than the difficulty gap does, so the Hard>Normal cell is a corner
+lottery rather than a skill measurement. That is why the same cell has now measured **62.5%, 66.7%, 85.0% and 50.0%**
+across four seed blocks: each sample drew a different corner mix.
+
+**It is pre-existing and that was verified, not assumed.** Stash the whole Phase 7b AI change
+(`git stash push -- v2/src/ai/economy.ts`), re-run the identical command, and the output is **byte-identical**,
+including the `0 / 20` split. `audit/corner-pairs.ts` independently reports every corner winning 100% of its decided
+games on both builds.
+
+**It is not the terrain.** `tests/data/parity.test.ts` still passes on both axes, and
+`audit/neighbor-symmetry.ts` measures 41,516 of 41,516 tiles steering identically to their reflection. So this is an
+ordering effect in the AI or the simulation, not in the map.
+
+**What to do about it** is written up in `docs/proof/phase-7/ai/PROPOSALS.md` §1, including the instrument that would
+localise it (`corner-pairs.ts` looking for a pairing whose two directions are not mirror images) and why a half-fix is
+worse than the honest "unmeasurable" recorded here.
+
+**Do not tune difficulty levers against the Hard>Normal cell until this is fixed.** Every such tune so far has been
+fitting noise — which is precisely what §7.0 already recorded happening between the Phase 5 and Phase 6 samples.
 
 ---
 
@@ -693,6 +728,84 @@ and taps the safe rect's centre — which is what a player does.
 **What is NOT done here, deliberately.** The AI expansion regression and balance/fairness measurements
 are untouched: no file under `src/ai/` changed, and the parity exceptions in §3 are unchanged. That work
 is a separate pass.
+
+### 8.1 The HUD clipping pass — five defects, and a gate that catches the Sixth
+
+Zachary reviewed the Phase 7 UI proof screenshots and reported five visible defects. All are fixed, and the fixes are
+in `src/app/hud.ts` / `hud.css` / `src/ui/thumbnails.ts`:
+
+1. **The Radar button read "Rad"** on 844x390 and 390x844 and overran the power meter. It was the only LABELLED control
+   among three icon-only rail tools, so its `nowrap` label was crushed. It is icon-only now; the word survives as the
+   accessible name and the tooltip.
+2. **"Atk-Move" rendered as "tk-Move".** The label needs ~54px at 10px and a quarter of a 136px phone sidebar is 32px,
+   so the shared `.btn` rule's `nowrap` overflowed and the browser cropped the leading "A". Command labels wrap now.
+3. **A tile label ran into the next tile.** `overflow-wrap` alone still lets one long word overflow its column, so the
+   name span clips to its own tile with a two-line max-height.
+4. **Unit thumbnails were "two tiny dots".** The cause was geometric: every atlas frame is 128x128 for pivot alignment
+   but a unit paints only ~16x23 of it while a building paints ~66x62, so scaling the FRAME into a 52x40 tile drew
+   units at a seventh of the area. `art/build-atlas3.ts` now records each frame's opaque bounds,
+   `art/backfill-atlas-content.ts` backfills them into the shipped manifests, and `thumbStyle` crops to the SPRITE.
+   **Measured on the rendered tiles: sprite coverage went from 1.7% to 28–33% with 200–300 distinct colours.** The
+   renderer still draws the whole frame, so battlefield pivots are unchanged.
+5. **The radar said OFFLINE beside a near-empty panel.** It now names the requirement ("NEEDS OBELISK"), distinguishes
+   "NO POWER", explains in the tooltip what the panel still shows, and keeps drawing it. The root cause of the state is
+   fixed too: the Scrying Obelisk is `menuCategory: advanced` and the console has no Advanced tab, so the ONLY radar
+   source was unreachable. The Buildings tab now lists every non-defence structure.
+
+**The gate is the durable part.** `audit/capture-ui-proof.ts` now measures, at capture time and on every in-match
+capture, every text-bearing HUD leaf for (a) `scrollWidth/Height` exceeding its box — the cropping that produced "Rad",
+(b) overhang past its own plate, and (c) a tile label bleeding into a sibling tile. `ui-proof.json` records the counts
+and `tests/ui-proof.test.ts` fails if any is non-zero. **It found two defects the hand fixes had missed**: the collapsed
+44px landscape strip carried a 90px "Show build panel BUILD" control, and "ASTRAL ATTUNEMENT" clipped by 12px in the
+roomy three-up grid. Both are fixed.
+
+**If you change the HUD, regenerate the pack** (`PROOF_BASE=... npx vite-node audit/capture-ui-proof.ts`, ~7 min) or
+`tests/ui-proof.test.ts` fails — which is the intent.
+
+### 8.2 The AI expansion pass — eight causes, one working expansion
+
+The brief's Goal A: restore real expansions without fog cheating and without breaking mirror symmetry. Full detail,
+tables and harness commands are in **`docs/proof/phase-7/ai/README.md`**; proposals are in `PROPOSALS.md`. The short
+version:
+
+**Eight independent causes**, none of which alone was sufficient:
+
+| # | Cause |
+|---|---|
+| 1 | `countBases` counted EVERY building, so the first 40-mana chain link registered as a second base and `targetBases: 2` read `2 < 2`. |
+| 2 | `bestExpansionSite` treated any building within 12 tiles as "this node is served", so the chain disqualified its own target. |
+| 3 | The build-order reserve pins **spendable mana at 260** across the 300–750 band, so the bank could never reach a 750 refinery. |
+| 4 | Bridging lived inside `if (the refinery is affordable)`, so the 40-mana link could never be laid while saving for the 750 it unlocks. |
+| 5 | Bridging had no foundation guard: the same rejected command was re-issued every pass. |
+| 6 | The expansion turret had no cap and the home ring's cap could not see it: 56 sentries in one 30-minute non-resolving match. |
+| 7 | The turret's own guard said "only once the refinery is standing" but never checked it — so the turret was bought first and the refinery never was. |
+| 8 | The defender detachment keyed on a FINISHED cluster, so a refinery under construction was never defended. |
+
+**What the expansion is now**: a forward base is a **pair** — a turret first (250), then the refinery (750) on the rich
+node, gated on affording both, attempted **once per site**. A lone refinery at 14–30 tiles is destroyed in ~90 seconds;
+handing the AI +400 mana at placement did not save it, so the problem was ORDER, not money. Attempting it once is also
+measured: a rebuild loop stalled 2 of 10 mirror matches to the 34-minute cap.
+
+**Result**: 6 of 6 traced seeds place a forward refinery at **6.7 min** (was 0 of 6), and the surviving side holds
+3 refineries plus route walls outside its starting cluster. Shots at `docs/proof/phase-7/ai/captures/overview-*-7min.png`
+with the true count burned into the frame.
+
+**Fairness and length, measured honestly:**
+
+| Measure | Result | Target | Met |
+|---|---|---|---|
+| Mirror (N=100) | **50.0%**, CI 40.4–59.6%, 0 unfinished | CI contains 50% | **yes** |
+| Normal > Easy (N=40) | **82.5%**, CI 68.0–91.3%, 0 unfinished | ≥70% | **yes** |
+| Hard > Normal (N=40) | 50.0%, but **corner0 0 / corner1 20** | ≥70% | **NOT MEASURABLE — see §7.4** |
+| Median 1v1 (mirror, N=100) | **11.9 min** | 15–25 | **no** |
+
+**No rule values changed.** `src/ai/difficulty.ts` and the opening are untouched; every edit is AI behaviour, and the
+three approved parity exceptions are still exactly three.
+
+**The honest limitation**: the forward base is lost in every traced match, 90–170 seconds after it completes. A site
+14–30 tiles from home cannot be held by this AI against this AI. The expansion buys income and shape while it stands,
+not a permanent second base. A garrison-before-construction change in `planMilitary` is the recommended next step and is
+`PROPOSALS.md` §2.
 
 ### Phase 6 — Multiplayer (2–4 players) — **COMPLETE**
 
