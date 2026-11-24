@@ -1,0 +1,5 @@
+hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m  mean 12.4m  [corner0 0 / corner1 20]
+normal>easy: 33/40 = 82.5%  95% CI 68.0-91.3%  unfinished 0/40  median 8.7m  mean 10.7m  [corner0 20 / corner1 13]
+
+seeds 5000..5133 (20), cap 34 min
+wrote docs/proof/phase-7/ai/ladder-n40.json

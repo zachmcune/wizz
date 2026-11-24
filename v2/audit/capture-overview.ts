@@ -17,7 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE = process.env.PROOF_BASE ?? 'http://127.0.0.1:5343';
-const OUT = join(import.meta.dirname, '..', 'docs', 'proof', 'phase-5', 'ai');
+const OUT = process.env.OVERVIEW_OUT ?? join(import.meta.dirname, '..', 'docs', 'proof', 'phase-5', 'ai');
 const TARGET_MIN = Number(process.env.OVERVIEW_MIN ?? '18');
 const SEED = process.env.CAPTURE_SEED ?? '1000';
 const D0 = process.env.CAPTURE_D0 ?? 'hard';
@@ -38,6 +38,8 @@ interface Snapshot {
     id: string;
     buildings: number;
     bases: number;
+    /** Completed refineries more than 12 tiles from this side's own sanctum — a genuine second mining base. */
+    outsideRefineries: number;
     workers: number;
     army: number;
     centres: { x: number; y: number }[];
@@ -77,6 +79,23 @@ async function snapshot(page: Page): Promise<Snapshot> {
         return d?.isRefinery || d?.isConstructionYard;
       };
       const anchors = blds.filter(isBase);
+      /**
+       * A "base" is a completed refinery cluster, and the count must SEPARATE a forward base from the home cluster.
+       *
+       * The 12-tile clustering used here is the same radius `countBases` uses, and on this map the nearest unserved node is
+       * 14.1 tiles from home — so an expansion built on it merges into the home cluster and reports "1 base" even when the
+       * AI demonstrably expanded. The report therefore carries BOTH numbers: the cluster count (for continuity with earlier
+       * proof packs) and the count of completed refineries that are further than 12 tiles from the side's own sanctum, which
+       * is the strict "outside the starting cluster" figure `audit/expand-outcomes.ts` reports.
+       */
+      const yardSlot = blds.find((s) => reg.buildings.get(store.extras[s].defId)?.isConstructionYard);
+      const homeX = yardSlot !== undefined ? store.posX[yardSlot] : store.posX[blds[0] ?? 0];
+      const homeY = yardSlot !== undefined ? store.posY[yardSlot] : store.posY[blds[0] ?? 0];
+      const outsideRefs = blds.filter((s) => {
+        const d = reg.buildings.get(store.extras[s].defId);
+        if (!d?.isRefinery) return false;
+        return Math.hypot(store.posX[s] - homeX, store.posY[s] - homeY) > 12 * 32;
+      }).length;
       const centres: { x: number; y: number }[] = [];
       for (const a of anchors) {
         const near = blds.filter(
@@ -90,6 +109,7 @@ async function snapshot(page: Page): Promise<Snapshot> {
         id: p.id,
         buildings: blds.length,
         bases: centres.length,
+        outsideRefineries: outsideRefs,
         workers: units.length - army.length,
         army: army.length,
         centres,
@@ -201,7 +221,8 @@ async function main(): Promise<void> {
      * the number of bases and buildings in the claim is always the number visible in the shot.
      */
     const caption =
-      `${side.id} — ${side.bases} base${side.bases === 1 ? '' : 's'}, ${side.buildings} buildings, ` +
+      `${side.id} — ${side.bases} cluster${side.bases === 1 ? '' : 's'}, ` +
+      `${side.outsideRefineries} forward refiner${side.outsideRefineries === 1 ? 'y' : 'ies'}, ${side.buildings} buildings, ` +
       `${side.workers} workers, ${side.army} army` +
       (ar ? ` @ (${Math.round(ar.x)},${Math.round(ar.y)})` : '') +
       `  |  enemy: ${others.map((o) => `${o.buildings} bld`).join(', ')}` +
