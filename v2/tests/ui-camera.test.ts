@@ -232,7 +232,13 @@ describe('camera: the rendered frame around the base is terrain, not backdrop', 
           await ctx.close();
           continue;
         }
-        const shot = await page.screenshot();
+        /**
+         * A GENEROUS EXPLICIT TIMEOUT. The default is 30 s and CI measured 173 s for this loop across five
+         * viewports — the screenshot call itself timed out while SwiftShader was contended by the other
+         * browser gates in the same job. That is a slow machine, not a broken page, so the call is given a
+         * budget that reflects what it actually costs on shared CPU.
+         */
+        const shot = await page.screenshot({ timeout: 120_000 });
         const { data, info } = await sharp(shot).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 
         // A square box a third of the playable rect across, centred on the base.

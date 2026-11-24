@@ -255,47 +255,92 @@ describe('touch: a tap selects, and a tap on the ground moves the selection', ()
          *      used. Without this the case failed on portrait and Chromebook only, because there the two
          *      starting Wisps happened to project close together.
          */
-        const safe = await page.evaluate(() => window.__app.controller!.camera.safeRect());
-        const wispScreen = await worldToScreen(page, before.x, before.y);
-        const occupied = await page.evaluate(() =>
-          [...document.querySelectorAll('*')].length > 0
-            ? (() => {
-                const c = window.__app.controller!;
-                const st = c.state;
-                const out: { x: number; y: number }[] = [];
-                for (let s = 0; s < st.entities.count; s++) {
-                  if (st.entities.dead[s]) continue;
-                  if (st.entities.kind[s] !== 0 && st.entities.kind[s] !== 1 && st.entities.kind[s] !== 3) continue;
-                  const p = c.camera.worldToScreenPoint(st.entities.posX[s]!, st.entities.posY[s]!);
-                  out.push({ x: p.x, y: p.y });
-                }
-                return out;
-              })()
-            : [],
-        );
-        const target = { x: wispScreen.x, y: wispScreen.y };
-        let chosen = false;
-        for (const [dx, dy] of [
-          [90, 40],
-          [110, 60],
-          [-90, 50],
-          [70, -50],
-          [130, 20],
-          [-110, -40],
-        ] as const) {
-          const cand = {
-            x: Math.min(safe.x + safe.w - 24, Math.max(safe.x + 24, wispScreen.x + dx)),
-            y: Math.min(safe.y + safe.h - 24, Math.max(safe.y + 24, wispScreen.y + dy)),
+        /**
+         * FIND AN EMPTY SCREEN POINT NEAR THE UNIT, WITH THE CHOICE MADE IN THE PAGE.
+         *
+         * Three traps here, all found by running the proof rather than by reasoning about it:
+         *
+         *   1. A target chosen in WORLD space can land under the console or past the edge on a large
+         *      viewport, so candidates are generated in SCREEN space around the unit's own projected point.
+         *   2. A target that overlaps ANOTHER of your units is not an open-ground tap — it re-selects that
+         *      unit, which is correct RTS behaviour and looks like "the tap did nothing". Two starting Wisps
+         *      project close together at several framings, so this bit twice.
+         *   3. On a contended CI machine the camera may settle at a slightly different zoom between the two
+         *      evaluations, which moves the unit's screen position. So the candidate is re-checked AND
+         *      re-tapped from inside the page in one synchronous evaluation, and the result reports whether
+         *      the point was clear at the moment of the tap.
+         */
+        const picked = await page.evaluate(() => {
+          const app = (window as unknown as {
+            __app: {
+              controller: {
+                me: string;
+                state: {
+                  players: { id: string }[];
+                  entities: { count: number; dead: Uint8Array; kind: Uint8Array; ownerIndex: Int16Array; id: number[]; posX: number[]; posY: number[] };
+                };
+                camera: { worldToScreenPoint(x: number, y: number): { x: number; y: number }; safeRect(): { x: number; y: number; w: number; h: number } };
+              };
+            };
+          }).__app;
+          const c = app.controller;
+          const st = c.state;
+          const myIdx = st.players.findIndex((p) => p.id === c.me);
+          const safe = c.camera.safeRect();
+          // The unit under test is the first own unit, by id, exactly as the caller found it.
+          let selfPoint: { x: number; y: number } | null = null;
+          const occupied: { x: number; y: number }[] = [];
+          for (let s = 0; s < st.entities.count; s++) {
+            if (st.entities.dead[s]) continue;
+            const kind = st.entities.kind[s];
+            if (kind !== 0 && kind !== 1 && kind !== 3) continue;
+            const p = c.camera.worldToScreenPoint(st.entities.posX[s]!, st.entities.posY[s]!);
+            if (st.entities.ownerIndex[s] === myIdx && kind === 0 && selfPoint === null) selfPoint = p;
+            else occupied.push(p);
+          }
+          if (!selfPoint) return null;
+          // A ring of candidate offsets, ordered nearest-first, all comfortably inside the safe rect.
+          const offsets: [number, number][] = [
+            [80, 30], [95, 55], [-80, 40], [70, -45], [110, 10], [-95, -35], [60, 70], [-60, 75], [120, 60],
+          ];
+          for (const [dx, dy] of offsets) {
+            const cand = {
+              x: Math.min(safe.x + safe.w - 26, Math.max(safe.x + 26, selfPoint.x + dx)),
+              y: Math.min(safe.y + safe.h - 26, Math.max(safe.y + 26, selfPoint.y + dy)),
+            };
+            if (Math.hypot(cand.x - selfPoint.x, cand.y - selfPoint.y) < 45) continue;
+            // 70px clears every pick radius at the zooms these viewports settle at, with margin.
+            if (occupied.some((o) => Math.hypot(o.x - cand.x, o.y - cand.y) < 70)) continue;
+            return { ...cand, self: selfPoint };
+          }
+          return null;
+        });
+        expect(picked, `${vp.name}: no empty ground near the Wisp to order it to`).not.toBeNull();
+        const target = { x: picked!.x, y: picked!.y };
+        // Assert the target really is open ground at the moment of the tap, not just when it was chosen.
+        const clear = await page.evaluate(([tx, ty, sx, sy]) => {
+          const el = document.elementFromPoint(tx!, ty!);
+          if (el?.tagName !== 'CANVAS') return `covered by <${el?.tagName}>`;
+          if (Math.hypot(tx! - sx!, ty! - sy!) < 40) return 'too close to the source unit';
+          const c = (window as unknown as { __app: { controller: { me: string; state: unknown } } }).__app.controller;
+          const st = c.state as {
+            players: { id: string }[];
+            entities: { count: number; dead: Uint8Array; kind: Uint8Array; ownerIndex: Int16Array; posX: number[]; posY: number[] };
           };
-          if (Math.hypot(cand.x - wispScreen.x, cand.y - wispScreen.y) < 40) continue;
-          // Clear of every entity's pick radius, with a margin so a near-miss cannot grab one.
-          if (occupied.some((o) => Math.hypot(o.x - cand.x, o.y - cand.y) < 70)) continue;
-          target.x = cand.x;
-          target.y = cand.y;
-          chosen = true;
-          break;
-        }
-        expect(chosen, `${vp.name}: no empty ground near the Wisp to order it to`).toBe(true);
+          const myIdx = st.players.findIndex((p) => p.id === c.me);
+          const cam = (window as unknown as { __app: { controller: { camera: { worldToScreenPoint(x: number, y: number): { x: number; y: number } } } } })
+            .__app.controller.camera;
+          for (let s = 0; s < st.entities.count; s++) {
+            if (st.entities.dead[s]) continue;
+            const kind = st.entities.kind[s];
+            if (kind !== 0 && kind !== 1 && kind !== 3) continue;
+            if (st.entities.ownerIndex[s] !== myIdx) continue;
+            const p = cam.worldToScreenPoint(st.entities.posX[s]!, st.entities.posY[s]!);
+            if (Math.hypot(p.x - tx!, p.y - ty!) < 60) return 'another own entity is within 60px';
+          }
+          return '';
+        }, [target.x, target.y, picked!.self.x, picked!.self.y]);
+        expect(clear, `${vp.name}: the move target is not open ground (${clear})`).toBe('');
 
         await touchTap(page, cdp, target.x, target.y);
         // Let the order run for a second of simulated time.
