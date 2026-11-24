@@ -144,18 +144,47 @@ export class Renderer {
      * sits on top, so this layer is only ever visible outside the board's silhouette — where it reads as
      * the surface the map is laid out on.
      */
+    /**
+     * THE TABLE'S TONE IS A MEASURED DECISION, NOT A MOOD.
+     *
+     * `#101318` is (16,19,24) — effectively black, so the off-board area read as VOID even though the
+     * camera was correctly centred and the board covered 88-93% of the rect. The report said "giant empty
+     * black void above the map" and that is what the pixels looked like, however the numbers read.
+     *
+     * The surface is now a visibly warmer, lighter slate with a legible grid: clearly a TABLE the board is
+     * laid on, in the same Obsidian family, so it reads as material rather than as absent rendering. The
+     * grass is still far brighter, so the board's silhouette is unchanged.
+     */
     const table = new Graphics();
     const pw = this.map.tileW * TILE * 0.5;
     const ph = this.map.tileH * TILE * 0.5;
     const pad = pw + ph;
-    table.rect(-pw - pad, -ph - pad, pw * 2 + pad * 2, ph * 2 + pad * 2).fill({ color: 0x101318, alpha: 1 });
+    const TABLE_BASE = 0x232a33;
+    const TABLE_GRID = 0x2f3842;
+    const TABLE_RIM = 0x1a2028;
+    table.rect(-pw - pad, -ph - pad, pw * 2 + pad * 2, ph * 2 + pad * 2).fill({ color: TABLE_BASE, alpha: 1 });
     const GRID = 2 * TILE;
     for (let gx = -pw - pad; gx < pw + pad; gx += GRID) {
-      table.moveTo(gx, -ph - pad).lineTo(gx, ph + pad).stroke({ width: 1, color: 0x1b2027, alpha: 0.9 });
+      table.moveTo(gx, -ph - pad).lineTo(gx, ph + pad).stroke({ width: 1, color: TABLE_GRID, alpha: 0.75 });
     }
     for (let gy = -ph - pad; gy < ph + pad; gy += GRID) {
-      table.moveTo(-pw - pad, gy).lineTo(pw + pad, gy).stroke({ width: 1, color: 0x1b2027, alpha: 0.9 });
+      table.moveTo(-pw - pad, gy).lineTo(pw + pad, gy).stroke({ width: 1, color: TABLE_GRID, alpha: 0.75 });
     }
+    /**
+     * THE BOARD'S EDGE IS A LIP, NOT A CUT.
+     *
+     * The map's own tiles end abruptly at the diamond's boundary, so the silhouette needs something that
+     * says "the board ends here, on purpose". This traces the diamond once, in a darker tone than the table,
+     * so the edge reads as a bevel in the same language as every other surface in the product.
+     */
+    const corners = [
+      projectGround({ x: 0, y: 0 }),
+      projectGround({ x: this.map.tileW * TILE, y: 0 }),
+      projectGround({ x: this.map.tileW * TILE, y: this.map.tileH * TILE }),
+      projectGround({ x: 0, y: this.map.tileH * TILE }),
+    ];
+    table.poly(corners.flatMap((p) => [p.x, p.y])).stroke({ width: 6, color: TABLE_RIM, alpha: 1 });
+    table.poly(corners.flatMap((p) => [p.x, p.y])).stroke({ width: 1, color: 0x3d4650, alpha: 0.8 });
     this.world.addChild(table);
 
     this.terrain = buildTerrain(this.map);

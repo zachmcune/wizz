@@ -86,6 +86,15 @@ export interface HudDeps {
   input: BoardInput;
   onOpenResearch: () => void;
   onPause: () => void;
+  /**
+   * Called after the console changes its footprint (collapse, expand, orientation change).
+   *
+   * The camera frames inside the HUD-free safe rect, so a console that grows or shrinks changes the rect
+   * the camera was framed against. Without this the base drifts out of the visible battlefield when the
+   * panel expands on a phone — the measured symptom was a black band above a base that had been centred a
+   * moment earlier. The app re-measures the insets and re-frames on the anchored point.
+   */
+  onLayoutChange?: () => void;
 }
 
 export class Hud {
@@ -336,10 +345,10 @@ export class Hud {
       this.root.dataset.layout = want;
       // A portrait panel is collapsed by default: it would otherwise eat half the screen.
       this.collapsed = want === 'bottom';
-      this.applyCollapsed();
-    } else {
-      this.applyCollapsed();
+      this.root.dataset.collapsed = String(this.collapsed);
+      requestAnimationFrame(() => this.deps.onLayoutChange?.());
     }
+    this.applyCollapsed();
   }
 
   private toggleCollapsed(): void {
@@ -353,11 +362,14 @@ export class Hud {
   }
 
   private applyCollapsed(): void {
+    const changed = this.root.dataset.collapsed !== String(this.collapsed);
     this.root.dataset.collapsed = String(this.collapsed);
     this.expandRow.dataset.hidden = String(!this.collapsed);
     this.collapseBtn.dataset.dir = this.collapsed ? 'expand' : 'collapse';
     this.collapseBtn.title = this.collapsed ? 'Show the command panel' : 'Hide the command panel';
     this.root.style.setProperty('--hud-side', this.sidebarExtentCss());
+    // After the browser has laid the new footprint out, so `safeInsets()` measures the real boxes.
+    if (changed) requestAnimationFrame(() => this.deps.onLayoutChange?.());
   }
 
   /**

@@ -477,6 +477,19 @@ export class App {
       input: this.boardInput,
       onOpenResearch: () => this.openResearchTree(),
       onPause: () => this.go('pause'),
+      onLayoutChange: () => {
+        /**
+         * A CONSOLE THAT RESIZES CHANGES THE BATTLEFIELD, SO THE CAMERA IS RE-FRAMED.
+         *
+         * The camera frames inside the HUD-free safe rect. Expanding the portrait console from 138px to
+         * 372px more than halves the visible battlefield, and a camera framed for the taller rect then
+         * shows a black band above a base that was centred a moment earlier. Re-measuring the insets and
+         * re-framing on the local player's Sanctum keeps the base in the middle of whatever battlefield is
+         * left — which is what the player is looking at.
+         */
+        this.applyHudInsets();
+        this.frameOnMyBase();
+      },
     });
     this.hudHost = this.hud.root;
     host.append(this.hud.root, this.boxEl);
