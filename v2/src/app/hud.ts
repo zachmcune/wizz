@@ -199,9 +199,18 @@ export class Hud {
     clock.dataset.testid = 'hud-clock';
 
     const tools = el('div', 'hud-rail__tools');
+    /**
+     * The three rail tools are ICON-ONLY, including Radar.
+     *
+     * Radar was the one labelled button in this group, and a `nowrap` label in a 30px control is exactly the clipping the
+     * playtest reported: the word rendered as "Rad" and overran the power meter beside it at 844x390 and 390x844. The
+     * label still exists as the accessible name and the tooltip, so nothing is lost to a screen reader or a long-press —
+     * it is only the visible glyph that changed, which is the same treatment Tech tree and Pause already had.
+     */
     const radarBtn = button({
       icon: 'grid',
       label: 'Radar',
+      iconOnly: true,
       size: 'sm',
       variant: 'quiet',
       pressed: true,
@@ -631,9 +640,20 @@ export class Hud {
     }
 
     if (this.tab === 'buildings' || this.tab === 'defenses') {
+      /**
+       * THE BUILDINGS TAB ALSO CARRIES THE `advanced` STRUCTURES.
+       *
+       * The content set has three building categories but the console has four tabs (Buildings, Defenses, Units,
+       * Research) mapped from `menuCategory`, so everything tagged `advanced` — the Scrying Obelisk, Resonance Vault,
+       * Arcane Nexus and Astral Spire — appeared in NO tab and could not be built at all. That is why the radar read
+       * OFFLINE for the whole game: its only source, the Scrying Obelisk, was unreachable.
+       *
+       * Defenses keeps its own tab; every non-defence structure is a "building" from the player's point of view, and the
+       * tile's blocker text already explains the prerequisite chain.
+       */
       const cat = this.tab;
       return [...this.registry.buildings.values()]
-        .filter((b) => b.menuCategory === cat)
+        .filter((b) => (cat === 'buildings' ? b.menuCategory !== 'defenses' : b.menuCategory === 'defenses'))
         .filter((b) => !b.factions || !faction || b.factions.includes(faction))
         .map((b) => {
           // A structure already under construction anywhere counts as progress, so the tile shows it.
@@ -845,6 +865,19 @@ export class Hud {
     if (this.radarOpen && this.collapsed) this.setCollapsed(false);
   }
 
+  /** Def ids of every completed building this player owns, for cheap "do I have X" checks. */
+  private ownedBuildingIds(st: GameState, playerIndex: number): string[] {
+    const out: string[] = [];
+    for (let s = 0; s < st.entities.count; s++) {
+      if (st.entities.dead[s] || st.entities.kind[s] !== KIND_BUILDING) continue;
+      if (st.entities.ownerIndex[s] !== playerIndex) continue;
+      const bp = (st.entities.extras[s]!.caps.building as { buildProgress?: number } | undefined)?.buildProgress;
+      if (bp !== undefined) continue;
+      out.push(st.entities.extras[s]!.defId);
+    }
+    return out;
+  }
+
   private drawRadar(st: GameState, myIndex: number): void {
     const ctx = this.radarCtx;
     if (!ctx || !this.radarOpen) return;
@@ -856,9 +889,34 @@ export class Hud {
     ctx.clearRect(0, 0, W, H);
 
     const active = radarActive(st, this.registry, this.ctrl.me);
-    this.radarNote.textContent = active ? 'ONLINE' : 'OFFLINE';
+    /**
+     * AN OFFLINE RADAR SAYS WHY, AND WHAT IT STILL SHOWS.
+     *
+     * The playtest reported "OFFLINE with a near-empty panel", which reads as a broken control rather than as a missing
+     * building. The minimap is not dead when offline — it still draws explored terrain, live sight and your own units — so
+     * the header names the requirement and the reason, and the panel keeps showing the partial picture instead of going
+     * blank. `radarActive` folds in a power shortfall, so the message distinguishes the two causes rather than guessing.
+     */
+    const hasRadarBuilding = st.players[myIndex]
+      ? this.ownedBuildingIds(st, myIndex).some((id) => this.registry.buildings.get(id)?.isRadar)
+      : false;
+    const me = st.players[myIndex];
+    const powerShort = me ? me.power < me.powerUsed : false;
+    this.radarNote.textContent = active
+      ? 'ONLINE'
+      : powerShort && hasRadarBuilding
+        ? 'NO POWER'
+        : hasRadarBuilding
+          ? 'BUILDING'
+          : 'NEEDS OBELISK';
     this.radarNote.dataset.state = active ? 'on' : 'off';
     this.radarCanvas.dataset.state = active ? 'on' : 'off';
+    this.radarHost.dataset.state = active ? 'on' : 'off';
+    this.radarHost.title = active
+      ? 'Radar online: the whole battlefield is shown'
+      : hasRadarBuilding
+        ? 'Scrying Obelisk offline — it has no power. The minimap shows explored ground and live sight only.'
+        : 'No Scrying Obelisk. Build one (Defenses tab) to see the whole battlefield here; until then this shows explored ground and live sight.';
 
     for (let ty = 0; ty < map.tileH; ty++) {
       for (let tx = 0; tx < map.tileW; tx++) {

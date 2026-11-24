@@ -16,8 +16,15 @@ export interface FrameRect {
   h: number;
   pivotX: number;
   pivotY: number;
+  /**
+   * Opaque content bounds within the frame, in frame pixels (see `art/build-atlas3.ts`).
+   *
+   * A unit occupies roughly 16x23 of its 128x128 frame while a building occupies 66x62, so a thumbnail that scaled the
+   * FRAME drew units at about a seventh of the tile — "two tiny dots" in the playtest report. The DOM thumbnail crops to
+   * this rect instead; the renderer keeps using the whole frame so battlefield pivots stay aligned.
+   */
+  content?: { x: number; y: number; w: number; h: number };
 }
-
 export interface AtlasManifest {
   pages: { file: string; width: number; height: number }[];
   frames: Record<string, FrameRect>;

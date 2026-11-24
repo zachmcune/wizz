@@ -507,10 +507,23 @@
   font-weight: var(--weight-semibold);
   letter-spacing: 0.03em;
   color: var(--bone-200);
+  /* Wraps at the space, and breaks a single long word only when it cannot fit — see the note below. */
   white-space: normal;
   overflow-wrap: break-word;
+  word-break: normal;
   line-height: 1.1;
   min-width: 0;
+  /**
+   * A TILE NAME MUST NOT OVERHANG ITS OWN COLUMN.
+   *
+   * `overflow-wrap: break-word` alone leaves a single unbreakable word overflowing when it is longer than the column:
+   * "ATTUNEMENT" is 61px at 10px in the display face and a two-up column in a 136px phone sidebar is 65px, so it fitted at
+   * one width and spilled into the neighbouring tile at another. `overflow: hidden` on the span guarantees the label stays
+   * inside its tile even in the worst case, and the max-height allows exactly two wrapped lines so nothing is cropped
+   * vertically either.
+   */
+  overflow: hidden;
+  max-height: 2.2em;
 }
 .prod-tile__cost {
   display: flex;
@@ -572,10 +585,25 @@
   font-size: calc(var(--text-2xs) * var(--text-scale)) !important;
   flex-direction: column;
 }
+/**
+ * COMMAND LABELS WRAP; THEY ARE NOT `nowrap` IN A 4-UP GRID.
+ *
+ * `.btn` sets `white-space: nowrap`, which is right for a full-width action in a menu and wrong here: "Atk-Move" needs
+ * ~54px at 10px and a quarter of a 136px phone sidebar is 32px, so the label overflowed its button and the browser cropped
+ * the leading "A" — the reported "tk-Move". Wrapping is the honest fix (the same one the production tiles already use)
+ * because the alternative, shrinking the type below 10px, trades one unreadable label for another.
+ *
+ * `min-height` covers two lines of the smallest step plus the icon row, so a wrapped label never overflows the button
+ * vertically either.
+ */
 .hud-cmd .btn__label {
   font-family: var(--font-display);
   letter-spacing: 0.03em;
-  line-height: 1.1;
+  line-height: 1.05;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-align: center;
+  hyphens: none;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── TOAST */
@@ -708,6 +736,19 @@
   width: 100%;
   padding: 0;
   justify-content: center;
+}
+/**
+ * THE COLLAPSED STRIP IS 44px WIDE, SO ITS EXPAND CONTROL CANNOT CARRY A WORD.
+ *
+ * The control is `Show build panel` + a `BUILD` chip, both `nowrap`, which needs ~90px. In the 44px strip they overhung the
+ * panel on every landscape viewport — the `ui-proof` label gate reported "Show build panel at 598-680 vs 623-667" — which is
+ * the same class of bug as the "Rad" button. Collapsed, the control keeps its icon (the chevron, which already points the
+ * right way) and its accessible name; the visible words come back with the panel. Portrait's collapsed console is full
+ * width, so it keeps them.
+ */
+.hud[data-layout='side'][data-collapsed='true'] .hud-expand-row .btn__label,
+.hud[data-layout='side'][data-collapsed='true'] .hud-expand-row__label {
+  display: none;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── COMPACT */
@@ -871,6 +912,20 @@
 }
 [data-density='roomy'] .prod-tile__art {
   height: 46px;
+}
+/**
+ * A THREE-UP GRID IS NARROWER PER COLUMN THAN A TWO-UP ONE, so a two-word tech name can need three lines.
+ *
+ * "ASTRAL ATTUNEMENT" is 17 characters; at 10px in the display face it needs ~100px, and a three-up column of a 232px
+ * sidebar is ~74px. The label gate measured exactly that ("cropped ASTRAL ATTUNEMENT, 12px over in 67x24"). Rather than
+ * shrinking the type, the roomy tier gives the name a third line — it has the vertical space, and the tile's own
+ * `min-height` already accommodates it.
+ */
+[data-density='roomy'] .prod-tile__name {
+  max-height: 3.3em;
+}
+[data-density='roomy'] .prod-tile__meta {
+  min-height: 42px;
 }
 [data-density='roomy'] .hud-cmd {
   min-height: 38px;

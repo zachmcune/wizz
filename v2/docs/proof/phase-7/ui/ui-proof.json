@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-24T01:41:22.715Z",
+  "generatedAt": "2026-11-24T12:28:31.547Z",
   "base": "http://127.0.0.1:5343",
   "viewports": [
     "phone-667x375",
@@ -26,9 +26,9 @@
       "state": "",
       "width": 667,
       "height": 375,
-      "bytes": 119664,
-      "md5": "b9de5d73491fd8f9e29d3cf16ba83aae",
-      "buckets": 360,
+      "bytes": 119507,
+      "md5": "e5130974d7653367c81511488ae48627",
+      "buckets": 359,
       "purpleFraction": 0,
       "measured": {}
     },
@@ -78,9 +78,9 @@
       "state": "",
       "width": 667,
       "height": 375,
-      "bytes": 111692,
-      "md5": "3ba450f442c3082ba066453e64d95747",
-      "buckets": 1312,
+      "bytes": 114376,
+      "md5": "6198afcaf5f8d059416b6e2f323a04f2",
+      "buckets": 1457,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -89,15 +89,18 @@
         "railHeight": 38,
         "sidebarWidth": 136,
         "sidebarHeight": 337,
-        "controls": 20,
+        "controls": 26,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
+        "tiles": 10,
         "commands": 8,
         "zoom": 0.94,
         "coverage": 0.923,
         "sanctumFx": 0.5,
-        "sanctumFy": 0.5
+        "sanctumFy": 0.5,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -146,12 +149,15 @@
       "state": "selection",
       "width": 667,
       "height": 375,
-      "bytes": 111260,
-      "md5": "6bd7adb5fc6848b34bac0de3f1c9fa6c",
-      "buckets": 1308,
+      "bytes": 114805,
+      "md5": "96d7d025489ac13a739d422b066cd9e8",
+      "buckets": 1471,
       "purpleFraction": 0,
       "measured": {
-        "selectedUnits": 2
+        "selectedUnits": 2,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -161,13 +167,16 @@
       "state": "tab-buildings",
       "width": 667,
       "height": 375,
-      "bytes": 111408,
-      "md5": "f9654c15932d61933f0f55eb3e119a8c",
-      "buckets": 1308,
+      "bytes": 114891,
+      "md5": "39fb82e1d0cfd0db40d7079c7df84827",
+      "buckets": 1472,
       "purpleFraction": 0,
       "measured": {
-        "tiles": 4,
-        "realSpriteThumbs": 4
+        "tiles": 10,
+        "realSpriteThumbs": 10,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -177,13 +186,16 @@
       "state": "tab-defenses",
       "width": 667,
       "height": 375,
-      "bytes": 111328,
-      "md5": "b1cedc0be58c49c7b8aa953b61f448b8",
-      "buckets": 1282,
+      "bytes": 114540,
+      "md5": "bb05ac29993335a2d5bea6dacf034185",
+      "buckets": 1319,
       "purpleFraction": 0,
       "measured": {
         "tiles": 9,
-        "realSpriteThumbs": 9
+        "realSpriteThumbs": 9,
+        "labelsChecked": 28,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -193,13 +205,16 @@
       "state": "tab-units",
       "width": 667,
       "height": 375,
-      "bytes": 107725,
-      "md5": "f26dcaa38c028d4fa7ef7cc171d4ffd1",
-      "buckets": 1190,
+      "bytes": 110709,
+      "md5": "30ba346bdec3827d649663806142074a",
+      "buckets": 1287,
       "purpleFraction": 0,
       "measured": {
         "tiles": 10,
-        "realSpriteThumbs": 10
+        "realSpriteThumbs": 10,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -209,13 +224,16 @@
       "state": "tab-tech",
       "width": 667,
       "height": 375,
-      "bytes": 107835,
-      "md5": "55c965f01719baaaa59a7d2179aa83e4",
-      "buckets": 1181,
+      "bytes": 109304,
+      "md5": "8adff9cf244bf86d695862768499d757",
+      "buckets": 1234,
       "purpleFraction": 0,
       "measured": {
         "tiles": 18,
-        "realSpriteThumbs": 0
+        "realSpriteThumbs": 0,
+        "labelsChecked": 37,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -225,11 +243,14 @@
       "state": "placement",
       "width": 667,
       "height": 375,
-      "bytes": 111820,
-      "md5": "2b4571b5f49a4659bb7f96a4f918e5db",
-      "buckets": 1342,
+      "bytes": 115226,
+      "md5": "4c659a3ce238a5cedb8b6f2c7959814d",
+      "buckets": 1517,
       "purpleFraction": 0,
       "measured": {
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": "",
         "tile": "attunement_spire",
         "ghostValid": true,
         "ghostDef": "attunement_spire",
@@ -243,9 +264,9 @@
       "state": "collapsed",
       "width": 667,
       "height": 375,
-      "bytes": 105774,
-      "md5": "a3fcd2447084be0fcc032399819bc61c",
-      "buckets": 1158,
+      "bytes": 105615,
+      "md5": "77dab57de98202e7975068ba5ce39f37",
+      "buckets": 1187,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -257,8 +278,11 @@
         "controls": 8,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
-        "commands": 8
+        "tiles": 10,
+        "commands": 8,
+        "labelsChecked": 9,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -268,9 +292,9 @@
       "state": "",
       "width": 844,
       "height": 390,
-      "bytes": 149758,
-      "md5": "7c63034fff93af384655a25817bcbb1f",
-      "buckets": 347,
+      "bytes": 150287,
+      "md5": "63ec42e9e1c7da922bd110b2f7d3b866",
+      "buckets": 342,
       "purpleFraction": 0,
       "measured": {}
     },
@@ -320,9 +344,9 @@
       "state": "",
       "width": 844,
       "height": 390,
-      "bytes": 131750,
-      "md5": "44402c8ab65fcc632975fcc2a89735c0",
-      "buckets": 1343,
+      "bytes": 135358,
+      "md5": "96445c63d8800c8171e9e9758923eb21",
+      "buckets": 1495,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -331,15 +355,18 @@
         "railHeight": 38,
         "sidebarWidth": 136,
         "sidebarHeight": 352,
-        "controls": 20,
+        "controls": 26,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
+        "tiles": 10,
         "commands": 8,
         "zoom": 0.98,
         "coverage": 0.869,
         "sanctumFx": 0.5,
-        "sanctumFy": 0.5
+        "sanctumFy": 0.5,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -388,12 +415,15 @@
       "state": "selection",
       "width": 844,
       "height": 390,
-      "bytes": 131274,
-      "md5": "fa250027a9a825a334a3d561bbb03b84",
-      "buckets": 1343,
+      "bytes": 135130,
+      "md5": "50070dcb538b2a635ea121e8ff4b04ec",
+      "buckets": 1505,
       "purpleFraction": 0,
       "measured": {
-        "selectedUnits": 2
+        "selectedUnits": 2,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -403,13 +433,16 @@
       "state": "tab-buildings",
       "width": 844,
       "height": 390,
-      "bytes": 131421,
-      "md5": "f1ae95edd5692da108382f4c6dde4170",
-      "buckets": 1343,
+      "bytes": 135101,
+      "md5": "982a35f69ba11cadf8b2d134941bd4ca",
+      "buckets": 1516,
       "purpleFraction": 0,
       "measured": {
-        "tiles": 4,
-        "realSpriteThumbs": 4
+        "tiles": 10,
+        "realSpriteThumbs": 10,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -419,13 +452,16 @@
       "state": "tab-defenses",
       "width": 844,
       "height": 390,
-      "bytes": 130805,
-      "md5": "f1f2967fc0da329bc88a43af880ed8a1",
-      "buckets": 1321,
+      "bytes": 134633,
+      "md5": "b2df0a2ad9dbbe32fc57f54b58000edd",
+      "buckets": 1363,
       "purpleFraction": 0,
       "measured": {
         "tiles": 9,
-        "realSpriteThumbs": 9
+        "realSpriteThumbs": 9,
+        "labelsChecked": 28,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -435,13 +471,16 @@
       "state": "tab-units",
       "width": 844,
       "height": 390,
-      "bytes": 128051,
-      "md5": "325225716a41a5ec7015f76d6e5b54b8",
-      "buckets": 1237,
+      "bytes": 130665,
+      "md5": "3ef72d7359b15a0a4b3c191a41bd5aed",
+      "buckets": 1313,
       "purpleFraction": 0,
       "measured": {
         "tiles": 10,
-        "realSpriteThumbs": 10
+        "realSpriteThumbs": 10,
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -451,13 +490,16 @@
       "state": "tab-tech",
       "width": 844,
       "height": 390,
-      "bytes": 127701,
-      "md5": "2d182d4743a7a784f037ec0813a90ac2",
-      "buckets": 1213,
+      "bytes": 129068,
+      "md5": "6689c1102db591b003bd0053fffa00bf",
+      "buckets": 1250,
       "purpleFraction": 0,
       "measured": {
         "tiles": 18,
-        "realSpriteThumbs": 0
+        "realSpriteThumbs": 0,
+        "labelsChecked": 37,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -467,11 +509,14 @@
       "state": "placement",
       "width": 844,
       "height": 390,
-      "bytes": 132015,
-      "md5": "8cd224a7187b14620de03f4e82fa2434",
-      "buckets": 1395,
+      "bytes": 136103,
+      "md5": "82765fa396856ef439d54e7e2d299f1f",
+      "buckets": 1579,
       "purpleFraction": 0,
       "measured": {
+        "labelsChecked": 29,
+        "labelsClipped": 0,
+        "clippedDetail": "",
         "tile": "attunement_spire",
         "ghostValid": true,
         "ghostDef": "attunement_spire",
@@ -485,9 +530,9 @@
       "state": "collapsed",
       "width": 844,
       "height": 390,
-      "bytes": 125884,
-      "md5": "3d9db73ee7a91b420c1bcd66844346d8",
-      "buckets": 1189,
+      "bytes": 125723,
+      "md5": "5c2c13e637a986026ecc3011545ebbdc",
+      "buckets": 1213,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -499,8 +544,11 @@
         "controls": 8,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
-        "commands": 8
+        "tiles": 10,
+        "commands": 8,
+        "labelsChecked": 9,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -510,9 +558,9 @@
       "state": "",
       "width": 390,
       "height": 844,
-      "bytes": 110597,
-      "md5": "e733ad06287bd24e8bf047bcf20f8979",
-      "buckets": 1393,
+      "bytes": 110555,
+      "md5": "28a3306039096a2d8ecf07a252952524",
+      "buckets": 1399,
       "purpleFraction": 0,
       "measured": {}
     },
@@ -562,9 +610,9 @@
       "state": "",
       "width": 390,
       "height": 844,
-      "bytes": 119707,
-      "md5": "bc8e2ae49a27bc84bb64cfc7cfaff34f",
-      "buckets": 1358,
+      "bytes": 119490,
+      "md5": "2b879d807788c366467f551f20fff8df",
+      "buckets": 1350,
       "purpleFraction": 0,
       "measured": {
         "layout": "bottom",
@@ -576,12 +624,15 @@
         "controls": 16,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
+        "tiles": 10,
         "commands": 8,
         "zoom": 1.18,
         "coverage": 0.929,
         "sanctumFx": 0.5,
-        "sanctumFy": 0.405
+        "sanctumFy": 0.405,
+        "labelsChecked": 17,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -630,12 +681,15 @@
       "state": "selection",
       "width": 390,
       "height": 844,
-      "bytes": 119619,
-      "md5": "3d50c361b6aee26986f3f0b7872e35d6",
-      "buckets": 1358,
+      "bytes": 119389,
+      "md5": "7e175c848b386d8aaa04f522f7edfc73",
+      "buckets": 1350,
       "purpleFraction": 0,
       "measured": {
-        "selectedUnits": 2
+        "selectedUnits": 2,
+        "labelsChecked": 17,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -645,13 +699,16 @@
       "state": "tab-buildings",
       "width": 390,
       "height": 844,
-      "bytes": 113722,
-      "md5": "67ab91a2068efdef8580eda3c1845b50",
-      "buckets": 1723,
+      "bytes": 122038,
+      "md5": "4dd8c9a6ada3626eeca3d54bdf57d3d4",
+      "buckets": 2100,
       "purpleFraction": 0,
       "measured": {
-        "tiles": 4,
-        "realSpriteThumbs": 4
+        "tiles": 10,
+        "realSpriteThumbs": 10,
+        "labelsChecked": 27,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -661,13 +718,16 @@
       "state": "tab-defenses",
       "width": 390,
       "height": 844,
-      "bytes": 110863,
-      "md5": "06661624cd996b4f9c0001ca43cb5075",
-      "buckets": 1602,
+      "bytes": 117470,
+      "md5": "3b74b03ac60806f47823363ee7e5da11",
+      "buckets": 1695,
       "purpleFraction": 0,
       "measured": {
         "tiles": 9,
-        "realSpriteThumbs": 9
+        "realSpriteThumbs": 9,
+        "labelsChecked": 26,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -677,13 +737,16 @@
       "state": "tab-units",
       "width": 390,
       "height": 844,
-      "bytes": 101221,
-      "md5": "3faa003358b97440de8176c3d7d33f65",
-      "buckets": 1336,
+      "bytes": 104382,
+      "md5": "725fc14e39ca78acbd7259b5020cd9cf",
+      "buckets": 1390,
       "purpleFraction": 0,
       "measured": {
         "tiles": 10,
-        "realSpriteThumbs": 10
+        "realSpriteThumbs": 10,
+        "labelsChecked": 27,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -693,13 +756,16 @@
       "state": "tab-tech",
       "width": 390,
       "height": 844,
-      "bytes": 98932,
-      "md5": "60f8247b509fbe462c52e4c2976daa9d",
-      "buckets": 1287,
+      "bytes": 100302,
+      "md5": "4fbcce5186ac5d4b0ccbfb99a7f42357",
+      "buckets": 1304,
       "purpleFraction": 0,
       "measured": {
         "tiles": 18,
-        "realSpriteThumbs": 0
+        "realSpriteThumbs": 0,
+        "labelsChecked": 35,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -709,11 +775,14 @@
       "state": "placement",
       "width": 390,
       "height": 844,
-      "bytes": 113981,
-      "md5": "5b149c332f55b81615abe7ed37cd9263",
-      "buckets": 1760,
+      "bytes": 122261,
+      "md5": "d7916086791af1d1a7601a28b4981c35",
+      "buckets": 2134,
       "purpleFraction": 0,
       "measured": {
+        "labelsChecked": 27,
+        "labelsClipped": 0,
+        "clippedDetail": "",
         "tile": "attunement_spire",
         "ghostValid": true,
         "ghostDef": "attunement_spire",
@@ -727,9 +796,9 @@
       "state": "collapsed",
       "width": 390,
       "height": 844,
-      "bytes": 125793,
-      "md5": "7c8408c240fc44ca8b6f735c300f9384",
-      "buckets": 1262,
+      "bytes": 119498,
+      "md5": "026e4b161aa20a15ad71d03f0f37770c",
+      "buckets": 1351,
       "purpleFraction": 0,
       "measured": {
         "layout": "bottom",
@@ -741,8 +810,11 @@
         "controls": 16,
         "smallestControl": 30,
         "tabs": 4,
-        "tiles": 4,
-        "commands": 8
+        "tiles": 10,
+        "commands": 8,
+        "labelsChecked": 17,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -752,8 +824,8 @@
       "state": "",
       "width": 1366,
       "height": 768,
-      "bytes": 435136,
-      "md5": "4786784deaf8ef1975b04834e3df7065",
+      "bytes": 434588,
+      "md5": "e182e4cc4fab10f182273a196b5eafb5",
       "buckets": 389,
       "purpleFraction": 0,
       "measured": {}
@@ -804,9 +876,9 @@
       "state": "",
       "width": 1366,
       "height": 768,
-      "bytes": 237868,
-      "md5": "c6a8f5cfe03030bc07b172ac21ec5626",
-      "buckets": 2066,
+      "bytes": 267180,
+      "md5": "871cef1955d967445e38199a75ed3a3a",
+      "buckets": 2218,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -815,15 +887,18 @@
         "railHeight": 48,
         "sidebarWidth": 196,
         "sidebarHeight": 720,
-        "controls": 20,
+        "controls": 26,
         "smallestControl": 32,
         "tabs": 4,
-        "tiles": 4,
+        "tiles": 10,
         "commands": 8,
         "zoom": 1.85,
         "coverage": 0.881,
         "sanctumFx": 0.5,
-        "sanctumFy": 0.5
+        "sanctumFy": 0.5,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -872,12 +947,15 @@
       "state": "selection",
       "width": 1366,
       "height": 768,
-      "bytes": 237867,
-      "md5": "793e97cb128475488f0b4483700f6942",
-      "buckets": 2065,
+      "bytes": 266924,
+      "md5": "bb274c898dc9f7fa37f4b3fea891850d",
+      "buckets": 2224,
       "purpleFraction": 0,
       "measured": {
-        "selectedUnits": 2
+        "selectedUnits": 2,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -887,13 +965,16 @@
       "state": "tab-buildings",
       "width": 1366,
       "height": 768,
-      "bytes": 238043,
-      "md5": "f47b67814deed0bd50c7e1eff4c6e385",
-      "buckets": 2065,
+      "bytes": 267135,
+      "md5": "089401151f2cfa810a3831ea5b124c33",
+      "buckets": 2224,
       "purpleFraction": 0,
       "measured": {
-        "tiles": 4,
-        "realSpriteThumbs": 4
+        "tiles": 10,
+        "realSpriteThumbs": 10,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -903,13 +984,16 @@
       "state": "tab-defenses",
       "width": 1366,
       "height": 768,
-      "bytes": 247982,
-      "md5": "d48126eaae1be735800ddd43b2e621bb",
-      "buckets": 1941,
+      "bytes": 256761,
+      "md5": "9f2966bb7cb893f895689e414b5331e7",
+      "buckets": 1953,
       "purpleFraction": 0,
       "measured": {
         "tiles": 9,
-        "realSpriteThumbs": 9
+        "realSpriteThumbs": 9,
+        "labelsChecked": 31,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -919,13 +1003,16 @@
       "state": "tab-units",
       "width": 1366,
       "height": 768,
-      "bytes": 238935,
-      "md5": "9b7f19512e9ea6673467753c364c013d",
-      "buckets": 1813,
+      "bytes": 248059,
+      "md5": "7aa284cd7b394a4eedb8c416a6677535",
+      "buckets": 1874,
       "purpleFraction": 0,
       "measured": {
         "tiles": 10,
-        "realSpriteThumbs": 10
+        "realSpriteThumbs": 10,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -935,13 +1022,16 @@
       "state": "tab-tech",
       "width": 1366,
       "height": 768,
-      "bytes": 238430,
-      "md5": "d63517f2759a7495f6d05bb6d5594825",
-      "buckets": 1793,
+      "bytes": 239750,
+      "md5": "d255c3711286cf2faa56abc83221c99c",
+      "buckets": 1800,
       "purpleFraction": 0,
       "measured": {
         "tiles": 18,
-        "realSpriteThumbs": 0
+        "realSpriteThumbs": 0,
+        "labelsChecked": 40,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -951,11 +1041,14 @@
       "state": "placement",
       "width": 1366,
       "height": 768,
-      "bytes": 239527,
-      "md5": "4ff70b1b857d656b0189ec942fa37a2b",
-      "buckets": 2065,
+      "bytes": 267291,
+      "md5": "af1942a3a49ece3eeb39371ff8be3f1e",
+      "buckets": 2302,
       "purpleFraction": 0,
       "measured": {
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": "",
         "tile": "attunement_spire",
         "ghostValid": true,
         "ghostDef": "attunement_spire",
@@ -969,9 +1062,9 @@
       "state": "collapsed",
       "width": 1366,
       "height": 768,
-      "bytes": 229755,
-      "md5": "b293e7811e31f83e54edcd7cfe4fcef5",
-      "buckets": 1759,
+      "bytes": 229657,
+      "md5": "07c84d39cb6767576c5e0aa92fbefa48",
+      "buckets": 1767,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -983,8 +1076,11 @@
         "controls": 8,
         "smallestControl": 32,
         "tabs": 4,
-        "tiles": 4,
-        "commands": 8
+        "tiles": 10,
+        "commands": 8,
+        "labelsChecked": 12,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1046,9 +1142,9 @@
       "state": "",
       "width": 1920,
       "height": 1080,
-      "bytes": 373020,
-      "md5": "9e45794b7ec0ebfcacf5c66d09c84a12",
-      "buckets": 2035,
+      "bytes": 392218,
+      "md5": "6f009f3afa89d19b6fe094952802d230",
+      "buckets": 2154,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -1057,15 +1153,18 @@
         "railHeight": 51,
         "sidebarWidth": 232,
         "sidebarHeight": 1029,
-        "controls": 20,
+        "controls": 26,
         "smallestControl": 34,
         "tabs": 4,
-        "tiles": 4,
+        "tiles": 10,
         "commands": 8,
         "zoom": 1.85,
         "coverage": 0.804,
         "sanctumFx": 0.5,
-        "sanctumFy": 0.41
+        "sanctumFy": 0.41,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1114,12 +1213,15 @@
       "state": "selection",
       "width": 1920,
       "height": 1080,
-      "bytes": 372271,
-      "md5": "91e384c8e66aacfd813e365813758fe6",
-      "buckets": 2034,
+      "bytes": 391652,
+      "md5": "3ba7e0bcb0de101226c0c42b792014a3",
+      "buckets": 2161,
       "purpleFraction": 0,
       "measured": {
-        "selectedUnits": 2
+        "selectedUnits": 2,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1129,13 +1231,16 @@
       "state": "tab-buildings",
       "width": 1920,
       "height": 1080,
-      "bytes": 372441,
-      "md5": "f3f97cd7eb622675807dc7039a69b764",
-      "buckets": 2034,
+      "bytes": 391970,
+      "md5": "3f47ce0842fe475c7a83c92e1bc12d98",
+      "buckets": 2161,
       "purpleFraction": 0,
       "measured": {
-        "tiles": 4,
-        "realSpriteThumbs": 4
+        "tiles": 10,
+        "realSpriteThumbs": 10,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1145,13 +1250,16 @@
       "state": "tab-defenses",
       "width": 1920,
       "height": 1080,
-      "bytes": 378579,
-      "md5": "85ddedca60c69117bfab125fe9ac1fb7",
-      "buckets": 1926,
+      "bytes": 383896,
+      "md5": "31ee25f033ade20bf2fcbacc0acf1719",
+      "buckets": 1861,
       "purpleFraction": 0,
       "measured": {
         "tiles": 9,
-        "realSpriteThumbs": 9
+        "realSpriteThumbs": 9,
+        "labelsChecked": 31,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1161,13 +1269,16 @@
       "state": "tab-units",
       "width": 1920,
       "height": 1080,
-      "bytes": 373721,
-      "md5": "147dc01396f23bab30408eefc2b7cfd0",
-      "buckets": 1818,
+      "bytes": 382638,
+      "md5": "f0f89c88a7363900c63ff0f019eca6af",
+      "buckets": 1876,
       "purpleFraction": 0,
       "measured": {
         "tiles": 10,
-        "realSpriteThumbs": 10
+        "realSpriteThumbs": 10,
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1177,13 +1288,16 @@
       "state": "tab-tech",
       "width": 1920,
       "height": 1080,
-      "bytes": 384527,
-      "md5": "ae1bbd90d7d71c698330ef7e42b916ab",
-      "buckets": 1778,
+      "bytes": 384596,
+      "md5": "9e9eccdd4cc5df91adba0fa81d9a61fb",
+      "buckets": 1792,
       "purpleFraction": 0,
       "measured": {
         "tiles": 18,
-        "realSpriteThumbs": 0
+        "realSpriteThumbs": 0,
+        "labelsChecked": 40,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     },
     {
@@ -1193,11 +1307,14 @@
       "state": "placement",
       "width": 1920,
       "height": 1080,
-      "bytes": 376099,
-      "md5": "5de182d10e7f49c6a921d57d5531104f",
-      "buckets": 1958,
+      "bytes": 394579,
+      "md5": "87eaea62de1caa812c4fc1ceeca956b8",
+      "buckets": 2138,
       "purpleFraction": 0,
       "measured": {
+        "labelsChecked": 32,
+        "labelsClipped": 0,
+        "clippedDetail": "",
         "tile": "attunement_spire",
         "ghostValid": true,
         "ghostDef": "attunement_spire",
@@ -1211,9 +1328,9 @@
       "state": "collapsed",
       "width": 1920,
       "height": 1080,
-      "bytes": 364800,
-      "md5": "e75332b89f29eec031ad331a7208802d",
-      "buckets": 1754,
+      "bytes": 364292,
+      "md5": "58e8fcde928d7aa415b35bf2ba5620d4",
+      "buckets": 1757,
       "purpleFraction": 0,
       "measured": {
         "layout": "side",
@@ -1225,8 +1342,11 @@
         "controls": 8,
         "smallestControl": 32,
         "tabs": 4,
-        "tiles": 4,
-        "commands": 8
+        "tiles": 10,
+        "commands": 8,
+        "labelsChecked": 12,
+        "labelsClipped": 0,
+        "clippedDetail": ""
       }
     }
   ],

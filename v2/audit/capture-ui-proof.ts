@@ -165,8 +165,113 @@ async function measureHud(page: Page): Promise<Capture['measured']> {
   });
 }
 
-/** Read the live camera framing, which is the other half of the reported bug. */
-async function measureCamera(page: Page): Promise<Record<string, number | string>> {
+/**
+ * Find every HUD label that is TRUNCATED or OVERFLOWING its own box.
+ *
+ * This is the automated form of the playtest report: "Rad" instead of "Radar", "tk-Move" instead of "Atk-Move",
+ * "ATTUNEMENT" running into the next tile. Three independent ways a label is wrong, all measured from the live DOM rather
+ * than eyeballed from a screenshot:
+ *
+ *   • `scrollWidth > clientWidth` / `scrollHeight > clientHeight` — the text is larger than its box, so the browser is
+ *     cropping it (this is what `overflow: hidden` + `nowrap` does, and it is what "Rad" was);
+ *   • the label's own rect extending past the PANEL's rect — the content overhangs the chrome;
+ *   • the label's rect intersecting a SIBLING TILE's rect — the content paints into the neighbouring control.
+ *
+ * Deliberately measured on the text-bearing leaves (`.btn__label`, `.prod-tile__name`, `.hud-tab__label`,
+ * `.hud-radar__note`, `.res__value`, `.hud-power__nums`, `.hud-sel__name`), not on containers, because a container
+ * legitimately scrolls while its leaf does not.
+ *
+ * A label is allowed ONE pixel of rounding slack: sub-pixel layout means `scrollWidth` can exceed `clientWidth` by a
+ * fraction on perfectly correct text.
+ */
+async function measureLabelFits(page: Page): Promise<Record<string, number | string | boolean>> {
+  return page.evaluate(() => {
+    const SELECTOR = [
+      '.hud .btn__label',
+      '.hud .prod-tile__name',
+      '.hud .hud-tab__label',
+      '.hud .hud-radar__note',
+      '.hud .res__value',
+      '.hud .res__label',
+      '.hud .hud-power__nums',
+      '.hud .hud-power__label',
+      '.hud .hud-sel__name',
+      '.hud .hud-sel__sub',
+      '.hud .hud-side__badge',
+      '.hud .hud-expand-row__label',
+    ].join(', ');
+    const SLACK = 1;
+
+    const visible = (e: Element): boolean => {
+      const cs = getComputedStyle(e);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) return false;
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    };
+
+    const problems: string[] = [];
+    let checked = 0;
+
+    for (const el of Array.from(document.querySelectorAll(SELECTOR))) {
+      if (!visible(el)) continue;
+      checked++;
+      const text = (el.textContent ?? '').trim();
+      if (text.length === 0) continue;
+      const r = el.getBoundingClientRect();
+
+      // 1. Cropped text: the glyphs need more room than the box gives them.
+      const croppedX = el.scrollWidth - el.clientWidth;
+      const croppedY = el.scrollHeight - el.clientHeight;
+      if (croppedX > SLACK || croppedY > SLACK) {
+        problems.push(
+          `cropped "${text}" (${Math.round(croppedX)}x${Math.round(croppedY)}px over in ${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)})`,
+        );
+        continue;
+      }
+
+      // 2. Overhang: the label escapes its nearest plate/panel.
+      const host = el.closest('.hud-rail, .hud-side, .prod-tile, .hud-cmd, .hud-tab, .hud-radar') as HTMLElement | null;
+      if (host) {
+        const h = host.getBoundingClientRect();
+        if (r.left < h.left - SLACK || r.right > h.right + SLACK || r.top < h.top - SLACK || r.bottom > h.bottom + SLACK) {
+          problems.push(
+            `overhangs its control: "${text}" at ${Math.round(r.left)}-${Math.round(r.right)} vs ${Math.round(h.left)}-${Math.round(h.right)}`,
+          );
+          continue;
+        }
+      }
+
+      // 3. Bleed: a tile's label painting into a DIFFERENT tile.
+      if (el.classList.contains('prod-tile__name')) {
+        const tile = el.closest('.prod-tile');
+        if (tile) {
+          const tr = tile.getBoundingClientRect();
+          for (const other of Array.from(document.querySelectorAll('.prod-tile'))) {
+            if (other === tile || !visible(other)) continue;
+            const o = other.getBoundingClientRect();
+            const overlapX = Math.min(r.right, o.right) - Math.max(r.left, o.left);
+            const overlapY = Math.min(r.bottom, o.bottom) - Math.max(r.top, o.top);
+            if (overlapX > SLACK && overlapY > SLACK) {
+              problems.push(`bleeds into a neighbouring tile: "${text}"`);
+              break;
+            }
+          }
+          if (r.right > tr.right + SLACK || r.left < tr.left - SLACK) {
+            problems.push(`escapes its own tile: "${text}"`);
+          }
+        }
+      }
+    }
+
+    return {
+      labelsChecked: checked,
+      labelsClipped: problems.length,
+      clippedDetail: problems.slice(0, 8).join(' | '),
+    };
+  });
+}
+
+/** Read the live camera framing, which is the other half of the reported bug. */async function measureCamera(page: Page): Promise<Record<string, number | string>> {
   const r = await page.evaluate(() => {
     const c = (window as unknown as {
       __app?: {
@@ -224,7 +329,7 @@ async function shootViewport(browser: Browser, vp: (typeof VIEWPORTS)[number]): 
     await openScreen(page, s.id);
     const measured: Capture['measured'] = {};
     if (s.id === 'match') {
-      Object.assign(measured, await measureHud(page), await measureCamera(page));
+      Object.assign(measured, await measureHud(page), await measureCamera(page), await measureLabelFits(page));
     }
     await shot(page, vp.name, s.id, '', measured);
   }
@@ -258,7 +363,7 @@ async function shootViewport(browser: Browser, vp: (typeof VIEWPORTS)[number]): 
     hud?.refresh(st);
   });
   await page.waitForTimeout(350);
-  await shot(page, vp.name, 'match', 'selection', { selectedUnits: sel.count });
+  await shot(page, vp.name, 'match', 'selection', { selectedUnits: sel.count, ...(await measureLabelFits(page)) });
 
   // 2b. build tabs open: the Buildings tab, then Defenses and Units, so the tile grids are on record.
   for (const tab of ['buildings', 'defenses', 'units', 'tech'] as const) {
@@ -282,7 +387,7 @@ async function shootViewport(browser: Browser, vp: (typeof VIEWPORTS)[number]): 
     await page.waitForTimeout(320);
     const tiles = await page.evaluate(() => document.querySelectorAll('.prod-tile').length);
     const withThumbs = await page.evaluate(() => document.querySelectorAll('.prod-tile__art[data-thumb]').length);
-    await shot(page, vp.name, 'match', `tab-${tab}`, { tiles, realSpriteThumbs: withThumbs });
+    await shot(page, vp.name, 'match', `tab-${tab}`, { tiles, realSpriteThumbs: withThumbs, ...(await measureLabelFits(page)) });
   }
 
   // 2c. placement preview: tap the first buildable tile and capture the ghost.
@@ -315,6 +420,7 @@ async function shootViewport(browser: Browser, vp: (typeof VIEWPORTS)[number]): 
       return g ? { valid: g.valid, reason: g.reason, defId: g.defId } : null;
     });
     await shot(page, vp.name, 'match', 'placement', {
+      ...(await measureLabelFits(page)),
       tile: tileBox.id,
       ghostValid: ghost?.valid ?? false,
       ghostDef: ghost?.defId ?? '',
@@ -331,7 +437,7 @@ async function shootViewport(browser: Browser, vp: (typeof VIEWPORTS)[number]): 
       if (vp.touch) await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
       else await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
       await page.waitForTimeout(350);
-      await shot(page, vp.name, 'match', 'collapsed', await measureHud(page));
+      await shot(page, vp.name, 'match', 'collapsed', { ...(await measureHud(page)), ...(await measureLabelFits(page)) });
     }
   }
 

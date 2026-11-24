@@ -66,7 +66,46 @@ const PITCH = 0.5;
 import { TERRAIN_MATCH_PITCH, TERRAIN_MATCH_SCALE, TERRAIN_MATCH_YAW, TILE } from './bake-camera';
 export { TERRAIN_MATCH_PITCH, TERRAIN_MATCH_SCALE, TERRAIN_MATCH_YAW, TILE };
 
-interface F { page: number; x: number; y: number; w: number; h: number; pivotX: number; pivotY: number }
+interface F {
+  page: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  pivotX: number;
+  pivotY: number;
+  /**
+   * Opaque content bounds WITHIN the frame, in frame pixels.
+   *
+   * A unit is baked into a 128x128 frame but occupies only about 16x23 of it (measured), because the frame is sized for
+   * the largest model in the set and every sprite shares one pivot convention. Scaling the whole frame into a 52x40
+   * thumbnail therefore drew the unit at roughly a seventh of the tile — the "two tiny dots" the playtest reported — while
+   * a building (66x62 of its 128) read fine. The manifest carries the real bounds so the DOM thumbnail can crop to the
+   * sprite instead of to its padding. The renderer ignores this field: battlefield sprites must keep the shared frame so
+   * their pivots stay aligned.
+   */
+  content?: { x: number; y: number; w: number; h: number };
+}
+
+/** Tight opaque bounds of one baked frame, or undefined when the frame is empty. */
+function contentBounds(data: Uint8ClampedArray, size: number): { x: number; y: number; w: number; h: number } | undefined {
+  let minX = size;
+  let minY = size;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      // alpha > 24 ignores the softest shadow fringe, which would otherwise inflate every unit to the full frame.
+      if (data[(y * size + x) * 4 + 3]! <= 24) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < minX || maxY < minY) return undefined;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
 
 /**
  * Projected centre of the geometry that touches the ground.
@@ -478,6 +517,10 @@ async function bake(name: string, items: Item[], maxWidth: number): Promise<void
       pivotX: p.item.pivotX,
       pivotY: p.item.pivotY,
       ...(p.item.scale === undefined ? {} : { scale: p.item.scale }),
+      ...(() => {
+        const c = contentBounds(p.item.data, p.item.size);
+        return c ? { content: c } : {};
+      })(),
     };
   }
   writeFileSync(join(OUT, `${name}.json`), JSON.stringify({ pages: manifestPages, frames }));

@@ -217,6 +217,44 @@ describe('phase 7 UI proof: the HUD is a command console on every viewport', () 
   });
 });
 
+describe('phase 7 UI proof: no HUD label is truncated or overflows its control', () => {
+  /**
+   * THE AUTOMATED FORM OF THE PLAYTEST REPORT.
+   *
+   * The three defects reported from the last pass were all label-layout failures: the rail's Radar button rendered as
+   * "Rad", the command grid's "Atk-Move" lost its leading glyph on a phone, and a production tile's "ATTUNEMENT" ran into
+   * the neighbouring tile. None of those made a screenshot invalid, which is why the pack passed while the UI was wrong.
+   *
+   * The harness now measures every text-bearing HUD leaf at capture time — see `measureLabelFits` in
+   * `audit/capture-ui-proof.ts` — and records the counts beside the image. This asserts the counts are zero on EVERY
+   * in-match capture, at every viewport, in every interaction state. A label that starts overflowing again fails here
+   * without anyone needing to look at a picture.
+   */
+  const withLabelData = report.captures.filter((c) => c.screen === 'match' && c.measured.labelsChecked !== undefined);
+
+  it('measured labels on every in-match capture', () => {
+    expect(withLabelData.length, 'no in-match capture recorded label measurements').toBeGreaterThan(0);
+    const missing = report.captures
+      .filter((c) => c.screen === 'match')
+      .filter((c) => c.measured.labelsChecked === undefined)
+      .map((c) => `${c.viewport}/${c.state || 'resting'}`);
+    expect(missing, `captures without label measurements: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('finds real labels to check, so the gate cannot pass vacuously', () => {
+    for (const c of withLabelData) {
+      expect(Number(c.measured.labelsChecked), `${c.viewport}/${c.state}: labels checked`).toBeGreaterThan(3);
+    }
+  });
+
+  it('has no clipped, cropped or overhanging HUD labels anywhere', () => {
+    const bad = withLabelData
+      .filter((c) => Number(c.measured.labelsClipped) > 0)
+      .map((c) => `${c.viewport}/${c.state || 'resting'}: ${String(c.measured.clippedDetail)}`);
+    expect(bad, bad.join('\n')).toEqual([]);
+  });
+});
+
 describe('phase 7 UI proof: the build panel shows real content', () => {
   it('every category tab has production tiles', () => {
     const failures: string[] = [];

@@ -33,6 +33,12 @@ export interface ThumbStyle {
  * `background-size` is set to the whole page scaled so the frame is exactly as large as it should be,
  * then a negative position lines the frame's top-left up with the box. Everything is computed in
  * pixels from the page's declared size, so the crop is exact at any device pixel ratio.
+ *
+ * THE CROP IS THE SPRITE'S OPAQUE BOUNDS, NOT THE FRAME. Every frame is 128x128 because they share one pivot convention,
+ * but a unit only paints about 16x23 of it while a building paints about 66x62. Scaling the frame into the box therefore
+ * drew units at a seventh of the available area — the reported "tiny dots" — while buildings looked right. Cropping to
+ * `content` gives every sprite the same visual weight in the sidebar. Frames without bounds (an older manifest) fall back
+ * to the whole frame, which is the previous behaviour rather than a broken tile.
  */
 export function thumbStyle(atlas: LoadedAtlas, key: string, boxW: number, boxH: number): ThumbStyle | null {
   const f = atlas.frames.get(key);
@@ -40,20 +46,22 @@ export function thumbStyle(atlas: LoadedAtlas, key: string, boxW: number, boxH: 
   const page = atlas.pageUrls[f.page];
   const ps = atlas.pageSizes[f.page];
   if (!page || !ps) return null;
-  // Fit the frame inside the box, preserving aspect (contain).
-  const scale = Math.min(boxW / f.w, boxH / f.h);
-  const drawW = f.w * scale;
-  const drawH = f.h * scale;
+  const c = f.content ?? { x: 0, y: 0, w: f.w, h: f.h };
+  // Fit the CONTENT inside the box, preserving aspect (contain), with a small inset so the sprite does not touch the edge.
+  const inset = 0.92;
+  const scale = Math.min((boxW * inset) / c.w, (boxH * inset) / c.h);
+  const drawW = c.w * scale;
+  const drawH = c.h * scale;
   const pageW = ps.width * scale;
   const pageH = ps.height * scale;
-  const offsetX = -(f.x * scale) + (boxW - drawW) / 2;
-  const offsetY = -(f.y * scale) + (boxH - drawH) / 2;
+  const offsetX = -((f.x + c.x) * scale) + (boxW - drawW) / 2;
+  const offsetY = -((f.y + c.y) * scale) + (boxH - drawH) / 2;
   return {
     image: `url("${page}")`,
     position: `${offsetX.toFixed(2)}px ${offsetY.toFixed(2)}px`,
     size: `${pageW.toFixed(2)}px ${pageH.toFixed(2)}px`,
-    frameW: f.w,
-    frameH: f.h,
+    frameW: c.w,
+    frameH: c.h,
   };
 }
 
