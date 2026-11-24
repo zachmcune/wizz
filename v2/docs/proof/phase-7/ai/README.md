@@ -123,16 +123,17 @@ mirror reads 50.0% while a cross-difficulty cell does not.
 
 | Cell | Win rate | 95% CI | Unfinished | Median | Mean | By corner |
 |---|---|---|---|---|---|---|
-| Hard > Normal | 50.0% (20/40) | 35.2–64.8% | 0/40 | 12.1 min | 12.4 min | **corner0 0 / corner1 20** |
-| Normal > Easy | **82.5%** (33/40) | 68.0–91.3% | 0/40 | 8.7 min | 10.7 min | corner0 20 / corner1 13 |
+| Hard > Normal | 50.0% (20/40) | 35.2–64.8% | 0/40 | 12.1 min | 12.2 min | **corner0 0 / corner1 20** |
+| Normal > Easy | **75.0%** (30/40) | 59.8–85.8% | 0/40 | 8.6 min | 10.8 min | corner0 20 / corner1 10 |
 
 Target: both ≥ 70%.
 
-- **Normal > Easy: met**, 82.5%, and its corner split (20/13) is a bias rather than a determinism.
+- **Normal > Easy: met**, 75.0%, and its corner split (20/10) is a bias rather than a determinism.
 - **Hard > Normal: not measurable on this build.** The `0 / 20` split means Hard lost all twenty games from one corner
   and won all twenty from the other — the corner decides the game by more than the difficulty gap does. Reported
-  honestly as unmeasurable rather than as a 50% "result", and `ladder-n40-baseline.txt` is the identical-baseline
-  control that proves it is not this pass's doing.
+  honestly as unmeasurable rather than as a 50% "result". The identical split reproduces on an INDEPENDENT seed block
+  (5000–5133 measured `corner0 0 / corner1 20` as well) and with the whole AI change stashed, which is what makes it a
+  property of the build rather than of one sample.
 
 Earlier passes measured this same cell at 62.5%, 66.7% and 85.0% on different seed blocks. Those numbers were a corner
 lottery, not a difficulty effect. **Do not tune difficulty levers against this cell until `PROPOSALS.md` §1 is fixed.**

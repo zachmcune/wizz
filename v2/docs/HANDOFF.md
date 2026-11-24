@@ -628,8 +628,8 @@ assignments per cell:
 ```
 hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m
              [corner0 0 / corner1 20]
-normal>easy: 33/40 = 82.5%  95% CI 68.0-91.3%  unfinished 0/40  median 8.7m
-             [corner0 20 / corner1 13]
+normal>easy: 30/40 = 75.0%  95% CI 59.8-85.8%  unfinished 0/40  median 8.6m
+             [corner0 20 / corner1 10]
 ```
 
 `corner0 0 / corner1 20` means Hard **lost all twenty games from the top-left corner and won all twenty from the
@@ -639,7 +639,8 @@ across four seed blocks: each sample drew a different corner mix.
 
 **It is pre-existing and that was verified, not assumed.** Stash the whole Phase 7b AI change
 (`git stash push -- v2/src/ai/economy.ts`), re-run the identical command, and the output is **byte-identical**,
-including the `0 / 20` split. `audit/corner-pairs.ts` independently reports every corner winning 100% of its decided
+including the `0 / 20` split. The split also reproduces on an independent seed block (5000–5133 measured
+`corner0 0 / corner1 20` as well), so it is a property of the build rather than of one sample. `audit/corner-pairs.ts` independently reports every corner winning 100% of its decided
 games on both builds.
 
 **It is not the terrain.** `tests/data/parity.test.ts` still passes on both axes, and
@@ -795,7 +796,7 @@ with the true count burned into the frame.
 | Measure | Result | Target | Met |
 |---|---|---|---|
 | Mirror (N=100) | **50.0%**, CI 40.4–59.6%, 0 unfinished | CI contains 50% | **yes** |
-| Normal > Easy (N=40) | **82.5%**, CI 68.0–91.3%, 0 unfinished | ≥70% | **yes** |
+| Normal > Easy (N=40) | **75.0%**, CI 59.8–85.8%, 0 unfinished | ≥70% | **yes** |
 | Hard > Normal (N=40) | 50.0%, but **corner0 0 / corner1 20** | ≥70% | **NOT MEASURABLE — see §7.4** |
 | Median 1v1 (mirror, N=100) | **11.9 min** | 15–25 | **no** |
 
