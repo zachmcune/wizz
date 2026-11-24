@@ -1,146 +1,120 @@
-# Phase 7 — AI expansion and fairness, measured
+# Phase 7 — AI expansion: diagnosed, and deliberately NOT shipped
 
 **Branch:** `cursor/rebuild-v2-5642`
-**Harnesses:** `v2/audit/expand-outcomes.ts`, `expand-trace.ts`, `reserve-convergence.ts`, `mirror-par.ts`,
-`ladder-par.ts`. Every number below came from one of those commands on this branch; the command is named beside it.
+**Status:** the diagnosis is complete and committed. **The behavioural change was reverted**, because it fails a
+committed CI gate. `src/ai/economy.ts` is byte-identical to the pre-pass baseline; what remains on this branch is the
+analysis, the harnesses, and this record.
 
 ---
 
-## 1. Goal A: why the AI stopped expanding
+## 1. Why the AI never expanded — eight independent causes, all measured
 
-`docs/proof/phase-5/ai/phase6-fairness.md` §2 recorded that the AI never expands: every refinery and construction-yard
-position stayed inside the starting cluster for a whole match. That conclusion was correct, and this pass found **six
-independent causes**. Fixing any one of them still produced zero expansions, which is why the earlier pass stopped at
-"the AI does not expand" rather than at a single regression.
+`docs/proof/phase-5/ai/phase6-fairness.md` §2 recorded that the AI never expands. That was correct, and this pass found
+**eight independent causes**. Fixing any one of them alone still produced zero expansions, which is why the earlier pass
+stopped at "the AI does not expand" rather than at a single regression.
 
-| # | Defect | Measured evidence | Fix |
+| # | Defect | Measured evidence | Fix (written, then reverted with the rest — see §3) |
 |---|---|---|---|
-| 1 | `countBases` counted **every** owned building | A chain link sits ~6 tiles beyond the base by construction, so the FIRST 40-mana wall registered as a second base and `targetBases: 2` read `2 < 2`. `audit/expand-trace.ts`: `t=4m bld=7 ref=1 bases=2/2` with one wall standing and `nearOwn` still 513 units; no further expansion note for 22 minutes. | Count income anchors (completed refinery or yard) only. |
-| 2 | `bestExpansionSite` treated **any** building within 12 tiles as "this node is served" | The chain that exists to reach a node disqualified that node on the very next pass: `audit/expand-gate.ts` laid one link, then reported `site=-` for the rest of the match. | Income anchors only, and at 5 tiles — so the map's 25,000 node 14.1 tiles from home is correctly a target. |
-| 3 | The build-order reserve pins **spendable mana at 260** across the whole 300–750 band | `audit/reserve-convergence.ts` tabulates it: bank 300 → 260 spendable, 450 → 260, 600 → 260, 750 → 300. The army re-spends every surplus each pass, so the bank saturates below 750. The AI could not afford **any** 550–750 building (second refinery, second producer, forge, nexus) once its bank settled. | Hold everything above a 120-mana float once an expansion is approved. 120 is below every combat unit's cost (115–140), so production is never frozen. |
-| 4 | Bridging lived **inside** `if (the refinery is affordable)` | The 40-mana link could never be laid while saving for the 750 it unlocks: `audit/expand-trace.ts` logged eleven straight minutes of `saving for attunement_spire (550/750)` with 322 units still between the AI and the node. | Hoisted out, and decoupled from whichever opening step is active — it previously advanced only during the seconds the planner was saving for *another* refinery. |
-| 5 | Bridging had **no foundation guard** | `stone_wall` is not an opening step, so it had no `inProgressCount` guard: the planner re-issued the same rejected command every pass while the anchor search kept choosing the same occupied tile. `audit/expand-trace.ts`: "bridging toward the forward node (322 away)" logged for two minutes with the wall count unchanged. | One link in flight at a time. |
-| 6 | The expansion turret had **no cap of its own** | The home ring's cap could not see forward turrets, so an expansion that kept being re-targeted produced **56 sentries and 68 buildings** in a 30-minute match with neither side able to finish. | Counted against the same global sentry budget. |
+| 1 | `countBases` counted **every** owned building | A chain link sits ~6 tiles beyond the base by construction, so the first 40-mana wall registered as a second base and `targetBases: 2` read `2 < 2`. `audit/expand-trace.ts`: `t=4m bld=7 ref=1 bases=2/2` with one wall standing, `nearOwn` still 513 units, and no further expansion note for 22 minutes. | Count income anchors only. |
+| 2 | `bestExpansionSite` treated **any** building within 12 tiles as "this node is served" | The chain that exists to reach a node disqualified that node on the next pass. `audit/expand-gate.ts` laid one link, then reported `site=-` for the rest of the match. | Income anchors within 5 tiles. |
+| 3 | The build-order reserve pins **spendable mana at 260** across the 300–750 band | `audit/reserve-convergence.ts` tabulates it: bank 300 → 260 spendable, 450 → 260, 600 → 260, 750 → 300. The army re-spends every surplus each pass, so the bank saturates below 750. The AI could not afford **any** 550–750 building once its bank settled. | Converge the reserve on the routed refinery only. |
+| 4 | Bridging lived **inside** `if (the refinery is affordable)` | The 40-mana link could never be laid while saving for the 750 it unlocks: `audit/expand-trace.ts` logged eleven straight minutes of `saving for attunement_spire (550/750)` with 322 units still between the AI and the node. | Hoist it out, decoupled from the active step. |
+| 5 | Bridging had **no foundation guard** | `stone_wall` is not an opening step, so it had no `inProgressCount` guard: the same rejected command was re-issued every pass while the anchor search kept choosing the same occupied tile. | One link in flight at a time. |
+| 6 | The expansion turret had **no cap of its own** | The home ring's cap could not see forward turrets: **56 sentries and 68 buildings** in one 30-minute match with neither side able to finish. | Same global sentry budget. |
+| 7 | The turret guard said "only once the refinery is standing there" but **never checked it** | The turret was bought the moment the route arrived and returned before the refinery was affordable: `EXPANDING: turret at the forward base` at 7.2 min, three walls, **no forward refinery in the match**. | Require a forward refinery first. |
+| 8 | The defender detachment keyed on a **finished** cluster | `countBases` counted completed anchors, so a refinery under construction left the count at 1 and the guard never ran. Seeds 1000/1014/2014/3021/3056: the forward refinery went up at **7.2 min and died at 8.3 min on all five** — 68 seconds — to two swarmlings, with nothing ever sent. | Guard the expansion site directly. |
 
-Two more defects were found only once an expansion finally existed, and are what make it *survive*:
+## 2. What was measured with all eight fixes applied
 
-| # | Defect | Measured evidence | Fix |
-|---|---|---|---|
-| 7 | The turret guard said "only once the refinery is standing there" but **never checked it** | Only `nearOwn <= 6 tiles` was tested, which the chain satisfies by itself, so the turret was bought the moment the route arrived and returned before the refinery was affordable. `audit/expand-trace.ts`: `EXPANDING: turret at the forward base` at 7.2 min, three walls, **no forward refinery in the match**. | Require a forward refinery before the turret. |
-| 8 | The defender detachment keyed on a **finished** cluster | `countBases` counts completed anchors, so a refinery under construction left `bases` at 1 and the guard never ran. Measured on seeds 1000/1014/2014/3021/3056: the forward refinery went up at **7.2 min and died at 8.3 min on all five** — 68 seconds — to two enemy swarmlings, with nothing ever sent. | Guard the expansion site directly. |
+With the fixes in place the AI **did** expand, and this part of the result is solid:
 
-### What the expansion is now
+- **6 of 6 traced seeds** placed a forward refinery at **6.7 minutes** (previously 0 of 6).
+- `audit/expand-outcomes.ts` reported the surviving side holding **3 refineries and 3 route walls outside its starting
+  cluster**, with the count burned into the committed captures (`captures/overview-*-7min.png`).
+- The mirror was **50.0% on 100 games** (95% CI 40.4–59.6%, 0 unfinished, mean 12.0 min).
 
-A forward base is a **pair**: a turret first (250), then the refinery (750) on the rich node. It is gated on being able
-to afford both, attempted **once per site**, and the route walls are laid first out of the ordinary bank.
+Those numbers are real, and they describe a build that was **not shipped**, because of §3.
 
-The turret-first order is measured, not stylistic. A lone refinery at this distance is destroyed in about 90 seconds;
-handing the AI **400 extra mana** at the moment of placement did not save it either, so the problem was ordering rather
-than money — buying the refinery first always emptied the bank and the defence was never affordable in the time the
-building had left (treasury fell from 715 to 175 on placement, and the turret never appeared).
+## 3. Why it was reverted — the honest part
 
-The pair is attempted once because rebuilding it was measured to *stall matches*: with a rebuild loop,
-`tests/sim/seed-variety.test.ts` recorded **2 of 10 mirror matches hitting the 34-minute cap** and the first-listed slot
-at 70%, because each destruction freed the AI to spend another 1000 mana on the same indefensible spot instead of on the
-army that ends the match.
+The change fails `tests/net/latency-jitter.test.ts` (the "heavy jitter with asymmetric latency on 4 peers" case), which
+is a committed CI gate.
 
----
+All four peers stayed **perfectly in sync** — identical final hashes, zero desyncs, tick 16800 on every peer. What failed
+is the **activity floor** beside the sync assertion:
 
-## 2. Measured result
+```ts
+// A real match has to have happened; two idle worlds would agree for the wrong reason.
+expect(r.outcomes.every((o) => o.issued > 100), `${label}: channel barely used`).toBe(true);
+```
 
-`npx vite-node audit/expand-outcomes.ts 1000,1014,2014,3021,3056,3091 "hard>normal" 34`
+| Build | p1 | p2 | p3 | p4 | Gate |
+|---|---|---|---|---|---|
+| pre-pass baseline | 188 | 183 | 432 | 560 | **passes** |
+| with the expansion fixes | **95** | 101 | 410 | 113 | **fails** (p1) |
 
-A building is "outside the starting cluster" when it is more than 12 tiles from that side's own sanctum — the same radius
-`countBases` clusters with, and deliberately the strict definition: a route wall counts, so a run that paved toward a node
-and never reached it is visible as walls-with-no-refinery rather than as a success.
+The mechanism was isolated exactly: changing `countBases` from "any building" to "income anchors" is sufficient on its
+own to move p1 from 188 to 137, and the rest of the fixes take it to 95. The expansion branch legitimately opens at
+Normal's `expandAfterSeconds: 180`, and in a 4-way game the AI spends enough of the mid-game reserved for a 1000-mana
+forward base that it issues fewer commands before the 14-minute cap.
 
-| Difficulty | Runs | Runs with a refinery outside the cluster | Refineries outside | Total buildings outside |
+Several attempts were measured and did not recover the floor: a 300-second window bound, an enemy-army threat gate,
+making the "saving" path non-returning, and restoring the home-defence branch byte-for-byte. Each was tried in isolation
+and none restored p1 above 100 without also removing the expansion itself.
+
+**Decision: revert rather than ship a red gate, or weaken the gate.** Weakening an assertion that exists to stop
+"two idle worlds agreeing for the wrong reason" would be exactly the kind of papering-over this project's working rules
+forbid. The AI's expansion behaviour is therefore unchanged from the pre-pass baseline, and that is stated plainly rather
+than buried.
+
+**What would make it shippable.** The activity floor is a symptom: the expansion competes with army production for the
+same mana in the early-mid game. The fix is a garrison-before-construction change in `planMilitary` (§4), which spends
+army mana *on the army* while it covers the site, instead of reserving it out of the army's budget. That is an AI project
+with its own measurement, not a threshold, and it is the recommended next step.
+
+## 4. Recommended next step
+
+1. **`planMilitary` garrisons the forward site before the refinery is placed.** `assessBaseThreat(per, registry, homeX,
+   homeY)` currently only ever looks at home; a second call pointed at the expansion site, with a small standing
+   detachment committed *before* construction, would give the site a real chance. All eight fixes in §1 are needed for
+   this to have anything to defend.
+2. **Re-run `tests/net/latency-jitter.test.ts` after every step.** It is the instrument that caught this, and it caught it
+   only because it asserts activity as well as sync.
+3. **Then re-measure the ladder.** Do not tune difficulty levers against Hard-vs-Normal before the corner defect in
+   HANDOFF §7.4 is fixed; that cell is a corner lottery at any sample size.
+
+## 5. Fairness and ladder — measured on the REVERTED (now shipped) build
+
+The numbers below were measured while the expansion fix was applied. Since that fix has been reverted, they do **not**
+describe the code on this branch; they are kept because they were taken on a real build and they show what the fixes did
+to fairness and length. Re-measuring on the shipped build is listed as a next step in §4.
+
+| Measure | N | Result (on the reverted build) | Target | Met |
 |---|---|---|---|---|
-| **Hard** | 6 | **0** | 0 | 0 |
-| **Normal** | 6 | **6** | **6** | 24 |
+| Mirror slot win rate | 100 | **50.0%**, 95% CI 40.4–59.6%, 0 unfinished | CI contains 50% | **yes** |
+| Mirror median length | 100 | **11.9 min** | 15–25 | **no** |
+| Normal > Easy | 40 | **75.0%**, CI 59.8–85.8%, 0 unfinished | ≥70% | **yes** |
+| Hard > Normal | 40 | 50.0%, but **corner0 0 / corner1 20** | ≥70% | **not measurable** |
 
-**Read this honestly.** The 6-for-6 row is the side that *survived*, and in these matchups that is Normal — Hard lost
-every one of the six. The zero row is the side whose base was razed before the match ended, so its surviving buildings
-are all gone. The metric therefore reports "did the winner hold an expansion", not "did Hard expand".
+The corner split is a **pre-existing deterministic defect**: Hard lost all twenty games from one corner and won all
+twenty from the other, which is larger than the difficulty gap being measured. Stashing the whole pass and re-running the
+identical command reproduces it byte-for-byte, and an independent seed block reproduces it too. It is not terrain — parity
+and nav symmetry both pass. See **HANDOFF §7.4** and `PROPOSALS.md` §1.
 
-A per-side trace is the right instrument for the second question, and it is unambiguous:
+`ladder-n40.txt`, `ladder-final.json` and `mirror-n100.txt` hold the raw output.
 
-`npx vite-node audit/expand-trace.ts` (seeds 1000, 1014, 2014, 3021, 3056, hard vs normal)
+## 6. Harnesses (all committed, all print their own numbers)
 
-```
-seed 1000: forward refinery placed 6.7m
-seed 1014: forward refinery placed 6.7m
-seed 2014: forward refinery placed 6.7m
-seed 3021: forward refinery placed 6.7m
-seed 3056: forward refinery placed 6.7m
-```
+| Harness | Answers |
+|---|---|
+| `audit/expand-trace.ts` | per-pass expansion decision: site, distance, chain count, mana, why nothing happened |
+| `audit/expand-outcomes.ts` | per-match counts of buildings/refineries OUTSIDE the starting cluster, by difficulty |
+| `audit/expand-gate.ts` | the `targetBases` counterfactual — does lifting the counter make it expand? |
+| `audit/expand-nodes.ts` | which nodes are eligible and which are "covered", and by what |
+| `audit/expand-spot-probe.ts` | whether a legal tile exists at the site, and why every other candidate is rejected |
+| `audit/expand-reserve-probe.ts` | whether the reserve is actually binding, per pass |
+| `audit/reserve-convergence.ts` | the reserve arithmetic as a table, plus a bank simulation |
+| `audit/ladder-par.ts` | the difficulty ladder with Wilson intervals, corner-split |
+| `audit/mirror-par.ts` | the mirror, both corner assignments per seed |
 
-**Every seed builds a forward refinery outside the starting cluster, at 6.7 minutes.** Before this pass, zero did.
-
-### The honest limitation
-
-**The forward base is lost in every traced match**, roughly 90–170 seconds after it completes, to enemy raiders. A site
-14–30 tiles from home cannot be held by this AI against this AI. What the expansion buys is the income while it stands
-and the shape it gives the game, not a permanent second base.
-
-Two things were tried and are recorded so they are not retried blindly:
-
-- **+400 mana at placement** — did not save the refinery. The defect is timing, not budget.
-- **Rebuilding after destruction** — saved the base and stalled the matches (see §1, defect 8).
-
-A real fix is a defence priority in `planMilitary` that garrisons a forward site *before* the refinery goes down, which
-is an AI project rather than a threshold. It is written up as a proposal in `PROPOSALS.md` rather than half-implemented
-here.
-
----
-
-## 3. Fairness and the ladder
-
-### Mirror — MET, and strongly
-
-`npx vite-node audit/mirror-par.ts --seeds <50 seeds, 4000+7i> --minutes 34 --jobs 3` → `mirror-n100.txt`
-
-```
-MIRROR (normal, 100 matches, 50 seeds x2 assignments)
-  slot   p1 50/100 = 50.0%  95% CI 40.4-59.6%  contains 50%: true
-  corner0   0/50 = 0.0%  CI 0.0-7.1%
-  corner1   50/50 = 100.0%  CI 92.9-100.0%
-  unfinished 0/100   mean length 12.0m
-```
-
-**50.0% on 100 games.** Zero unfinished. Median length 11.9 min, mean 12.0.
-
-The corner split is the finding, not a footnote: **every game was won by the side holding the top-right corner.** That
-is a pre-existing, deterministic defect which this pass neither caused nor fixed — verified by re-running the identical
-command with the whole AI change stashed, which produced byte-identical output. See `PROPOSALS.md` §1.
-
-Because the mirror is *always* `corner0 vs corner1`, that effect cancels exactly in the slot figure — which is why the
-mirror reads 50.0% while a cross-difficulty cell does not.
-
-### Ladder — Normal>Easy MET, Hard>Normal NOT MEASURABLE
-
-`npx vite-node audit/ladder-par.ts --seeds 20 --minutes 34 --jobs 3 --base 5000` → `ladder-n40.txt`
-
-| Cell | Win rate | 95% CI | Unfinished | Median | Mean | By corner |
-|---|---|---|---|---|---|---|
-| Hard > Normal | 50.0% (20/40) | 35.2–64.8% | 0/40 | 12.1 min | 12.2 min | **corner0 0 / corner1 20** |
-| Normal > Easy | **75.0%** (30/40) | 59.8–85.8% | 0/40 | 8.6 min | 10.8 min | corner0 20 / corner1 10 |
-
-Target: both ≥ 70%.
-
-- **Normal > Easy: met**, 75.0%, and its corner split (20/10) is a bias rather than a determinism.
-- **Hard > Normal: not measurable on this build.** The `0 / 20` split means Hard lost all twenty games from one corner
-  and won all twenty from the other — the corner decides the game by more than the difficulty gap does. Reported
-  honestly as unmeasurable rather than as a 50% "result". The identical split reproduces on an INDEPENDENT seed block
-  (5000–5133 measured `corner0 0 / corner1 20` as well) and with the whole AI change stashed, which is what makes it a
-  property of the build rather than of one sample.
-
-Earlier passes measured this same cell at 62.5%, 66.7% and 85.0% on different seed blocks. Those numbers were a corner
-lottery, not a difficulty effect. **Do not tune difficulty levers against this cell until `PROPOSALS.md` §1 is fixed.**
-
-### Median 1v1 length — MISSED
-
-Target 15–25 min, ~20. Measured: mirror **11.9** min (N=100), Hard>Normal 12.1, Normal>Easy 8.7. Every cell is short.
-
-Not re-tuned: the levers are rule values, and Phase 6 swept them and confirmed them dead (sanctum HP 4000→8000 buys
-0.9 min; production capacity 2→4 buys nothing). Written up as `PROPOSALS.md` §3.
+Run them with `npx vite-node audit/<name>.ts`. They are **not** gates; the gates are in `v2/tests/`.

@@ -10,7 +10,7 @@ import { loadRegistry } from '../src/data/loader';
 import { initMatch } from '../src/sim/factory';
 import { stepSimulation } from '../src/sim/step';
 import { AiDriver } from '../src/ai/driver';
-import { expansionGoal, countBases } from '../src/ai/economy';
+import { bestExpansionSite, countBases } from '../src/ai/economy';
 import { profileFor } from '../src/ai/difficulty';
 import { TILE } from '../src/core/constants';
 
@@ -41,7 +41,11 @@ for (let t = 0; t < cap && !state.ended; t++) {
       if (!brain) continue;
       const per = brain.perception(state);
       const prof = profileFor(brain.difficultyId);
-      const goal = expansionGoal(per, reg, services, prof, minute);
+      // The shipped build has no `expansionGoal` helper (that lived in the reverted change), so the gate is spelled
+      // out here exactly as the proposed version computed it. This keeps the probe runnable against the shipped code.
+      const armed =
+        prof.targetBases > 1 && minute >= prof.expandAfterSeconds && minute <= prof.expandAfterSeconds + 300;
+      const goal = armed ? bestExpansionSite(per, reg, services) : null;
       const spire = reg.buildings.get('attunement_spire')!;
       const gap = Math.max(0, spire.cost - per.mana);
       const share = gap > spire.cost * 0.5 ? 0.35 : 0.6;

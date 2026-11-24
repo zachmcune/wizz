@@ -9,7 +9,8 @@ each item is either a rule value (which needs Zachary's approval) or an AI proje
 
 **Status: measured, blocking, not fixed. This is the single most important finding of the pass.**
 
-`audit/ladder-par.ts`, identical seed block (5000–5133), 20 seeds × 2 corner assignments per cell:
+`audit/ladder-par.ts`, identical seed block (5000–5133), 20 seeds × 2 corner assignments per cell — measured on the
+build that had the expansion fixes applied, and reproduced identically on the pre-pass baseline:
 
 ```
 hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m
@@ -52,7 +53,23 @@ what HANDOFF §7.0 records happening between the Phase 5 and Phase 6 samples.
 
 ---
 
-## Proposal 2 — a forward base cannot be held, so expansion is temporary by construction
+## Proposal 2 — how to make the expansion fix shippable (it was reverted)
+
+**Status: the eight-cause fix was written, measured, and REVERTED because it fails a committed CI gate. See
+`README.md` §3.** All eight causes in `README.md` §1 are real and all eight fixes are needed; what is missing is a way to
+pay for the forward base without the army's own mana.
+
+The measured blocker, in one line: `tests/net/latency-jitter.test.ts` requires every peer to issue **more than 100**
+commands in a 14-minute 4-peer match. The pre-pass build issues **188/183/432/560**; with the expansion fixes it issues
+**95/101/410/113**. All four peers stay perfectly in sync — identical hashes, zero desyncs — so this is an activity floor,
+not a sync failure. Changing `countBases` alone accounts for 188 -> 137 of it.
+
+### 2a. The fix that is most likely to work: garrison before construction
+
+`planMilitary`'s `assessBaseThreat(per, registry, homeX, homeY)` only ever looks at home. A second call pointed at the
+expansion site, with a small standing detachment committed **before** the refinery is placed, spends army mana *on the
+army* while it covers the site instead of reserving it out of the army's budget. That is the only version that does not
+compete with production, and it directly addresses why the forward refinery dies anyway:
 
 **Status: measured, and stated as a limitation rather than papered over.**
 
@@ -84,9 +101,9 @@ base. That is a real property of a 4000-HP HQ with no equivalent structure forwa
 
 ---
 
-## Proposal 3 — median 1v1 length is below the 15–25 band, and the mirror is the only cell in it
+## Proposal 3 — median 1v1 length is below the 15–25 band
 
-**Status: measured, not tuned. Do not re-sweep HQ HP.**
+**Status: measured on the shipped build, not tuned. Do not re-sweep HQ HP.**
 
 | Cell | N | Median | Unfinished |
 |---|---|---|---|
