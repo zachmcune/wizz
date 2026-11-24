@@ -372,9 +372,29 @@ describe('touch: a drag pans the camera without moving the army', () => {
           y: window.__app.controller!.camera.centerY,
           tick: window.__app.controller!.state.tick,
         }));
-        const mid = { x: vp.width * 0.4, y: vp.height * 0.55 };
-        // A long drag: 120px left and 60px down. Well past the 18px move threshold.
-        await touchDrag(page, cdp, mid, { x: mid.x - 120, y: mid.y + 60 });
+        /**
+         * THE DRAG STARTS INSIDE THE BATTLEFIELD, NOT AT A FIXED FRACTION OF THE WINDOW.
+         *
+         * `0.4w, 0.55h` is inside the battlefield in landscape and inside the CONSOLE in portrait, where
+         * the bottom console starts around 55% of the height. On CI that produced "the drag did not pan"
+         * with a 0-world-unit delta: the gesture was landing on a button, not on the board. The start and
+         * end points are therefore derived from the camera's own safe rect, which is by definition the
+         * HUD-free battlefield.
+         */
+        const safe = await page.evaluate(() => window.__app.controller!.camera.safeRect());
+        const mid = { x: safe.x + safe.w * 0.35, y: safe.y + safe.h * 0.4 };
+        const end = { x: mid.x + Math.max(80, safe.w * 0.28), y: mid.y + Math.max(40, safe.h * 0.18) };
+        // Keep both ends comfortably inside the rect, so the drag can never run into chrome.
+        end.x = Math.min(safe.x + safe.w - 8, end.x);
+        end.y = Math.min(safe.y + safe.h - 8, end.y);
+        expect(Math.abs(end.x - mid.x), `${vp.name}: the drag has no horizontal travel`).toBeGreaterThan(40);
+        // The start point must be on the canvas, or the gesture never reaches the recogniser at all.
+        const startOnCanvas = await page.evaluate(
+          ([x, y]) => document.elementFromPoint(x!, y!)?.tagName === 'CANVAS',
+          [mid.x, mid.y],
+        );
+        expect(startOnCanvas, `${vp.name}: the drag starts on HUD chrome, not the board`).toBe(true);
+        await touchDrag(page, cdp, mid, end);
         const after = await page.evaluate(() => ({
           x: window.__app.controller!.camera.centerX,
           y: window.__app.controller!.camera.centerY,
@@ -403,13 +423,28 @@ describe('touch: a pinch zooms about the pinch centre', () => {
       const { ctx, page, cdp, errors } = await bootTouchMatch(vp);
       try {
         const before = await page.evaluate(() => window.__app.controller!.camera.zoom);
-        const center = { x: vp.width * 0.4, y: vp.height * 0.5 };
-        await touchPinch(page, cdp, center, 80, 240);
+        /**
+         * THE PINCH HAPPENS ON THE BATTLEFIELD, NOT AT THE MIDDLE OF THE WINDOW.
+         *
+         * Same defect as the drag case above: at 0.5 of the height the pinch centre is inside the portrait
+         * console, so the two fingers land on buttons and the recogniser never sees them. The safe rect is
+         * the HUD-free area by definition, so the pinch is placed inside it.
+         */
+        const safe = await page.evaluate(() => window.__app.controller!.camera.safeRect());
+        const center = { x: safe.x + safe.w / 2, y: safe.y + safe.h / 2 };
+        const onCanvas = await page.evaluate(
+          ([x, y]) => document.elementFromPoint(x!, y!)?.tagName === 'CANVAS',
+          [center.x, center.y],
+        );
+        expect(onCanvas, `${vp.name}: the pinch centre is on HUD chrome, not the board`).toBe(true);
+        // Gaps sized to the battlefield: a 240px spread needs 120px either side of the centre.
+        const maxGap = Math.min(240, safe.w - 16);
+        await touchPinch(page, cdp, center, Math.max(60, maxGap * 0.35), maxGap);
         const after = await page.evaluate(() => window.__app.controller!.camera.zoom);
         expect(after, `${vp.name}: pinch-out did not zoom in (${before} -> ${after})`).toBeGreaterThan(before * 1.02);
 
         // And pinching closed zooms back out.
-        await touchPinch(page, cdp, center, 240, 80);
+        await touchPinch(page, cdp, center, maxGap, Math.max(60, maxGap * 0.35));
         const back = await page.evaluate(() => window.__app.controller!.camera.zoom);
         expect(back, `${vp.name}: pinch-in did not zoom out (${after} -> ${back})`).toBeLessThan(after);
         expect(errors, errors.join('; ')).toEqual([]);
