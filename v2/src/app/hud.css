@@ -79,6 +79,23 @@
   flex: 0 0 auto;
 }
 
+/**
+ * EVERY CONTROL IN THE CONSOLE IS A THUMB TARGET.
+ *
+ * The rail's tools are icon-only (Radar, Tech tree, Pause) because those three glyphs are unambiguous, but
+ * icon-only is a decision about LABELS, not about SIZE: at the framework's `--control-sm` of 26px they were
+ * 26x26, which is below the 28px floor `tests/ui-proof.test.ts` asserts and below a comfortable thumb. They
+ * are pinned here rather than left to the density tier, because this is the same floor the gate measures.
+ */
+.hud-rail__tools .btn,
+.hud-side__head .btn {
+  width: max(30px, var(--touch-target));
+  min-width: max(30px, var(--touch-target));
+  height: max(30px, var(--touch-target));
+  min-height: max(30px, var(--touch-target));
+  padding: 0;
+}
+
 /* ── power meter ────────────────────────────────────────────────────────────────────────────────
  * A BAR, not a number. RA2's power meter exists so a player can see how close to a brownout they are
  * before it happens; a bare "20" tells them nothing about the ceiling.

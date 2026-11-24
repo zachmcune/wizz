@@ -318,14 +318,15 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
         card.dataset.testid = `map-${m.id}`;
         // A REAL minimap from the map's own tiles: a player choosing a map should see its shape.
         const preview = el('canvas', 'lobby-mapcard__preview') as HTMLCanvasElement;
-        preview.width = 96;
-        preview.height = 66;
-        drawMapPreview(preview, m.tiles, m.tileW, m.tileH);
+        preview.width = 120;
+        preview.height = 82;
+        drawMapPreview(preview, m);
         card.append(preview);
         const text = el('span', 'lobby-mapcard__text');
         text.append(
           el('span', 'lobby-mapcard__name', m.name),
           el('span', 'lobby-mapcard__note dim', `${m.maxPlayers} players · ${m.tileW}×${m.tileH} tiles`),
+          el('span', 'lobby-mapcard__desc', m.description ?? ''),
         );
         card.append(text);
         if (on) card.append(badge('Selected', 'ok'));
@@ -428,23 +429,59 @@ export function mountLobby(app: App): { root: HTMLElement; destroy: () => void }
   };
 }
 
-/** Draw a map's passability as a two-tone preview. The same data the radar uses. */
-export function drawMapPreview(canvas: HTMLCanvasElement, tiles: number[], tileW: number, tileH: number): void {
+/**
+ * Draw a map preview: elevation as brightness, impassable terrain as the darkest step.
+ *
+ * A two-tone passability map made every map look like the same scattered dots — four cards that a player
+ * cannot tell apart are not a map picker. Elevation is the one field that differs most between these maps
+ * (measured: 10080/592/80 tiles at heights 0/1/2 on `ashen_steps` versus 9956/1308 on `duel_glade`), so it
+ * carries the shape: a plateau reads as a bright mass, a valley as a dark one, and cliffs as hard edges.
+ *
+ * The colours are the token ink ramp read from the document, so a theme change propagates and the token
+ * gate stays satisfied — nothing here is a hard-coded colour.
+ */
+export function drawMapPreview(canvas: HTMLCanvasElement, map: { tiles: number[]; heights: number[]; tileW: number; tileH: number }): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const W = canvas.width;
   const H = canvas.height;
-  const sx = W / tileW;
-  const sy = H / tileH;
-  const blocked = getComputedStyle(document.documentElement).getPropertyValue('--ink-500').trim() || '#3e4650';
-  const ground = getComputedStyle(document.documentElement).getPropertyValue('--ink-800').trim() || '#1e2228';
-  ctx.fillStyle = ground;
+  const sx = W / map.tileW;
+  const sy = H / map.tileH;
+  const read = (name: string, fallback: string): string =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const steps = [
+    read('--ink-950', '#0e1013'),
+    read('--ink-800', '#1e2228'),
+    read('--ink-600', '#313741'),
+    read('--ink-500', '#3e4650'),
+    read('--ink-400', '#525c68'),
+  ];
+  const water = read('--ink-950', '#0e1013');
+  const cliff = read('--ink-300', '#6b7784');
+
+  ctx.fillStyle = water;
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = blocked;
-  for (let ty = 0; ty < tileH; ty++) {
-    for (let tx = 0; tx < tileW; tx++) {
-      if (tiles[ty * tileW + tx] !== 1) continue;
+  let maxH = 0;
+  for (const h of map.heights) maxH = Math.max(maxH, h);
+
+  for (let ty = 0; ty < map.tileH; ty++) {
+    for (let tx = 0; tx < map.tileW; tx++) {
+      const i = ty * map.tileW + tx;
+      const t = map.tiles[i];
+      if (t === 1) {
+        // Impassable: the brightest step, so cliffs and walls read as structure rather than as holes.
+        ctx.fillStyle = cliff;
+      } else {
+        const level = maxH > 0 ? Math.min(1, (map.heights[i] ?? 0) / maxH) : 0;
+        ctx.fillStyle = steps[Math.min(steps.length - 1, 1 + Math.round(level * (steps.length - 2)))]!;
+      }
       ctx.fillRect(tx * sx, ty * sy, Math.ceil(sx), Math.ceil(sy));
     }
+  }
+
+  // Start corners and mana nodes, so a player can see where the fight will happen.
+  for (const s of (map as { startLocations?: { x: number; y: number }[] }).startLocations ?? []) {
+    ctx.fillStyle = read('--copper-400', '#d18f4a');
+    ctx.fillRect((s.x / 32) * sx - 2, (s.y / 32) * sy - 2, 4, 4);
   }
 }

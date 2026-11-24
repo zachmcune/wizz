@@ -234,38 +234,94 @@
   color: var(--ink-500);
 }
 
-/* Portrait: the console takes the whole width, the art is dimmed further, and the title shrinks a step
- * so the five entries and the primary all fit without scrolling on a 844px-tall phone. */
-[data-density='compact'] .screen--menu {
-  display: block;
-}
+/* ── COMPACT (phone) ───────────────────────────────────────────────────────────────────────────────
+ *
+ * TWO DIFFERENT SHAPES FOR TWO DIFFERENT SCREENS, both chosen from measured space rather than taste:
+ *
+ * LANDSCAPE (667x375): the screen is WIDE and SHORT, so the console occupies a left column and the live
+ * 3D scene keeps the right half. That is the C&C menu shape — a console bolted over the battlefield — and
+ * it is the whole reason the menu mounts a real renderer. Stacking a single column here would show five
+ * rows of text on an empty field and throw the art away.
+ *
+ * PORTRAIT (390x844): the screen is NARROW and TALL, so a side-by-side split would give each half under
+ * 200px. The console takes the full width over a dimmed, full-bleed scene instead: the art becomes
+ * atmosphere and the controls get the width they need.
+ */
 [data-density='compact'] .menu-art::after {
-  /* Nearly opaque over the art, so the busy battlefield behind cannot fight the console's type. */
-  background: linear-gradient(to bottom, var(--ink-950) 0%, transparent 30%, transparent 55%, var(--ink-950) 88%);
+  /* A hard vertical scrim: the console must be legible and the art must still read as art. */
+  background: linear-gradient(100deg, var(--ink-950) 0%, var(--ink-950) 42%, transparent 78%);
 }
 [data-density='compact'] .menu-console {
-  width: 100%;
-  padding: var(--space-4);
-  gap: var(--space-3);
-  height: 100%;
-  justify-content: space-between;
+  /* A left column on a landscape phone: 300px is the measured width at which "ENTITY DESIGNS" and its
+   * chevron both fit at the compact type step without truncation. */
+  width: min(300px, 100%);
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+  justify-content: center;
 }
 [data-density='compact'] .menu-title {
-  font-size: calc(var(--text-2xl) * var(--text-scale));
+  font-size: calc(var(--text-xl) * var(--text-scale));
 }
 [data-density='compact'] .menu-standfirst {
   display: none;
 }
+[data-density='compact'] .menu-eyebrow {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
 [data-density='compact'] .menu-entry {
-  min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
+  gap: var(--space-2);
 }
 [data-density='compact'] .menu-entry__note {
   display: none;
 }
 [data-density='compact'] .menu-entry__icon {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
+}
+[data-density='compact'] .menu-entry__label {
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+[data-density='compact'] .menu-primary {
+  font-size: calc(var(--text-md) * var(--text-scale));
+  min-height: 38px;
+}
+[data-density='compact'] .menu-primary__note {
+  display: none;
+}
+[data-density='compact'] .menu-strip {
+  display: none;
+}
+
+/* Portrait: the console takes the whole width over a dimmed scene. */
+@media (orientation: portrait) {
+  [data-density='compact'] .menu-art::after {
+    /* Nearly opaque over the art, so the busy battlefield cannot fight the console's type on a screen
+     * where the console covers most of it. */
+    background: linear-gradient(to bottom, var(--ink-950) 0%, transparent 26%, transparent 52%, var(--ink-950) 86%);
+  }
+  [data-density='compact'] .menu-console {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-4);
+    justify-content: space-between;
+  }
+  [data-density='compact'] .menu-title {
+    font-size: calc(var(--text-2xl) * var(--text-scale));
+  }
+  [data-density='compact'] .menu-entry {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+  }
+  [data-density='compact'] .menu-entry__icon {
+    width: 28px;
+    height: 28px;
+  }
+  [data-density='compact'] .menu-strip {
+    display: flex;
+  }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════ LOBBY */
@@ -392,6 +448,17 @@
 }
 .lobby-mapcard__note {
   font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+/* A one-line blurb: a map is a place, and the name plus a sentence sells it better than dimensions alone. */
+.lobby-mapcard__desc {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-500, var(--bone-600));
+  line-height: var(--leading-snug);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .lobby-hint {
