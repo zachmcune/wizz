@@ -653,6 +653,15 @@ export class Hud {
        */
       const cat = this.tab;
       return [...this.registry.buildings.values()]
+        /**
+         * THE CONSTRUCTION YARD IS NOT A BUILDING YOU BUILD.
+         *
+         * `sanctum` has `cost: 0` and no requirements, so `buildingBlocker` reports it as available and the tile sorts
+         * first under the buildable-first ordering below. Tapping it arms a placement ghost for a second HQ, which is not
+         * a legal action — the sim rejects it as `Blocked terrain` wherever the first one stands. The AI can build a
+         * replacement yard through its own rebuild path; the player's build menu has no such entry in v1 either.
+         */
+        .filter((b) => !b.isConstructionYard)
         .filter((b) => (cat === 'buildings' ? b.menuCategory !== 'defenses' : b.menuCategory === 'defenses'))
         .filter((b) => !b.factions || !faction || b.factions.includes(faction))
         .map((b) => {
@@ -675,7 +684,18 @@ export class Hud {
             queued: 0,
             owned: ownedCount.get(b.id) ?? 0,
           };
-        });
+        })
+        /**
+         * BUILDABLE FIRST, THEN BY PRICE.
+         *
+         * Merging the `advanced` structures into this tab put locked late-game buildings (Arcane Nexus, Astral Spire) at
+         * the TOP of the grid, because registry order is definition order. That is wrong for a player — the tiles they can
+         * actually buy belong at the top of a 2-up scroller — and it broke a committed touch test, which taps the first
+         * tile by design: `tests/touch/browser-touch.test.ts` reported `the seeded ghost is invalid: arcane_nexus ...
+         * "Requires a structure you do not have"` at all four viewports. Sorting is presentation only; nothing about
+         * availability changes.
+         */
+        .sort((a, b) => Number(!!a.blocker) - Number(!!b.blocker) || a.cost - b.cost);
     }
 
     if (this.tab === 'units') {
