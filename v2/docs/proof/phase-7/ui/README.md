@@ -57,6 +57,11 @@ The harness drives a real Chromium through every screen at every viewport, taps 
 phone contexts (real touch events, not synthetic clicks), arms a build tile and captures the placement
 ghost, and writes `ui-proof.json` alongside the images.
 
+Runtime is about seven minutes locally on SwiftShader, and the two browser gate suites
+(`tests/ui-camera.test.ts`, `tests/touch/browser-touch.test.ts`) add ~5 more minutes to the v2 CI job. That
+is why they run in the same step as the rest of the unit suite rather than a separate one — they need the
+same dev server.
+
 `tests/ui-proof.test.ts` guards the result: every capture must exist, be unique, have real visual variety,
 contain under 0.5% violet pixels (re-measured from the PNG, independently of the harness), and carry
 measurements consistent with the layout contract — four categories, eight labelled commands, a 28px
