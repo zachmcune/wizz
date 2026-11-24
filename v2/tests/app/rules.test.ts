@@ -298,3 +298,20 @@ describe('rules: production progress is the queue the simulation writes', () => 
     expect(r.active).toBeNull();
   });
 });
+
+describe('settings: the drag preference is a real, persisted choice', () => {
+  it('loadSettings returns a usable default with every field the app reads', async () => {
+    /**
+     * The match reads `dragMode` when it mounts, so a missing or malformed value there would silently fall
+     * back and a player's choice would never take effect. The store is wrapped in a try/catch for private
+     * browsing, and this checks the SHAPE it always returns rather than the storage mechanism.
+     */
+    const { loadSettings } = await import('../../src/app/screens/settings');
+    const s = loadSettings();
+    expect(['auto', 'pan', 'select']).toContain(s.dragMode);
+    expect(typeof s.reducedMotion).toBe('boolean');
+    expect(typeof s.showHints).toBe('boolean');
+    expect(s.masterVolume).toBeGreaterThanOrEqual(0);
+    expect(s.masterVolume).toBeLessThanOrEqual(1);
+  });
+});

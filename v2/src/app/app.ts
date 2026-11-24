@@ -31,7 +31,7 @@ import { MatchController } from './match';
 import { Hud } from './hud';
 import { mountMenu } from './screens/menu';
 import { mountLobby } from './screens/lobby';
-import { mountSettings } from './screens/settings';
+import { loadSettings, mountSettings } from './screens/settings';
 import { mountPause } from './screens/pause';
 import { mountResults } from './screens/results';
 import { mountSandbox } from './screens/sandbox';
@@ -484,7 +484,19 @@ export class App {
     // Gestures. Touch defaults to drag-to-PAN, which is what a phone player expects; a long press still
     // starts a box select, and desktop gets drag-to-box because a mouse drag on the board has always
     // meant "select". The `?drag=` override exists for the proof harness to drive both.
-    const dragMode = new URLSearchParams(window.location.search).get('drag') === 'pan' ? 'pan' : touchDefaultDrag();
+    /**
+     * Drag mode: an explicit `?drag=` wins (the proof harness and QA use it), then the player's persisted
+     * Settings choice, then the device default. `auto` in Settings means "ask the device", which is the
+     * shipped behaviour and why a finger pans while a mouse boxes.
+     */
+    const dragParam = new URLSearchParams(window.location.search).get('drag');
+    const pref = loadSettings().dragMode;
+    const dragMode: 'pan' | 'select' =
+      dragParam === 'pan' || dragParam === 'select'
+        ? dragParam
+        : pref === 'auto'
+          ? touchDefaultDrag()
+          : pref;
     let boxOrigin: { x: number; y: number } | null = null;
     this.gesture = new GestureRecognizer(
       {

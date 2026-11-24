@@ -91,7 +91,7 @@ export function mountSettings(app: App): { root: HTMLElement; destroy: () => voi
     rule(),
     choiceRow(
       'Drag on the board',
-      'Auto matches the device: a finger pans, a mouse boxes.',
+      'Auto matches the device: a finger pans, a mouse boxes. Takes effect on the next match.',
       ['Auto', 'Pan', 'Box select'],
       ['auto', 'pan', 'select'].indexOf(settings.dragMode),
       (i) => {

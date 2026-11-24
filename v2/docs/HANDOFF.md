@@ -1,7 +1,9 @@
 # HANDOFF — Arcane Dominion v2
 
 **Written:** 2026-11-23, at the end of Phase 6, on branch `cursor/rebuild-v2-5642`.
-**Reader:** a new agent picking up Phase 7 with no history of this branch.
+**Updated:** 2026-11-24, after the playtest-response pass (§8.0) that rebuilt the HUD, the menus and the
+touch controls, and wired multiplayer to the live relay.
+**Reader:** a new agent picking up the next phase with no history of this branch.
 **Scope of this document:** enough context to continue without re-deriving anything. Every number here
 was measured on this branch; where something is unresolved it says so instead of smoothing it over.
 
@@ -62,6 +64,7 @@ Phases 0–6 are complete. Phase 7 has not started.
 | **4 — UI, HUD, screens** | Real rendered layout gates: HUD area, zone overlap, the Place button being topmost, `.hud-cmd` height, unit separation — measured at 4 viewports in a real browser. The "Obsidian & Brass" style, with the no-purple rule enforced on both chrome and baked art. | `v2/docs/PHASE_4_REPORT.md`; `v2/docs/proof/phase-4/` (`README.md`, `screens/`, `hud-geometry.json`, `phase4-proof.json`, `phase4-full-flow.webm`), `phase-4-polish/` (alignment grids), `ui-style/` (`README.md`, `styleguide-*.png`, `ui-proof.json`) |
 | **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. **Re-measured in Phase 6 after three sim defects were fixed — see §7.0.** | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`, **`phase6-fairness.md`**, `footprint-*.png`) |
 | **6 — Multiplayer** | Deterministic 2–4 player lockstep over the **unmodified v1 relay**: lobby create/join, input delay, desync detection with replay capture, reconnect and clean drop, stall policy, AI fill-in. 2/3/4 headless peers reach decided matches with zero desyncs; two real browser contexts stayed in sync across **38 compared ticks with 0 mismatches**. | `v2/docs/proof/phase-6/` (`README.md`, `BALANCE_PROPOSALS.md`, 7 screenshots, `video/two-browser-lockstep-match.webm`, `browser-match.json`, `browser-match.log`) |
+| **7a — Playtest response** | Zachary's live-playtest report answered point by point: the HUD is a docked C&C command console, the menus are command consoles, the touch model is v1's (re-derived inside `v2/`), the starting camera frames the base in the battlefield, and multiplayer is wired to the live Railway relay and proven with **two browser contexts playing a real match** — both building, training, marching and fighting, with **132 common ticks compared and 0 mismatches**. | `v2/docs/proof/phase-7/` (`ui/` 75 captures + `ui-proof.json` + `README.md`; `multiplayer/` 10 screenshots, `browser-match.json`, `browser-match.log`) |
 
 **Phase 5's remaining caveats are real and are listed in §7**, with the Phase 6 re-measurement in §7.0. One
 Step 0 target (the "both bases with expansions" shot) is not obtainable; the rest are met.
@@ -294,6 +297,26 @@ All are documented at length in the source; repeated here because a new agent wi
    skipped tick with an empty list, and the real commands for it were then discarded — a desync that was
    a defect in the *harness*. Delivery is monotonic now, and the client also promotes a late non-empty
    list over an empty filler.
+7. **`opacity: 0.55` does not block a tap.** `prod-tile[data-blocked='true']` looks disabled and is
+   `cursor: not-allowed`, but it is still a live `<button>`: tapping it armed nothing and a proof spent
+   minutes wondering why no structure appeared. If a control is unavailable, say so in its `data-blocked`
+   state AND check that attribute before tapping it — the tech-blocked tile is the case that matters.
+8. **A CSS rule written for the previous design silently wins.** `.menu-art { display: none }` lived in
+   `app.css` from the old menu and `console.css` positioned the same element as a full-bleed layer. The
+   `display: none` won, so the main menu rendered with an empty black half and the real renderer mounted
+   into a zero-size box — and every phone screenshot showed it while all the geometry gates stayed green.
+   Menu layout now has ONE owner. If two stylesheets can style the same screen, delete one of them.
+9. **`nowrap` + `overflow: hidden` is not truncation, it is a layout bug the gate reports.** Tile labels
+   needed 57px in a 30px box. The lesson is not "make the font smaller": it is that a two-word label and
+   its price cannot share a row in a two-up tile, so they stack (picture, name, cost) and the name wraps.
+10. **A container that scrolls can still let its content overhang.** `.hud-tiles` has `overflow-y: auto`
+   and `overflow-x: hidden`, so a too-wide label overhung its own scroller by 85px while the panel looked
+   fine. When a grid column is too narrow for its content, fix the column, not the overflow.
+11. **A phone sidebar covers a third of the width, and it covers the thing you want to tap.** The
+   placement ghost seeds near the game's idea of the pointer, which on a tile tap is over the console. On a
+   667×375 phone the ghost's projected position can land UNDER the sidebar, so a tap there hits the console.
+   Pan the camera to what you want to place and tap the middle of the battlefield — which is what a player
+   does anyway, and what the two-browser proof now does.
 
 ---
 
@@ -316,6 +339,8 @@ Focused runs, which you will use constantly:
 
 ```bash
 npx vitest run tests/sim tests/core tests/data tests/map-lint.test.ts   # fast core, seconds
+npx vitest run tests/touch tests/app                                 # touch model + UI rules, seconds
+npx vitest run tests/ui-proof.test.ts                                # the committed evidence pack
 npx vitest run tests/sim/perf.test.ts                                  # perf gate — run ALONE
 npm run test:slow-ai                                                   # fairness + teams only
 npm run test:unit                                                      # everything except perf + slow AI
@@ -389,6 +414,26 @@ named with the actual time rather than mislabelled.
 
 The in-page hook `window.__v2` exposes `{ state, renderer, registry }` for harnesses. The spectate
 page accepts `?seed=&d0=&d1=&speed=`; player ids are `p1`/`p2` and must match the tournament's.
+
+### 6.2.1 The Phase 7a evidence packs
+
+```bash
+# UI and touch proof: every screen, every in-match interaction state, five viewports.
+# Writes docs/proof/phase-7/ui/ (75 PNGs + ui-proof.json) and is guarded by tests/ui-proof.test.ts.
+PROOF_BASE=http://127.0.0.1:5343 npx vite-node audit/capture-ui-proof.ts
+
+# The two-browser active match: builds, trains, marches and fights through the real HUD.
+# Needs the relay on 8787 and the app on 5343 (see §5.1). Writes docs/proof/phase-7/multiplayer/.
+MP_PLAY_SECONDS=150 npx playwright test tests/net/browser-match.spec.ts
+```
+
+Both harnesses are SLOW by design — the UI pack is ~7 minutes across five viewports, the match proof is
+~3.5 minutes of real match — so they are proof generators, not gates. The fast gates are
+`tests/ui-proof.test.ts` (guards the committed pack in ~2 s) and the unit suites.
+
+The proof pack is committed, so `tests/ui-proof.test.ts` fails if a capture is missing, blank, a duplicate
+of another, or carries measurements that contradict the layout contract. **If you change the HUD, regenerate
+the pack** or that suite will fail — which is the intent.
 
 **Restart the dev server after editing `src/main.ts`** — it is not always picked up by HMR.
 
@@ -541,6 +586,28 @@ Remaining issues, with numbers:
   comes from a symmetric decision-pass phase derived from the seed. If you add randomness, add it to a
   **named stream** and make it symmetric in expectation, or you will recreate the fairness bug.
 
+### 7.2.1 Limitations of the playtest-response pass, stated plainly
+
+1. **The two-browser match is funded via `devSetMana`.** Waiting out the real economy would make the proof a
+   pacing test rather than a multiplayer one. The command is a real protocol message validated by the
+   relay's own schema and applied identically on every peer, so the lockstep chain is fully exercised — but
+   the MATCH IT PLAYS IS NOT A BALANCED 1v1. Do not read win/loss from it. What it proves is that two
+   independent browsers can build, train, march and fight without desyncing.
+2. **One side usually loses its army.** The guest won the committed run (7 units left against 0) because the
+   host's units arrived piecemeal after repeated re-orders. That is the harness marching both armies at one
+   point, not a balance signal.
+3. **The guest is a phone at 667×375 with touch.** Its main thread services real touch events, so its
+   sampling and its interactions are measurably slower than the host's. The tick-drift assertion is a
+   SAMPLING bound (6 s), not a sync bound; the sync claim rests entirely on the common-tick hash comparison.
+4. **The UI pack is five viewports, not every device.** 1024×600 and 844×390 portrait are not covered, and
+   no real hardware was used — all captures are Chromium with SwiftShader. Frame pacing on real GPUs is
+   still unmeasured (see §7.3 of the earlier caveats).
+5. **The radar's map is drawn from tile data, not the renderer.** It shows passability, fog, entities and
+   the camera footprint. It is not a downsampled render, so terrain decoration does not appear on it.
+6. **Drag mode is a per-match setting.** Settings offers `Auto | Pan | Box` and it is persisted, but it is
+   read when a match mounts, so a change takes effect on the NEXT match rather than immediately. `?drag=`
+   overrides it for the proof harness.
+
 ### 7.3 Caveats about the evidence
 
 - Frame-pacing numbers in the plan are **SwiftShader** (software rasteriser) figures. They are useful
@@ -556,6 +623,70 @@ Remaining issues, with numbers:
 ## 8. What comes next — Phases 6 to 8
 
 From `v2/docs/REBUILD_PLAN.md` §8. Summary, with the done-criteria that gate each phase.
+
+### 8.0 The playtest-response pass — what changed under §8, and why
+
+Zachary opened the deployed preview and reported three things, in order of how much they matter:
+
+> "the touch controls should be basically the same as the first one"
+> "the menus should very much feel like mobile command and conquer"
+> and multiplayer should be "wired to the live server" and proven with a real active two-browser match.
+
+All three are addressed. What follows is what to know before touching any of it.
+
+**Touch controls** (`src/app/input/`, zero imports from v1 — `tests/isolation.test.ts` still enforces
+that). `gesture.ts` re-derives v1's recogniser as a pure, clock-driven state machine: tap, one-finger
+pan, box select (by drag or by 400 ms long press), pinch with two-finger pan, double-tap select-type.
+`picking.ts` picks in SCREEN space with the terrain lift applied. `board-input.ts` is v1's controller
+model against v2's command vocabulary. `pointer-binder.ts` owns capture and contextmenu.
+
+**Three real gesture defects were found by the browser proof, not by reading the code.** They are pinned
+by name in `tests/touch/gesture.test.ts`:
+- a held-but-still press was promoted to a zero-area box that CLEARED the selection (a slow tap looked
+  like "my taps only work sometimes");
+- `suppressTapUntilAllPointersUp` was not cleared on the pan and box end paths, so after any pan **every
+  later tap was dropped** for the rest of the match;
+- both of the above only showed up on touch, so a desktop-only proof would have shipped them.
+
+**Camera** (`src/render/camera.ts`). Clamping moved to PROJECTED space; `frameOn()` derives zoom from the
+viewport and centres the point in the HUD-free safe rect. The measured result is in
+`docs/proof/phase-7/ui/README.md`. Two things worth knowing before changing it:
+- **Whole-rect coverage is the wrong objective.** A diamond board cannot fill a rectangle from a corner.
+  The first attempt at a fix maximised coverage and produced a camera zoomed out far enough to show the
+  whole board surrounded by empty ground — a regression the pixel gate caught and that the coverage
+  metric would have called an improvement.
+- **The starting zoom must leave headroom.** On a 1366×768 screen centring the base needs zoom 2.0, which
+  is `MAX_ZOOM`; a match that STARTS at the ceiling cannot zoom in at all, which the pinch proof caught.
+  `frameOn` stops at `MAX_ZOOM - 0.15`.
+
+**HUD** (`src/app/hud.ts`, `hud.css`). Docked sidebar in landscape, bottom console in portrait, one grid
+with a `data-layout` attribute. Four labelled categories, real atlas thumbnails, mana cost, build/train
+progress, queue badge, a power BAR, a toggleable radar, eight labelled command buttons. The old 18%-of-area
+budget is REPLACED by what actually matters — battlefield share (measured 0.715–0.838), a 28px control floor
+(measured 30–34), and the presence of the controls themselves. The reasoning is in the section comment at
+the top of `hud.css`; do not reintroduce the area rule without reading it.
+
+**Menus** (`screens/*.ts`, `console.css`). One primary copper action each, labelled steel plates,
+thumb-sized rows, a footer that does not move. The menu keeps the live 3D scene in one of two shapes:
+landscape splits console-left/scene-right, portrait spans the console over a dimmed scene.
+
+**Multiplayer** (`screens/multiplayer.ts`). `resolveRelayUrl` now defaults to `wss://wizzrts.up.railway.app`,
+honours `VITE_RELAY_URL` and `?relay=`, and normalises pasted URLs. The room screen has copy-code and
+copy-invite buttons and a real connection state. **The VM can reach the live relay directly** — verified
+with a real `join` that returned `player0` as host — and the two-browser proof still runs against the LOCAL
+relay so it stays deterministic.
+
+**The two-browser proof** (`tests/net/browser-match.spec.ts`) now plays a real match: both peers build the
+tech chain in order, queue combat units, march to the map centre through the HUD, and engage. It measures
+command counts, entity growth, damage events and deaths from the SIMULATION's event stream (`onEvents` on
+`LockstepSession`, counters on `window.__v2Net`), and compares 132+ common ticks with zero mismatches.
+Six defects were found getting it green and each is recorded where it lives; the most instructive is that
+on a 667×375 phone the seeded placement ghost projects UNDER the sidebar, so the proof pans to the ghost
+and taps the safe rect's centre — which is what a player does.
+
+**What is NOT done here, deliberately.** The AI expansion regression and balance/fairness measurements
+are untouched: no file under `src/ai/` changed, and the parity exceptions in §3 are unchanged. That work
+is a separate pass.
 
 ### Phase 6 — Multiplayer (2–4 players) — **COMPLETE**
 
@@ -644,6 +775,11 @@ fully marked.
 | **add a network message** | `v2/src/net/protocol.ts`, then run `tests/net/wire-compat.test.ts`: the relay validates every frame and silently drops one it does not recognise |
 | know what is allowed to differ from v1 | `v2/tests/data/parity.test.ts` (`APPROVED_VALUE_EXCEPTIONS`) |
 | add a UI component | `v2/docs/UI_STYLE_GUIDE.md` then `v2/src/ui/tokens.css` |
+| **change the HUD** | `v2/src/app/hud.ts` and `hud.css` (read the section comment at the top of each first), then REGENERATE `docs/proof/phase-7/ui/` or `tests/ui-proof.test.ts` fails |
+| **change touch input** | `v2/src/app/input/`: `gesture.ts` (the state machine), `picking.ts` (screen-space hit tests), `board-input.ts` (commands), `pointer-binder.ts` (DOM). Pin any new behaviour in `tests/touch/` |
+| **change the camera** | `v2/src/render/camera.ts`. `frameOn` is a viewport-derived zoom plus an inset-aware centring; the arithmetic is covered by `tests/touch/camera.test.ts` and the result by `tests/ui-camera.test.ts` |
+| **point a build at a different relay** | `resolveRelayUrl` in `v2/src/app/screens/multiplayer.ts`; `?relay=` beats `VITE_RELAY_URL` beats the localhost default beats Railway |
+| **see what a real multiplayer match looks like** | `v2/docs/proof/phase-7/multiplayer/browser-match.log` — the timeline of a 150 s match with damage and marches |
 | add a sprite | `v2/docs/ART_DIRECTION.md` then `v2/art/` |
 | measure something | `v2/audit/` — read a nearby harness and copy its shape; they all print their own numbers |
 | **see the fairness and balance numbers** | `v2/docs/proof/phase-5/ai/phase6-fairness.md` — the authoritative mirror, length and ladder measurement, including the three sim defects that invalidated the Phase 5 figures |

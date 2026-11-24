@@ -313,22 +313,75 @@ coherently.
 
 ### What changes per tier
 
-**HUD at 667×375.** The minimap is removed (a 190px minimap on a 375px-tall screen is unusable). The
-selection panel collapses to a horizontal strip. The command bar shows **icons only** — the label
-element is hidden while the icon stays at 16px. Zoom controls sit above the command bar so a thumb
-reaches them.
+#### The in-match HUD is a COMMAND CONSOLE, not a strip
 
-**HUD at 1366×768.** Full three-zone layout: resource bar across the top, selection panel left,
-minimap right, six command buttons along the bottom.
+The HUD is a docked tactical sidebar — the Command & Conquer shape — with a status rail across the top.
+The layout is one CSS grid with a `data-layout` attribute, so both orientations are the same DOM and
+every measurement gate covers both.
 
-**HUD at 1920×1080.** The same layout with a wider minimap (240px), wider selection panel (250px) and
-the command bar capped at 150px per button so it does not stretch across a 1920px screen.
+```
+┌────────────────────────────────────────────┬──────────────────┐
+│ RAIL  selection · mana · units · POWER bar │  BUILD TABS      │
+├────────────────────────────────────────────┤  ┌────────────┐  │
+│                                            │  │   radar    │  │
+│                                            │  └────────────┘  │
+│              BATTLEFIELD                   │  ▣ ▣  PRODUCTION │
+│                                            │  ▣ ▣  tiles      │
+│                                            │  ─ SELECTION ─   │
+│                                            │  MOVE ATK STP    │
+└────────────────────────────────────────────┴──────────────────┘
+```
 
-**Lobby** collapses from two columns to one at `compact`, with the Start control pinned bottom-right so
-it never moves as settings change — the specific mistake the v1 lobby made.
+**Landscape (667×375, 844×390, 1366×768, 1920×1080).** The sidebar docks RIGHT and starts expanded; the
+rail spans the top. The battlefield keeps **71–84%** of the viewport (measured 0.715 / 0.757 / 0.803 /
+0.838). The sidebar is 136px at compact, 196px at regular, 232px at roomy; the tile grid is two-up at
+compact and regular, three-up at roomy.
 
-**Main menu** drops the decorative plate composition at `compact` and stacks the action buttons
-full-width.
+**Portrait (390×844).** The console docks to the BOTTOM and starts **collapsed**, because a 46vh panel
+would leave the battlefield a letterbox. Collapsed it is the four category tabs plus the two command
+rows plus an explicit **expand** control; expanded it is capped at `min(52vh, 380px)` with only the tile
+row flexing, so the commands can never be pushed off. The battlefield keeps 79% (measured 0.791).
+
+**Tiles carry the real sprite.** Every building and unit tile draws the same atlas frame the battlefield
+draws, as a CSS crop of the atlas page (`src/ui/thumbnails.ts`), with the name and mana cost on their own
+lines underneath — picture, name, cost, the C&C production-tile shape. Research has no sprite and uses a
+code-drawn glyph. Progress is a bar across the bottom of the picture; a queue shows as a corner badge.
+
+**Nothing is icon-only in the console.** The old HUD was six unlabelled glyphs on a 30px strip and the
+report was that nobody could tell them apart. Command controls are icon + word; the only icon-only
+controls are the rail's three universal ones (Radar, Tech tree, Pause), and each of those is 30px square
+with an `aria-label` and a `title`.
+
+**The radar is toggleable, never removed.** v2 previously dropped the minimap at compact density, which
+left a phone player with no way to see the map. It is a real minimap drawn from live state, tap-to-jump,
+with an ONLINE/OFFLINE state driven by `radarActive` — and the rail keeps a Radar button that brings it
+back.
+
+**The power meter is a BAR with numbers.** A bare "20" says nothing about the ceiling; a bar shows how
+close a brownout is, which is what RA2's meter existed for. It turns amber above 85% load and red when
+demand exceeds supply.
+
+**Everything is a thumb target.** Every interactive element in the HUD is at least 28×28 CSS px and the
+measured smallest is 30–34px across the five viewports. `tests/ui-proof.test.ts` asserts this from the
+committed captures.
+
+#### Menus
+
+Each of Main Menu, Skirmish Lobby, Multiplayer Lobby, Pause and Settings is a **command console**: one
+primary copper action, steel secondary plates, labelled rows, and a footer that does not move as
+configuration changes. Nothing is a generic web form.
+
+**Main menu** keeps the live 3D scene. In landscape the console is a 300px left column and the scene fills
+the right; in portrait the console spans the width over a dimmed, full-bleed scene. The 300px figure is the
+measured width at which every entry and its chevron fits at the compact type step — stacking a single
+column on a 667×375 screen would show five rows of text against an empty field and throw the art away.
+
+**Lobby** collapses to one column at compact, with Start pinned in the footer. Map cards show a real
+preview drawn from the map's own tiles — elevation as brightness, impassable terrain as the brightest
+step — so the five maps read as different places rather than the same scattered dots.
+
+**Pause** is a console over the frozen board, with the match's own numbers on it. **Settings** lists the
+real touch gestures and key bindings; there is no Apply button.
 
 ---
 
@@ -347,6 +400,12 @@ build on:
 | No emoji, no webfont CDN, no icon font | source scan |
 | One icon stroke rule | every glyph renders viewBox 24, stroke 2, round caps; fill only where marked |
 | Every `var(--token)` must be declared | undeclared-variable scan across all UI sources |
+| The console has four labelled categories and eight labelled commands | `tests/ui-proof.test.ts`, from the committed captures |
+| Every control in the HUD is at least 28×28 | the same, measured on the rendered page |
+| The battlefield keeps at least 55% of the viewport | the same, from the measured HUD boxes |
+| The starting frame centres the player's Sanctum in the battlefield | the same, plus `tests/ui-camera.test.ts` on a live page |
+| A placement ghost exists and is valid at every viewport | the same |
+| The radar is reachable at every density | the same (`data-radar`, and the rail's toggle is present) |
 
 Each of these was verified by deliberately introducing the violation and watching the suite fail, then
 restoring the file.
