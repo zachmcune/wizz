@@ -31,7 +31,8 @@ With the fixes in place the AI **did** expand, and this part of the result is so
 - **6 of 6 traced seeds** placed a forward refinery at **6.7 minutes** (previously 0 of 6).
 - `audit/expand-outcomes.ts` reported the surviving side holding **3 refineries and 3 route walls outside its starting
   cluster**, with the count burned into the committed captures (`captures/overview-*-7min.png`).
-- The mirror was **50.0% on 100 games** (95% CI 40.4–59.6%, 0 unfinished, mean 12.0 min).
+- Fairness and length on that build were also measured (50.0% mirror at N=100, mean 12.0 min) — those numbers are
+  superseded by §5, which re-measures the SHIPPED build.
 
 Those numbers are real, and they describe a build that was **not shipped**, because of §3.
 
@@ -83,25 +84,40 @@ with its own measurement, not a threshold, and it is the recommended next step.
 3. **Then re-measure the ladder.** Do not tune difficulty levers against Hard-vs-Normal before the corner defect in
    HANDOFF §7.4 is fixed; that cell is a corner lottery at any sample size.
 
-## 5. Fairness and ladder — measured on the REVERTED (now shipped) build
+## 5. Fairness and ladder — measured on the SHIPPED build
 
-The numbers below were measured while the expansion fix was applied. Since that fix has been reverted, they do **not**
-describe the code on this branch; they are kept because they were taken on a real build and they show what the fixes did
-to fairness and length. Re-measuring on the shipped build is listed as a next step in §4.
+These are the numbers that describe the code on this branch (the reverted build). Two independent mirror blocks, both
+100+ games:
 
-| Measure | N | Result (on the reverted build) | Target | Met |
+| Measure | N | Result | Target | Met |
 |---|---|---|---|---|
-| Mirror slot win rate | 100 | **50.0%**, 95% CI 40.4–59.6%, 0 unfinished | CI contains 50% | **yes** |
-| Mirror median length | 100 | **11.9 min** | 15–25 | **no** |
-| Normal > Easy | 40 | **75.0%**, CI 59.8–85.8%, 0 unfinished | ≥70% | **yes** |
-| Hard > Normal | 40 | 50.0%, but **corner0 0 / corner1 20** | ≥70% | **not measurable** |
+| Mirror slot win rate | **100** (seeds 8000+7i) | **60.0%**, 95% CI **50.2–69.1%** | CI contains 50% | **no** — the interval excludes 50% |
+| Mirror slot win rate | **60** (seeds 10000+7i) | 61.7%, 95% CI 49.0–72.9% | CI contains 50% | yes (just) |
+| Mirror median length | 100 | **15.5 min** | 15–25 | **yes** |
+| Normal > Easy | 40 | 67.5%, CI 52.0–79.9%, 0 unfinished | ≥70% | **no** (misses by 2.5 points, CI includes it) |
+| Hard > Normal | 40 | **90.0%**, CI 77.0–96.0%, 0 unfinished | ≥70% | **yes** |
 
-The corner split is a **pre-existing deterministic defect**: Hard lost all twenty games from one corner and won all
-twenty from the other, which is larger than the difficulty gap being measured. Stashing the whole pass and re-running the
-identical command reproduces it byte-for-byte, and an independent seed block reproduces it too. It is not terrain — parity
-and nav symmetry both pass. See **HANDOFF §7.4** and `PROPOSALS.md` §1.
+**Two corrections to earlier claims in this pass, both from larger samples.**
 
-`ladder-n40.txt`, `ladder-final.json` and `mirror-n100.txt` hold the raw output.
+1. **The mirror is NOT 50.0%.** An earlier 100-game block on the intermediate (expansion-fix) build measured exactly
+   50.0%, and two blocks on the shipped build measure **60.0%** and 61.7%. The honest statement is that the shipped
+   build's first-listed slot wins about **60%** of mirror games, and at N=100 the interval barely excludes 50%. The
+   50.0% figure described a build that was reverted; it is not a property of this branch.
+
+2. **The "deterministic corner split" was an artifact of the intermediate build.** On the reverted build Hard lost all
+   20 games from one corner and won all 20 from the other (`corner0 0 / corner1 20`), reproduced on two seed blocks.
+   On the shipped build the split is **balanced**: 29/50 vs 31/50 on the 100-game block, 20 vs 16 on the ladder, 18 vs 19
+   on the second mirror block. So the 0/20 sweep was caused by the expansion change, not by a pre-existing corner defect.
+
+   That makes the ladder **measurable** on this build: Hard > Normal is 90.0% with a CI of 77.0–96.0%, which comfortably
+   clears the 70% target. The earlier "not measurable" verdict is retracted.
+
+**Median length is now IN band** (15.5 min, N=100) — which also retracts the earlier "missed" verdict. The reverted
+build shortened matches to 11.9 min; the shipped build is back at 15.5.
+
+`mirror-shipped-n100.txt`, `ladder-shipped-n40.txt` and `ladder-shipped.json` hold the raw output. The second mirror
+block's numbers are quoted above and its per-seed lines were not saved — re-run
+`audit/mirror-par.ts --seeds 10000,10007,...` (30 seeds) to reproduce.
 
 ## 6. Harnesses (all committed, all print their own numbers)
 

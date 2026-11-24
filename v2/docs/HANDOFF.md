@@ -622,41 +622,58 @@ Remaining issues, with numbers:
   behaviour. Each one prints its own numbers; treat a harness as evidence only if you re-ran it on
   the current commit.
 
-### 7.4 The starting corner decides cross-difficulty matches — the most important open defect
+### 7.4 Fairness and the ladder, re-measured at N≥100 — and two earlier verdicts RETRACTED
 
-**Read this before quoting any Hard-vs-Normal number anywhere in this document, including §7.0.**
+**Read this before quoting any Phase 5, 6 or 7 balance number.** Bigger samples changed the conclusions twice, in both
+directions, and the corrections matter more than the original claims.
 
-Measured on `cursor/rebuild-v2-5642` with `audit/ladder-par.ts`, identical seed block (5000–5133), 20 seeds x 2 corner
-assignments per cell:
+#### The mirror is ~60%, not 50%
 
-```
-hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m
-             [corner0 0 / corner1 20]
-normal>easy: 30/40 = 75.0%  95% CI 59.8-85.8%  unfinished 0/40  median 8.6m
-             [corner0 20 / corner1 10]
-```
+| Block | N | First-listed slot | 95% CI | Contains 50%? |
+|---|---|---|---|---|
+| seeds 8000+7i (shipped) | **100** | **60.0%** | **50.2–69.1%** | **no** |
+| seeds 10000+7i (shipped) | **60** | 61.7% | 49.0–72.9% | yes |
 
-`corner0 0 / corner1 20` means Hard **lost all twenty games from the top-left corner and won all twenty from the
-top-right**. The corner decides the game by more than the difficulty gap does, so the Hard>Normal cell is a corner
-lottery rather than a skill measurement. That is why the same cell has now measured **62.5%, 66.7%, 85.0% and 50.0%**
-across four seed blocks: each sample drew a different corner mix.
+Two independent blocks on the shipped build both land near 60%. The interval on the larger one just excludes 50%, so the
+honest statement is: **the mirror favours whichever side is listed first by about ten points, and 100 games is not enough
+to call it noise.** An earlier 100-game block measured exactly 50.0% — but that was on the intermediate build that was
+reverted (§8.2), so it does not describe this branch.
 
-**It is pre-existing and that was verified, not assumed.** Re-running the identical command on the pre-pass baseline
-produces **byte-identical** output including the `0 / 20` split, and an independent seed block (5000–5133) reproduces it
-too — so it is a property of the shipped build, not of one sample and not of the Phase 7b work (which was reverted
-anyway, see §8.2). `audit/corner-pairs.ts` independently reports every corner winning 100% of its decided
-games on both builds.
+#### The "deterministic corner split" was an artifact, and is retracted
 
-**It is not the terrain.** `tests/data/parity.test.ts` still passes on both axes, and
-`audit/neighbor-symmetry.ts` measures 41,516 of 41,516 tiles steering identically to their reflection. So this is an
-ordering effect in the AI or the simulation, not in the map.
+An intermediate build showed Hard losing all 20 games from one corner and winning all 20 from the other. That reproduced
+across two seed blocks and looked like a property of the engine. It was a property of the **reverted expansion change**.
+On the shipped build every block is balanced:
 
-**What to do about it** is written up in `docs/proof/phase-7/ai/PROPOSALS.md` §1, including the instrument that would
-localise it (`corner-pairs.ts` looking for a pairing whose two directions are not mirror images) and why a half-fix is
-worse than the honest "unmeasurable" recorded here.
+| Block | corner0 | corner1 |
+|---|---|---|
+| mirror N=100 | 29/50 (58.0%) | 31/50 (62.0%) |
+| mirror N=60 | 18/30 (60.0%) | 19/30 (63.3%) |
+| ladder N=40 | 20 | 16 |
 
-**Do not tune difficulty levers against the Hard>Normal cell until this is fixed.** Every such tune so far has been
-fitting noise — which is precisely what §7.0 already recorded happening between the Phase 5 and Phase 6 samples.
+**There is therefore no corner defect to fix, and the ladder IS measurable on this build.**
+
+#### The ladder, measured
+
+| Cell | N | Win rate | 95% CI | Unfinished | Median | Target | Met |
+|---|---|---|---|---|---|---|---|
+| **Hard > Normal** | 40 | **90.0%** | 77.0–96.0% | 0/40 | 12.5 min | ≥70% | **yes** |
+| **Normal > Easy** | 40 | 67.5% | 52.0–79.9% | 0/40 | 9.8 min | ≥70% | **no** |
+
+Hard > Normal clears the target comfortably. Normal > Easy **misses by 2.5 points**, with an interval that spans the
+target — reported as a miss rather than rounded up.
+
+#### Median 1v1 length is IN band on the mirror
+
+**15.5 min at N=100.** The earlier "missed, 11.9 min" verdict described the reverted build. Cross-difficulty cells are
+shorter (12.5 and 9.8 min), which is the expected shape: an even match lasts, a skill gap resolves faster. The target is
+about the even 1v1, and it is met.
+
+#### What this means for older numbers in this document
+
+§7.0's table (mirror 61.4%, ladder 60%/90%) and §7.1's (mirror 19.3 min, ladder 85%/85%) were each measured on a single
+seed block. The N=100 re-measurement above is the largest sample on this branch and should be preferred. It confirms
+§7.0's mirror figure (~60%) and contradicts its "median 12.7 min" — on the shipped build the mirror median is 15.5.
 
 ---
 
@@ -790,7 +807,8 @@ the Phase 6 pass concluded "the AI never expands" rather than finding a single r
 
 **With all eight fixed the AI expanded.** A forward refinery at **6.7 min on 6 of 6 traced seeds** (was 0 of 6), the
 surviving side holding 3 refineries and 3 route walls outside its starting cluster, and a 100-game mirror at exactly
-**50.0%**. That is real and it is why the captures are still committed.
+50.0% on a 100-game mirror. Those measurements are real and are why the captures are still committed; §7.4
+re-measures the SHIPPED build, where the numbers differ.
 
 **Why it was reverted: it fails `tests/net/latency-jitter.test.ts`.** All four peers stayed perfectly in sync (identical
 hashes, 0 desyncs), but one peer issued **95** commands in a 14-minute match against a floor of 100 — the pre-pass build

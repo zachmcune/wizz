@@ -5,53 +5,27 @@ each item is either a rule value (which needs Zachary's approval) or an AI proje
 
 ---
 
-## Proposal 1 — the corner split decides Hard-vs-Normal, not difficulty
+## Proposal 1 — RETRACTED: there is no corner defect, and the ladder meets its target
 
-**Status: measured, blocking, not fixed. This is the single most important finding of the pass.**
+**Status: retracted by a larger sample. Kept in the file because the reasoning error is instructive.**
 
-`audit/ladder-par.ts`, identical seed block (5000–5133), 20 seeds × 2 corner assignments per cell — measured on the
-build that had the expansion fixes applied, and reproduced identically on the pre-pass baseline:
+An intermediate build (the expansion fix, since reverted) measured this in `audit/ladder-par.ts`:
 
 ```
-hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%  unfinished 0/40  median 12.1m
-             [corner0 0 / corner1 20]
-normal>easy: 33/40 = 82.5%  95% CI 68.0-91.3%  unfinished 0/40  median 8.7m
-             [corner0 20 / corner1 13]
+hard>normal: 20/40 = 50.0%  95% CI 35.2-64.8%   [corner0 0 / corner1 20]
 ```
 
-`corner0 0 / corner1 20` means: **in all twenty games where Hard took the top-left corner it lost, and in all twenty
-where it took the top-right corner it won.** The game is decided by the starting corner, and the effect is larger than
-the entire Hard-vs-Normal skill gap — which is why that cell measures 50.0% and why the same cell measured 62.5%,
-66.7% and 85.0% in earlier passes on different seed blocks. The number is a corner lottery, not a difficulty
-measurement.
+Hard lost all twenty games from one corner and won all twenty from the other, on two independent seed blocks. That looked
+like a deterministic engine defect and was written up as blocking.
 
-**It is pre-existing, and that was verified rather than assumed.** `git stash` the whole `src/ai/economy.ts` change and
-re-run the identical command: **byte-identical output**, including `corner0 0 / corner1 20`. `audit/corner-pairs.ts`
-independently reports every corner winning 100% of its decided games on both builds.
+**It was a property of the reverted change, not of the engine.** On the shipped build every block is balanced:
+corner0 29/50 vs corner1 31/50 (mirror, N=100), 18/30 vs 19/30 (mirror, N=60), 20 vs 16 (ladder, N=40). And the ladder
+cell that was "unmeasurable" measures **90.0% (CI 77.0–96.0%)** — clearing the 70% target comfortably.
 
-It is also **not a terrain asymmetry**: `tests/data/parity.test.ts` still asserts the map symmetric on both axes, and
-`audit/neighbor-symmetry.ts` measured 41,516 of 41,516 tiles steering identically to their own reflection. So this is an
-ordering effect in the AI or the sim, not in the map.
-
-**What it would take.** `audit/corner-pairs.ts` is the instrument: it plays every ordered corner pairing and reports the
-reciprocal win rates. The signature to look for is a pairing where `p1@c0 vs p2@c1` and `p1@c1 vs p2@c0` are NOT
-mirror images of each other, which isolates the asymmetry to the FIRST decision any side makes (the starting refinery
-offset, the first worker task, the first wave's route). Phase 4's `e5ad71f` fixed exactly this class of defect for
-building offsets, so the mechanism is known to exist; what is not known is which of the remaining order-dependent
-decisions still breaks the mirror.
-
-**Why it was not attempted here.** It is a fairness project in its own right — the last time this class of bug was
-chased (`25ff6c5`, `a14d090`) it took three commits and a dedicated harness, and a half-diagnosis would leave the ladder
-numbers looking meaningful when they are not. Reporting the cell as unmeasurable is more honest than reporting a number
-a corner decided.
-
-**Consequence for the brief's target.** "Hard > Normal ≥ 70%" cannot be evaluated on this build at any sample size,
-because the measurement is confounded by a 100-point corner effect. The ladder cell will keep moving between 50% and
-85% depending on which seed block and which corner each side draws. Do not tune `targetBases`, `minWaveSize` or
-`reactionDelay` against it until Proposal 1 is fixed — every such tune so far has been fitting noise, which is exactly
-what HANDOFF §7.0 records happening between the Phase 5 and Phase 6 samples.
-
----
+**The lesson worth keeping:** a 20-0 sweep on 40 games is a striking pattern and it survived one replication, and it was
+still an artifact of the build rather than of the game. It was caught only because the underlying change was reverted for
+an unrelated reason (`README.md` §3) and the measurement was repeated. Re-measure on the build you are shipping, not on
+the build you were experimenting with.
 
 ## Proposal 2 — how to make the expansion fix shippable (it was reverted)
 
