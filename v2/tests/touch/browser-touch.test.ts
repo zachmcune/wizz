@@ -70,7 +70,7 @@ interface EntityStoreView {
   id: number[];
   posX: number[];
   posY: number[];
-  extras: { defId: string }[];
+  extras: { defId: string; orders?: { type?: string; x?: number; y?: number }[] }[];
   ownerIndexFor(id: string): number;
   slotOf(id: number): number;
   liveCount(): number;
@@ -343,7 +343,36 @@ describe('touch: a tap selects, and a tap on the ground moves the selection', ()
         expect(clear, `${vp.name}: the move target is not open ground (${clear})`).toBe('');
 
         await touchTap(page, cdp, target.x, target.y);
-        // Let the order run for a second of simulated time.
+        /**
+         * THE CLAIM IS "THE ORDER WAS ISSUED", NOT "THE UNIT TRAVELLED N METRES".
+         *
+         * Distance depends on the unit's speed, the path the flow field finds and the terrain in between, so
+         * a short measured distance does not mean the tap failed — CI measured 3.6 world units on a Wisp that
+         * had a perfectly good order and was walking a ramp. So the assertion is on the ORDER (the thing the
+         * gesture produces) and the distance is a secondary confirmation with a threshold that a moving unit
+         * cannot miss.
+         */
+        const order = await page.evaluate((id) => {
+          const c = window.__app.controller!;
+          const slot = c.state.entities.slotOf(id);
+          const orders = c.state.entities.extras[slot]!.orders as { type?: string; x?: number; y?: number }[] | undefined;
+          return {
+            top: orders?.[0]?.type ?? null,
+            target: orders?.[0] ? { x: Math.round(orders[0].x ?? 0), y: Math.round(orders[0].y ?? 0) } : null,
+          };
+        }, wisp!.id);
+        expect(order.top, `${vp.name}: the tap did not put a MOVE order on the Wisp`).toBe('move');
+        // The order's destination must be the ground the tap landed on, not the unit's own position.
+        const aim = await page.evaluate(([sx, sy]) => {
+          const c = (window as unknown as { __app: { controller: { camera: { view(): unknown } } } }).__app.controller;
+          const inp = (window as unknown as { __app: { input?: { worldAt(p: { x: number; y: number }): { x: number; y: number } } } }).__app.input;
+          void c;
+          return inp ? inp.worldAt({ x: sx!, y: sy! }) : null;
+        }, [target.x, target.y]);
+        expect(aim, `${vp.name}: could not resolve the tapped ground`).not.toBeNull();
+        const aimErr = Math.hypot((order.target?.x ?? 0) - aim!.x, (order.target?.y ?? 0) - aim!.y);
+        expect(aimErr, `${vp.name}: the order targets ${JSON.stringify(order.target)} but the tap was at ${JSON.stringify(aim)}`).toBeLessThan(96);
+
         await page.waitForTimeout(1400);
         const after = await page.evaluate((id) => {
           const c = window.__app.controller!;
@@ -351,7 +380,7 @@ describe('touch: a tap selects, and a tap on the ground moves the selection', ()
           return { x: c.state.entities.posX[slot]!, y: c.state.entities.posY[slot]! };
         }, wisp!.id);
         const moved = Math.hypot(after.x - before.x, after.y - before.y);
-        expect(moved, `${vp.name}: the Wisp did not move after a tap-to-move (travelled ${moved.toFixed(1)})`).toBeGreaterThan(4);
+        expect(moved, `${vp.name}: the Wisp has a move order but never left its start (travelled ${moved.toFixed(1)})`).toBeGreaterThan(0.5);
         expect(errors, errors.join('; ')).toEqual([]);
       } finally {
         await ctx.close();
@@ -381,12 +410,29 @@ describe('touch: a drag pans the camera without moving the army', () => {
          * end points are therefore derived from the camera's own safe rect, which is by definition the
          * HUD-free battlefield.
          */
-        const safe = await page.evaluate(() => window.__app.controller!.camera.safeRect());
-        const mid = { x: safe.x + safe.w * 0.35, y: safe.y + safe.h * 0.4 };
-        const end = { x: mid.x + Math.max(80, safe.w * 0.28), y: mid.y + Math.max(40, safe.h * 0.18) };
-        // Keep both ends comfortably inside the rect, so the drag can never run into chrome.
-        end.x = Math.min(safe.x + safe.w - 8, end.x);
-        end.y = Math.min(safe.y + safe.h - 8, end.y);
+        /**
+         * THE DRAG GOES TOWARD THE MAP CENTRE, BECAUSE THE CLAMP HAS ROOM THERE.
+         *
+         * A fixed direction is not safe: at match start the camera is framed on a CORNER spawn, so panning
+         * further toward that corner is exactly what the camera clamp forbids and the measured delta is
+         * 0 world units — a real property of a correct camera, reported as "the drag did not pan". Dragging
+         * toward the board's centre always has room, because the camera starts at an edge of the map.
+         */
+        const geom = await page.evaluate(() => {
+          const c = (window as unknown as {
+            __app: { controller: { camera: { safeRect(): { x: number; y: number; w: number; h: number }; centerX: number; centerY: number } } };
+          }).__app.controller;
+          return { safe: c.camera.safeRect(), cx: c.camera.centerX, cy: c.camera.centerY };
+        });
+        const safe = geom.safe;
+        const mid = { x: safe.x + safe.w * 0.5, y: safe.y + safe.h * 0.5 };
+        // Toward the board's middle in SCREEN space: the sign of (mapCentre - cameraCentre) projected.
+        const signX = 2048 > geom.cx ? 1 : -1;
+        const signY = 1408 > geom.cy ? 1 : -1;
+        const end = {
+          x: Math.min(safe.x + safe.w - 10, Math.max(safe.x + 10, mid.x - signX * Math.max(80, safe.w * 0.28))),
+          y: Math.min(safe.y + safe.h - 10, Math.max(safe.y + 10, mid.y - signY * Math.max(40, safe.h * 0.18))),
+        };
         expect(Math.abs(end.x - mid.x), `${vp.name}: the drag has no horizontal travel`).toBeGreaterThan(40);
         // The start point must be on the canvas, or the gesture never reaches the recogniser at all.
         const startOnCanvas = await page.evaluate(
@@ -401,7 +447,16 @@ describe('touch: a drag pans the camera without moving the army', () => {
           selection: [...window.__app.appState.selection],
         }));
         const moved = Math.hypot(after.x - before.x, after.y - before.y);
-        expect(moved, `${vp.name}: the drag did not pan the camera (${moved.toFixed(1)} world units)`).toBeGreaterThan(20);
+        /**
+         * A DRAG TOWARD THE MAP CENTRE ALWAYS HAS ROOM — but if a future framing put the camera at the
+         * board's exact centre, every direction would be clamped and this case would measure the clamp
+         * rather than the gesture. The failure message names that possibility so the next reader is not
+         * sent looking for a gesture bug.
+         */
+        expect(
+          moved,
+          `${vp.name}: the drag did not pan the camera (${moved.toFixed(1)} world units) — either the gesture was lost or the camera is clamped at the board edge in this direction`,
+        ).toBeGreaterThan(20);
         /**
          * AND IT ISSUED NO ORDER. This is the failure a pan that also taps produces: the army marches off
          * wherever the drag started. The selection must still be empty and nothing may have been ordered,
