@@ -589,7 +589,16 @@ describe('touch: build a structure with a tile tap and a ground tap', () => {
         const ghostDrawn = await page.evaluate(() => typeof window.__app.controller!.rend.setPlacement === 'function');
         expect(ghostDrawn, `${vp.name}: the renderer has no placement overlay`).toBe(true);
 
-        // ---- 4. tap the ground at the ghost's own tile, which is by definition valid
+        /**
+         * ---- 4. PAN TO THE GHOST, THEN TAP THE MIDDLE OF THE BATTLEFIELD.
+         *
+         * Tapping the ghost's raw projected position works on a wide screen and fails on a narrow one: on a
+         * 667x375 phone the right-hand sidebar covers a third of the width, so the seeded spot can project
+         * UNDER the console and the tap lands on a button. CI caught exactly that on the touch Chromebook
+         * context. A player solves it by moving the camera to what they want to place, so the proof does the
+         * same: centre the camera on the ghost, then tap the safe rect's centre, which is on the canvas by
+         * construction at every viewport.
+         */
         const g = armed.ghost!;
         const world = await page.evaluate(
           ([tx, ty, id]) => {
@@ -599,7 +608,31 @@ describe('touch: build a structure with a tile tap and a ground tap', () => {
           },
           [g.tx, g.ty, tileId],
         );
-        const screen = await worldToScreen(page, world.x, world.y);
+        const screen = await page.evaluate(
+          ([wx, wy]) => {
+            const c = (window as unknown as {
+              __app: {
+                controller: {
+                  camera: {
+                    centerInSafeArea(x: number, y: number): void;
+                    safeRect(): { x: number; y: number; w: number; h: number };
+                  };
+                };
+              };
+            }).__app.controller;
+            c.camera.centerInSafeArea(wx!, wy!);
+            const r = c.camera.safeRect();
+            return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+          },
+          [world.x, world.y],
+        );
+        // The tap must land on the CANVAS — assert it, so a layout change fails here rather than as
+        // "no structure was placed" three assertions later.
+        const onBoard = await page.evaluate(
+          ([x, y]) => document.elementFromPoint(x!, y!)?.tagName === 'CANVAS',
+          [screen.x, screen.y],
+        );
+        expect(onBoard, `${vp.name}: the placement tap is on HUD chrome, not the board`).toBe(true);
         const entsBefore = await page.evaluate(() => window.__app.controller!.state.entities.liveCount());
         await touchTap(page, cdp, screen.x, screen.y);
         await page.waitForTimeout(700);
