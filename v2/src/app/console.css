@@ -452,13 +452,18 @@
 /* A one-line blurb: a map is a place, and the name plus a sentence sells it better than dimensions alone. */
 .lobby-mapcard__desc {
   font-size: calc(var(--text-2xs) * var(--text-scale));
-  color: var(--bone-500, var(--bone-600));
+  color: var(--bone-600);
   line-height: var(--leading-snug);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /**
+   * WRAP, DO NOT CLAMP.
+   *
+   * `-webkit-line-clamp` looked tidy but the layout gate measures `scrollHeight` against `clientHeight`, and
+   * a clamped box reports itself as cropping its own text — which it is, by design, and the gate is right to
+   * call it out because a half-sentence reads as a bug. A map blurb is two short lines; letting it wrap in
+   * full is both correct and within the card's height.
+   */
+  overflow-wrap: break-word;
+  display: block;
 }
 
 .lobby-hint {
@@ -592,6 +597,11 @@
 [data-density='compact'] .lobby-mapcard__preview {
   width: 64px;
   flex: 0 0 auto;
+}
+/* On a 667x375 screen the card is a single row: preview, name, dimensions. The blurb has no width left and
+ * a clipped half-sentence reads as a bug, so it is dropped at this density and kept everywhere else. */
+[data-density='compact'] .lobby-mapcard__desc {
+  display: none;
 }
 [data-density='compact'] .lobby__summary {
   display: none;

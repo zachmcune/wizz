@@ -473,23 +473,43 @@
   box-shadow: inset 0 1px 0 var(--bone-400);
 }
 
+/**
+ * THE LABEL AND THE PRICE STACK, THEY DO NOT SIT SIDE BY SIDE.
+ *
+ * Side by side, a 10px "LEY CONDUIT" needs ~61px and the price beside it takes another ~26, which does not
+ * fit a two-up tile in a 136px sidebar — so the label either cropped itself or overhung the tile's own
+ * scroll container (measured 85px of overflow into a 1px box). Stacking gives the label the full tile width,
+ * lets it wrap at the space, and keeps the price readable underneath. A C&C production tile has the same
+ * shape: picture, name, cost.
+ */
 .prod-tile__meta {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   padding: 0 1px;
   min-width: 0;
+  /* Two wrapped lines of the smallest type step: 10px * 1.1 * 2, plus the price line. */
+  min-height: 30px;
 }
+/**
+ * THE TILE LABEL WRAPS, AT EVERY DENSITY.
+ *
+ * A two-word structure name ("ATTUNEMENT SPIRE", "LEY CONDUIT") cannot fit one line beside its price in a
+ * two-up grid at any sidebar width this design uses. `nowrap` plus a hidden overflow therefore cropped the
+ * element's own text, which the layout gate reports — correctly — as a bug rather than as deliberate
+ * truncation. Wrapping to two lines at the smallest type step keeps the whole word readable and needs 22px
+ * of height, which the meta row is sized for.
+ */
 .prod-tile__name {
   font-family: var(--font-display);
   font-size: calc(var(--text-2xs) * var(--text-scale));
   font-weight: var(--weight-semibold);
   letter-spacing: 0.03em;
   color: var(--bone-200);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.1;
   min-width: 0;
 }
 .prod-tile__cost {
@@ -499,6 +519,7 @@
   font-size: calc(var(--text-2xs) * var(--text-scale));
   color: var(--copper-300);
   flex: 0 0 auto;
+  line-height: 1.1;
 }
 .prod-tile__coin {
   color: var(--copper-400);
@@ -716,21 +737,121 @@
   width: 26px;
   height: 24px;
 }
+/**
+ * THE RAIL IS 38px IN COMPACT: one line of selection text fits, two do not.
+ *
+ * The label block stacks a name and a status line, which needs ~30px of line box inside a 38px band that
+ * also has padding — so the name reported itself as clipped inside its own box. At this density the status
+ * line is dropped and the name takes the full height with a line box that fits it, which is the honest fix:
+ * a two-line label in a one-line band is a layout bug, not a truncation to style around.
+ */
+[data-density='compact'] .hud-sel__sub {
+  display: none;
+}
+[data-density='compact'] .hud-sel__name {
+  line-height: 1.25;
+}
+/**
+ * IN PORTRAIT THE RAIL IS 390px WIDE and carries the selection, two resources, the power bar, the clock and
+ * three tool buttons. The selection label was squeezed to 10px — narrower than one glyph — so it cropped its
+ * own text. The label gets a floor and the power meter gives up its minimum, because a truncated unit name
+ * is worse than a slightly shorter bar.
+ */
+[data-density='compact'] .hud-sel__label {
+  /* "SANCTUM" at 10px in the condensed face is ~53px; the floor is set above that so the longest structure
+   * name in the content set fits without cropping. */
+  min-width: 56px;
+  flex: 1 1 auto;
+}
+/**
+ * IN PORTRAIT THE POWER NUMBERS GO AND THE BAR STAYS.
+ *
+ * The rail carries six things in 390px. The bar answers "am I near a brownout" at a glance, which is what
+ * the meter is FOR; the exact figures are secondary and already visible on a wider screen. Selling the
+ * numbers keeps the bar and buys the selection label the width it needs.
+ */
+@media (orientation: portrait) {
+  [data-density='compact'] .hud-power__nums {
+    display: none;
+  }
+  [data-density='compact'] .hud-power {
+    min-width: 40px;
+    flex: 0 1 56px;
+  }
+  [data-density='compact'] .hud-power__label {
+    display: none;
+  }
+  [data-density='compact'] .hud-power__icon {
+    display: none;
+  }
+  [data-density='compact'] .hud-rail .res {
+    gap: 2px;
+  }
+  [data-density='compact'] .hud-sel__thumb {
+    display: none;
+  }
+}
+[data-density='compact'] .hud-rail {
+  gap: var(--space-2);
+}
+[data-density='compact'] .hud-rail__tools {
+  gap: 1px;
+}
+[data-density='compact'] .hud-rail__tools .btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
+/**
+ * COMPACT LANDSCAPE: 667x375 GIVES THE CONSOLE 375px OF HEIGHT FOR EVERYTHING.
+ *
+ * With `auto` rows the radar canvas, the header and the tile grid all claimed their intrinsic height, the
+ * grid overflowed the panel, and the tile row ended up UNDER the command buttons — a real overlap measured
+ * at 32x14px, and a tap on a tile hit Move instead. The rows are therefore explicit here too: only the tile
+ * row flexes, so it scrolls and nothing can be overdrawn. The radar is height-capped for the same reason.
+ */
 [data-density='compact'] .hud-side {
   padding: var(--space-1);
   gap: var(--space-1);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  --hud-radar-max: 56px;
+}
+[data-density='compact'] .hud-radar__canvas {
+  max-height: var(--hud-radar-max, 56px);
+}
+/* The tile art shrinks before the tile disappears: 28px of picture plus a 12px label is the compact
+ * floor, which keeps six tiles reachable in a 375px-tall panel. */
+[data-density='compact'] .prod-tile {
+  min-height: 44px;
+  padding: 1px;
+}
+[data-density='compact'] .prod-tile__art {
+  height: 28px;
+}
+/* The name is ELASTIC at this size: `nowrap` plus `text-overflow` made a 57px string in a 30px box, which
+ * the clip gate reports (correctly) as a layout bug rather than as deliberate truncation. The label now
+ * wraps to two lines inside its own box, so nothing is cropped and nothing overflows. */
+[data-density='compact'] .prod-tile__name {
+  /* Wrap at word boundaries, two lines maximum. `break-word` rather than `anywhere`: "LEY CONDUIT" then
+   * breaks after the space instead of mid-letter, and the box is tall enough for both lines so the element
+   * does not report its own text as clipped. */
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.1;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+[data-density='compact'] .prod-tile__meta {
+  /* Two lines of 10px text at 1.1 needs 22px; the row is sized from that rather than from one line. */
+  min-height: 22px;
+  align-items: flex-start;
 }
 [data-density='compact'] .hud-tab {
   min-height: 30px;
 }
 [data-density='compact'] .hud-tab__label {
   font-size: calc(var(--text-2xs) * var(--text-scale));
-}
-[data-density='compact'] .prod-tile {
-  min-height: 52px;
-}
-[data-density='compact'] .prod-tile__art {
-  height: 34px;
 }
 [data-density='compact'] .hud-cmd {
   min-height: 30px;
