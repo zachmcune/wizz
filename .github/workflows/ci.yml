@@ -122,10 +122,23 @@ jobs:
       # they would starve the page loads and produce navigation timeouts that look like product failures.
       - name: Slow multiplayer suites (lockstep through the relay, desync, jitter, rejoin)
         run: npm run test:slow-net
-      # Everything EXCEPT the perf gate (already run alone above) and the slow AI suites (just run). Re-running them here would
-      # measure them under browser contention and produce a meaningless number.
-      - name: Unit and proof tests (including the live UI gates)
+      # Everything EXCEPT the perf gate (already run alone above), the slow AI suites (just run), and the
+      # BROWSER GATES below. Re-running the first two here would measure them under browser contention and
+      # produce a meaningless number.
+      - name: Unit and proof tests (logic, sim, token and style gates)
         run: npm run test:unit
+        env:
+          PROOF_BASE: http://127.0.0.1:5343
+      # THE BROWSER GATES, SERIALISED AND ALONE.
+      #
+      # `tests/ui-phase4.test.ts`, `tests/ui-camera.test.ts` and `tests/touch/browser-touch.test.ts` each
+      # launch their own Chromium and drive a WebGL canvas through SwiftShader, which is CPU-bound. Run
+      # inside the same vitest pool as everything else on a 4-core runner they competed with each other and
+      # with the other Playwright sessions the unit suite opens; measured, one `page.screenshot` took 173
+      # seconds and was reported as a TIMEOUT — a failure that says "the page is broken" when the truth is
+      # "the machine was busy". `--no-file-parallelism` runs them one file at a time, which is the whole fix.
+      - name: Browser UI and touch gates (serialised, own step)
+        run: npm run test:browser-gates
         env:
           PROOF_BASE: http://127.0.0.1:5343
       - name: Stop the dev server
