@@ -660,8 +660,18 @@ test.describe('two browser contexts play an active lockstep match', () => {
      *     check is on growth OR on damage, never on a count that a lost fight would fail;
      *   • damage was dealt somewhere, i.e. the armies actually met.
      */
-    expect(h.issued, `host issued only ${h.issued} commands`).toBeGreaterThan(0);
-    expect(g.issued, `guest issued only ${g.issued} commands`).toBeGreaterThan(0);
+    /**
+     * A REAL MATCH CARRIES REAL COMMANDS — not one tap.
+     *
+     * The floor is set from what a match of this shape MUST contain, not from the measured run: two
+     * structures and a batch of units on each side, plus a march per side, is at least six commands each.
+     * The committed run carried 8 and 16; this asserts the minimum that proves the peers were playing
+     * rather than merely connected, and it is deliberately well below the observed figure so a slower
+     * machine does not fail it for being slow.
+     */
+    expect(h.issued, `host issued only ${h.issued} commands`).toBeGreaterThanOrEqual(6);
+    expect(g.issued, `guest issued only ${g.issued} commands`).toBeGreaterThanOrEqual(6);
+    expect(h.issued + g.issued, `the match carried only ${h.issued + g.issued} commands`).toBeGreaterThanOrEqual(14);
 
     const hostBuildingsGrew = h.myBuildings > start.host!.myBuildings;
     const guestBuildingsGrew = g.myBuildings > start.guest!.myBuildings;
