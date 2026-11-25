@@ -1,0 +1,35 @@
+{
+  "kind": "research",
+  "id": "forge_tempering",
+  "name": "Forge Tempering",
+  "description": "Siege crews rehearse the reload. The next shot comes sooner.",
+  "cost": 600,
+  "researchTime": 44,
+  "tier": 3,
+  "icon": "attack",
+  "requires": [
+    "heavy_plating"
+  ],
+  "researchedAt": "golem_forge",
+  "factions": [
+    "arcane",
+    "obsidian"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "siege"
+      ],
+      "stat": "cooldownTicks",
+      "operation": "multiply",
+      "value": 0.92
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Siege reload",
+      "detail": "Siege engines fire 8% faster"
+    }
+  ]
+}

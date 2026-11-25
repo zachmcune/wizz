@@ -1,0 +1,82 @@
+{
+  "crop50": {
+    "worst": {
+      "a": "attunement_spire",
+      "b": "resonance_vault",
+      "v": 0.7013133208255159
+    },
+    "overThreshold": 0,
+    "top": [
+      {
+        "a": "attunement_spire",
+        "b": "resonance_vault",
+        "v": 0.7013133208255159
+      },
+      {
+        "a": "inferno_beacon",
+        "b": "storm_conductor",
+        "v": 0.698443113772455
+      },
+      {
+        "a": "obsidian_bastion",
+        "b": "resonance_vault",
+        "v": 0.6934058463630184
+      },
+      {
+        "a": "arcane_bunker",
+        "b": "resonance_vault",
+        "v": 0.6758720930232558
+      },
+      {
+        "a": "attunement_spire",
+        "b": "thorn_grove",
+        "v": 0.6691073919107392
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.6661698956780924
+      }
+    ]
+  },
+  "crop30": {
+    "worst": {
+      "a": "arcane_bunker",
+      "b": "resonance_vault",
+      "v": 0.7869722557297949
+    },
+    "overThreshold": 8,
+    "top": [
+      {
+        "a": "arcane_bunker",
+        "b": "resonance_vault",
+        "v": 0.7869722557297949
+      },
+      {
+        "a": "celestial_cannon",
+        "b": "golem_forge",
+        "v": 0.7796192609182531
+      },
+      {
+        "a": "obsidian_bastion",
+        "b": "resonance_vault",
+        "v": 0.769327731092437
+      },
+      {
+        "a": "golem_forge",
+        "b": "sanctum",
+        "v": 0.7599186164801628
+      },
+      {
+        "a": "frost_spire",
+        "b": "storm_conductor",
+        "v": 0.7351837959489872
+      },
+      {
+        "a": "resonance_vault",
+        "b": "thorn_grove",
+        "v": 0.7346887550200804
+      }
+    ]
+  }
+}

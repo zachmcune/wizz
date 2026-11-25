@@ -1,0 +1,47 @@
+{
+  "id": "grove_warden",
+  "name": "Grove Warden",
+  "kind": "unit",
+  "role": "sustained_ranged",
+  "cost": 260,
+  "buildTime": 7,
+  "hp": 95,
+  "armor": "light",
+  "speed": 60,
+  "sight": 175,
+  "radius": 9,
+  "weapon": {
+    "damage": 14,
+    "range": 122,
+    "cooldownTicks": 18,
+    "projectile": null,
+    "targetsAir": true,
+    "vs": {
+      "light": 1.15,
+      "heavy": 0.7,
+      "building": 0.5
+    }
+  },
+  "producedBy": "summoning_circle",
+  "menuCategory": "small_troops",
+  "requires": [
+    "summoning_circle"
+  ],
+  "factions": [
+    "verdant"
+  ],
+  "canGarrison": true,
+  "art": {
+    "sprite": "grove_warden",
+    "shape": "diamond",
+    "size": 17,
+    "accent": "#8fffc0",
+    "attackFx": "bolt"
+  },
+  "sfx": {
+    "select": "archer_select",
+    "move": "archer_move",
+    "attack": "bolt_fire",
+    "die": "unit_die"
+  }
+}

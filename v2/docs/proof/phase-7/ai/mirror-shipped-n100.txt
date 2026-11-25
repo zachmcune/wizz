@@ -1,0 +1,56 @@
+seed  8000: p1@c0 -> team0 21.1m | p1@c1 -> team1 13.0m
+seed  8007: p1@c0 -> team1 11.8m | p1@c1 -> team0 13.0m
+seed  8014: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8021: p1@c0 -> team0 12.9m | p1@c1 -> team0 21.3m
+seed  8028: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8035: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8042: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8049: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8056: p1@c0 -> team0 10.3m | p1@c1 -> team0 13.0m
+seed  8063: p1@c0 -> team1 11.8m | p1@c1 -> team0 13.0m
+seed  8070: p1@c0 -> team0 20.1m | p1@c1 -> team1 21.4m
+seed  8077: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8084: p1@c0 -> team1 11.8m | p1@c1 -> team0 13.0m
+seed  8091: p1@c0 -> team0 10.3m | p1@c1 -> team0 13.0m
+seed  8098: p1@c0 -> team1 11.8m | p1@c1 -> team0 13.0m
+seed  8105: p1@c0 -> team0 21.1m | p1@c1 -> team1 13.0m
+seed  8112: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8119: p1@c0 -> team0 10.3m | p1@c1 -> team0 13.0m
+seed  8126: p1@c0 -> team0 21.1m | p1@c1 -> team1 13.0m
+seed  8133: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8140: p1@c0 -> team1 19.3m | p1@c1 -> team0 12.1m
+seed  8147: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8154: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8161: p1@c0 -> team0 12.9m | p1@c1 -> team0 20.1m
+seed  8168: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8175: p1@c0 -> team1 19.3m | p1@c1 -> team0 12.1m
+seed  8182: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8189: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8196: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8203: p1@c0 -> team1 19.3m | p1@c1 -> team0 12.1m
+seed  8210: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8217: p1@c0 -> team0 10.3m | p1@c1 -> team0 13.0m
+seed  8224: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8231: p1@c0 -> team0 12.9m | p1@c1 -> team0 20.1m
+seed  8238: p1@c0 -> team1 19.3m | p1@c1 -> team0 12.1m
+seed  8245: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8252: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8259: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8266: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8273: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8280: p1@c0 -> team0 12.9m | p1@c1 -> team0 20.1m
+seed  8287: p1@c0 -> team0 20.0m | p1@c1 -> team1 21.4m
+seed  8294: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8301: p1@c0 -> team1 11.8m | p1@c1 -> team0 13.0m
+seed  8308: p1@c0 -> team0 12.9m | p1@c1 -> team0 20.1m
+seed  8315: p1@c0 -> team1 10.7m | p1@c1 -> team0 14.4m
+seed  8322: p1@c0 -> team1 13.1m | p1@c1 -> team0 12.3m
+seed  8329: p1@c0 -> team0 21.0m | p1@c1 -> team1 13.0m
+seed  8336: p1@c0 -> team0 12.9m | p1@c1 -> team0 21.3m
+seed  8343: p1@c0 -> team1 10.7m | p1@c1 -> team0 14.4m
+
+MIRROR (normal, 100 matches, 50 seeds x2 assignments)
+  slot   p1 60/100 = 60.0%  95% CI 50.2-69.1%  contains 50%: false
+  corner0   29/50 = 58.0%  CI 44.2-70.6%
+  corner1   31/50 = 62.0%  CI 48.2-74.1%
+  unfinished 0/100   mean length 15.5m

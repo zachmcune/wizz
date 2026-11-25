@@ -1,0 +1,47 @@
+{
+  "kind": "research",
+  "id": "siege_doctrine",
+  "name": "Siege Doctrine",
+  "description": "Obsidian siegebreakers learn to brace before firing, hitting harder from further back.",
+  "cost": 900,
+  "researchTime": 58,
+  "tier": 4,
+  "icon": "attack",
+  "requires": [
+    "forge_tempering"
+  ],
+  "researchedAt": "golem_forge",
+  "factions": [
+    "obsidian"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "obsidian_siege"
+      ],
+      "stat": "damage",
+      "operation": "multiply",
+      "value": 1.15
+    },
+    {
+      "kind": "unitStatModifier",
+      "unitIds": [
+        "obsidian_siege"
+      ],
+      "stat": "range",
+      "operation": "multiply",
+      "value": 1.1
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Siegebreaker damage",
+      "detail": "+15% damage for Obsidian Siegebreakers"
+    },
+    {
+      "label": "Siegebreaker range",
+      "detail": "+10% range for Obsidian Siegebreakers"
+    }
+  ]
+}

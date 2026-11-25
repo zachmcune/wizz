@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run build:v1 && npm run build:v2",
+    "build:v1": "tsc --noEmit && vite build",
+    "build:v2": "node scripts/build-v2.mjs",
     "start": "node --experimental-strip-types relay/production.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

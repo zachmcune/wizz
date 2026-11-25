@@ -1,0 +1,42 @@
+{
+  "kind": "research",
+  "id": "ley_efficiency",
+  "name": "Ley Efficiency",
+  "description": "Conductive channel-work in every tower, so defences draw less power for the same output.",
+  "cost": 550,
+  "researchTime": 42,
+  "tier": 3,
+  "icon": "power",
+  "requires": [
+    "reinforced_frames"
+  ],
+  "researchedAt": "ley_conduit",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "arcane_sentry",
+        "frost_spire",
+        "inferno_beacon",
+        "storm_conductor",
+        "celestial_cannon",
+        "sanctuary_spire",
+        "scrying_obelisk"
+      ],
+      "stat": "powerUsed",
+      "operation": "multiply",
+      "value": 0.85
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Defence power draw",
+      "detail": "Towers and spires use 15% less power"
+    }
+  ]
+}

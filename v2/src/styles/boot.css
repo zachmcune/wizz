@@ -1,0 +1,134 @@
+/* GAME SHELL — the in-match chrome, built from the UI design system.
+ *
+ * This replaces the previous `boot.css`, which used a violet-on-violet palette with 8–12px rounded
+ * panels. That was the "generic AI app" look Zachary rejected, and it also collided with the game's own
+ * Arcane faction, which is violet — so UI chrome and battlefield content read as the same material.
+ *
+ * Everything here composes `tokens.css` and `components.css`. There are no colour, size or timing
+ * literals in this file, and `tests/ui-tokens.test.ts` enforces that.
+ *
+ * The HUD philosophy, following the classic RTS HUDs but with its own construction:
+ *   • Chrome sits at the EDGES. The centre of the screen is the battlefield and stays clear.
+ *   • Panels are OPAQUE. A HUD that blurs the board makes the board harder to read.
+ *   • Nothing floats. Every element is docked to an edge with a hard 1px rule between zones.
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--ink-950);
+  color: var(--bone-100);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#boot {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+#boot.game-shell {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── canvas */
+.game-canvas-host {
+  position: absolute;
+  inset: 0;
+}
+.game-canvas-host canvas {
+  display: block;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── boot / error */
+.boot-card {
+  max-width: 460px;
+  margin: var(--space-9) auto;
+}
+
+.boot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+
+.boot-err {
+  color: var(--signal-bad);
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  white-space: pre-wrap;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── HUD zones */
+/* Top bar: resource readouts. Docked left, full-width, one hairline below. */
+.game-hud {
+  position: absolute;
+  inset: var(--hud-pad) var(--hud-pad) auto var(--hud-pad);
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  pointer-events: none;
+  z-index: var(--z-hud);
+}
+
+.hud-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  pointer-events: auto;
+}
+
+/* Debug readout: deliberately understated, monospace, and visually subordinate to the game. */
+.hud-stats {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: var(--leading-snug);
+  color: var(--bone-600);
+  white-space: pre;
+}
+
+.hud-hint {
+  padding: var(--space-2) var(--space-4);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  pointer-events: none;
+}
+
+/* Zoom widget: docked bottom-right, above the command bar zone. */
+.hud-zoom {
+  position: absolute;
+  right: var(--hud-pad);
+  bottom: var(--hud-pad);
+  display: flex;
+  gap: var(--space-2);
+  z-index: var(--z-hud);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── density */
+[data-density='compact'] .game-hud {
+  gap: var(--space-2);
+}
+[data-density='compact'] .hud-bar {
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+[data-density='compact'] .hud-hint {
+  display: none;
+}
+[data-density='compact'] .res__value {
+  font-size: calc(var(--text-md) * var(--text-scale));
+}
+[data-density='compact'] .res__label {
+  display: none;
+}

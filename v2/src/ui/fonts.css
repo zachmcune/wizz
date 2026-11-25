@@ -1,0 +1,69 @@
+/* SELF-HOSTED TYPEFACES — no CDN, no network dependency, ~148 KB total.
+ *
+ * IBM Plex, Latin subset only, woff2. Three cuts, each pulled in only at the weights actually used:
+ *
+ *   Plex Sans        400 / 500 / 600   body, labels, buttons
+ *   Plex Sans Cond   500 / 600         RTS-style headlines and numerals in tight HUD space
+ *   Plex Mono        400 / 500         tabular numerals for resource counters
+ *
+ * Why these: a squarish humanist sans reads cleanly at 11–13px on a low-DPI Chromebook panel, which
+ * is the tightest real target this ships to. The Condensed cut gives condensed RTS headlines without
+ * resorting to a fantasy display face (which would fight the 3D art). Mono gives tabular figures so a
+ * mana counter does not jitter horizontally as it ticks. All three are the same superfamily, so the UI
+ * reads as one system rather than three borrowed parts.
+ *
+ * `font-display: swap` is deliberate: the game canvas is the content, and text appearing 60ms late is
+ * better than a blank screen on a slow Chromebook.
+ */
+
+@font-face {
+  font-family: 'Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plex Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-condensed-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-condensed-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+}

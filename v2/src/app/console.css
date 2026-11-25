@@ -1,0 +1,991 @@
+/* COMMAND CONSOLE SCREENS — main menu, skirmish lobby, multiplayer, pause, settings.
+ *
+ * These screens are meant to feel like a mobile Command & Conquer before the match starts: a machined
+ * command console bolted over the battlefield, with big labelled plates instead of a generic web form.
+ *
+ * The rules that make it read that way, and that are applied consistently here:
+ *
+ *   • ONE PRIMARY ACTION. Each screen has exactly one copper-filled control, sized `--control-lg` and
+ *     full width on a phone. Everything else is a steel plate or a quiet row. Two primaries means the
+ *     player has to read to decide, which is the failure mode a console avoids.
+ *   • PLATES, NOT CARDS. Every panel is a `.plate` with a chamfered corner and a bevel. There are no
+ *     rounded corners, no drop-shadowed floating cards, no translucent panels.
+ *   • A LABEL FOR EVERY CONTROL. Icon-only is reserved for genuinely universal glyphs (close, back,
+ *     zoom) and each of those still carries an `aria-label` and a `title`.
+ *   • THUMB-SIZED. Every interactive row is at least 40px tall at compact density, because the primary
+ *     target is a phone held in one hand.
+ *   • THE FIXED FOOTER. The primary action never moves as options change — the configuration scrolls
+ *     behind it. This is the specific mistake the v1 lobby made.
+ *
+ * Loaded AFTER `app.css`, so it refines rather than duplicates.
+ */
+
+/* ═════════════════════════════════════════════════════════════════════════════ MENU */
+
+.screen--menu {
+  position: relative;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  background: var(--ink-950);
+}
+
+/* The live scene: full-bleed behind the console. In landscape it is biased right so the console has a
+ * clean dark field to sit on; in portrait it is dimmed harder because the console covers most of it. */
+.menu-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--ink-900);
+}
+.menu-art__canvas {
+  position: absolute;
+  inset: 0;
+}
+.menu-art__canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* A hard left-to-right ink scrim, not a blurred glass panel: the console must be legible and the art
+ * must stay visible, so the scrim is a gradient in the ink family with no blur. */
+.menu-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, var(--ink-950) 0%, var(--ink-950) 34%, transparent 74%);
+}
+.menu-art__label {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  z-index: 2;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.menu-art__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, var(--ink-850) 0 12px, var(--ink-800) 12px 24px);
+}
+.menu-art__sigil {
+  width: 30%;
+  aspect-ratio: 1;
+  clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
+  background: var(--ink-700);
+  box-shadow: inset 0 0 0 2px var(--copper-700);
+}
+
+/* The console: a single column of plates, vertically centred, with a hard right edge so it reads as a
+ * physical panel rather than a floating overlay. */
+.menu-console {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: min(430px, 100%);
+  height: 100%;
+  padding: calc(var(--gutter) * 1.4) var(--gutter);
+  justify-content: center;
+}
+
+.menu-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.menu-eyebrow {
+  color: var(--copper-400);
+}
+.menu-title {
+  margin: 0;
+  font-size: calc(var(--text-3xl) * var(--text-scale));
+  letter-spacing: 0.04em;
+  /* 1.05 measured 47px of glyph in a 44px box — the uppercase title's cap height plus the accent on
+   * "DOMINION" needs a line box taller than the glyph list, or the element reports as clipping its own
+   * text. 1.35 is the same value `.display` uses for the same reason; the tightness that makes the
+   * title read as a title comes from the letter-spacing, not from a crop. */
+  line-height: 1.35;
+  color: var(--bone-100);
+}
+.menu-standfirst {
+  margin: 0;
+  max-width: 34ch;
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-400);
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+.menu-primary-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.menu-primary {
+  /* The one primary control on the screen. Everything else is steel. */
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+.menu-primary__note {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  padding-left: var(--space-2);
+}
+
+/* The secondary plates: icon, label + note, chevron. A list of tactile rows rather than a stack of
+ * identical buttons, which is what makes it read as a console menu. */
+.menu-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.menu-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  min-height: 46px;
+  background: var(--ink-850);
+  color: var(--bone-200);
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-600),
+    var(--bevel-inset);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  touch-action: manipulation;
+}
+.menu-entry:hover {
+  background: var(--ink-800);
+  color: var(--bone-100);
+}
+.menu-entry:active {
+  background: var(--ink-700);
+  transform: translateY(1px);
+}
+.menu-entry:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: -2px;
+}
+.menu-entry__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  color: var(--copper-400);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.menu-entry__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.menu-entry__label {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  color: var(--bone-100);
+}
+.menu-entry__note {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-entry__chev {
+  display: flex;
+  color: var(--ink-300);
+  flex: 0 0 auto;
+}
+
+.menu-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+  flex-wrap: wrap;
+}
+.menu-strip__dot {
+  color: var(--ink-500);
+}
+
+/* ── COMPACT (phone) ───────────────────────────────────────────────────────────────────────────────
+ *
+ * TWO DIFFERENT SHAPES FOR TWO DIFFERENT SCREENS, both chosen from measured space rather than taste:
+ *
+ * LANDSCAPE (667x375): the screen is WIDE and SHORT, so the console occupies a left column and the live
+ * 3D scene keeps the right half. That is the C&C menu shape — a console bolted over the battlefield — and
+ * it is the whole reason the menu mounts a real renderer. Stacking a single column here would show five
+ * rows of text on an empty field and throw the art away.
+ *
+ * PORTRAIT (390x844): the screen is NARROW and TALL, so a side-by-side split would give each half under
+ * 200px. The console takes the full width over a dimmed, full-bleed scene instead: the art becomes
+ * atmosphere and the controls get the width they need.
+ */
+[data-density='compact'] .menu-art::after {
+  /* A hard vertical scrim: the console must be legible and the art must still read as art. */
+  background: linear-gradient(100deg, var(--ink-950) 0%, var(--ink-950) 42%, transparent 78%);
+}
+[data-density='compact'] .menu-console {
+  /* A left column on a landscape phone: 300px is the measured width at which "ENTITY DESIGNS" and its
+   * chevron both fit at the compact type step without truncation. */
+  width: min(300px, 100%);
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+  justify-content: center;
+}
+[data-density='compact'] .menu-title {
+  font-size: calc(var(--text-xl) * var(--text-scale));
+}
+[data-density='compact'] .menu-standfirst {
+  display: none;
+}
+[data-density='compact'] .menu-eyebrow {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+[data-density='compact'] .menu-entry {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
+  gap: var(--space-2);
+}
+[data-density='compact'] .menu-entry__note {
+  display: none;
+}
+[data-density='compact'] .menu-entry__icon {
+  width: 24px;
+  height: 24px;
+}
+[data-density='compact'] .menu-entry__label {
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+[data-density='compact'] .menu-primary {
+  font-size: calc(var(--text-md) * var(--text-scale));
+  min-height: 38px;
+}
+[data-density='compact'] .menu-primary__note {
+  display: none;
+}
+[data-density='compact'] .menu-strip {
+  display: none;
+}
+
+/* Portrait: the console takes the whole width over a dimmed scene. */
+@media (orientation: portrait) {
+  [data-density='compact'] .menu-art::after {
+    /* Nearly opaque over the art, so the busy battlefield cannot fight the console's type on a screen
+     * where the console covers most of it. */
+    background: linear-gradient(to bottom, var(--ink-950) 0%, transparent 26%, transparent 52%, var(--ink-950) 86%);
+  }
+  [data-density='compact'] .menu-console {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-4);
+    justify-content: space-between;
+  }
+  [data-density='compact'] .menu-title {
+    font-size: calc(var(--text-2xl) * var(--text-scale));
+  }
+  [data-density='compact'] .menu-entry {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+  }
+  [data-density='compact'] .menu-entry__icon {
+    width: 28px;
+    height: 28px;
+  }
+  [data-density='compact'] .menu-strip {
+    display: flex;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════ LOBBY */
+
+.lobby-head {
+  flex: 0 0 auto;
+}
+.lobby {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+}
+.lobby__seats,
+.lobby__settings {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+.lobby__settings .panel__body {
+  overflow-y: auto;
+}
+
+.lobby-seats {
+  gap: var(--space-2);
+}
+/* A seat is a plate with the team colour as a 4px edge bar — the one place team colour and chrome meet,
+ * and it stays a bar so it can never be read as a UI accent. */
+.lobby-seat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.lobby-seat__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: var(--space-1);
+}
+.lobby-select {
+  min-height: 32px;
+  background: var(--ink-800);
+  color: var(--bone-200);
+  border: 0;
+  font-family: var(--font-ui);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  padding: var(--space-1) var(--space-2);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  cursor: pointer;
+}
+.lobby-select:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: -2px;
+}
+.lobby-add {
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.lobby-tabs .tabs {
+  flex-wrap: wrap;
+}
+.lobby-settings {
+  gap: var(--space-4);
+}
+.lobby-maplist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-2);
+}
+/* A map is a picture, a name, and its size. The preview is drawn from the map's own tiles, so two maps
+ * can never look identical by accident. */
+.lobby-mapcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: stretch;
+  padding: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+  background: var(--ink-800);
+  color: var(--bone-200);
+  border: 0;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  transition: box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  touch-action: manipulation;
+}
+.lobby-mapcard:hover {
+  background: var(--ink-700);
+}
+.lobby-mapcard.is-on {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500);
+}
+.lobby-mapcard:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: -2px;
+}
+.lobby-mapcard__preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 96 / 66;
+  image-rendering: pixelated;
+  background: var(--ink-950);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.lobby-mapcard__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.lobby-mapcard__name {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  color: var(--bone-100);
+}
+.lobby-mapcard__note {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+/* A one-line blurb: a map is a place, and the name plus a sentence sells it better than dimensions alone. */
+.lobby-mapcard__desc {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  line-height: var(--leading-snug);
+  /**
+   * WRAP, DO NOT CLAMP.
+   *
+   * `-webkit-line-clamp` looked tidy but the layout gate measures `scrollHeight` against `clientHeight`, and
+   * a clamped box reports itself as cropping its own text — which it is, by design, and the gate is right to
+   * call it out because a half-sentence reads as a bug. A map blurb is two short lines; letting it wrap in
+   * full is both correct and within the card's height.
+   */
+  overflow-wrap: break-word;
+  display: block;
+}
+
+.lobby-hint {
+  margin: 0;
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.lobby-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.lobby-team {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.lobby-team__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--team, var(--ink-400));
+}
+.lobby-team__member {
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  color: var(--bone-200);
+}
+.lobby-factions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.lobby-faction {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-areas:
+    'icon name'
+    'icon note';
+  gap: 0 var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+  color: var(--copper-400);
+}
+.lobby-faction > svg {
+  grid-area: icon;
+  align-self: start;
+}
+.lobby-faction__name {
+  grid-area: name;
+  font-family: var(--font-display);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+}
+.lobby-faction__note {
+  grid-area: note;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.lobby-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.lobby-option__label {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+}
+.lobby-option__value {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-400);
+}
+
+/* The fixed footer. Start never moves as configuration changes. */
+.lobby__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+.lobby__summary {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  font-family: var(--font-numeric);
+}
+/* Error surface: HIDDEN on first render (v1's bug was showing red before any input). */
+.lobby-error {
+  display: none;
+  padding: var(--space-2) var(--space-3);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+  background: var(--ink-800);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-bad), inset var(--border-thick) 0 0 var(--signal-bad);
+}
+.lobby-error.is-on {
+  display: block;
+}
+
+[data-density='compact'] .lobby {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-2);
+}
+[data-density='compact'] .lobby__seats .panel__body {
+  padding: var(--space-2);
+}
+[data-density='compact'] .lobby-seat {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+[data-density='compact'] .lobby-seat__controls {
+  margin-left: auto;
+  flex: 1 1 180px;
+}
+[data-density='compact'] .lobby-select {
+  min-height: 28px;
+}
+[data-density='compact'] .lobby-mapcard {
+  flex-direction: row;
+  align-items: center;
+}
+[data-density='compact'] .lobby-mapcard__preview {
+  width: 64px;
+  flex: 0 0 auto;
+}
+/* On a 667x375 screen the card is a single row: preview, name, dimensions. The blurb has no width left and
+ * a clipped half-sentence reads as a bug, so it is dropped at this density and kept everywhere else. */
+[data-density='compact'] .lobby-mapcard__desc {
+  display: none;
+}
+[data-density='compact'] .lobby__summary {
+  display: none;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════ PAUSE */
+
+.screen--overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A hard ink plate over the frozen board rather than a translucent blur. */
+  background: var(--ink-950);
+  padding: var(--gutter);
+}
+.pause-card {
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+.pause-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.pause-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.pause-stat__label {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+}
+.pause-stat__value {
+  font-size: calc(var(--text-md) * var(--text-scale));
+  color: var(--bone-100);
+}
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.pause-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.pause-action {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+.pause-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: var(--leading-snug);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════ SETTINGS */
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+.settings-row--choices {
+  flex-wrap: wrap;
+}
+.settings-row__text {
+  gap: var(--space-1);
+  min-width: 0;
+}
+.settings-row__label {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+}
+.settings-row__note {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.settings-choices {
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+/* The switch is a machined slot with a sliding plate, not a rounded iOS pill. */
+.settings-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 auto;
+  background: var(--ink-900);
+  border: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.settings-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: var(--bone-600);
+  box-shadow: 0 1px 0 var(--shade-key);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.settings-toggle.is-on {
+  box-shadow: inset 0 0 0 var(--border-hair) var(--copper-600);
+}
+.settings-toggle.is-on .settings-toggle__knob {
+  transform: translateX(20px);
+  background: var(--copper-400);
+}
+.settings-toggle:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: 2px;
+}
+.settings-slider {
+  flex: 1 1 auto;
+  max-width: 160px;
+  min-height: 24px;
+  accent-color: var(--copper-500);
+}
+.settings-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.settings-key {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  border-bottom: var(--border-hair) solid var(--ink-800);
+}
+.settings-key__action {
+  color: var(--bone-100);
+}
+.settings-key__how {
+  color: var(--bone-400);
+  text-align: right;
+}
+.settings-note {
+  margin: 0;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.settings-foot {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+[data-density='compact'] .settings-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-density='compact'] .settings-key {
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════ MULTIPLAYER */
+
+.screen--mp {
+  overflow: hidden;
+}
+.mp-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-thick) solid var(--ink-600);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+.mp-head__title {
+  gap: 0;
+}
+.mp-title {
+  margin: 0;
+  font-size: calc(var(--text-2xl) * var(--text-scale));
+  letter-spacing: 0.06em;
+}
+
+.mp-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+/* The status line is the connection's voice. Its left rule changes colour with state, so a failure is
+ * visible without reading, and it never disappears (a phone player has to be told what is happening). */
+.mp-status {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+  background: var(--ink-900);
+  box-shadow: inset var(--border-thick) 0 0 var(--ink-600);
+}
+.mp-status[data-state='ok'] {
+  box-shadow: inset var(--border-thick) 0 0 var(--signal-good);
+}
+.mp-status[data-state='error'],
+.mp-status.is-error {
+  color: var(--bone-100);
+  box-shadow: inset var(--border-thick) 0 0 var(--signal-bad);
+}
+
+.mp-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+}
+.mp-panel {
+  min-width: 0;
+}
+.mp-stack {
+  gap: var(--space-3);
+}
+.mp-hint {
+  margin: 0;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: var(--leading-snug);
+}
+
+/* Create/join: one primary (create) and one secondary pair (code + join). */
+.mp-cta {
+  display: flex;
+}
+.mp-join {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+.mp-code {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--ink-950);
+  color: var(--bone-100);
+  border: 0;
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-lg) * var(--text-scale));
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+}
+.mp-code::placeholder {
+  color: var(--bone-600);
+  letter-spacing: var(--tracking-caps);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+.mp-code:focus-visible {
+  outline: var(--border-thick) solid var(--copper-500);
+  outline-offset: -2px;
+}
+
+/* The invite block: the code at a size you can read across a table, plus both copy buttons. */
+.mp-invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.mp-invite__code {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+.mp-invite__value {
+  font-size: calc(var(--text-2xl) * var(--text-scale));
+  letter-spacing: 0.22em;
+  color: var(--copper-300);
+  line-height: 1.15;
+  user-select: all;
+}
+
+/* Seats: a plate per seat with the team colour bar on its edge, the same language as the lobby. */
+.mp-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mp-seat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  min-height: 40px;
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.mp-seat__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--team, var(--ink-400));
+}
+.mp-seat__who {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+.mp-seat__name {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  color: var(--bone-100);
+}
+.mp-seat__role {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+/* Your own seat is marked, so the list answers "which one am I" without reading every row. */
+.mp-seat[data-state='you'] {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500);
+}
+
+.mp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mp-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+.mp-relay {
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50vw;
+}
+
+[data-density='compact'] .mp-panels {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-density='compact'] .mp-invite__value {
+  font-size: calc(var(--text-xl) * var(--text-scale));
+}
+[data-density='compact'] .mp-code {
+  min-height: 36px;
+  font-size: calc(--text-md * var(--text-scale));
+}
+[data-density='compact'] .mp-relay {
+  display: none;
+}

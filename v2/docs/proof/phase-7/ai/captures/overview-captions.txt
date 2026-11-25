@@ -1,0 +1,4 @@
+phone 844x390 t=7.2m zoom=1.00 -> /agent/repos/wizz/v2/docs/proof/phase-7/ai/captures/overview-phone-7min.png
+   p2 — 1 cluster, 1 forward refinery, 12 buildings, 12 workers, 7 army @ (2676,634)  |  enemy: 12 bld  |  t=7.2 min, seed 1014 (hard vs normal), overview
+chromebook 1366x768 t=7.2m zoom=1.00 -> /agent/repos/wizz/v2/docs/proof/phase-7/ai/captures/overview-chromebook-7min.png
+   p2 — 1 cluster, 1 forward refinery, 12 buildings, 12 workers, 6 army @ (2560,659)  |  enemy: 12 bld  |  t=7.2 min, seed 1014 (hard vs normal), overview

@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "swift_hands",
+  "name": "Swift Hands",
+  "description": "Every worker learns to move with purpose, shortening the walk between node and refinery.",
+  "cost": 300,
+  "researchTime": 24,
+  "tier": 1,
+  "icon": "speed",
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "resonance_vault",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "harvester"
+      ],
+      "stat": "speed",
+      "operation": "multiply",
+      "value": 1.12
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Harvester speed",
+      "detail": "+12% movement speed"
+    }
+  ]
+}

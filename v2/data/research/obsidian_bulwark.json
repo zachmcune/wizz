@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "obsidian_bulwark",
+  "name": "Obsidian Bulwark",
+  "description": "Every bastion becomes a fortress within a fortress.",
+  "cost": 1000,
+  "researchTime": 70,
+  "tier": 5,
+  "icon": "shield",
+  "requires": [
+    "siege_doctrine"
+  ],
+  "researchedAt": "obsidian_bastion",
+  "factions": [
+    "obsidian"
+  ],
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "obsidian_bastion",
+        "inferno_beacon",
+        "storm_conductor"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.2
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Bastion health",
+      "detail": "+20% health for Bastions, Inferno Beacons and Storm Conductors"
+    }
+  ]
+}

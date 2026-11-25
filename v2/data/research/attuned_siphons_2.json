@@ -1,0 +1,33 @@
+{
+  "kind": "research",
+  "id": "attuned_siphons_2",
+  "name": "Attuned Siphons II",
+  "description": "A deeper attunement. The refinery pulls harder on the ley-line.",
+  "cost": 700,
+  "researchTime": 45,
+  "tier": 2,
+  "icon": "mana",
+  "requires": [
+    "attuned_siphons_1"
+  ],
+  "researchedAt": "resonance_vault",
+  "factions": [
+    "arcane",
+    "obsidian",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "economyModifier",
+      "stat": "siphonPerSecond",
+      "operation": "multiply",
+      "value": 1.08
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Harvest yield",
+      "detail": "+8% more mana per second from harvesters"
+    }
+  ]
+}

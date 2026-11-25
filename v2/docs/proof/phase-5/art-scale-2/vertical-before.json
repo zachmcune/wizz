@@ -1,0 +1,233 @@
+[
+  {
+    "id": "arcane_bunker",
+    "footprint": 2,
+    "verticalPixels": 616,
+    "flatBasePixels": 356,
+    "totalPixels": 1364,
+    "verticalShare": 0.45161290322580644,
+    "flatBaseShare": 0.26099706744868034,
+    "riseOverDiamond": 0.695624262846553,
+    "heightWu": 43.4
+  },
+  {
+    "id": "arcane_gate",
+    "footprint": 1,
+    "verticalPixels": 589,
+    "flatBasePixels": 159,
+    "totalPixels": 589,
+    "verticalShare": 1,
+    "flatBaseShare": 0.2699490662139219,
+    "riseOverDiamond": 3.4776861579972156,
+    "heightWu": 46.800000000000004
+  },
+  {
+    "id": "arcane_nexus",
+    "footprint": 2,
+    "verticalPixels": 1212,
+    "flatBasePixels": 356,
+    "totalPixels": 1500,
+    "verticalShare": 0.808,
+    "flatBaseShare": 0.23733333333333334,
+    "riseOverDiamond": 1.4127982180990628,
+    "heightWu": 67.2
+  },
+  {
+    "id": "arcane_sentry",
+    "footprint": 1,
+    "verticalPixels": 448,
+    "flatBasePixels": 170,
+    "totalPixels": 448,
+    "verticalShare": 1,
+    "flatBaseShare": 0.3794642857142857,
+    "riseOverDiamond": 2.231194428406374,
+    "heightWu": 36.400000000000006
+  },
+  {
+    "id": "astral_spire",
+    "footprint": 3,
+    "verticalPixels": 1734,
+    "flatBasePixels": 875,
+    "totalPixels": 2980,
+    "verticalShare": 0.5818791946308725,
+    "flatBaseShare": 0.2936241610738255,
+    "riseOverDiamond": 1.2674066392648833,
+    "heightWu": 99
+  },
+  {
+    "id": "attunement_spire",
+    "footprint": 2,
+    "verticalPixels": 870,
+    "flatBasePixels": 479,
+    "totalPixels": 1382,
+    "verticalShare": 0.6295224312590448,
+    "flatBaseShare": 0.3465991316931983,
+    "riseOverDiamond": 0.9518001614104152,
+    "heightWu": 50
+  },
+  {
+    "id": "celestial_cannon",
+    "footprint": 3,
+    "verticalPixels": 707,
+    "flatBasePixels": 548,
+    "totalPixels": 2935,
+    "verticalShare": 0.24088586030664394,
+    "flatBaseShare": 0.18671209540034073,
+    "riseOverDiamond": 0.5111443771247256,
+    "heightWu": 50.6
+  },
+  {
+    "id": "frost_spire",
+    "footprint": 2,
+    "verticalPixels": 1070,
+    "flatBasePixels": 356,
+    "totalPixels": 1408,
+    "verticalShare": 0.7599431818181818,
+    "flatBaseShare": 0.2528409090909091,
+    "riseOverDiamond": 1.1029017624676403,
+    "heightWu": 56
+  },
+  {
+    "id": "golem_forge",
+    "footprint": 3,
+    "verticalPixels": 867,
+    "flatBasePixels": 541,
+    "totalPixels": 2963,
+    "verticalShare": 0.29260884238947016,
+    "flatBaseShare": 0.18258521768477895,
+    "riseOverDiamond": 0.5930543026905356,
+    "heightWu": 62.8
+  },
+  {
+    "id": "inferno_beacon",
+    "footprint": 2,
+    "verticalPixels": 1520,
+    "flatBasePixels": 356,
+    "totalPixels": 1762,
+    "verticalShare": 0.8626560726447219,
+    "flatBaseShare": 0.20204313280363223,
+    "riseOverDiamond": 1.4109235273134129,
+    "heightWu": 70
+  },
+  {
+    "id": "ley_conduit",
+    "footprint": 2,
+    "verticalPixels": 527,
+    "flatBasePixels": 356,
+    "totalPixels": 1333,
+    "verticalShare": 0.3953488372093023,
+    "flatBaseShare": 0.2670667666916729,
+    "riseOverDiamond": 0.6787728863472777,
+    "heightWu": 43.4
+  },
+  {
+    "id": "obsidian_bastion",
+    "footprint": 2,
+    "verticalPixels": 1506,
+    "flatBasePixels": 356,
+    "totalPixels": 1706,
+    "verticalShare": 0.8827667057444314,
+    "flatBaseShare": 0.20867526377491208,
+    "riseOverDiamond": 1.3748478167321103,
+    "heightWu": 49
+  },
+  {
+    "id": "resonance_vault",
+    "footprint": 2,
+    "verticalPixels": 776,
+    "flatBasePixels": 356,
+    "totalPixels": 1350,
+    "verticalShare": 0.5748148148148148,
+    "flatBaseShare": 0.2637037037037037,
+    "riseOverDiamond": 0.9256550243999042,
+    "heightWu": 49
+  },
+  {
+    "id": "sanctuary_spire",
+    "footprint": 2,
+    "verticalPixels": 1030,
+    "flatBasePixels": 488,
+    "totalPixels": 1422,
+    "verticalShare": 0.7243319268635724,
+    "flatBaseShare": 0.3431786216596343,
+    "riseOverDiamond": 1.2664478197269213,
+    "heightWu": 64
+  },
+  {
+    "id": "sanctum",
+    "footprint": 3,
+    "verticalPixels": 975,
+    "flatBasePixels": 548,
+    "totalPixels": 2923,
+    "verticalShare": 0.3335614095107766,
+    "flatBaseShare": 0.1874786178583647,
+    "riseOverDiamond": 0.8026290597675336,
+    "heightWu": 77.80000000000001
+  },
+  {
+    "id": "scrying_obelisk",
+    "footprint": 2,
+    "verticalPixels": 1220,
+    "flatBasePixels": 356,
+    "totalPixels": 1462,
+    "verticalShare": 0.8344733242134063,
+    "flatBaseShare": 0.24350205198358413,
+    "riseOverDiamond": 1.4869455433524346,
+    "heightWu": 69.6
+  },
+  {
+    "id": "stone_wall",
+    "footprint": 1,
+    "verticalPixels": 278,
+    "flatBasePixels": 88,
+    "totalPixels": 278,
+    "verticalShare": 1,
+    "flatBaseShare": 0.31654676258992803,
+    "riseOverDiamond": 1.752837969086567,
+    "heightWu": 20.900000000000002
+  },
+  {
+    "id": "storm_conductor",
+    "footprint": 2,
+    "verticalPixels": 713,
+    "flatBasePixels": 488,
+    "totalPixels": 1403,
+    "verticalShare": 0.5081967213114754,
+    "flatBaseShare": 0.34782608695652173,
+    "riseOverDiamond": 0.8050746953492949,
+    "heightWu": 45
+  },
+  {
+    "id": "summoning_circle",
+    "footprint": 2,
+    "verticalPixels": 1744,
+    "flatBasePixels": 232,
+    "totalPixels": 1794,
+    "verticalShare": 0.9721293199554069,
+    "flatBaseShare": 0.12931995540691194,
+    "riseOverDiamond": 1.9219825426410466,
+    "heightWu": 76.2
+  },
+  {
+    "id": "thorn_grove",
+    "footprint": 2,
+    "verticalPixels": 1355,
+    "flatBasePixels": 136,
+    "totalPixels": 1747,
+    "verticalShare": 0.7756153405838581,
+    "flatBaseShare": 0.07784773898111047,
+    "riseOverDiamond": 1.1244793039370258,
+    "heightWu": 57
+  },
+  {
+    "id": "waystone_camp",
+    "footprint": 3,
+    "verticalPixels": 309,
+    "flatBasePixels": 548,
+    "totalPixels": 2753,
+    "verticalShare": 0.1122411914275336,
+    "flatBaseShare": 0.1990555757355612,
+    "riseOverDiamond": 0.32531089730987145,
+    "heightWu": 52
+  }
+]

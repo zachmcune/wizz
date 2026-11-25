@@ -1,0 +1,4 @@
+phone 844x390 t=11.1m zoom=1.00 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/footprint-phone-11min.png
+   p1 — 1 base 9 buildings, 6 workers, 7 army  |  enemy: 9 bld  |  t=11.1 min, seed 1000 (hard vs normal), peak 1 bases @ 0.3m
+chromebook 1366x768 t=11.2m zoom=1.00 -> /agent/repos/wizz/v2/docs/proof/phase-5/ai/footprint-chromebook-11min.png
+   p1 — 1 base 10 buildings, 6 workers, 6 army  |  enemy: 9 bld  |  t=11.3 min, seed 1000 (hard vs normal), peak 1 bases @ 0.5m

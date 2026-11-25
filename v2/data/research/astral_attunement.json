@@ -1,0 +1,34 @@
+{
+  "kind": "research",
+  "id": "astral_attunement",
+  "name": "Astral Attunement",
+  "description": "Bind the Spire to the sky. Its frame thickens and its lance burns brighter.",
+  "cost": 900,
+  "researchTime": 70,
+  "tier": 5,
+  "icon": "crystal",
+  "requires": [
+    "arcane_resonance"
+  ],
+  "researchedAt": "astral_spire",
+  "factions": [
+    "arcane"
+  ],
+  "effects": [
+    {
+      "kind": "buildingStatModifier",
+      "buildingIds": [
+        "astral_spire"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.2
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Astral Spire health",
+      "detail": "+20% health for the Astral Spire"
+    }
+  ]
+}

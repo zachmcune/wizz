@@ -1,0 +1,12 @@
+import { readFileSync } from 'node:fs';
+const s = readFileSync('src/sim/types.ts', 'utf8');
+const start = s.indexOf('export type Command =');
+const end = s.indexOf('export type GameEvent =');
+const block = s.slice(start, end);
+const types = [...block.matchAll(/type: '([a-zA-Z]+)'/g)].map((m) => m[1]);
+const uniq = [...new Set(types)];
+const dev = uniq.filter((t) => t.startsWith('dev'));
+const nodev = uniq.filter((t) => !t.startsWith('dev'));
+console.log('total union members:', uniq.length);
+console.log('dev:', dev.length, 'non-dev:', nodev.length);
+console.log(nodev.join(', '));

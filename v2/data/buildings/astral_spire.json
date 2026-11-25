@@ -1,0 +1,31 @@
+{
+  "id": "astral_spire",
+  "name": "Astral Spire",
+  "shortLabel": "SPIRE",
+  "description": "Superweapon. Charges the Astral Lance, a steerable satellite beam. Fires on a 4 minute cooldown.",
+  "kind": "building",
+  "cost": 4500,
+  "buildTime": 45,
+  "hp": 1200,
+  "armor": "building",
+  "sight": 180,
+  "footprint": 3,
+  "menuCategory": "advanced",
+  "requires": [
+    "arcane_nexus"
+  ],
+  "unlocksSpells": [
+    "astral_lance",
+    "meteor_storm",
+    "aegis_ward",
+    "blink_gate"
+  ],
+  "isSuperweapon": true,
+  "powerUsed": 100,
+  "art": {
+    "shape": "building",
+    "size": 80,
+    "accent": "#9fdcff",
+    "sprite": "astral_spire"
+  }
+}

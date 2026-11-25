@@ -1,0 +1,22 @@
+{
+  "room": "JUDJY",
+  "playSeconds": 60,
+  "finalTick": 1967,
+  "entities": 19,
+  "players": [
+    {
+      "id": "player0",
+      "mana": 1097,
+      "defeated": false,
+      "units": 2
+    },
+    {
+      "id": "player1",
+      "mana": 1097,
+      "defeated": false,
+      "units": 2
+    }
+  ],
+  "samples": 21,
+  "note": "Two independent Chromium contexts through the unchanged v1 relay."
+}

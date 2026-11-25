@@ -1,0 +1,10 @@
+{
+  "id": "storm_orb",
+  "speed": 360,
+  "art": {
+    "shape": "circle",
+    "size": 8,
+    "accent": "#ffd166",
+    "sprite": "storm_orb"
+  }
+}

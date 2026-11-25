@@ -1,0 +1,38 @@
+{
+  "kind": "research",
+  "id": "runed_armour",
+  "name": "Runed Armour",
+  "description": "Wards stitched into light armour. Fast troops survive the first volley.",
+  "cost": 500,
+  "researchTime": 35,
+  "tier": 2,
+  "icon": "armour",
+  "requires": [
+    "attunement_spire"
+  ],
+  "researchedAt": "summoning_circle",
+  "factions": [
+    "arcane",
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "light_melee",
+        "light_ranged",
+        "fast_scout",
+        "flying_harass"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.12
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Light troop health",
+      "detail": "+12% health for light melee, archers, scouts and flyers"
+    }
+  ]
+}

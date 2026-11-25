@@ -1,5 +1,9 @@
 # Cloudflare Pages cache rules. Prevents players getting stuck on a stale build:
 # HTML + service worker revalidate; content-hashed assets are immutable/long-cached.
+#
+# v2 is deployed from this same dist under /v2/ (see scripts/build-v2.mjs). Its HTML entries and its
+# atlas are NOT content-hashed, so they revalidate. The atlas is also published at /atlas-final/
+# because the v2 build requests it by absolute path.
 /index.html
   Cache-Control: no-cache
 /sw.js
@@ -10,5 +14,15 @@
   Cache-Control: no-cache
 /workbox-*.js
   Cache-Control: no-cache
+/v2/
+  Cache-Control: no-cache
+/v2/*.html
+  Cache-Control: no-cache
+/v2/manifest.webmanifest
+  Cache-Control: no-cache
+/atlas-final/*
+  Cache-Control: no-cache
 /assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/v2/assets/*
   Cache-Control: public, max-age=31536000, immutable

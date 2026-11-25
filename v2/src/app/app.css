@@ -1,0 +1,944 @@
+/* APP SHELL + SCREEN LAYOUTS — layout only, every value from tokens.
+ *
+ * Screen pattern: a `page-head` at the top, a scrollable body, and a pinned footer. That structure is
+ * what keeps Start/Continue controls from moving as content changes, and it is why nothing can end up
+ * hidden under a bottom bar (the v1 gallery bug).
+ */
+
+#boot,
+.app-root {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ink-950);
+}
+
+.app-screen {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The match host must be EXACTLY the viewport. Without this the HUD's `inset:0` resolves against a
+ * taller box, the grid's free row expands to 253px on a 375px screen, and the page scrolls — which
+ * measured as an 86% HUD. */
+.match-root,
+.match-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  padding: var(--gutter);
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(to right, var(--grid-ink) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(to bottom, var(--grid-ink) 0 1px, transparent 1px 48px),
+    var(--ink-950);
+}
+
+.app-boot,
+.boot-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-6);
+  color: var(--bone-400);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── shared page chrome */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-thick) solid var(--ink-600);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+.page-head__title {
+  margin: 0;
+  font-size: calc(var(--text-3xl) * var(--text-scale));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── MENU */
+/*
+ * THE MENU'S LAYOUT LIVES ENTIRELY IN `console.css`.
+ *
+ * It used to be split between this file and that one, and the two disagreed: `app.css` carried
+ * `[data-density='compact'] .menu-art { display: none }` from the previous design, while `console.css`
+ * positioned the live scene as a full-bleed layer behind the console. `display: none` won, so the menu
+ * rendered with an empty black right-hand half and the real renderer mounting into a zero-size box —
+ * visible in every phone capture of the proof pack before this was found.
+ *
+ * One owner. The shared `.screen` chrome above still applies.
+ */
+
+/* ───────────────────────────────────────────────────────────────────────────── LOBBY */
+.screen--lobby {
+  overflow: hidden;
+}
+.lobby {
+  display: grid;
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: start;
+}
+.lobby__players,
+.lobby__settings {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+.lobby__settings .panel__body {
+  overflow-y: auto;
+}
+.lobby-players {
+  gap: var(--space-2);
+}
+.lobby-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.lobby-select {
+  background: var(--ink-800);
+  color: var(--bone-200);
+  border: 0;
+  font-family: var(--font-ui);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  min-height: var(--control-sm);
+}
+.lobby-select--ctrl,
+.lobby-select--diff,
+.lobby-select--team {
+  grid-column: auto;
+}
+.lobby-add {
+  gap: var(--space-2);
+}
+.lobby-settings {
+  gap: var(--space-4);
+}
+.lobby-maplist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+.lobby-mapcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-4);
+  text-align: left;
+  cursor: pointer;
+  background: var(--ink-800);
+  color: var(--bone-200);
+  border: 0;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.lobby-mapcard.is-on {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--copper-600),
+    inset 0 var(--border-thick) 0 var(--copper-500);
+}
+.lobby-mapcard__name {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-lg) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  color: var(--bone-100);
+}
+.lobby-mapcard__note {
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.lobby-hint {
+  margin: 0;
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.lobby-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+.lobby-team {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.lobby-team__member {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+}
+.lobby__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+/* Error surface: HIDDEN on first render (the v1 bug was showing red before any input). */
+.lobby-error {
+  display: none;
+  padding: var(--space-3) var(--space-4);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+  background: var(--ink-800);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-bad), inset var(--border-thick) 0 0 var(--signal-bad);
+}
+.lobby-error.is-on {
+  display: block;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── SETTINGS */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+.settings-row__text {
+  gap: var(--space-1);
+  min-width: 0;
+}
+.settings-row__label {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+}
+.settings-row__note {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+.settings-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex: 0 0 auto;
+  background: var(--ink-900);
+  border: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.settings-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--bone-600);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.settings-toggle.is-on {
+  box-shadow: inset 0 0 0 var(--border-hair) var(--copper-600);
+}
+.settings-toggle.is-on .settings-toggle__knob {
+  transform: translateX(20px);
+  background: var(--copper-400);
+}
+.settings-slider {
+  flex: 1 1 auto;
+  max-width: 160px;
+  accent-color: var(--copper-500);
+}
+.settings-keys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settings-key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.settings-key__action {
+  color: var(--bone-400);
+}
+.settings-foot {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── PAUSE / OVERLAY */
+.screen--overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink-950);
+}
+.pause-card {
+  width: min(380px, 92vw);
+  /* The pause card is centred; on a tall screen the surrounding space is intentional breathing room,
+   * but the card itself must not leave internal dead height. */
+  align-self: center;
+}
+.screen--overlay {
+  justify-content: center;
+  gap: var(--space-6);
+}
+.pause-meta {
+  margin: 0;
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+.pause-actions {
+  gap: var(--space-2);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── RESULTS */
+.screen--results {
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  /* Fill the viewport rather than leaving a dead band at the bottom on a tall screen. The content is
+   * centred; `min-height` on the grid keeps it from collapsing on a short one. */
+  justify-content: space-evenly;
+}
+.results-grid {
+  flex: 1 1 auto;
+  align-content: start;
+}
+.results-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+.results-title {
+  margin: 0;
+  font-size: calc(var(--text-4xl) * var(--text-scale));
+}
+.results-title.is-win {
+  color: var(--copper-300);
+}
+.results-sub {
+  margin: 0;
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: var(--gutter);
+  width: min(860px, 100%);
+  align-items: start;
+}
+.results-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.results-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 56px 56px 80px;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+.results-row:nth-child(even) {
+  background: var(--ink-900);
+}
+.results-row--head {
+  background: transparent;
+  border-bottom: var(--border-hair) solid var(--ink-600);
+}
+.results-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.results-name__bar {
+  width: 4px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.results-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(860px, 100%);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── SANDBOX */
+.sandbox-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.sandbox-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: hidden;
+}
+.sandbox-tabs .tabs {
+  flex-wrap: wrap;
+}
+.sandbox-panel {
+  min-height: 0;
+  overflow-y: auto;
+  flex: 0 1 auto;
+}
+.sandbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sandbox-log {
+  flex: 0 0 auto;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+  font-family: var(--font-numeric);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-400);
+}
+.sandbox-log__line {
+  padding: 1px 0;
+}
+.sandbox-player {
+  padding: var(--space-2);
+  background: var(--ink-900);
+}
+.sandbox-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hair) solid var(--ink-700);
+  flex: 0 0 auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── GALLERY */
+.screen--gallery {
+  overflow: hidden;
+}
+.gallery-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-bottom: var(--space-8);
+}
+.gallery-h2 {
+  display: block;
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--copper-300);
+}
+.gallery-note {
+  margin: 0 0 var(--space-2);
+  font-size: calc(var(--text-xs) * var(--text-scale));
+}
+.gallery-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-800);
+}
+.gallery-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.gallery-row__name {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+}
+.gallery-strip {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+.gallery-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+.gallery-frame {
+  display: block;
+  background: var(--ink-950);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.gallery-cell__cap {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── COMPACT */
+[data-density='compact'] .screen {
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+[data-density='compact'] .page-head__title {
+  font-size: calc(var(--text-xl) * var(--text-scale));
+}
+[data-density='compact'] .lobby {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-2);
+}
+[data-density='compact'] .results-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-density='compact'] .results-row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 44px 44px 70px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+}
+[data-density='compact'] .gallery-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-density='compact'] .settings-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-density='compact'] .sandbox-log {
+  max-height: 70px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── ROOMY */
+[data-density='roomy'] .lobby {
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── reduced motion */
+[data-reduced-motion] * {
+  animation-duration: 1ms !important;
+  transition-duration: 1ms !important;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── RESEARCH TREE */
+.screen--research-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--ink-950);
+  overflow: hidden;
+}
+.research-body {
+  display: grid;
+  /* The tech tree takes what it can; the unlock panel is capped. The panel used to claim a flat
+   * 300-400px at every density above `compact`, which left a 1024x600 Chromebook only **564px** of
+   * graph viewport for a 1180px-wide tree — three of five tier columns were cut mid-word ("every tower")
+   * with nothing on screen to say the row scrolls. It is now proportional and allowed to shrink. */
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* Horizontal scroll for the tier columns; vertical scroll inside each column. */
+.research-scroll {
+  overflow: auto;
+  min-height: 0;
+  height: 100%;
+  /**
+   * A SCROLLABLE AREA MUST LOOK SCROLLABLE.
+   *
+   * With `auto` overflow and no affordance the user sees five columns and no sign that two more exist
+   * off-screen — the reported "Doctrine is clipped, 'every tower' cut off" experience. A visible track
+   * plus a subtle inset edge makes the hidden content discoverable. The real fix is that the graph now
+   * fits (columns are fluid, see `.research-graph`), so this is the safety net for very narrow screens.
+   */
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-600) transparent;
+  overscroll-behavior-x: contain;
+}
+.research-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.research-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-600);
+  border-radius: 4px;
+}
+.research-graph {
+  display: grid;
+  /**
+   * FLUID TIER COLUMNS, NOT FIXED ONES.
+   *
+   * These were `minmax(230px, 1fr)` — a 230px floor. Five tiers therefore demanded 1150px plus gaps, so
+   * any graph viewport under that cut the last columns off mid-sentence. The floor is now small enough
+   * that all five tiers fit inside the viewport at every supported size, and the cards reflow internally
+   * instead of the row overflowing. The tree is a fixed five-tier pipeline, so showing all of it at once
+   * is the correct read; there is no horizontal content to hunt for.
+   *
+   * `--tier-min` is set from the real viewport width by the screen, so the floor adapts rather than
+   * being guessed here.
+   */
+  grid-template-columns: repeat(var(--tiers, 5), minmax(var(--tier-min, 108px), 1fr));
+  gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-3);
+  min-height: min-content;
+}
+.research-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.research-col__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-thick) solid var(--ink-600);
+  position: sticky;
+  top: 0;
+  background: var(--ink-850);
+  z-index: 1;
+}
+.research-col__tier {
+  font-size: calc(var(--text-lg) * var(--text-scale));
+  color: var(--copper-400);
+  font-weight: var(--weight-semibold);
+}
+.research-col__name {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-400);
+}
+
+/* A card is a plate with a tier stripe down its left edge. */
+.research-node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ink-800);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-600),
+    inset var(--border-thick) 0 0 var(--ink-500);
+}
+.research-node.is-done {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--signal-good),
+    inset var(--border-thick) 0 0 var(--signal-good);
+}
+.research-node.is-locked {
+  opacity: 0.72;
+}
+.research-node.is-other-faction {
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-700),
+    inset var(--border-thick) 0 0 var(--copper-700);
+}
+.research-node__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.research-node__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: var(--copper-300);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.research-node__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: calc(var(--text-md) * var(--text-scale));
+  font-weight: var(--weight-semibold);
+  color: var(--bone-100);
+  line-height: var(--leading-snug);
+  /**
+   * WRAP AT WORD BOUNDARIES, NEVER MID-WORD.
+   *
+   * `overflow-wrap: anywhere` stopped the label overflowing its card but broke words in half —
+   * "Resonanc / e", "Astral Attuneme / nt" — which reads worse than the original bug. Normal wrapping
+   * plus `hyphens: auto` breaks at syllables (with a hyphen) only when a word genuinely cannot fit, and
+   * the column keeps its own text inside its own card.
+   */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.research-node__desc {
+  margin: 0;
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  line-height: var(--leading-snug);
+  color: var(--bone-400);
+}
+.research-node__effects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.research-effect {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--ink-900);
+  box-shadow: inset var(--border-thick) 0 0 var(--copper-600);
+}
+.research-effect__label {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--copper-300);
+  font-weight: var(--weight-medium);
+}
+.research-effect__detail {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-200);
+}
+.research-node__reqs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.research-node__reqs-label,
+.research-node__at-label {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+}
+.research-pill {
+  padding: 1px var(--space-2);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-400);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-600);
+}
+.research-pill.is-met {
+  color: var(--signal-good);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--signal-good);
+}
+.research-node__at {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.research-node__at-name {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-200);
+}
+.research-node__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: var(--border-hair) solid var(--ink-700);
+}
+.research-node__time {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+}
+
+/* ───────────────────────────────────────────────────────────────── unlocks panel */
+.research-note {
+  margin: 0;
+  font-size: calc(var(--text-xs) * var(--text-scale));
+  line-height: var(--leading-snug);
+}
+.research-spells {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.research-spell {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.research-spell__icon {
+  color: var(--copper-400);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.research-spell__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.research-spell__name {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-100);
+}
+.research-spell__desc {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-400);
+  line-height: var(--leading-snug);
+}
+.research-spell__cd {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  color: var(--bone-600);
+  flex: 0 0 auto;
+}
+
+[data-density='compact'] .research-body {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+[data-density='compact'] .research-graph {
+  /* The tier floor is measured from the real viewport by the screen (`--tier-min`) so all five tiers
+   * fit on a phone. This rule used to pin 190px, which forced a 972px row into a 651px viewport and cut
+   * the last two columns off. */
+  grid-template-columns: repeat(var(--tiers, 5), minmax(var(--tier-min, 100px), 1fr));
+  gap: var(--space-1);
+}
+/* A ~119px column fits a card, not a headline: shrink the node title and card padding so names wrap at
+ * word boundaries instead of breaking mid-syllable. */
+[data-density='compact'] .research-node {
+  padding: var(--space-1) var(--space-2);
+  gap: var(--space-1);
+}
+[data-density='compact'] .research-node__name {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+}
+[data-density='compact'] .research-node__desc {
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+}
+[data-density='compact'] .research-node__icon {
+  width: 18px;
+  height: 18px;
+}
+[data-density='compact'] .research-unlocks {
+  max-height: 34%;
+  overflow-y: auto;
+}
+
+/* Pause card stats: four compact readouts so the screen reports where the match stands rather than
+ * being a lone button on an empty field. */
+.pause-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.pause-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+.pause-stat__label {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-2xs) * var(--text-scale));
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--bone-600);
+}
+.pause-stat__value {
+  font-size: calc(var(--text-md) * var(--text-scale));
+  color: var(--bone-100);
+}
+
+/* Sandbox standby bar: shown when no match is running. Flex so the prompt and its button share a
+ * baseline instead of drifting a few pixels apart (measured: text at y=306, button at y=302). */
+.sandbox-start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--ink-900);
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── MULTIPLAYER */
+/*
+ * The multiplayer lobby reuses the single-player lobby's panels and typography; only the layout of the
+ * room/status area is new. Colours come exclusively from tokens, so the no-purple rule and the Obsidian &
+ * Brass palette hold here exactly as they do everywhere else (tests/ui-tokens.test.ts parses every colour).
+ */
+.mp-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.mp-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--gutter);
+  align-items: start;
+}
+.mp-slot {
+  font-size: calc(var(--text-sm) * var(--text-scale));
+  color: var(--bone-200);
+  letter-spacing: 0.02em;
+}
+/*
+ * A status line that can carry a connection failure. Uses the same `--signal-bad` as the lobby error so
+ * "the relay is unreachable" reads with the same weight as "this configuration is invalid".
+ */
+.lobby-hint.is-error {
+  color: var(--bone-100);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset var(--border-thick) 0 0 var(--signal-bad);
+}

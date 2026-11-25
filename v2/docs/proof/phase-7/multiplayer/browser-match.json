@@ -1,0 +1,156 @@
+{
+  "room": "6KBV7",
+  "relay": "ws://127.0.0.1:8787",
+  "playSeconds": 150,
+  "finalTick": 7592,
+  "entities": 25,
+  "start": {
+    "host": {
+      "tick": 107,
+      "hash": "78d90c63",
+      "playerId": "player0",
+      "ended": false,
+      "winnerTeam": null,
+      "entities": 19,
+      "myUnits": 2,
+      "myBuildings": 1,
+      "players": [
+        {
+          "id": "player0",
+          "mana": 911,
+          "defeated": false,
+          "units": 2,
+          "buildings": 1
+        },
+        {
+          "id": "player1",
+          "mana": 911,
+          "defeated": false,
+          "units": 2,
+          "buildings": 1
+        }
+      ],
+      "issued": 0,
+      "damageEvents": 0,
+      "kills": 0
+    },
+    "guest": {
+      "tick": 110,
+      "hash": "a37b2a28",
+      "playerId": "player1",
+      "ended": false,
+      "winnerTeam": null,
+      "entities": 19,
+      "myUnits": 2,
+      "myBuildings": 1,
+      "players": [
+        {
+          "id": "player0",
+          "mana": 911,
+          "defeated": false,
+          "units": 2,
+          "buildings": 1
+        },
+        {
+          "id": "player1",
+          "mana": 911,
+          "defeated": false,
+          "units": 2,
+          "buildings": 1
+        }
+      ],
+      "issued": 0,
+      "damageEvents": 0,
+      "kills": 0
+    }
+  },
+  "final": {
+    "host": {
+      "tick": 7592,
+      "hash": "39a4e8fc",
+      "playerId": "player0",
+      "ended": false,
+      "winnerTeam": null,
+      "entities": 25,
+      "myUnits": 0,
+      "myBuildings": 2,
+      "players": [
+        {
+          "id": "player0",
+          "mana": 40109,
+          "defeated": false,
+          "units": 0,
+          "buildings": 2
+        },
+        {
+          "id": "player1",
+          "mana": 39519,
+          "defeated": false,
+          "units": 7,
+          "buildings": 3
+        }
+      ],
+      "issued": 8,
+      "damageEvents": 98,
+      "kills": 7
+    },
+    "guest": {
+      "tick": 7585,
+      "hash": "cb1fef6b",
+      "playerId": "player1",
+      "ended": false,
+      "winnerTeam": null,
+      "entities": 25,
+      "myUnits": 7,
+      "myBuildings": 3,
+      "players": [
+        {
+          "id": "player0",
+          "mana": 40108,
+          "defeated": false,
+          "units": 0,
+          "buildings": 2
+        },
+        {
+          "id": "player1",
+          "mana": 39518,
+          "defeated": false,
+          "units": 7,
+          "buildings": 3
+        }
+      ],
+      "issued": 16,
+      "damageEvents": 98,
+      "kills": 7
+    }
+  },
+  "commands": {
+    "host": 8,
+    "guest": 16,
+    "total": 24
+  },
+  "built": {
+    "host": 1,
+    "guest": 2
+  },
+  "trained": {
+    "host": 3,
+    "guest": 3
+  },
+  "marched": {
+    "host": 4,
+    "guest": 11
+  },
+  "damage": {
+    "host": 98,
+    "guest": 98
+  },
+  "commonTicksCompared": 132,
+  "mismatches": 0,
+  "samples": 22,
+  "viewports": {
+    "host": "1366x768",
+    "guest": "667x375 touch"
+  },
+  "note": "Two independent Chromium contexts through the unchanged v1 relay, both playing a real match."
+}

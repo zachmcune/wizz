@@ -1,0 +1,5 @@
+hard>normal: 36/40 = 90.0%  95% CI 77.0-96.0%  unfinished 0/40  median 12.5m  mean 13.3m  [corner0 20 / corner1 16]
+normal>easy: 27/40 = 67.5%  95% CI 52.0-79.9%  unfinished 0/40  median 9.8m  mean 10.1m  [corner0 12 / corner1 15]
+
+seeds 9000..9133 (20), cap 34 min
+wrote docs/proof/phase-7/ai/ladder-shipped.json

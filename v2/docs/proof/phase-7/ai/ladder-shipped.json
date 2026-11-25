@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-11-24T20:41:32.676Z",
+  "seeds": [
+    9000,
+    9007,
+    9014,
+    9021,
+    9028,
+    9035,
+    9042,
+    9049,
+    9056,
+    9063,
+    9070,
+    9077,
+    9084,
+    9091,
+    9098,
+    9105,
+    9112,
+    9119,
+    9126,
+    9133
+  ],
+  "minutes": 34,
+  "cells": [
+    {
+      "strong": "hard",
+      "weak": "normal",
+      "n": 40,
+      "strongWins": 36,
+      "strongRate": 0.9,
+      "ci": [
+        0.7695,
+        0.9604
+      ],
+      "unfinished": 0,
+      "medianMinutes": 12.5,
+      "meanMinutes": 13.3,
+      "strongWinsCorner0": 20,
+      "strongWinsCorner1": 16
+    },
+    {
+      "strong": "normal",
+      "weak": "easy",
+      "n": 40,
+      "strongWins": 27,
+      "strongRate": 0.675,
+      "ci": [
+        0.5202,
+        0.7992
+      ],
+      "unfinished": 0,
+      "medianMinutes": 9.8,
+      "meanMinutes": 10.1,
+      "strongWinsCorner0": 12,
+      "strongWinsCorner1": 15
+    }
+  ]
+}

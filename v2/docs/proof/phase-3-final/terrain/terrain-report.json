@@ -1,0 +1,21 @@
+{
+  "generated": "2026-11-14T19:13:36.824Z",
+  "site": {
+    "tx": 22,
+    "ty": 9,
+    "maxDrop": 1,
+    "rampNear": true,
+    "score": 35
+  },
+  "viewport": {
+    "width": 900,
+    "height": 560
+  },
+  "zoom": 0.85,
+  "materialPixels": {
+    "grassPct": 6.8,
+    "rockPct": 52.7,
+    "dirtPct": 0.9
+  },
+  "errors": []
+}

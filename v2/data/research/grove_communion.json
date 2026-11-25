@@ -1,0 +1,36 @@
+{
+  "kind": "research",
+  "id": "grove_communion",
+  "name": "Grove Communion",
+  "description": "The whole grove fights as one organism. Wounded units draw on their neighbours.",
+  "cost": 1050,
+  "researchTime": 74,
+  "tier": 5,
+  "icon": "research",
+  "requires": [
+    "deep_roots",
+    "verdant_aim"
+  ],
+  "researchedAt": "thorn_grove",
+  "factions": [
+    "verdant"
+  ],
+  "effects": [
+    {
+      "kind": "unitStatModifier",
+      "roles": [
+        "cheap_melee",
+        "sustained_ranged"
+      ],
+      "stat": "hp",
+      "operation": "multiply",
+      "value": 1.14
+    }
+  ],
+  "effectViews": [
+    {
+      "label": "Grove health",
+      "detail": "+14% health for Thornlings and Grove Wardens"
+    }
+  ]
+}

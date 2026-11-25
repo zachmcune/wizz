@@ -1,0 +1,151 @@
+// OPENINGS AS DATA.
+//
+// A build order is a list of steps with a trigger and a priority. Keeping it as data (rather than a chain
+// of `if (tick > X)` in the planner) means the three difficulties can share one interpreter, a new opening
+// is a new array, and a test can assert that every step names a building that actually exists and is
+// reachable through its own prerequisites.
+//
+// Each step says WHAT to build and WHEN. The economy planner walks the list in order and executes the first
+// step whose trigger is satisfied and whose building is currently legal to place. Nothing here looks at the
+// enemy, so an opening cannot cheat; the military planner is where reacting to the opponent happens.
+
+import type { BuildingDef } from '../data/defs';
+
+export interface BuildStep {
+  /** The building defId to place. */
+  readonly defId: string;
+  /**
+   * When this step becomes urgent. The planner will not spend on it before this, which is what stops a
+   * greedy AI from building a factory before it has any income.
+   */
+  readonly notBeforeSeconds: number;
+  /**
+   * Stop queueing harvesters while this step is unbuilt. Openings are about hitting a timing, and a player
+   * who keeps buying workers never hits it.
+   */
+  readonly pauseHarvesters?: boolean;
+  /** Free-text reason, shown in the AI debug overlay and asserted by the build-order test. */
+  readonly why: string;
+}
+
+/**
+ * A safe, generic opening that works for every faction.
+ *
+ * Refinery first (income before army), then a troop structure, then power, then more production. This is the
+ * shape the v1 AI never had: it trained from whatever it started with and never built anything, which is
+ * why its army topped out at 28 units.
+ */
+export const STANDARD_OPENING: readonly BuildStep[] = [
+  { defId: 'attunement_spire', notBeforeSeconds: 0, pauseHarvesters: false, why: 'income before army' },
+  { defId: 'ley_conduit', notBeforeSeconds: 8, pauseHarvesters: true, why: 'power for the first producer' },
+  { defId: 'summoning_circle', notBeforeSeconds: 12, pauseHarvesters: true, why: 'first troop structure' },
+  { defId: 'attunement_spire', notBeforeSeconds: 40, pauseHarvesters: false, why: 'second refinery for a two-base economy' },
+  { defId: 'summoning_circle', notBeforeSeconds: 70, pauseHarvesters: true, why: 'second producer, so waves keep coming' },
+  { defId: 'arcane_sentry', notBeforeSeconds: 90, pauseHarvesters: false, why: 'one static defense so an early raid cannot end the game' },
+  /**
+   * ORDER MATTERS AND THIS ONE WAS IMPOSSIBLE.
+   *
+   * `arcane_nexus` requires `golem_forge`, but it was listed BEFORE it (nexus @150s, forge @240s). The planner executes the
+   * first unsatisfied step, so nexus was always chosen, its requirement was never met, and the plan stopped there for the rest
+   * of the match. Measured on seed 1000: the AI built six buildings by minute three and NOTHING for the next fifteen minutes
+   * — no second refinery, no second producer, no tech — because it was waiting forever on a building it could never unlock.
+   *
+   * The forge now comes first, which is what its own requirement list demands.
+   */
+  { defId: 'golem_forge', notBeforeSeconds: 150, pauseHarvesters: true, why: 'heavy units and siege; also unlocks the nexus' },
+  { defId: 'arcane_nexus', notBeforeSeconds: 190, pauseHarvesters: true, why: 'tier 2: unlocks the heavy units and the Astral Spire' },
+  { defId: 'attunement_spire', notBeforeSeconds: 220, pauseHarvesters: false, why: 'third refinery' },
+];
+
+/** A fast, greedy opening: more production sooner, defenses later. */
+export const AGGRESSIVE_OPENING: readonly BuildStep[] = [
+  { defId: 'attunement_spire', notBeforeSeconds: 0, pauseHarvesters: false, why: 'income first' },
+  { defId: 'summoning_circle', notBeforeSeconds: 10, pauseHarvesters: true, why: 'early pressure structure' },
+  { defId: 'ley_conduit', notBeforeSeconds: 20, pauseHarvesters: false, why: 'power for the second producer' },
+  { defId: 'summoning_circle', notBeforeSeconds: 35, pauseHarvesters: true, why: 'double production for an early wave' },
+  { defId: 'attunement_spire', notBeforeSeconds: 60, pauseHarvesters: false, why: 'sustain the early aggression' },
+  { defId: 'arcane_sentry', notBeforeSeconds: 80, pauseHarvesters: false, why: 'defense once the first wave is out' },
+  { defId: 'golem_forge', notBeforeSeconds: 120, pauseHarvesters: true, why: 'heavy units; required by the nexus' },
+  { defId: 'arcane_nexus', notBeforeSeconds: 160, pauseHarvesters: true, why: 'tier 2' },
+];
+
+/**
+ * Which opening a difficulty uses.
+ *
+ * Hard opens greedily because it can defend the greed. On top of that, a SEEDED VARIANT is chosen per match: an AI that
+ * always plays the identical opening is not just predictable, it makes every tournament seed produce the same game, so the
+ * win-rate table would measure one deterministic script rather than a strategy.
+ *
+ * `variant` is a 0..2 index derived from the match seed and the player id, so it is reproducible (same seed, same opening)
+ * and still differs between players and between seeds. A variant only reorders or trims steps the difficulty would have
+ * taken anyway — it never grants resources or information.
+ */
+export function openingFor(difficulty: string, variant = 0): readonly BuildStep[] {
+  void difficulty; // every difficulty shares the standard opening; see the note below
+  /**
+   * EVERY DIFFICULTY USES THE STANDARD OPENING — MEASURED, NOT PREFERRED.
+   *
+   * Hard used `AGGRESSIVE_OPENING` (producer at 10 s, power at 20 s, second producer at 35 s). Measured against Easy over 24
+   * side-swapped games, with Hard's profile otherwise identical to Normal's:
+   *
+   *   Hard with AGGRESSIVE_OPENING: 20.8%   (5-19, 95% CI 9.2%-40.5%)
+   *   Hard with STANDARD_OPENING:   79.2%   (19-5, 95% CI 59.5%-90.8%)
+   *
+   * Same profile, same opponent, same seeds — a 58-point swing from the build order alone. The aggressive line puts the second
+   * refinery 60 s out and the first static defence 80 s out, so it commits to army production while its economy is still thin,
+   * and in this game a thin economy cannot replace the army it spends. It reads as aggression but plays as a gamble.
+   *
+   * So the difficulty distinction lives entirely in the PROFILE, which is what the ablation could actually measure, and Hard no
+   * longer opens on an unmeasured hunch.
+   */
+  const base = STANDARD_OPENING;
+  /**
+   * THE SEEDED OPENING VARIANT IS GONE — IT WAS A FAIRNESS BUG, NOT A FEATURE.
+   *
+   * `openingFor` used to return a different build order per match seed. The intent was variety ("an AI that always plays
+   * the identical opening makes every seed the same game"), but the variants were never equal in value, and because the
+   * variant came from the seed it turned a match into a lottery on the opening:
+   *
+   *   • `audit/variant-bias.ts` — pinning each variant head-to-head measured variant 2 at **8-0** while variants 0 and 1
+   *     measured 4-4. Variant 2 originally inserted a second refinery before the first producer, putting its production
+   *     1500 mana behind.
+   *   • `audit/seed-collapse.ts` — in a mirror, every seed drawing variant 0 ended at exactly **16.1 minutes with team 1
+   *     winning**, while every seed drawing variant 1 or 2 **failed to finish inside 34 minutes**. Twelve seeds were
+   *     really three games repeated four times, so a per-seed win rate was not an independent sample.
+   *   • Equalising the multiset was not enough either: the planner executes the FIRST unsatisfied step, so an early
+   *     `arcane_sentry` transposed ahead of the 12 s `summoning_circle` delayed production and skewed the result again.
+   *
+   * A variant that changes strength is not a variation of strategy, it is a handicap applied by a coin flip. Fairness is
+   * a hard Phase 5 requirement and opening variety is not, so the seeded variant is removed. `variant` is kept in the
+   * signature because callers and tests pass it, and `tests/phase5-fairness.test.ts` now asserts that all three variants
+   * are byte-identical — so this cannot silently regress into a strength difference again.
+   *
+   * Match-to-match variety has to come from play that is symmetric in expectation (scouting routes, engagement choices),
+   * not from one side being handed a worse build.
+   */
+  void variant;
+  return base;
+}
+
+/**
+ * Is this step already satisfied?
+ *
+ * Counts only COMPLETE buildings: a foundation that is still going up does not satisfy the step, or the
+ * planner would place the same building repeatedly while the first one is under construction.
+ */
+export function stepSatisfied(
+  step: BuildStep,
+  steps: readonly BuildStep[],
+  built: Map<string, number>,
+  defFor: (id: string) => BuildingDef | undefined,
+): boolean {
+  // How many of this def does the opening ask for up to and including this step?
+  let wanted = 0;
+  for (const s of steps) {
+    if (s.defId === step.defId) wanted++;
+    if (s === step) break;
+  }
+  const have = built.get(step.defId) ?? 0;
+  void defFor;
+  return have >= wanted;
+}

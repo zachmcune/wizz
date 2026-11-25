@@ -1,0 +1,233 @@
+/* ARCANE DOMINION — DESIGN TOKENS
+ *
+ * THE ONLY PLACE A COLOUR, SIZE, FONT OR TIMING MAY BE DEFINED.
+ *
+ * Every UI component consumes these custom properties. `tests/ui-tokens.test.ts` fails the build if a
+ * component hard-codes a colour literal or introduces a purple-range hue, so this file is not a
+ * convention — it is enforced.
+ *
+ * ── THE STYLE: "OBSIDIAN & BRASS" ───────────────────────────────────────────────────────────────
+ *
+ * Dark slate metal plates with warm brass fittings and bone-coloured type. Chunky, machined, legible.
+ * It is the UI equivalent of the game's code-built 3D art: flat plates, real bevels, no gloss.
+ *
+ * Why this and not the previous look: the old UI was violet-on-violet with 8–12px rounded pills, a
+ * system font stack and a soft translucent panel — the generic "AI app" aesthetic. It also collided
+ * with the game's own Arcane faction, which is violet, so UI chrome and content looked like the same
+ * material. Moving the chrome to warm neutral metal separates the interface from the battlefield.
+ *
+ * ── HUE DISCIPLINE ──────────────────────────────────────────────────────────────────────────────
+ *
+ * UI chrome lives in TWO regions only:
+ *   • ACHROMATIC — saturation below 12%. This is the overwhelming majority of the UI: plates, borders,
+ *     text, dividers. Cool grey (hue ~210) rather than neutral-warm, so it reads as steel.
+ *   • COPPER    — hue 20–35°. Reserved for interactive affordance only: focus, primary action,
+ *     selected tab, and the active end of a gauge. Never used for decoration.
+ *
+ * UI chrome must NEVER use hue 250–330 (violet/indigo/purple). That band belongs to nothing in this
+ * game's interface and is the specific thing that made the old UI look generated.
+ *
+ * ── TEAM COLOUR SEPARATION ─────────────────────────────────────────────────────────────────────
+ *
+ * The four team colours are fixed by the simulation: blue 212°, red 0°, green 143°, gold 43°.
+ * The UI avoids competing with them by construction:
+ *   • Copper (hue ~28°) is 15° away from team gold in HUE but 25+ points darker in VALUE, so the two
+ *     never read as the same swatch. Copper is also never used as a large filled area — only thin
+ *     strokes, small caps and text — so it cannot be mistaken for a team ownership marker.
+ *   • The UI never uses saturated blue, red or green as chrome. Status colours are deliberately
+ *     desaturated (see --signal-*) so they cannot be confused with teams either.
+ *   • The one place both appear together (the lobby's player rows) puts team colour in a 4px bar on
+ *     the row edge and keeps all text and chrome achromatic.
+ */
+
+:root {
+  /* ─────────────────────────────────────────────── INK — achromatic steel plates ─────────────── */
+  /* Value ramp for surfaces. Every step is a real elevation change; there are no decorative greys. */
+  --ink-950: #0e1013; /* app background, the void behind everything */
+  --ink-900: #14171b; /* full-bleed screens */
+  --ink-850: #191d22; /* panel body */
+  --ink-800: #1e2228; /* raised panel / toolbar */
+  --ink-700: #262b32; /* control face */
+  --ink-600: #313741; /* control face, hover */
+  --ink-500: #3e4650; /* strong divider, control border */
+  --ink-400: #525c68; /* border on dark, disabled text */
+  --ink-300: #6b7784; /* muted text, icon stroke on dark */
+
+  /* ─────────────────────────────────────────────── BONE — type ───────────────────────────────── */
+  --bone-100: #f4efe4; /* primary text */
+  --bone-200: #ded7c7; /* primary text on raised surfaces */
+  --bone-400: #a9a294; /* secondary text, labels */
+  --bone-600: #7d786d; /* disabled text, captions */
+
+  /* ─────────────────────────────────────────────── COPPER — interactive affordance only ──────── */
+  --copper-700: #6f4520; /* pressed / shadow side of a primary control */
+  --copper-600: #8c5a2b; /* primary border */
+  --copper-500: #b87333; /* primary accent: focus ring, active tab, primary fill */
+  --copper-400: #d18f4a; /* hover */
+  --copper-300: #e3ab72; /* text on dark when it must read as "active" */
+  --copper-100: #f6e2c8; /* text on a copper fill */
+
+  /* ─────────────────────────────────────────────── SIGNALS — desaturated on purpose ───────────── */
+  /* These are 40+ points less saturated than any team colour, so they read as status, not ownership. */
+  --signal-good: #6f9e6a;
+  --signal-warn: #c08d3e;
+  --signal-bad: #b05a4a;
+  --signal-info: #7a8fa6;
+
+  /* ─────────────────────────────────────────────── TEAM COLOURS (mirror of the sim) ──────────── */
+  /* Read-only. The UI never uses these as chrome — only to represent a player. */
+  --team-blue: #4f9dff;
+  --team-red: #ff5d5d;
+  --team-green: #5cff8a;
+  --team-gold: #ffd166;
+
+  /* ─────────────────────────────────────────────── TYPEFACES ────────────────────────────────── */
+  /* Self-hosted IBM Plex, subset to Latin, woff2. Chosen because: it is a squarish humanist sans
+   * with excellent small-size legibility on low-DPI Chromebook panels; the Condensed cut gives
+   * RTS-style headlines without a fantasy display face; and the Mono cut provides tabular numerals
+   * so resource counters do not shift width as they tick. No webfont CDN — the whole set is ~150 KB
+   * and ships with the game. */
+  --font-display: 'Plex Condensed', 'Arial Narrow', sans-serif;
+  --font-ui: 'Plex Sans', system-ui, sans-serif;
+  --font-numeric: 'Plex Mono', ui-monospace, monospace;
+
+  /* ─────────────────────────────────────────────── TYPE SCALE ───────────────────────────────── */
+  /* A 1.2 modular scale anchored at 13px for desktop. Phone steps the whole scale down one notch
+   * via the [data-density] attribute rather than with per-component overrides. */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 23px;
+  --text-3xl: 29px;
+  --text-4xl: 36px;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+
+  --tracking-caps: 0.08em; /* uppercase labels */
+  --tracking-tight: -0.01em; /* large headlines */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ─────────────────────────────────────────────── SPACING — 4px base ────────────────────────── */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 56px;
+
+  /* ─────────────────────────────────────────────── GEOMETRY ─────────────────────────────────── */
+  /* Sharp corners. The only radius in the system is 2px, used on controls whose hit area benefits
+   * from it. Rounded 8–16px pills are the single most recognisable "generated UI" tell and are
+   * banned by the token test. */
+  --radius-none: 0;
+  --radius-hair: 2px;
+
+  --border-hair: 1px;
+  --border-thick: 2px;
+
+  /* Control heights on the desktop baseline. The phone density steps these down. */
+  --control-sm: 26px;
+  --control-md: 32px;
+  --control-lg: 40px;
+
+  /* ─────────────────────────────────────────────── BEVEL ────────────────────────────────────── */
+  /* Plates are built like the game's 3D geometry: a bright top-left edge, a dark bottom-right edge.
+   * These two lines plus a 1px outline are the entire "machined metal" read. No blur, no gloss. */
+  --bevel-light: rgba(255, 255, 255, 0.07);
+  --bevel-dark: rgba(0, 0, 0, 0.5);
+  /* Interior shading. Named so components never write a raw rgba() for a recess or a press. */
+  --shade-press: rgba(0, 0, 0, 0.5);
+  --shade-recess: rgba(0, 0, 0, 0.6);
+  --shade-key: rgba(0, 0, 0, 0.4);
+  /* The faint engineered grid behind screens. Deliberately near-invisible: it should read as texture,
+   * not as a graphic element competing with the battlefield. */
+  --grid-ink: rgba(255, 255, 255, 0.022);
+  --bevel-inset: inset 0 1px 0 var(--bevel-light), inset 0 -1px 0 var(--bevel-dark);
+  --bevel-outset: inset 0 1px 0 var(--bevel-light), inset 0 -1px 0 var(--bevel-dark), 0 1px 2px rgba(0, 0, 0, 0.45);
+
+  /* The 45° cut used on panel corners. A hard chamfer, not a rounded corner. */
+  --chamfer-sm: 6px;
+  --chamfer-md: 10px;
+  --chamfer-lg: 14px;
+
+  /* ─────────────────────────────────────────────── FOCUS ────────────────────────────────────── */
+  /* One focus treatment for the entire product: a 2px copper ring offset by 2px. Never a glow. */
+  --focus-ring: 0 0 0 2px var(--ink-950), 0 0 0 4px var(--copper-500);
+
+  /* ─────────────────────────────────────────────── ELEVATION ────────────────────────────────── */
+  /* Shadows are tight and dark. No large soft ambient blur — that is the glassmorphism tell. */
+  --shadow-plate-key: rgba(0, 0, 0, 0.55);
+  --shadow-plate-mid: rgba(0, 0, 0, 0.45);
+  --shadow-plate: 0 1px 0 var(--shadow-plate-key), 0 2px 6px var(--shadow-plate-mid);
+  --shadow-float: 0 2px 0 var(--shadow-plate-key), 0 8px 20px var(--shadow-plate-key);
+
+  /* ─────────────────────────────────────────────── MOTION ───────────────────────────────────── */
+  /* Three durations and one easing curve for the whole product. Motion exists to confirm an action
+   * or move the eye a short distance — never to decorate. No bounce, no spring, no looping pulse. */
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --dur-instant: 60ms; /* state flip on a control */
+  --dur-fast: 110ms; /* hover, pressed */
+  --dur-base: 160ms; /* panel reveal, tab switch */
+  --dur-slow: 240ms; /* screen transition */
+
+  /* ─────────────────────────────────────────────── Z-ORDER ──────────────────────────────────── */
+  --z-world: 0;
+  --z-hud: 100;
+  --z-panel: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+}
+
+/* ───────────────────────────────────────────────── DENSITY ──────────────────────────────────── */
+/* Three fixed tiers, chosen by measured viewport. Components never branch on width themselves —
+ * they read these variables, so a single attribute change rescales the entire UI coherently.
+ *
+ *   compact   667x375 phone (landscape) — the tightest real target
+ *   regular   1366x768 Chromebook — the primary school device
+ *   roomy     1920x1080 desktop
+ */
+:root,
+[data-density='regular'] {
+  --text-scale: 1;
+  --gutter: var(--space-5);
+  --hud-pad: var(--space-4);
+  --touch-target: 32px;
+}
+
+[data-density='compact'] {
+  --text-scale: 0.92;
+  --gutter: var(--space-4);
+  --hud-pad: var(--space-3);
+  --touch-target: 28px;
+}
+
+[data-density='roomy'] {
+  --text-scale: 1.08;
+  --gutter: var(--space-7);
+  --hud-pad: var(--space-5);
+  --touch-target: 36px;
+}
+
+/* ───────────────────────────────────────────────── REDUCED MOTION ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
+}
