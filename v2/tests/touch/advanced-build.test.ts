@@ -185,6 +185,29 @@ describe('advanced structures are reachable from the HUD', () => {
           expect(armed.mana, `${vp.name}: could not grant mana`).toBeGreaterThan(50_000);
 
           await page.waitForTimeout(600);
+          /**
+           * WAIT FOR THE GRID TO STOP REBUILDING BEFORE TOUCHING A TILE.
+           *
+           * `renderTiles` replaces `.hud-tiles` children whenever the tile key changes — which granting 60,000 mana does,
+           * because every tile's blocker text flips from "Not enough mana" to buildable. Playwright resolves a locator to
+           * a specific element, so a rebuild between resolution and the next action detaches it: CI measured
+           * `locator.scrollIntoViewIfNeeded: Element is not attached to the DOM` on the desktop viewport only, because a
+           * fast machine finishes the rewrite before the locator resolves and a slow one does not.
+           *
+           * The settle is asserted rather than slept through: the same element handle must survive two animation frames.
+           */
+          await page.waitForFunction(
+            () => {
+              const el = document.querySelector('[data-testid="hud-tile-resonance_vault"]');
+              if (!el) return false;
+              const w = window as unknown as { __vaultRef?: Element };
+              if (w.__vaultRef === el) return true;
+              w.__vaultRef = el;
+              return false;
+            },
+            undefined,
+            { timeout: 15_000, polling: 'raf' },
+          );
           const vault = page.locator('[data-testid="hud-tile-resonance_vault"]');
           await vault.scrollIntoViewIfNeeded();
           await page.waitForTimeout(200);
