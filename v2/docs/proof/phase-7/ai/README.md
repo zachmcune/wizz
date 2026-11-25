@@ -179,6 +179,14 @@ without the corner row would be misleading, which is why both are here.
 **The floor was never weakened.** `expect(r.outcomes.every((o) => o.issued > 100))` is unchanged from the day it was
 written, and the four attempts to make room for expansion were rejected rather than accommodated.
 
+**Two browser gates were hardened, not loosened, after CI caught flakes in them.** `tests/touch/advanced-build.test.ts`
+hit `scrollIntoViewIfNeeded: Element is not attached to the DOM` on the desktop viewport, and
+`tests/ui-phase4.test.ts`'s research-tree case reported "Mastery extends 362px past the graph viewport" on a commit that
+had just passed it. Both were races against a grid/overlay rebuild, caused by sleeping a fixed number of milliseconds and
+then measuring. Both now assert that the layout has SETTLED — the same element handle surviving two animation frames for
+the tile grid, and the scroll viewport's width being stable across two frames plus at least one laid-out column for the
+tree. The assertions themselves are untouched, including the absolute "no column may extend past the viewport" rule.
+
 ## 8. Known limitations, stated plainly
 
 1. **The AI does not expand.** 0 buildings outside the starting cluster, 0 forward refineries, on every seed and every
