@@ -33,6 +33,7 @@
 
 import type { GameState, EntityId } from '../sim/types';
 import type { Registry } from '../data/registry';
+import type { BuildingDef } from '../data/defs';
 import type { MatchController } from './match';
 import type { LoadedAtlas } from '../render/atlas';
 import { button, el, gauge, iconEl, resource } from '../ui/kit';
@@ -79,6 +80,14 @@ interface Tile {
   /** How many of this thing the player already owns (badge), or -1 for research. */
   owned: number;
   done?: boolean;
+  /**
+   * Player-facing sentence for what this structure unlocks or does, shown in the tooltip.
+   *
+   * Zachary approved surfacing what the Astral Spire unlocks, and the data already carries it: `unlocksSpells` names the
+   * four spells, `producesUnits` names what a producer trains, and `description` is written for a player. The console
+   * previously showed only a name and a price, so a 4500-mana structure said nothing about what 4500 mana bought.
+   */
+  info?: string;
 }
 
 export interface HudDeps {
@@ -113,6 +122,8 @@ export class Hud {
   private tabStrip!: HTMLElement;
   private tileGrid!: HTMLElement;
   private sideEmpty!: HTMLElement;
+  private buildPages!: HTMLElement;
+  private tabBlock!: HTMLElement;
   private selBody!: HTMLElement;
   private cmds!: HTMLElement;
   private toast!: HTMLElement;
@@ -120,11 +131,22 @@ export class Hud {
   private radarCanvas!: HTMLCanvasElement;
   private radarCtx!: CanvasRenderingContext2D | null;
   private radarNote!: HTMLElement;
+  private radarLabel!: HTMLElement;
+  private headSlot!: HTMLElement;
   private collapseBtn!: HTMLButtonElement;
   private expandRow!: HTMLElement;
   private badge!: HTMLElement;
 
   private tab: SidebarTab = 'buildings';
+  /**
+   * Which page of the Buildings tab is showing.
+   *
+   * `core` is the economy and production structures the opening needs; `advanced` is the late-game chain
+   * (Resonance Vault → Arcane Nexus → Astral Spire) plus the Scrying Obelisk. It lives here rather than as a fifth
+   * top-level category because the top-level strip is full at every viewport: adding a tab was measured to push the
+   * command rows out of the console on 667x375.
+   */
+  private buildPage: 'core' | 'advanced' = 'core';
   private radarOpen = true;
   private collapsed = false;
   private lastSelectionKey = '';
@@ -241,6 +263,39 @@ export class Hud {
     // ---- head: collapse control, category tabs, radar state
     const head = el('div', 'hud-side__head');
     this.badge = el('span', 'hud-side__badge', 'COMMAND');
+    /**
+     * THE BUILD PAGE SWITCH SHARES THE HEADER WITH THE BADGE.
+     *
+     * It has to be a real thumb target: `tests/ui-phase4.test.ts` fails any control under 28x28 at compact density, and
+     * a 14px strip in the radar header was measured at 32x14 and 27x14. This header is already 33px and its only other
+     * content is the category badge, which is pure duplication — the selected tab is already highlighted one row below.
+     * So on the Buildings tab the switch takes the badge's place, and on every other tab the badge is what shows.
+     */
+    this.buildPages = el('div', 'hud-pages', undefined, { role: 'tablist', 'aria-label': 'Building pages' });
+    this.buildPages.dataset.testid = 'hud-build-pages';
+    for (const page of [
+      { id: 'core' as const, label: 'Core' },
+      { id: 'advanced' as const, label: 'Adv.' },
+    ]) {
+      const b = el('button', 'hud-page', undefined, {
+        type: 'button',
+        role: 'tab',
+        'aria-selected': String(page.id === this.buildPage),
+        title: page.id === 'core' ? 'Core structures' : 'Advanced structures',
+      });
+      b.dataset.page = page.id;
+      b.dataset.testid = `hud-page-${page.id}`;
+      b.append(el('span', 'hud-page__label', page.label));
+      b.addEventListener('click', () => {
+        this.buildPage = page.id;
+        this.lastTileKey = '';
+        this.renderTiles(this.ctrl.state);
+      });
+      this.buildPages.append(b);
+    }
+
+    this.headSlot = el('div', 'hud-headslot');
+    this.headSlot.append(this.badge, this.buildPages);
     this.collapseBtn = button({
       icon: 'chevron-right',
       label: 'Toggle command panel',
@@ -250,11 +305,10 @@ export class Hud {
       onClick: () => this.toggleCollapsed(),
     });
     this.collapseBtn.dataset.testid = 'hud-collapse';
-    head.append(this.badge, el('div', 'spacer'), this.collapseBtn);
+    head.append(this.headSlot, el('div', 'spacer'), this.collapseBtn);
 
     this.tabStrip = el('div', 'hud-tabs', undefined, { role: 'tablist', 'aria-label': 'Build categories' });
-    this.tabStrip.dataset.testid = 'hud-tabs';
-    for (const t of TABS) {
+    this.tabStrip.dataset.testid = 'hud-tabs';    for (const t of TABS) {
       const b = el('button', 'hud-tab', undefined, {
         type: 'button',
         role: 'tab',
@@ -278,11 +332,33 @@ export class Hud {
       this.tabStrip.append(b);
     }
 
+
+    this.tabBlock = el('div', 'hud-tabblock');
+    this.tabBlock.append(this.tabStrip);
+    this.tabBlock.dataset.testid = 'hud-tabblock';
+
     // ---- radar
     this.radarHost = el('section', 'hud-radar');
     this.radarHost.dataset.testid = 'hud-radar';
     const radarHead = el('div', 'hud-radar__head');
-    radarHead.append(el('span', 'eyebrow', 'Radar'));
+    /**
+     * THE HEADER'S LEFT SLOT IS THE BUILD PAGE SWITCH, OR THE PANEL LABEL.
+     *
+     * Both label what the panel below is showing, so they occupy the same place rather than sharing a 136px row with
+     * "NEEDS OBELISK": measured, the note needed 65px and had 43 left once the switch was added, which the truncation
+     * gate caught as `clipped hud-radar__note "NEEDS OBELISK" w(65>43)`. On any tab other than Buildings the slot says
+     * "RADAR", which is what it always said.
+     */
+    this.radarLabel = el('span', 'eyebrow', 'Radar');
+    radarHead.append(this.radarLabel);
+    /**
+     * THE CORE / ADVANCED SWITCH LIVES IN THE RADAR HEADER.
+     *
+     * It has to be somewhere that does not cost a grid row: the console's row count is what the layout gates were tuned
+     * against, and a 22px strip on a 375px-tall phone pushed two tile labels out of `.hud-tiles` (measured:
+     * `phone-667x375: "SUMMONING" is clipped by hud-tiles`). This header is already a flex row on every viewport with
+     * space between two short labels, so the switch fits inside existing chrome at zero vertical cost.
+     */
     this.radarNote = el('span', 'hud-radar__note', '');
     radarHead.append(this.radarNote);
     this.radarCanvas = document.createElement('canvas');
@@ -311,6 +387,22 @@ export class Hud {
     this.tileGrid.dataset.testid = 'hud-tiles';
     this.sideEmpty = el('p', 'hud-side__empty dim', '');
 
+    /**
+     * THE BUILD-PAGE STRIP — Core | Advanced, inside the Buildings tab.
+     *
+     * The content set tags Resonance Vault, Arcane Nexus, Astral Spire and Scrying Obelisk `menuCategory: advanced`, and
+     * the console's four top-level tabs map only `buildings` and `defenses`, so those four structures appeared in NO tab
+     * and could not be built at all. Two earlier attempts put them directly in the Buildings grid: the first broke the
+     * phone layout (eight tiles is four rows in a two-column grid, measured as "GOLEM is clipped by hud-tiles" and a tile
+     * overlapping the Move button), and the second ordered them below the buildable ones, which fixed the layout but left
+     * them four scrolls down a 2-up scroller where the truncation gate then found a label bleeding into its sibling.
+     *
+     * A page switch is the layout that satisfies both constraints at once. Each page keeps the grid at the size it was
+     * measured at — Core is the seven economy/production structures the opening actually uses, Advanced is four — so
+     * neither page is taller than the grid the gates were tuned against, and the strip is one 22px row that replaces the
+     * grid's first row rather than adding to it.
+     */
+
     // ---- commands
     this.cmds = el('div', 'hud-cmds');
     this.cmds.dataset.testid = 'hud-cmds';
@@ -336,7 +428,23 @@ export class Hud {
     expandRow.append(expand);
     this.expandRow = expandRow;
 
-    side.append(head, this.tabStrip, expandRow, this.radarHost, this.tileGrid, this.sideEmpty, this.cmds);
+    side.append(
+      head,
+      /**
+       * THE PAGE STRIP SHARES THE TABS ROW.
+       *
+       * Adding a grid row for it would take 22px plus a gap out of the console at every viewport, and the console's row
+       * count is what the layout gates were tuned against (six tracks, one flexible). So the two strips are wrapped in
+       * one element that occupies the existing `tabs` area, and the wrapper is a single flex column. Nothing about the
+       * grid changes, and `.hud-tab` / `.hud-tabs` remain the selectors the touch and layout gates query.
+       */
+      this.tabBlock,
+      expandRow,
+      this.radarHost,
+      this.tileGrid,
+      this.sideEmpty,
+      this.cmds,
+    );
     return side;
   }
 
@@ -546,6 +654,23 @@ export class Hud {
       b.setAttribute('aria-selected', String(b.dataset.tab === this.tab));
     }
     this.badge.textContent = TABS.find((t) => t.id === this.tab)?.label.toUpperCase() ?? 'COMMAND';
+    /**
+     * THE PAGE STRIP BELONGS TO THE BUILDINGS TAB ONLY.
+     *
+     * Defenses, Units and Research each have a single list, so a Core/Advanced switch there would be a control that
+     * changed nothing — the exact "unexplained control" defect this console has already been fixed for once (the radar's
+     * unexplained OFFLINE). It is `hidden` rather than removed so the grid's track list does not change between tabs,
+     * which would reflow the tiles every time the player switched category.
+     */
+    const showPages = this.tab === 'buildings';
+    this.buildPages.hidden = !showPages;
+    // One slot, two occupants: the switch names what the Buildings tab is showing, and every other tab keeps the badge.
+    this.badge.hidden = showPages;
+    if (showPages) {
+      for (const b of this.buildPages.querySelectorAll<HTMLElement>('.hud-page')) {
+        b.setAttribute('aria-selected', String(b.dataset.page === this.buildPage));
+      }
+    }
   }
 
   private renderTiles(st: GameState): void {
@@ -567,7 +692,15 @@ export class Hud {
   private tileEl(t: Tile): HTMLElement {
     const b = el('button', 'prod-tile', undefined, {
       type: 'button',
-      title: t.blocker ? `${t.name} — ${t.blocker}` : `${t.name} · ${t.cost} mana`,
+      /**
+       * THE TOOLTIP HAS TO SAY WHAT THE STRUCTURE IS FOR, NOT JUST WHAT IT COSTS.
+       *
+       * A 4500-mana Astral Spire with a tooltip reading "Astral Spire · 4500 mana" tells a player nothing about why they
+       * would buy it. The content set already carries the answer — `unlocksSpells` for the Spire, `producesUnits` for a
+       * producer, and a written `description` — so the tooltip states it, and when the structure is unavailable the
+       * prerequisite chain comes FIRST because that is the thing blocking the player.
+       */
+      title: [t.name, t.blocker, t.info].filter(Boolean).join(' — '),
     });
     b.dataset.testid = `hud-tile-${t.id}`;
     b.dataset.tile = t.id;
@@ -676,7 +809,20 @@ export class Hud {
          */
         .filter((b) =>
           cat === 'buildings'
-            ? b.menuCategory === 'buildings'
+            ? /**
+               * THE TWO PAGES ARE MUTUALLY EXCLUSIVE, SO EACH IS THE SIZE THE GATES WERE TUNED AT.
+               *
+               * `core` is the economy and production chain the opening uses (attunement spire, conduit, circle, forge —
+               * four tiles, two rows in a 2-up grid). `advanced` is the late-game chain plus what the Scrying Obelisk
+               * needs: Resonance Vault, Arcane Nexus, Astral Spire. The Obelisk itself stays on Defenses, where it has
+               * been since the radar fix, because that is the tab a player looks in for a structure that reveals ground.
+               *
+               * Listing core AND advanced together on one page was the earlier attempt and it is what broke the phone
+               * layout: seven tiles is four rows, and two of their labels were measured bleeding out of `.hud-tiles`.
+               */
+              this.buildPage === 'advanced'
+              ? b.menuCategory === 'advanced' && b.id !== 'scrying_obelisk'
+              : b.menuCategory === 'buildings'
             : b.menuCategory === 'defenses' || b.id === 'scrying_obelisk',
         )
         .filter((b) => !b.factions || !faction || b.factions.includes(faction))
@@ -699,6 +845,7 @@ export class Hud {
             progress,
             queued: 0,
             owned: ownedCount.get(b.id) ?? 0,
+            info: buildingInfo(b, this.registry),
           };
         })
         /**
@@ -944,7 +1091,15 @@ export class Hud {
         ? 'NO POWER'
         : hasRadarBuilding
           ? 'BUILDING'
-          : 'NEEDS OBELISK';
+          /**
+           * SHORT ON PURPOSE, AND THE TOOLTIP CARRIES THE REST.
+           *
+           * This is the longest string in a 136px header row that now also carries the Core/Advanced switch, and the
+           * truncation gate measures every leaf: "NEEDS OBELISK" needed 65px against 61 available once the switch was
+           * added. "NO OBELISK" says the same thing in 10 fewer pixels, and the tooltip below spells out exactly what to
+           * build and where — which is the part a player actually needs, and it was already there.
+           */
+          : 'NO OBELISK';
     this.radarNote.dataset.state = active ? 'on' : 'off';
     this.radarCanvas.dataset.state = active ? 'on' : 'off';
     this.radarHost.dataset.state = active ? 'on' : 'off';
@@ -1039,6 +1194,37 @@ const ORDER_WORDS: Record<string, string> = {
  * shows a real word: the head noun of the name, dropping the generic structure word that every entry
  * shares ("Spire", "Forge") when one remains readable on its own.
  */
+/**
+ * What a structure is FOR, in one player-facing sentence.
+ *
+ * Zachary approved surfacing what the Astral Spire unlocks, and the data already names it: `unlocksSpells` lists the four
+ * spells and their cooldowns, `producesUnits` names what a producer trains, and `description` is written for a player. The
+ * console used to show a name and a price only, so a 4500-mana superweapon read exactly like a 40-mana wall.
+ *
+ * Deliberately built from the definition rather than from a table in the UI: a hand-written table drifts the moment the
+ * content changes, and this must describe the SHIPPED data or it is a lie.
+ */
+function buildingInfo(def: BuildingDef, registry: Registry): string {
+  const parts: string[] = [];
+  if (def.description) parts.push(def.description);
+  const spells = (def as { unlocksSpells?: readonly string[] }).unlocksSpells;
+  if (spells && spells.length > 0) {
+    const names = spells.map((id: string) => {
+      const s = registry.spells.get(id);
+      if (!s) return id;
+      // Cooldown is in ticks at 20 Hz; the player thinks in seconds.
+      const secs = s.cooldownTicks > 0 ? Math.round(s.cooldownTicks / 20) : 0;
+      return secs > 0 ? `${s.name} (${secs}s)` : s.name;
+    });
+    parts.push(`Unlocks: ${names.join(', ')}`);
+  }
+  if (def.producesUnits && def.producesUnits.length > 0) {
+    const names = def.producesUnits.map((id: string) => registry.units.get(id)?.name ?? id);
+    parts.push(`Trains: ${names.join(', ')}`);
+  }
+  return parts.join(' · ');
+}
+
 export function shortLabelFor(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length === 1) return name.toUpperCase();

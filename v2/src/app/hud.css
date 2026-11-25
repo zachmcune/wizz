@@ -284,8 +284,24 @@
  * icon, because the reported problem with the old strip was precisely that nobody could tell what the
  * icons meant.
  */
-.hud-tabs {
+.hud-tabblock {
   grid-area: tabs;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /**
+   * THE PAGE SWITCH SHARES THE TABS ROW WITHOUT GROWING IT.
+   *
+   * The console's row count is what the layout gates were measured against, and a second 20px strip on a 375px-tall
+   * phone pushed two tile labels out of `.hud-tiles`. So the block is exactly as tall as the tab strip, and the page
+   * switch is an absolutely-positioned inset along its bottom edge — visible, tappable, and free of vertical cost.
+   * It is inset 0 on the right half only, so it never covers the four category tabs.
+   */
+  position: relative;
+  padding-bottom: 0;
+}
+.hud-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
@@ -352,12 +368,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-1);
   padding: 1px var(--space-2);
+  /**
+   * THE HEADER DOES NOT GROW WHEN IT GAINS A CONTROL.
+   *
+   * It is 16px tall on every viewport, sized by the `.eyebrow` label. Adding the Core/Advanced switch here measured the
+   * header at 30px, and the 14px difference came straight out of `.hud-tiles` — on a 375px-tall phone that pushed two
+   * tile labels out of the scroller (`"SUMMONING" is clipped by hud-tiles`). The header is a fixed-height row with
+   * `overflow: hidden`, so a control that does not fit is a layout bug its own gate catches rather than a silent loss
+   * of tile space.
+   */
+  height: 16px;
+  min-height: 16px;
+  overflow: hidden;
 }
 .hud-radar__note {
   font-family: var(--font-numeric);
   font-size: calc(var(--text-2xs) * var(--text-scale));
   color: var(--signal-good);
+  /* The header is a fixed 16px row, so every child in it must fit that row's line box. The note is the longest string
+   * in the header ("NEEDS OBELISK"), so it gets an explicit 14px line height and no wrapping — the value the eyebrow
+   * already resolves to at this scale. */
+  line-height: 14px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hud-radar__note[data-state='off'] {
   color: var(--signal-bad);
@@ -929,4 +966,70 @@
 }
 [data-density='roomy'] .hud-cmd {
   min-height: 38px;
+}
+
+/* ───────────────────────────────────────────────────────────── build pages (Core | Advanced)
+ *
+ * The Buildings tab carries two pages so the late-game chain fits without growing the console. The switch sits INSIDE
+ * the radar header, which is already a flex row on every viewport: a strip of its own would cost a grid row, and on a
+ * 375px-tall phone that measured as two tile labels pushed out of `.hud-tiles`.
+ *
+ * Deliberately NOT a pill or a rounded segmented control: Obsidian & Brass uses chamfered plates and a 1px inset ring,
+ * and copper marks only what the player can act on. The selected page is a brighter plate with a copper underline, which
+ * is the treatment `.hud-tab[aria-selected]` already uses.
+ */
+.hud-pages {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+/* One slot in the header: the category badge, or the Core/Advanced switch. Never both, so the 33px row never has to
+ * fit two labels. */
+.hud-headslot {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.hud-pages[hidden] {
+  display: none;
+}
+.hud-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Matches the `.eyebrow` label's own line box so the header keeps the height it had before the switch existed. A
+   * 16px button measured the header at 30px against its original 16px, and the 14px came straight out of `.hud-tiles`
+   * on a 375px-tall phone — which is exactly the two clipped tile labels the gate reported. */
+  /* A REAL THUMB TARGET. `tests/ui-phase4.test.ts` fails any HUD control under 28x28 at compact density, and an earlier
+   * 14px strip measured 32x14 — a control a finger cannot hit is not a control. The header row is 33px, so this fits. */
+  min-height: 28px;
+  height: 28px;
+  padding: 0 6px;
+  background: var(--ink-850);
+  color: var(--bone-400);
+  border: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 var(--border-hair) var(--ink-700);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.hud-page:hover {
+  color: var(--bone-100);
+}
+.hud-page[aria-selected='true'] {
+  background: var(--ink-700);
+  color: var(--copper-300);
+  box-shadow:
+    inset 0 0 0 var(--border-hair) var(--ink-600),
+    inset 0 -2px 0 var(--copper-500);
+}
+.hud-page__label {
+  font-size: 9px;
+  max-width: 100%;
+  line-height: 1;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
 }
