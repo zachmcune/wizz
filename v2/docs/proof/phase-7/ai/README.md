@@ -162,7 +162,7 @@ without the corner row would be misleading, which is why both are here.
 
 ## 7. Gates, all run on this commit
 
-**Final commit: `a3863b1`** — all five CI checks green (quality, e2e, slow, v2, Cloudflare Pages).
+**Final commit: `f2ca7e4`** — all five CI checks green (quality, e2e, slow, v2, Cloudflare Pages).
 
 | Gate | Result |
 |---|---|
@@ -181,13 +181,24 @@ without the corner row would be misleading, which is why both are here.
 **The floor was never weakened.** `expect(r.outcomes.every((o) => o.issued > 100))` is unchanged from the day it was
 written, and the four attempts to make room for expansion were rejected rather than accommodated.
 
-**Two browser gates were hardened, not loosened, after CI caught flakes in them.** `tests/touch/advanced-build.test.ts`
+**Four test races were hardened, not loosened, after CI caught them on commits that passed locally.** `tests/touch/advanced-build.test.ts`
 hit `scrollIntoViewIfNeeded: Element is not attached to the DOM` on the desktop viewport, and
 `tests/ui-phase4.test.ts`'s research-tree case reported "Mastery extends 362px past the graph viewport" on a commit that
 had just passed it. Both were races against a grid/overlay rebuild, caused by sleeping a fixed number of milliseconds and
-then measuring. Both now assert that the layout has SETTLED — the same element handle surviving two animation frames for
-the tile grid, and the scroll viewport's width being stable across two frames plus at least one laid-out column for the
-tree. The assertions themselves are untouched, including the absolute "no column may extend past the viewport" rule.
+then measuring; both now assert that the layout has SETTLED.
+
+`tests/touch/browser-touch.test.ts` and `advanced-build` also both tapped a *reconstruction* of the placement ghost's
+position rather than the ghost itself — the safe-rect centre in one case and `(tx + 0.5) * TILE` in the other, which for a
+2x2 structure is a full tile away from its real anchor — so the tap re-derived a different ghost and the placement was
+silently dropped when that tile was occupied. Both now tap `worldToScreenPoint(g.x, g.y)`, the point the ghost was
+validated at.
+
+Finally, `tests/isolation.test.ts` walked `src/` and read each file later while `determinism-guard.test.ts` writes and
+removes throwaway fixtures under `src/sim/` in `afterAll`; the read now tolerates a vanished file, which cannot hide a
+real violation because a real source file does not vanish.
+
+Every one of these is a test change. No assertion was weakened: the absolute "no column may extend past the viewport"
+rule, the "a structure must exist in the sim" rule and every other one are untouched.
 
 ## 8. Known limitations, stated plainly
 
