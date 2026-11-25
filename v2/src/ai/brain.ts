@@ -499,21 +499,6 @@ export class AiBrain {
        */
       prevUnitPositions: this.memory.prevUnitPositions,
       stuckLongEnough: this.memory.passesWithoutProgress >= STALEMATE_PASSES,
-      /**
-       * THE FORWARD SITE, GARRISONED BEFORE IT IS BUILT.
-       *
-       * `planEconomy` names the site; this hands it to the military planner, which posts a small detachment there for as
-       * long as one is wanted. That ordering is the whole point: the refinery is 900 hp with nothing but itself for cover,
-       * and measured on five seeds it was destroyed 68 seconds after it went up by two enemy swarmlings. A squad that is
-       * already standing on the node when the raiders arrive is the only version of this that survives.
-       *
-       * It is also what keeps the committed activity floor honest. `planEconomy` cannot reserve mana for the base without
-       * closing the production gate (`reservedForBuild` raises, `spendable` falls), which measured as ONE combat unit in
-       * fourteen minutes. Garrisoning spends units the AI already owns and issues an ordinary military order, so it adds
-       * activity instead of suppressing it.
-       */
-      garrisonSite: econ.garrisonSite ?? null,
-      garrisonSize: this.profile.defendExpansions,
       searchTarget:
         per.enemyBuildings.filter((b) => b.live && b.defId !== 'stone_wall').length === 0
           ? this.searchObjective(per)
@@ -679,26 +664,7 @@ export class AiBrain {
        */
       const armyTarget = this.armyTarget();
       const armyNow = per.myUnits.filter((u) => u.weapon && !this.registry.units.get(u.defId)?.isHarvester).length;
-      /**
-       * THE PRODUCTION GATE MUST BE SATISFIABLE BY THE RESERVE POLICY, OR IT IS NEVER OPEN.
-       *
-       * The gate demanded `spendable > 2 x the unit's cost`. `spendable` is written by the economy planner, whose
-       * build-order share hard-caps it at exactly `mana - 260` while a step is pending — so once the counter picker settled
-       * on `imp_swarmling` at 140, the gate needed 280 and the cap could never exceed 260. Measured on the committed
-       * latency-jitter seed (`audit/counter-pick-probe.ts`), the gate was open on 4127 of 16800 ticks and the side still
-       * fielded FOUR combat units in fourteen minutes, because from 6:30 the two numbers could not both be satisfied.
-       *
-       * The 2x margin existed for a real reason — training on every affordable coin starves the next building, and an
-       * earlier version measured income at **-15 mana/min** with 82 units built and a bank that never recovered. So the
-       * margin is kept as an ABSOLUTE float rather than a multiple of the unit: buy while `spendable` covers the unit plus
-       * 60, which is smaller than the cheapest combat unit in the roster, so a side that is legitimately saving still
-       * trains when it can afford to. That is what stops the bank from being pinned by its own reserve.
-       *
-       * THIS IS AN AI BEHAVIOUR SETTING, NOT A RULE VALUE. No content number changes; nothing here is in the parity
-       * exceptions. It is listed in `docs/proof/phase-7/ai/README.md` with its measurement.
-       */
-      const PRODUCTION_FLOAT = 60;
-      const aboveReserve = target !== null && spendable >= target.cost + PRODUCTION_FLOAT;
+      const aboveReserve = target !== null && spendable > Math.max(150, target.cost * 2);
       if (target && aboveReserve && armyNow < armyTarget && per.supplyUsed < per.supplyCap) {
         /**
          * ROUND-ROBIN ACROSS PRODUCERS, COUNTED FROM THIS PLAYER'S OWN PASSES.
