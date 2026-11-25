@@ -253,7 +253,18 @@ describe('advanced structures are reachable from the HUD', () => {
             const c = app.controller;
             const g = app.input?.ghost;
             if (!g) return null;
-            const world = { x: (g.tx + 0.5) * 32, y: (g.ty + 0.5) * 32 };
+            /**
+             * THE GHOST'S OWN WORLD POSITION, NOT A TILE-CENTRE RECONSTRUCTION.
+             *
+             * `(tx + 0.5) * TILE` is the centre of the tile the ghost's TOP-LEFT corner sits on. For a 2x2 structure the
+             * ghost's anchor is `(tx + footprint/2) * TILE`, i.e. one full tile further right and down. Feeding the
+             * top-left centre back through `worldToScreenPoint` therefore points at a DIFFERENT tile, the tap re-derives a
+             * ghost there, and if that tile is occupied the placement is dropped — measured in CI as
+             * `phone-667x375: no resonance_vault was placed`, while the same viewport passed locally.
+             *
+             * `g.x`/`g.y` are the validated anchor, so using them keeps the tap on the tile the ghost was accepted at.
+             */
+            const world = { x: g.x, y: g.y };
             c.camera.centerOn(world.x, world.y);
             c.rend.setPlacement(g);
             const p = c.camera.worldToScreenPoint(world.x, world.y);

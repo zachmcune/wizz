@@ -24,6 +24,26 @@ function allFiles(dir: string): string[] {
   return out;
 }
 
+/**
+ * Read a file that the walk collected, tolerating a file that vanished in between.
+ *
+ * `tests/sim/determinism-guard.test.ts` writes throwaway fixtures into `src/sim/__lint_fixture__/` and removes the whole
+ * directory in `afterAll`, because the determinism rule it exercises only applies to `src/sim/**`. Vitest runs test FILES
+ * in parallel by default, so this walk can list a fixture and reach it after that directory has been removed — measured in
+ * CI as `ENOENT: no such file or directory, open '.../src/sim/__lint_fixture__/bad-clock.ts'` on BOTH isolation cases at
+ * once, while both passed locally where the timing differed.
+ *
+ * A file that disappears mid-scan is not part of the source tree, so skipping it is the correct reading — and it cannot
+ * hide a real violation, because a real source file does not vanish.
+ */
+function readIfPresent(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 /** Import specifiers in a TS file (static imports, re-exports, and dynamic import()). */
 function importSpecifiers(src: string): string[] {
   const specs: string[] = [];
@@ -47,7 +67,8 @@ describe('v2 does not depend on v1', () => {
   it('no v2 source file escapes the v2 directory', () => {
     const offenders: string[] = [];
     for (const file of files) {
-      const src = readFileSync(file, 'utf8');
+      const src = readIfPresent(file);
+      if (src === null) continue;
       for (const spec of importSpecifiers(src)) {
         if (!spec.startsWith('.')) continue;
         // A relative import that climbs above v2/src is reaching into v1 territory.
@@ -64,7 +85,8 @@ describe('v2 does not depend on v1', () => {
   it('no v2 source file references v1 paths by name', () => {
     const offenders: string[] = [];
     for (const file of files) {
-      const src = readFileSync(file, 'utf8');
+      const src = readIfPresent(file);
+      if (src === null) continue;
       for (const spec of importSpecifiers(src)) {
         // The real check is whether the specifier RESOLVES outside v2/ — `../../data/defs` from
         // src/sim/systems/ is v2/src/data/defs and perfectly fine. Matching on the literal string
