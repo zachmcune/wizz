@@ -162,7 +162,7 @@ without the corner row would be misleading, which is why both are here.
 
 ## 7. Gates, all run on this commit
 
-**Final commit: `f2ca7e4`** — all five CI checks green (quality, e2e, slow, v2, Cloudflare Pages).
+**Final commit: `848ec94`** — all five CI checks green (quality, e2e, slow, v2, Cloudflare Pages).
 
 | Gate | Result |
 |---|---|
