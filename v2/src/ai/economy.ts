@@ -25,6 +25,7 @@ import { openingFor, stepSatisfied, type BuildStep } from './build-order';
 import { TILE } from '../core/constants';
 import { groundHeightAt } from './perception';
 import { canBuildNearBase } from '../sim/build-zone';
+import { mirrorRank } from '../sim/pathing';
 import type { GameState } from '../sim/types';
 import type { SimServices } from '../sim/context';
 
@@ -249,8 +250,46 @@ export function planEconomy(
           if (target !== null) busyNodes.add(target);
         }
       }
-      for (const u of idle) {
-        const node = nearestFreeNode(u, liveNodes, busyNodes);
+      /**
+       * THE ASSIGNMENT ORDER IS A FAIRNESS DECISION, EXACTLY LIKE THE NODE TIE-BREAK.
+       *
+       * `busyNodes` grows as workers are assigned, so the SECOND worker of a pair cannot take the node the first one just
+       * claimed. Which worker goes first therefore decides who gets the short trip, and `idle` is in entity-slot order —
+       * i.e. SPAWN order, which is a fixed geographic sequence rather than a property of the board.
+       *
+       * On this map the two starting wisps are 64 units either side of the sanctum and the rich node is 320 units to one
+       * side, so one wisp is 362 away from it and the other is 461. Measured (`audit/symmetry-break.ts`), the side whose
+       * NEARER wisp was assigned first got the short trip and the other got the long one — a permanent income difference
+       * from tick 2, before either AI decided anything. With the AI weak enough to field one unit this was invisible;
+       * with armies it decides every game, and the mirror measured **corner 0 winning 0 of 55**.
+       *
+       * THE KEY MUST BE DISTANCE TO THE WORKER'S OWN BASE, NOT TO THE MAP'S MIDLINE.
+       *
+       * `mirrorRank` is the right idea for a tie between CANDIDATES AROUND ONE UNIT (both tiles are reflected together, so
+       * the same key ranks them the same way in both mirrors). It is the wrong key for ordering TWO UNITS AGAINST EACH
+       * OTHER: it measures distance from the map's midlines, and the far wisp is nearer the midline than the near one on
+       * BOTH sides — so sorting by it assigns the SAME (wrong) wisp first at every base. Measured: the sweep flipped from
+       * 0%/100% to 100%/0%, which is the signature of a key that is invariant but not covariant.
+       *
+       * Distance to the side's own sanctum is invariant under reflection by construction: reflecting a base, its workers
+       * and the axis maps the distance onto itself. Ranking ascending by that distance puts each base's NEAREST wisp first,
+       * so both bases get the short trip.
+       */
+      const home = per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
+      const hx = home?.x ?? 0;
+      const hy = home?.y ?? 0;
+      const order = [...idle].sort((a, b) => {
+        const da = Math.hypot(a.x - hx, a.y - hy);
+        const db = Math.hypot(b.x - hx, b.y - hy);
+        if (da !== db) return da - db;
+        // An exact tie is broken by a reflection-invariant tile key, never by array order.
+        return (
+          mirrorRank(Math.floor(a.x / TILE), Math.floor(a.y / TILE), per.mapW, per.mapH) -
+          mirrorRank(Math.floor(b.x / TILE), Math.floor(b.y / TILE), per.mapW, per.mapH)
+        );
+      });
+      for (const u of order) {
+        const node = nearestFreeNode(u, liveNodes, busyNodes, per.mapW, per.mapH);
         if (!node) continue;
         busyNodes.add(node.id);
         commands.push({ type: 'harvest', playerId: pid, entityIds: [u.id], nodeId: node.id });
@@ -578,6 +617,28 @@ export function planEconomy(
         }
       }
       /**
+       * THE REFINERY ALONE, WHEN THE SITE IS TOO FAR TO EVER AFFORD THE PAIR.
+       *
+       * Turret-first was measured on a site **14 tiles** from home, where the enemy's first two swarmlings arrive within
+       * 90 seconds and a lone refinery never paid for itself. The node this map actually offers is **27.7 tiles** out, and
+       * at that distance the pair (1000 mana) is unreachable in the time a match lasts: measured on seed 1000, the AI
+       * logged "waiting for surplus to fund the forward base" from minute 4 to minute 12 with the bank oscillating 65-195,
+       * and never placed anything on the node. A site that is never built defends nothing.
+       *
+       * So at 20+ tiles the refinery goes down on its own the moment it is affordable, and the turret follows out of the
+       * income it immediately starts producing. That is a real trade — the site is undefended while it goes up — and it is
+       * the trade a player makes too when the node is far enough that the enemy has to cross the map to reach it.
+       */
+      const farSite = Math.hypot(site.x - (per.myBuildings[0]?.x ?? site.x), site.y - (per.myBuildings[0]?.y ?? site.y)) > TILE * 20;
+      if (farSite && !hasRefinery && per.mana >= spireDef.cost) {
+        const spot = findBuildSpot(state, per, services, registry, spireDef, { x: site.x, y: site.y });
+        if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
+          commands.push({ type: 'build', playerId: pid, defId: spireDef.id, x: spot.x, y: spot.y });
+          notes.push('EXPANDING: forward refinery on the far node, turret to follow');
+          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+        }
+      }
+      /**
        * HOLD THE 1000, OR THE BANK WILL NEVER REACH IT.
        *
        * The build-order reserve leaves exactly 260 spendable once the bank is in the 300-750 band
@@ -613,7 +674,15 @@ export function planEconomy(
         (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
         Infinity,
       );
-      if (nearOwn <= TILE * 6) {
+      /**
+       * THE ROUTED REFINERY STILL HAS TO BE PAID FOR.
+       *
+       * This block sits ABOVE the `affordable` check, because routing is meant to happen at the moment the step would
+       * have been built anyway. Without a price test here the planner issued the same rejected `build` command on every
+       * pass from minute 3:45 to the end of the match — measured on seed 1000, 20+ rejections for `mana` with the bank at
+       * 48/750 — and the forward refinery was never placed. A command the sim will refuse is not a decision.
+       */
+      if (nearOwn <= TILE * 6 && affordable) {
         const spot = findBuildSpot(state, per, services, registry, def, { x: site.x, y: site.y });
         if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
           commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
@@ -1100,7 +1169,21 @@ export function planEconomy(
        */
       const gap = Math.max(0, def.cost - per.mana);
       const share = gap > def.cost * 0.5 ? 0.35 : 0.6;
-      reservedForBuild = Math.max(0, Math.min(Math.floor(per.mana * share), Math.max(0, per.mana - 260)));
+      /**
+       * THE SPENDABLE FLOOR MUST CLEAR THE PRODUCTION GATE, OR THE GATE IS DECORATIVE.
+       *
+       * `brain.ts` only trains while `spendable > max(150, 2 x unitCost)`. The cheapest combat unit a summoning circle can
+       * make is a 125-cost rift familiar and the counter picker settles on the 140-cost imp swarmling, so the gate needs
+       * 250-280 spendable. This floor pinned spendable at exactly **260** for every bank from 300 to 750
+       * (`audit/reserve-convergence.ts` tabulates it) — below the gate for the 140-cost pick, which is the one Normal
+       * actually chooses from minute 6:30. Measured on the committed latency-jitter seed: the gate was open on 4127 of
+       * 16800 ticks and the side fielded FOUR combat units in fourteen minutes, buying 45 wisps and 3 soldiers.
+       *
+       * 320 is the smallest round value that clears the gate for every combat unit in the roster whose cost is below the
+       * floor (115-260), with 40 to spare, and it is still far below the 550-750 buildings the reserve exists to protect —
+       * so the reserve keeps its purpose while the army stops being starved by it.
+       */
+      reservedForBuild = Math.max(0, Math.min(Math.floor(per.mana * share), Math.max(0, per.mana - 320)));
     }
   }
 
@@ -1160,27 +1243,51 @@ function orderNodeOf(u: SeenUnit): number | null {
  * Falls back to the nearest node at all once every node has a claimant (a wide economy legitimately has several
  * workers per node), and prefers nodes with mana left so a nearly-depleted crystal is skipped.
  */
-function nearestFreeNode(u: SeenUnit, nodes: SeenNode[], claimed: Set<number>): SeenNode | null {
+function nearestFreeNode(
+  u: SeenUnit,
+  nodes: SeenNode[],
+  claimed: Set<number>,
+  /**
+   * Map dimensions in TILES, for the reflection-invariant tie-break.
+   *
+   * Threaded in rather than read from a module constant because the tie-break must reflect about THIS map's midlines, and
+   * they are published map data — the same class of information the perception already exposes as `mapW`/`mapH`.
+   */
+  mapWTiles: number,
+  mapHTiles: number,
+): SeenNode | null {
   let best: SeenNode | null = null;
   let bestScore = Infinity;
-  let bestHash = 0;
+  const mirrorRankOf = (n: { x: number; y: number }): number =>
+    mirrorRank(Math.floor(n.x / TILE), Math.floor(n.y / TILE), mapWTiles, mapHTiles);
   for (const n of nodes) {
     const crowded = claimed.has(n.id);
     const d = Math.hypot(n.x - u.x, n.y - u.y);
     // Crowding is a large penalty rather than an exclusion, so an all-claimed set still yields a target.
     const score = d + (crowded ? 4000 : 0) - Math.min(2000, n.remaining / 10);
     /**
-     * SYMMETRIC TIE-BREAK, not array order.
+     * SYMMETRIC TIE-BREAK, not array order — AND NOT A COORDINATE HASH EITHER.
      *
      * `score < bestScore` kept the first node on a tie, and `nodes` is built in entity-slot order — which is node
      * allocation order, a fixed geographic sequence. Two workers equidistant from two nodes would therefore always pick
-     * the lower-indexed one, and in a mirror that is a different compass direction for each base. The position hash
-     * carries no directional bias and is stable across replays.
+     * the lower-indexed one, and in a mirror that is a different compass direction for each base.
+     *
+     * The previous fix replaced that with `spotHash(x, y)`, and the comment claimed it "carries no directional bias".
+     * That is false in the way that matters: a hash is symmetric only IN AGGREGATE (half of all mirrored pairs happen to
+     * hash in the favourable direction), which is not the property a mirrored match needs. Measured with the AI fixed to
+     * field real armies, `audit/symmetry-break.ts` located the first divergence at **t=2s, on the starting wisps**:
+     *
+     *   p1[wisp:590:529] vs p2mirror[wisp:604:496]
+     *
+     * Both had taken their first harvest order and gone to different nodes. That is this tie-break.
+     *
+     * `mirrorRank` is the reflection-invariant key the pathing system already uses: it compares a tile's distance from
+     * the map's midlines first and its raw row/column last, and both are unchanged when x is reflected about the midline.
+     * So a worker at (x,y) and its mirror at (W-x,y) now choose tiles that are reflections of each other, every time.
      */
-    if (score < bestScore || (score === bestScore && spotHash(n.x, n.y) < bestHash)) {
+    if (score < bestScore || (score === bestScore && best !== null && mirrorRankOf(n) < mirrorRankOf(best))) {
       bestScore = score;
       best = n;
-      bestHash = spotHash(n.x, n.y);
     }
   }
   return best;
@@ -1714,11 +1821,20 @@ export function expansionGoal(
    * change. A four-way map has no safe moment to save, so a side that always intends to expand always intends and never
    * fights.
    *
-   * 300 seconds is long enough to fund a 1000-mana pair out of normal income (measured: 6.7 min from a 200 s start) and
-   * short enough that a game which is not going to get there stops holding money. After the window the AI plays on with
-   * whatever it has, which is what the Phase 6 build did and is the behaviour the termination gate depends on.
+   * THE WINDOW IS LONGER NOW, BECAUSE THE FUNDING MODEL CHANGED AND THE OLD BOUND WAS TUNED TO THE OLD ONE.
+   *
+   * The 300-second bound was measured for a plan that RESERVED mana for the forward base, so the bank reached the pair
+   * inside the window by construction. `planEconomy` no longer reserves anything (a reserve closes the production gate in
+   * `brain.ts` and measured as ONE combat unit for a whole match), so the pair has to accumulate out of genuine surplus —
+   * income the army has declined to spend. That happens later, and on the seeds measured here the bank is still under
+   * 1000 at eight minutes because the army is being built with it.
+   *
+   * 600 seconds keeps the termination guarantee the original bound exists for — a side that never reaches the pair stops
+   * intending to expand and plays on — while giving the surplus path a realistic chance. It is deliberately expressed as
+   * an offset from the profile so Hard still opens its window 20 s earlier than Normal, which is a measured lever
+   * (`expandAfterSeconds` 200 vs 180).
    */
-  if (elapsedSeconds > profile.expandAfterSeconds + 300) return null;
+  if (elapsedSeconds > profile.expandAfterSeconds + 600) return null;
   return bestExpansionSite(per, registry, services);
 }
 
@@ -1747,7 +1863,7 @@ export function bestExpansionSite(
    * At 5 tiles, the 25,000 node 14.1 tiles from home is correctly an expansion target: two chain links, a refinery that
    * sits on the node, and a site that is still inside the AI's own half of the map.
    */
-  const SERVED_RADIUS = TILE * 5;
+    const SERVED_RADIUS = TILE * 5;
   const home = per.myBuildings[0];
   if (!home) return null;
   void services;
