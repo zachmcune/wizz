@@ -708,6 +708,19 @@ export function planEconomy(
        * pass from minute 3:45 to the end of the match — measured on seed 1000, 20+ rejections for `mana` with the bank at
        * 48/750 — and the forward refinery was never placed. A command the sim will refuse is not a decision.
        */
+      /**
+       * THE ROUTED REFINERY HAS TO BE GENUINELY AFFORDABLE — BUT AFFORDABLE FROM WHAT IS SPENDABLE.
+       *
+       * The guard this replaces was `nearOwn <= 6 tiles` alone, which issued a `build` the sim refuses on every pass
+       * (measured: 20+ `mana` rejections from 3:45 to the end of a match with the bank at 48/750). Gating it on the
+       * caller's `affordable` (which is `per.mana >= def.cost`) then made it NEVER fire, because the build-order reserve
+       * holds mana back: the AI stopped routing entirely, stayed on five buildings and never laid a single route wall.
+       *
+       * What matters is whether the purchase can actually be paid for, and by the time this runs any reserve is already
+       * accounted for by the caller — so the test is the plain `per.mana` one, and the reserve is what makes the route a
+       * long-run saving target rather than an immediate purchase. The route walls above are 40 each and are what the
+       * bank reaches; once they are laid, this is reachable.
+       */
       if (nearOwn <= TILE * 6 && affordable) {
         const spot = findBuildSpot(state, per, services, registry, def, { x: site.x, y: site.y });
         if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
@@ -1877,20 +1890,27 @@ export function bestExpansionSite(
   services: SimServices,
 ): { x: number; y: number } | null {
   /**
-   * A NODE IS "SERVED" ONLY BY A REFINERY BUILT ON IT, NOT MERELY BY ONE IN THE SAME CLUSTER.
+   * A NODE IS "SERVED" ONLY BY A REFINERY BUILT ESSENTIALLY ON IT.
    *
-   * This radius used to be `BASE_CLUSTER` (12 tiles), which marked the map's two 25,000-mana nodes as served by refineries
-   * 10.6 tiles away. That is technically true and economically wrong: a refinery ON the node is a zero-walk deposit, while
-   * one 339 units away makes every worker spend most of its trip in transit. The consequence was that the map's richest
-   * nodes never became expansion targets — the search skipped them and picked a 3,000-mana node 30.6 tiles out, which is
-   * both expensive to chain to and impossible to hold. Measured (`audit/expand-trace.ts`): `bestExpansionSite` returned
-   * (656,1424) at 30.6 tiles on every seed, and every forward refinery built there was destroyed within 90 seconds.
+   * At 12 tiles (`BASE_CLUSTER`) the map's 25,000-mana node counted as served by a refinery 339 units away, so the
+   * search skipped it and picked a 3,000-mana node 30.6 tiles out — `audit/expand-trace.ts` returned (656,1424) on every
+   * seed, and every forward refinery built there died within 90 seconds.
    *
-   * At 5 tiles, the 25,000 node 14.1 tiles from home is correctly an expansion target: two chain links, a refinery that
-   * sits on the node, and a site that is still inside the AI's own half of the map.
+   * At 5 tiles the 25,000 node **14.1 tiles from the sanctum** is correctly a target: two chain links, a refinery that
+   * sits on the node, and a site still inside the AI's own half of the map. (It is 10.6 tiles from the home REFINERY and
+   * 14.1 from the SANCTUM; the cluster is measured from the sanctum, which is what defines where the base is.)
    */
-    const SERVED_RADIUS = TILE * 5;
-  const home = per.myBuildings[0];
+  const SERVED_RADIUS = TILE * 5;
+  /**
+   * THE CLUSTER IS MEASURED FROM THE SANCTUM, NOT FROM `myBuildings[0]`.
+   *
+   * `myBuildings[0]` is entity-slot order, which puts the sanctum first at match start and stops doing so as soon as a
+   * building is destroyed and a slot is reused — and the sanctum is the only anchor that defines where the base IS. On
+   * this map the sanctum sits at (464,464) and the first refinery at (544,544), so measuring from the refinery moved the
+   * 12-tile exclusion circle 113 units inward and let the node 10.6 tiles from the SANCTUM slip back in.
+   */
+  const home =
+    per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
   if (!home) return null;
   void services;
   const incomeAnchors = per.myBuildings.filter((b) => {
