@@ -32,10 +32,24 @@ const wilson = (k: number, m: number) => {
   return [Math.max(0, c - h), Math.min(1, c + h)] as const;
 };
 let p1w = 0, c0 = 0, c1 = 0, n = 0, totalMin = 0, unfinished = 0;
+/**
+ * MEDIAN LENGTH IS A TARGET IN ITS OWN RIGHT, and mean is not a substitute for it.
+ *
+ * The brief's target is "median 1v1 length 15-25 min, ~20". A mean is dragged by the one or two matches that run to the
+ * cap, which is exactly the shape this AI produces, so the number the target names has to be measured directly.
+ */
+const lengths: number[] = [];
+const median = (xs: number[]): number => {
+  if (xs.length === 0) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? (s[m - 1]! + s[m]!) / 2 : s[m]!;
+};
 const lines: string[] = [];
 for (let i = 0; i < work.length; i += 2) {
   const a = res[i]!, b = res[i + 1]!;
   n += 2; totalMin += a.minutes + b.minutes;
+  lengths.push(a.minutes, b.minutes);
   if (!a.ended) unfinished++;
   if (!b.ended) unfinished++;
   if (a.winnerTeam === 0) { p1w++; c0++; }
@@ -48,4 +62,5 @@ console.log(`\nMIRROR (${diff}, ${n} matches, ${seeds.length} seeds x2 assignmen
 console.log(`  slot   p1 ${p1w}/${n} = ${(100 * p1w / n).toFixed(1)}%  95% CI ${(100 * ci[0]).toFixed(1)}-${(100 * ci[1]).toFixed(1)}%  contains 50%: ${ci[0] <= 0.5 && ci[1] >= 0.5}`);
 console.log(`  corner0   ${c0}/${n / 2} = ${(100 * c0 / (n / 2)).toFixed(1)}%  CI ${(100 * ci0[0]).toFixed(1)}-${(100 * ci0[1]).toFixed(1)}%`);
 console.log(`  corner1   ${c1}/${n / 2} = ${(100 * c1 / (n / 2)).toFixed(1)}%  CI ${(100 * ci1[0]).toFixed(1)}-${(100 * ci1[1]).toFixed(1)}%`);
-console.log(`  unfinished ${unfinished}/${n}   mean length ${(totalMin / n).toFixed(1)}m`);
+console.log(`  unfinished ${unfinished}/${n}   mean length ${(totalMin / n).toFixed(1)}m   median ${median(lengths).toFixed(1)}m`);
+console.log(`  lengths: ${lengths.map((m) => m.toFixed(1)).join(' ')}`);
