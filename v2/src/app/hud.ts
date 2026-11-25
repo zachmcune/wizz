@@ -656,13 +656,29 @@ export class Hud {
         /**
          * THE CONSTRUCTION YARD IS NOT A BUILDING YOU BUILD.
          *
-         * `sanctum` has `cost: 0` and no requirements, so `buildingBlocker` reports it as available and the tile sorts
-         * first under the buildable-first ordering below. Tapping it arms a placement ghost for a second HQ, which is not
-         * a legal action — the sim rejects it as `Blocked terrain` wherever the first one stands. The AI can build a
-         * replacement yard through its own rebuild path; the player's build menu has no such entry in v1 either.
+         * `sanctum` has `cost: 0` and no requirements, so `buildingBlocker` reports it as available and it sorts to the
+         * top. Tapping it arms a placement ghost for a second HQ, which is not a legal action — the sim rejects it as
+         * `Blocked terrain` wherever the first one stands (`ui-proof` measured exactly that). The AI can build a
+         * replacement yard through its own rebuild path; v1's menu never offered it either.
          */
         .filter((b) => !b.isConstructionYard)
-        .filter((b) => (cat === 'buildings' ? b.menuCategory !== 'defenses' : b.menuCategory === 'defenses'))
+        /**
+         * THE DEFENCES TAB CARRIES THE SCRYING OBELISK, WHICH IS THE ONLY RADAR SOURCE.
+         *
+         * The content set tags four structures `menuCategory: advanced` — Scrying Obelisk, Resonance Vault, Arcane Nexus,
+         * Astral Spire — and the console maps only `buildings` and `defenses` onto tabs, so all four were unreachable. The
+         * visible symptom was the radar reading OFFLINE for a whole game, because the Scrying Obelisk is its only source.
+         *
+         * Putting all four on the Buildings tab fixed reachability and broke the phone layout: eight tiles is four rows
+         * and the compact grid is two, so `tests/ui-phase4.test.ts` measured "GOLEM is clipped by hud-tiles" and a tile
+         * overlapping the Move button. So only the OBELISK moves — it is a defensive structure that reveals the map, which
+         * is what this tab is for — and the three late-game buildings stay off the menu until a dedicated tab exists.
+         */
+        .filter((b) =>
+          cat === 'buildings'
+            ? b.menuCategory === 'buildings'
+            : b.menuCategory === 'defenses' || b.id === 'scrying_obelisk',
+        )
         .filter((b) => !b.factions || !faction || b.factions.includes(faction))
         .map((b) => {
           // A structure already under construction anywhere counts as progress, so the tile shows it.
