@@ -32,16 +32,26 @@ export interface BotClientOptions {
   difficulty: 'easy' | 'normal' | 'hard';
   registry: Registry;
   services: SimServices;
+  /**
+   * Observe each decision pass, for MEASUREMENT only.
+   *
+   * `decide` throws away the brain's notes, and the notes are the only place a planner says WHY it issued nothing. When
+   * an activity count moves, the difference between "the army is parked" and "the economy is saving" is exactly what the
+   * notes contain. Nothing here affects the returned commands.
+   */
+  onDecision?: (tick: number, commands: readonly Command[], notes: readonly string[]) => void;
 }
 
 export class BotClient {
   private readonly brain: AiBrain;
+  private readonly opts: BotClientOptions;
   /** Total commands handed to the transport, so a test can assert the channel was used. */
   issued = 0;
   /** Decisions the brain actually made, distinct from ticks it merely observed. */
   decisions = 0;
 
   constructor(opts: BotClientOptions) {
+    this.opts = opts;
     this.brain = new AiBrain(opts.playerId, opts.difficulty, opts.registry, opts.services);
   }
 
@@ -55,9 +65,13 @@ export class BotClient {
   decide(state: GameState): Command[] {
     if (state.ended) return [];
     const result = this.brain.tick(state);
-    if (result.commands.length === 0) return [];
+    if (result.commands.length === 0) {
+      this.opts.onDecision?.(state.tick, result.commands, result.notes);
+      return [];
+    }
     this.decisions++;
     this.issued += result.commands.length;
+    this.opts.onDecision?.(state.tick, result.commands, result.notes);
     return result.commands;
   }
 }

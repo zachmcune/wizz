@@ -36,8 +36,20 @@ export interface PeerSpec extends SlotSpec {
   jitterSeed?: number;
 }
 
-export interface MatchHarnessOptions {
-  registry: Registry;
+/**
+ * Per-peer simulation counts, sampled by the harness for measurement harnesses.
+ *
+ * Counts only — no positions, no state handle — so exposing them to an audit script cannot change what a match does.
+ */
+export interface PeerStats {
+  army: number;
+  harvesters: number;
+  buildings: number;
+  refineries: number;
+  mana: number;
+}
+
+export interface MatchHarnessOptions {  registry: Registry;
   mapId: string;
   seed: number;
   peers: PeerSpec[];
@@ -59,6 +71,31 @@ export interface MatchHarnessOptions {
   /** Inject a divergence deliberately, to prove detection works. Called with the session's player id. */
   corruptPeer?: (playerId: string, tick: number, session: LockstepSession) => void;
   /**
+   * Observe every command a bot submits, for MEASUREMENT only.
+   *
+   * The activity floor in `tests/net/latency-jitter.test.ts` asks whether the channel was used at all; when it dips it
+   * says nothing about WHICH commands went missing. A tally by type and minute is what separates "the AI stopped
+   * producing" from "the AI stopped building", so the diagnosis is a measurement rather than a reading of the code.
+   * Nothing in the harness reads this back, so it cannot change a result.
+   */
+  onPeerCommands?: (playerId: string, tick: number, cmds: readonly { type: string }[]) => void;
+  /**
+   * Observe every decision pass, including the ones that produced NO command.
+   *
+   * A peer's activity floor can fall for a reason that never appears in the command stream at all — the planner choosing to
+   * save instead of to train. The notes are where that decision is stated, so a tally of notes is the measurement that
+   * separates "the army is parked" from "the economy is holding the bank".
+   */
+  onPeerDecision?: (playerId: string, tick: number, notes: readonly string[]) => void;
+  /**
+   * Per-peer simulation statistics, sampled by the harness, for MEASUREMENT only.
+   *
+   * `issued` alone cannot distinguish "the AI stopped producing" from "the AI stopped moving", and the two have completely
+   * different fixes. This exposes the counts that separate them — army, harvesters, buildings, refineries, bank — without
+   * giving the caller the state, so a harness cannot change a result through it.
+   */
+  onPeerStats?: (playerId: string, tick: number, stats: PeerStats) => void;
+  /**
    * Disconnect and later rejoin a peer, to prove recovery.
    *
    * `atTick` is a relay tick. The listed peer stops receiving broadcasts at that tick and is reconnected at
@@ -79,8 +116,7 @@ export interface PeerOutcome {
   desync: DesyncCapture | null;
 }
 
-export interface MatchHarnessResult {
-  outcomes: PeerOutcome[];
+export interface MatchHarnessResult {  outcomes: PeerOutcome[];
   /** Ticks the relay advanced. */
   relayTicks: number;
   /** True when every peer's final hash and tick agree. */
@@ -218,6 +254,7 @@ export function runMatchThroughRelay(opts: MatchHarnessOptions): MatchHarnessRes
           registry: opts.registry,
           // Each bot drives the brain against ITS OWN peer's services, which is what a real client would do.
           services: session.services,
+          ...(opts.onPeerDecision ? { onDecision: (tick, _c, notes) => opts.onPeerDecision!(peer.id, tick, notes) } : {}),
         }),
       );
     }
@@ -234,7 +271,10 @@ export function runMatchThroughRelay(opts: MatchHarnessOptions): MatchHarnessRes
       const session = sessions.get(peer.id);
       if (!bot || !session) continue;
       const cmds = bot.decide(session.state);
-      if (cmds.length > 0) session.issue(cmds);
+      if (cmds.length > 0) {
+        opts.onPeerCommands?.(peer.id, t, cmds);
+        session.issue(cmds);
+      }
     }
 
     room.advanceTick();
@@ -261,6 +301,37 @@ export function runMatchThroughRelay(opts: MatchHarnessOptions): MatchHarnessRes
     }
 
     if ([...sessions.values()].every((s) => s.finished)) break;
+
+    if (opts.onPeerStats && t % (30 * 20) === 0) {
+      for (const peer of opts.peers) {
+        const st = sessions.get(peer.id)!.state;
+        const me = st.players.find((p) => p.id === peer.id);
+        if (!me) continue;
+        let army = 0;
+        let harvesters = 0;
+        let buildings = 0;
+        let refineries = 0;
+        for (let s = 0; s < st.entities.count; s++) {
+          if (st.entities.dead[s] || st.entities.ownerId(st.entities.ownerIndex[s]!) !== peer.id) continue;
+          const defId = st.entities.extras[s]!.defId;
+          if (st.entities.kind[s] === 0) {
+            const ud = opts.registry.units.get(defId);
+            if (ud?.isHarvester) harvesters++;
+            else if (ud?.weapon) army++;
+          } else if (st.entities.kind[s] === 1) {
+            buildings++;
+            if (opts.registry.buildings.get(defId)?.isRefinery) refineries++;
+          }
+        }
+        opts.onPeerStats(peer.id, t, {
+          army,
+          harvesters,
+          buildings,
+          refineries,
+          mana: me.mana,
+        });
+      }
+    }
   }
 
   // Final drain: let every peer consume everything already queued.
