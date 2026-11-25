@@ -9,6 +9,12 @@ site" — was right about the *symptom* and wrong about the *cause*. The floor i
 single-unit re-task loop, and the AI it was measuring fielded **one to four combat units in fourteen minutes**. Both are
 now fixed, and the numbers in §5 supersede every earlier figure on this branch.
 
+**Three targets are MISSED and one of them is serious.** The mirror passes (slot 60.0%, CI 47.4-71.4% contains 50%), but
+**Hard > Normal measures 21.7% — the ladder is INVERTED**, and the corner breakdown shows why: Hard wins 13 of its 30
+corner-1 games and **none** of its 30 corner-0 games. That cell cannot measure difficulty until the residual corner bias
+(§6) is gone. Median length is 12.2 min against 15-25. No building is ever placed outside the starting cluster, so the
+expansion's "forward refinery" deliverable is unmet (§4, §9).
+
 ---
 
 ## 1. What was measured, and with what
@@ -106,41 +112,84 @@ The eight causes the previous pass found are real, and four of its fixes are now
 4. **The expansion window is `expandAfterSeconds + 600`**, not +300. The 300-second bound was tuned for a plan that
    RESERVED mana; with surplus-only funding the pair accumulates later.
 
-**What expansion actually does now, measured.** On a Hard mirror (seed 1000) the AI lays a **three-link wall route to
-26.7 tiles** — the genuine next mana cluster — and then waits for the 750-mana refinery:
+**What expansion actually does now, measured — and the answer is: not enough.**
+
+Earlier in this pass an intermediate build laid a three-link wall route to 26.7 tiles. **That is not what the final
+commit does**, and the distinction is worth stating because the intermediate result was tempting to keep. On the final
+build, `audit/expand-outcomes.ts` on seed 1000 Hard-vs-Normal reports:
 
 ```
-t=3:39 BUILD stone_wall at 688,912  dist=15.7t
-t=3:41 BUILD stone_wall at 688,1104 dist=21.2t
-t=3:46 BUILD stone_wall at 656,1296 dist=26.7t
-t=7:00 saving for attunement_spire (150/750)    <- bank never reaches it; the army spends it
+p1 (hard)    9.4 min   bld=0  outside=0   <- eliminated
+p2 (normal)  9.4 min   bld=6  outside=0
+0 buildings outside the starting cluster on either side
 ```
 
-`audit/expand-outcomes.ts` reports **3 buildings outside the starting cluster** for the Hard side, and **0 forward
-refineries**. The route is built; the refinery is not. That is a MISS against the goal's "counts of bases/refineries
-outside the starting cluster".
+and the per-minute trace shows why, and it is not an expansion bug:
+
+```
+t=3.0m mana=110  site=-  notes="saving for attunement_spire (30/750)"
+t=4.0m mana=145  site=Y  notes="... | garrisoning the forward site with 1 unit(s) | searching ..."
+t=6.0m mana= 20  site=Y  notes="saving for attunement_spire (18/750)"
+t=7.0m mana=170  site=Y  notes="pulling 5 worker(s) off the line — raiders within 380"
+t=9.0m mana=130  site=Y  notes="searching: 6 unit(s) ... massing: 6/5"
+```
+
+The site is found, the garrison detachment **is** committed ("garrisoning the forward site with 1 unit(s)" — the
+previous pass's recommendation, working), and then the economy is raided down to 18-170 mana and never reaches the 750
+the refinery costs. The side loses at 9.4 minutes. **A losing economy cannot fund an expansion, and no amount of
+expansion logic changes that.**
+
+So the honest result for this goal: **0 forward refineries on every difficulty, 0 buildings outside the starting
+cluster.** The garrison and the route logic are in place and demonstrably fire; the economy that would pay for them is
+not, because on this map the AI's mid-game is spent defending rather than accumulating. Recording that as a MISS is the
+whole point of this section.
 
 ## 5. Fairness and length, measured on this build
 
-Two independent mirror blocks at N=60 and N=32, 30 and 16 seeds, both corner assignments per seed, 34-minute cap:
+Two independent mirror blocks, both corner assignments per seed, 34-minute cap:
 
 | Measure | N | Result | Target | Met |
 |---|---|---|---|---|
 | Mirror slot win rate | 60 | **60.0%**, 95% CI **47.4-71.4%** | CI contains 50% | **yes** |
 | Mirror slot win rate | 32 | 62.5%, 95% CI 45.3-77.1% | CI contains 50% | yes |
-| Corner split | 60 | corner0 **43.3%**, corner1 **76.7%** | balanced | **no** — corner1's CI excludes 50% |
+| Mirror slot win rate | 16 | 56.3%, 95% CI 33.2-76.9% | CI contains 50% | yes |
+| Corner split | 60 | corner0 43.3%, corner1 **76.7%** | balanced | **no** |
+| Corner split | 32 | corner0 50.0%, corner1 68.8% | balanced | yes (both CIs contain 50) |
+| Corner split | 16 | corner0 62.5%, corner1 50.0% | balanced | yes (both CIs contain 50) |
 | Mirror median length | 60 | **12.2 min** | 15-25, ~20 | **no** |
+| Mirror median length | 16 | 13.0 min | 15-25 | **no** |
 | Unfinished | 60 | 0 | 0 | yes |
 
-**The corner split moved from 0%/100% to 43%/77% during this pass**, and the mechanism is measured in §6. It is not
-fixed.
+**The corner split moved from 0%/100% to 43-63%/50-77% during this pass**, and the mechanism is measured in §6. At the
+two smaller samples both corner intervals contain 50%; at N=60 corner 1's does not. The honest reading is that the sweep
+is no longer deterministic but a residual bias remains and 60 games cannot separate it from noise in the other direction.
 
-### 5.1 The median-length miss, stated plainly
+### 5.1 The difficulty ladder INVERTS, and the corner bias is why this measurement is not usable
 
-12.2 min against a 15-25 target. Before this pass the same block measured **8.1 min** — a shorter match produced by an AI
-that fielded one unit and lost. Length is not a lever that can be pulled independently: the AI now fights, and a fight
-resolves. §7 of HANDOFF already records that HQ HP and production capacity were both swept and are dead as levers; this
-pass did not re-sweep them.
+`audit/ladder-par.ts`, 30 seeds x 2 corner assignments per cell, 34-minute cap:
+
+| Cell | N | Win rate | 95% CI | Unfinished | Median | Target | Met |
+|---|---|---|---|---|---|---|---|
+| **Hard > Normal** | 60 | **21.7%** | 13.1-33.6% | 0/60 | 11.4 min | >=70% | **no — inverted** |
+| **Normal > Easy** | 60 | **75.0%** | 62.8-84.2% | 0/60 | 7.8 min | >=70% | **yes** |
+
+Hard is **worse than Normal**, which is the opposite of what the ladder requires. The corner breakdown makes the
+mechanism unambiguous:
+
+```
+hard>normal: corner0 0 / corner1 13     <- Hard won 0 games from corner 0 and 13 from corner 1
+normal>easy: corner0 15 / corner1 30
+```
+
+Hard's 21.7% is **not** a difficulty effect: it wins 13 of its 30 corner-1 games and **none** of its 30 corner-0 games.
+That is the residual corner bias of §6 showing up at full strength, and it means this cell cannot measure Hard at all
+until the bias is gone. `normal>easy` at 75.0% is the one ladder cell that clears its target, and it does so despite the
+same bias pulling against it in half its games.
+
+**This is the most important finding in the pass**, and it is reported as a failure rather than explained away. It also
+retroactively justifies the earlier passes' repeated trouble with this cell: Hard-vs-Normal has been measured at 90%,
+60%, 0% and 21.7% on four different builds, and a cell whose two corners disagree by 13-0 is not measuring the
+difficulty.
 
 ## 6. The corner split: found, half-fixed, and why it was invisible before
 
@@ -207,13 +256,17 @@ three approved ones (`sanctum.hp`, `manaNodeCapacity`, `sanctumTricklePerSecond`
 
 ## 9. Known limitations, stated rather than smoothed over
 
-1. **No forward refinery is ever completed.** The wall route reaches 26.7 tiles and the 750-mana refinery is never
-   afforded in a match that ends at 8-13 minutes. The goal's "counts of bases/refineries outside the starting cluster"
-   is therefore **0 refineries** on every difficulty. Three route walls is what ships.
-2. **Median length is 12.2 min against 15-25.** Missed, and it moved the *right* way (up from 8.1) by making the AI
+1. **No forward refinery is ever completed, and no building of any kind is placed outside the starting cluster.** The
+   garrison detachment fires and the site is found, but the side is raided down to 18-170 mana and eliminated before it
+   can fund the 750-cost refinery. The goal's "counts of bases/refineries outside the starting cluster" is therefore
+   **0** on every difficulty. §4 has the per-minute trace that shows this is an economy problem on this map, not an
+   expansion-logic one — and it is the single biggest miss in this pass.
+2. **Median length is 12.2 min (N=60) and 13.0 min (N=16) against a 15-25 target.** Missed, and it moved the *right* way (up from 8.1) by making the AI
    fight properly rather than by lengthening the game artificially.
-3. **The corner split is 43%/77%.** Halved from 0%/100% but not balanced; the residual is a sim pathing asymmetry at
-   t=13s that predates this branch and is not fixed.
+3. **The corner split is 43%/77% at N=60**, 50%/69% at N=32 and 63%/50% at N=16. Halved from 0%/100% but not eliminated;
+   the residual is a sim pathing asymmetry at t=13s that predates this branch and is not fixed. **And it inverts the
+   Hard-vs-Normal ladder cell** (§5.1), which is the most consequential thing in this document: that cell cannot be
+   measured until this is gone.
 4. **Expansion on a crowded map.** On the four-player latency-jitter seed the AI still fields almost no army, because a
    four-way map squeezes every side's economy. That is a separate, pre-existing defect and it is why p1's count (327) is
    far below p3's (677) in §8.
