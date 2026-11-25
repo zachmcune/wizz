@@ -67,7 +67,7 @@ Phases 0–6 are complete. Phase 7 has not started.
 | **5 — AI** | No fog cheating (proven, not asserted); three difficulties ordered by measured win rate; every match terminates; no idle armies; a full tournament as committed evidence. **Re-measured in Phase 6 after three sim defects were fixed — see §7.0.** | `v2/docs/proof/phase-5/ai/` (`report.md`, `README.md`, `ablation.md`, `tournament.json`, match + overview screenshots, `full-match-expansion.webm`, **`phase6-fairness.md`**, `footprint-*.png`) |
 | **6 — Multiplayer** | Deterministic 2–4 player lockstep over the **unmodified v1 relay**: lobby create/join, input delay, desync detection with replay capture, reconnect and clean drop, stall policy, AI fill-in. 2/3/4 headless peers reach decided matches with zero desyncs; two real browser contexts stayed in sync across **38 compared ticks with 0 mismatches**. | `v2/docs/proof/phase-6/` (`README.md`, `BALANCE_PROPOSALS.md`, 7 screenshots, `video/two-browser-lockstep-match.webm`, `browser-match.json`, `browser-match.log`) |
 | **7a — Playtest response** | Zachary's live-playtest report answered point by point: the HUD is a docked C&C command console, the menus are command consoles, the touch model is v1's (re-derived inside `v2/`), the starting camera frames the base in the battlefield, and multiplayer is wired to the live Railway relay and proven with **two browser contexts playing a real match** — both building, training, marching and fighting, with **132 common ticks compared and 0 mismatches**. | `v2/docs/proof/phase-7/` (`ui/` 75 captures + `ui-proof.json` + `README.md`; `multiplayer/` 10 screenshots, `browser-match.json`, `browser-match.log`) |
-| **7b — HUD clipping + AI expansion diagnosis** | Every reported HUD defect fixed (Radar label, "Atk-Move", tile overflow, unreadable unit thumbnails, unexplained radar OFFLINE) plus an automated label-truncation gate across five viewports — that part SHIPPED. The AI expansion work **found 8 independent causes and fixed all of them, then reverted the fix** because it fails a committed CI gate (§8.2); the diagnosis, harnesses and before/after captures are committed. See §8.1, §8.2, and **§7.4 for the corner finding**. | `v2/docs/proof/phase-7/ui/`, `v2/docs/proof/phase-7/ai/` (`README.md`, `PROPOSALS.md`, `mirror-n100.txt`, `ladder-n40.txt`, `captures/`) |
+| **7b — HUD clipping + AI expansion diagnosis** | Every reported HUD defect fixed (Radar label, "Atk-Move", tile overflow, unreadable unit thumbnails, unexplained radar OFFLINE) plus an automated label-truncation gate across five viewports — that part SHIPPED. So did the three advanced structures, reachable through a Core/Advanced switch (§8.3). The AI expansion work **found 8 independent causes and fixed all of them, then reverted the fix** because it fails a committed CI gate (§8.2); a later pass found the ROOT cause (the activity floor was measuring a single-unit re-task loop, and the production gate could not be satisfied) and still could not ship it without breaking the four-player termination gate (§8.4). | `v2/docs/proof/phase-7/ui/`, `v2/docs/proof/phase-7/ai/` (`README.md`, `DIAGNOSIS.md`, `PROPOSALS.md`, `mirror-shipped-n100.txt`, `ladder-shipped-n40.txt`, `captures/`) |
 
 **Phase 5's remaining caveats are real and are listed in §7**, with the Phase 6 re-measurement in §7.0. One
 Step 0 target (the "both bases with expansions" shot) is not obtainable; the rest are met.
@@ -544,7 +544,7 @@ Remaining issues, with numbers:
 2. **The corner split is 50.0% / 72.7%.** The pooled slot figure the gate asks about is 61.4% with a CI containing
    50%, and the map is verified symmetric on both axes (0 mismatches at the tile, height and nav levels), so this is
    an ordering effect a 44-game sample cannot localise. Reported, not explained away.
-3. **The AI still does not expand — DIAGNOSED, fixed, and then REVERTED. See §8.2.** Phase 6 measured it
+3. **The AI still does not expand — DIAGNOSED twice, fixed twice, REVERTED twice. See §8.2 and §8.4.** Phase 6 measured it
    precisely: **the AI never expanded at all**. Every refinery and construction-yard position over a whole match on seed
    1000 stayed inside the starting cluster:
 
@@ -554,9 +554,18 @@ Remaining issues, with numbers:
    ```
 
    Phase 7b found **eight independent causes** and fixed all of them; with the fixes the AI placed a forward refinery on
-   6 of 6 traced seeds at 6.7 min. **The change was then reverted**, because it fails a committed CI gate — see §8.2 for
-   the measurements and `docs/proof/phase-7/ai/README.md` §3 for the reasoning. `src/ai/economy.ts` on this branch is
-   byte-identical to the pre-pass baseline, so the statement at the top of this item is still TRUE of the shipped build.
+   6 of 6 traced seeds at 6.7 min. **The change was then reverted**, because it fails a committed CI gate — see §8.2.
+
+   A later pass (§8.4) found the real reason the first fix could not pass: **the activity floor was measuring a
+   single-unit re-task loop** (every `attackMove` in that match is a squad of one), and the AI fielded **one to four
+   combat units in fourteen minutes** because the production gate needed 280 spendable against a reserve ceiling of 260.
+   Fixing both still could not ship: the throttle that starves the army is the same throttle that makes a four-way
+   stalemate terminate, and six measured builds each traded one committed gate for another.
+
+   `src/ai/` on this branch is byte-identical to the pre-pass baseline, so the statement at the top of this item is still
+   TRUE of the shipped build. **The recommended next step is the stalemate breaker in `brain.ts`, not the production
+   path** — it does not currently model "I cannot afford a replacement", which is the state both four-way survivors sit
+   in, and that is what would let the gate loosen safely.
 
    The "both bases with expansions" shot therefore remains unobtainable on this branch. What is committed instead is the
    diagnosis plus that shot as **evidence of what the fix achieved before it was reverted**
@@ -824,6 +833,74 @@ is placed, so the site is paid for out of army mana that is already being spent 
 `tests/net/latency-jitter.test.ts` — it is the instrument that caught this, and it caught it only because it asserts
 activity as well as sync.
 
+### 8.3 The advanced-building pass — three structures made reachable (SHIPPED)
+
+Resonance Vault, Arcane Nexus and Astral Spire were tagged `menuCategory: advanced` and the console's four tabs mapped
+only `buildings` and `defenses`, so all three appeared in NO tab and could not be built. Zachary also approved surfacing
+what the Astral Spire unlocks, which nothing did.
+
+**The layout is a Core | Advanced switch on the Buildings tab.** Two earlier attempts failed for opposite reasons and both
+are recorded in the source: all four `advanced` structures on the Buildings grid made it eight tiles (four rows in a 2-up
+scroller) and the layout gate measured "GOLEM is clipped by hud-tiles" plus a tile overlapping Move; ordering them below
+the buildable ones fixed the grid but left them four screens down a scroller where the truncation gate found a label
+bleeding into its sibling. The pages are **mutually exclusive** — Core is the four economy/production structures, Advanced
+is exactly the three late-game ones — so each page is no taller than the grid the gates were tuned against.
+
+**Where the switch lives, and the three measurements that put it there.** Not its own grid row (a 22px strip pushed two
+tile labels out of `.hud-tiles` on a 375px phone). Not the radar header (the fixed 16px row left "NO OBELISK" 4px short,
+caught as `w(65>61)`). Not a 14px strip anywhere: `tests/ui-phase4.test.ts` fails any HUD control under 28x28 at compact
+density, measured as "Core 32x14, Adv. 27x14". It shares the category-header row with the badge it replaces on that tab,
+at 76x28. The radar note is now "NO OBELISK" rather than "NEEDS OBELISK" — the longest string in a 136px row, saying the
+same thing, with the explanatory tooltip unchanged.
+
+**What each structure unlocks is on the tile.** The tooltip is built from the definition rather than a hand-written table,
+so it cannot drift: the Astral Spire reads "Unlocks: Astral Lance (240s), Meteor Storm (90s), Aegis Ward (60s), Blink Gate
+(45s)", the Resonance Vault names the Mana Weaver it trains, and a locked tile puts its prerequisite chain first.
+
+**Proof:** `tests/ui-phase4.test.ts` 14/14 at five viewports (truncation, thumb targets, clipping, zone overlap, research
+tree); `tests/touch/advanced-build.test.ts` 5/5 — a real browser switches to Advanced, asserts all three are listed with
+their prerequisites, asserts the Spire names its spells, grants the chain, taps the tile, taps the board, and asserts a
+`resonance_vault` ENTITY exists in the sim; `audit/advanced-reach.ts` reports all five viewports OK. The UI proof pack was
+regenerated (75 captures, 0 page errors, 0.00% purple).
+
+### 8.4 The AI root-cause pass — the floor was measuring a re-task loop (diagnosis SHIPPED, behaviour REVERTED)
+
+This pass was asked to make the AI expand by garrisoning the site before construction, which §8.2 recommended. It found
+that **§8.2's own reading of its failure was wrong**, and then could not ship a fix for a reason worth recording.
+
+**The activity floor was measuring a loop.** Every `attackMove` in the committed latency-jitter match is a squad of **one
+unit** — 292 of them on p3, 101 on p4, 19+3 on p1 — and `p1` issues 84 while owning at most two combat units. 45% of `p1`'s
+188 commands were one unit being re-ordered by `planMilitary`'s stuck/idle re-task loop. So any change that removes that
+loop fails the floor **while playing better**, which is exactly what the reverted expansion fix did. The AI it was
+measuring fielded **one to four combat units in fourteen minutes**.
+
+**The root cause is an arithmetic contradiction.** `brain.ts` trains only while `spendable > max(150, 2 x unitCost)`, and
+the economy's build-order share caps spendable at **exactly `mana - 260`**. Normal's counter picker settles on a 140-cost
+imp from minute 6:30, so the gate needs 280 against a ceiling of 260. The gate was open on 4127 of 16800 ticks — all before
+the picker settled — and 45 of p1's 48 `produce` commands were wisps.
+
+**Why it still did not ship.** The throttle that starves the army is the same throttle that makes a four-way stalemate
+terminate. Six builds were measured on the committed FFA seed: loosening the gate makes the match run past its 32-minute
+cap; tightening it starves one corner's economy until `f1 never fielded an army`; a conditional saving fund resolves at
+24.8 min and still starves `f1`. Each change traded one committed gate for another, four times in a row, so the behaviour
+was reverted rather than half-fixed. **`src/ai/` is byte-identical to the pre-pass baseline.**
+
+**The recommended next step is the stalemate breaker, not the production path.** `brain.ts` already has one
+(`passesWithoutProgress >= STALEMATE_PASSES` -> `allIn`). What it does not model is "I cannot afford a replacement", which
+is the state both four-way survivors sit in. Teaching the breaker that condition is what would let the gate loosen without
+leaving two players rebuilding forever. That is a design change with its own measurement.
+
+**The corner sweep is deterministic and documented, not fixed.** `audit/symmetry-break.ts` puts the first divergence at
+t=2s, before any decision, on the starting wisps' harvest orders. The two starting wisps sit on tiles 12 and 16 and their
+mirrors on 111 and 115, so every global ordering hands first claim to the same physical wisp at one base and the other at
+its mirror. Sorting by distance to the worker's own sanctum fixes it (corner 43%/77%, from 0%/100%) and starves the FFA;
+shortest-trip ordering is worse (100%/30%). The real fix is to make the **claim set** mirror-covariant, not the walk order.
+Until then a ladder cell measures the corner, not the difficulty — `audit/ladder-par.ts` reported Hard > Normal at 21.7%
+with `corner0 0 / corner1 13`, which is the corner effect and not a ladder result.
+
+Full detail: `docs/proof/phase-7/ai/README.md` (the trade-off table, the ordering table, the gate list) and
+`docs/proof/phase-7/ai/DIAGNOSIS.md` (the harness-by-harness measurement).
+
 ### Phase 6 — Multiplayer (2–4 players) — **COMPLETE**### Phase 6 — Multiplayer (2–4 players) — **COMPLETE**
 
 **Built:** `v2/src/net/` — protocol, lockstep client, session, in-process relay, harness, lobby, stall policy,
@@ -920,3 +997,7 @@ fully marked.
 | add a sprite | `v2/docs/ART_DIRECTION.md` then `v2/art/` |
 | measure something | `v2/audit/` — read a nearby harness and copy its shape; they all print their own numbers |
 | **see the fairness and balance numbers** | `v2/docs/proof/phase-5/ai/phase6-fairness.md` — the authoritative mirror, length and ladder measurement, including the three sim defects that invalidated the Phase 5 figures |
+| **understand why the AI has no army** | `v2/docs/proof/phase-7/ai/DIAGNOSIS.md`, then run `audit/production-gate.ts` and `audit/counter-pick-probe.ts` — they print the gate's open/closed tick count and the unit pick that sets its threshold |
+| **measure a build change against the activity floor** | `audit/jitter-command-tally.ts` (per-type, per-minute, squad sizes, every planner note) and `audit/jitter-diff.ts` (a fixed format two builds diff mechanically). The floor's 188 on p1 is 84 squad-of-ONE re-tasks, so a dip is not automatically a regression |
+| **find why a mirror stops being a mirror** | `audit/symmetry-break.ts` — it names the first tick and the entities. Read §8.4 before "fixing" it: the ordering that repairs the corner split starves the four-player game |
+| **add an observation hook to the net harness** | `src/net/harness.ts` — `onPeerCommands` / `onPeerDecision` / `onPeerStats` are observation-only by design; keep them counts-only so a harness cannot change a result |
