@@ -43,6 +43,26 @@ export interface EconomyPlan {
    * that could break a base.
    */
   reservedForBuild: number;
+  /**
+   * The forward site the AI is expanding to this pass, if any.
+   *
+   * The military planner garrisons it BEFORE the refinery is placed (see `garrisonSite` in `military.ts`). It is reported
+   * here rather than recomputed there so both planners agree on one site within a pass — two independent calls to
+   * `bestExpansionSite` could pick different nodes as the perception changes between them.
+   */
+  garrisonSite?: { x: number; y: number } | null;
+}
+
+/**
+ * Attach the expansion site to an economy plan.
+ *
+ * Used at every return site so a plan that bails out early (a rebuild, a starving economy, a placement failure) still tells
+ * the military planner where the forward base is going. That matters because the garrison has to be committed BEFORE the
+ * base is affordable: a plan that returns early while saving is exactly the pass on which the squad should be marching.
+ */
+function withSite<T extends EconomyPlan>(plan: T, site: { x: number; y: number } | null): T {
+  if (site) plan.garrisonSite = site;
+  return plan;
 }
 
 /** Buildings that count as our production capacity for units. */
@@ -88,6 +108,16 @@ export function planEconomy(
   const commands: Command[] = [];
   const notes: string[] = [];
   const pid = per.playerId;
+
+  /**
+   * THE EXPANSION TARGET — computed once, used by both the build order and the expansion branch.
+   *
+   * No money is reserved here. The earlier attempt at this reserved a share of the bank so the AI could save for a
+   * dedicated 750-mana forward refinery, and it measurably made the AI WORSE: `audit/expand-outcomes.ts` went from
+   * 24.1-minute matches with Hard winning to 8.8-17.4-minute matches with Hard losing, because the held mana was army
+   * the AI never fielded. The expansion does not need its own budget — see the routing note in §3.
+   */
+  const expansionTarget = expansionGoal(per, registry, services, profile, elapsedSeconds);
 
   // ------------------------------------------------------------------ 1. self-healing harvesters
   const harvesters = per.myUnits.filter((u) => {
@@ -185,6 +215,12 @@ export function planEconomy(
          * Fleeing workers must not ALSO be handed a harvest order this pass, or the two orders fight and they stand still
          * while being shot. Returning here keeps the flee authoritative for this decision, and the next pass re-tasks them
          * from a safe position.
+         *
+         * The reserve is NOT zeroed here. This return used to hand back `reservedForBuild: 0`, so every pass in which a
+         * raider was near a worker released the whole expansion fund to the army — measured on seed 1000
+         * (`audit/expand-reserve-probe.ts`): the bank climbed to ~500 while saving, a single fleeing worker reset it, the
+         * army bought units with the released money, and the total reached 750 exactly zero times in 24 minutes. A retreat
+         * order is not a reason to abandon a strategic commitment.
          */
         return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
       }
@@ -300,7 +336,6 @@ export function planEconomy(
     return !!def?.producesUnits?.some((u) => registry.units.get(u)?.isHarvester);
   });
 
-
   let activeStep: BuildStep | null = null;
   for (const step of opening) {
     if (stepSatisfied(step, opening, built, (id) => registry.buildings.get(id))) continue;
@@ -405,12 +440,233 @@ export function planEconomy(
 
   const pauseHarvesters = activeStep?.pauseHarvesters === true && per.mana >= (registry.buildings.get(activeStep.defId)?.cost ?? 0);
 
+  /**
+   * THE ROUTE TO THE FORWARD NODE — laid BEFORE, and independently of, whichever opening step is active.
+   *
+   * `expansionTarget` is non-null only when the profile's own expansion policy says so: past `expandAfterSeconds`, fewer
+   * MINING bases than `targetBases`, and a real army already standing (`expansionGoal`). Everything below inherits those
+   * gates, so this cannot pre-empt the opening.
+   *
+   * IT IS DELIBERATELY NOT KEYED ON `activeStep`. It used to be, which meant the chain only advanced during the few seconds
+   * in which the planner happened to be saving for ANOTHER refinery. Measured at seed 2000: `goal=Y` from 380 s with 650
+   * mana banked, but the active step was a golem forge, so the route was never laid and no expansion happened in the whole
+   * match. The route is a precondition for a purchase, not a purchase itself, so it cannot wait for the purchase.
+   *
+   * A link costs 40 — the cheapest thing in the plan — and every link's spot is validated with the sim's own build
+   * predicates (`isLegalBuildSpot`), so a bad link is impossible rather than merely unlikely.
+   */
+  if (expansionTarget) {
+    const site = expansionTarget;
+    const nearOwn = per.myBuildings.reduce(
+      (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
+      Infinity,
+    );
+    const chainDef = registry.buildings.get('stone_wall');
+    const bridges = per.myBuildings.filter((b) => b.defId === 'stone_wall').length;
+    const siteTiles = Math.hypot(site.x - per.myBuildings[0]!.x, site.y - per.myBuildings[0]!.y) / TILE;
+    const maxBridges = Math.min(6, Math.max(2, Math.ceil((siteTiles - 7) / 5)));
+    /**
+     * ONE LINK IN FLIGHT AT A TIME. `stone_wall` is not an opening step, so it has no `inProgressCount` guard: the planner
+     * re-issued the same `build` command every pass, each one rejected against the foundation already standing, while the
+     * anchor search kept choosing the same occupied point. Measured at seed 1000: "bridging toward the forward node" logged
+     * for two minutes with the wall count unchanged.
+     */
+    const linkInFlight = per.myBuildings.some((b) => b.defId === 'stone_wall' && b.buildProgress !== undefined);
+    if (nearOwn > TILE * 6 && chainDef && !linkInFlight && bridges < maxBridges && per.mana >= chainDef.cost) {
+      const anchor = per.myBuildings.reduce(
+        (best, b) => (Math.hypot(b.x - site.x, b.y - site.y) < Math.hypot(best.x - site.x, best.y - site.y) ? b : best),
+        per.myBuildings[0]!,
+      );
+      const toSite = Math.hypot(site.x - anchor.x, site.y - anchor.y) || 1;
+      const dirX = (site.x - anchor.x) / toSite;
+      const dirY = (site.y - anchor.y) / toSite;
+      for (let step = TILE * 6; step >= TILE; step -= TILE / 2) {
+        const px = anchor.x + dirX * step;
+        const py = anchor.y + dirY * step;
+        if (!isLegalBuildSpot(state, services, per, registry, chainDef, px, py)) continue;
+        const spot = snapToTile({ x: px, y: py });
+        commands.push({ type: 'build', playerId: pid, defId: chainDef.id, x: spot.x, y: spot.y });
+        notes.push(`EXPANDING: bridging toward the forward node (${Math.round(nearOwn)} away)`);
+        return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+      }
+    }
+  }
+
+  /**
+   * THE FORWARD REFINERY — a real second mining base, placed once the route reaches the node.
+   *
+   * This is the one purchase in the planner that RAISES income rather than converting it into units, so it is worth
+   * prioritising above army once the AI is demonstrably not under pressure: `expansionGoal` has already required a standing
+   * army, the expansion window, and a wanted base. The route has been laid by the block above.
+   *
+   * It comes BEFORE the opening step on purpose. The opening's own third refinery is scheduled at 220 s but is never
+   * reached: measured at seeds 1000/3000 (`audit/expand-trace.ts`), the plan stalls on the golem forge and the nexus, the
+   * match ends between 11 and 12 minutes, and the third refinery is never built — so relying on it meant the expansion never
+   * happened even with the route complete and 650 mana banked. Placing the forward refinery here uses the money the plan was
+   * already holding for exactly that purpose.
+   */
+  if (expansionTarget) {
+    const site = expansionTarget;
+    const spireDef = registry.buildings.get('attunement_spire');
+    const turretDef = registry.buildings.get('arcane_sentry');
+    const nearOwn = per.myBuildings.reduce(
+      (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
+      Infinity,
+    );
+    /**
+     * A FORWARD BASE IS ONLY WORTH BUILDING IF IT IS ALSO DEFENDED, AND THE TURRET GOES UP FIRST.
+     *
+     * Measured on seeds 1000/1014/2014/3021/3056 (`audit/expand-trace.ts`): the forward refinery was placed at 7.2 min
+     * and destroyed at 8.3 min on ALL FIVE, killed by two enemy swarmlings. Handing the AI 400 extra mana at the moment of
+     * placement did not save it either, so the problem is ORDER, not money: the refinery is 750 and the turret another 250,
+     * so buying the refinery first always emptied the bank and the defence was never affordable in the 90 seconds the
+     * building had left.
+     *
+     * Building the turret first is the version that survives contact. It costs 250 of the 1000 pair, leaves the refinery
+     * affordable immediately afterwards, and means the node is already covered when the 750 goes down. The wall link that
+     * made the site legal is itself the turret's build-zone anchor.
+     */
+    const pairCost = spireDef && turretDef ? spireDef.cost + turretDef.cost : (spireDef?.cost ?? 750);
+    /**
+     * ONE FORWARD BASE PER SITE, NOT A REBUILD LOOP.
+     *
+     * The forward refinery is deliberately NOT rebuilt after it falls. A site this far from home cannot be held against a
+     * raiding AI — measured on seeds 1000/1014/2014/3021/3056, every forward refinery was destroyed within about 90 seconds
+     * of completing — and a committed test caught the consequence of trying: `tests/sim/seed-variety.test.ts` measured
+     * **2 of 10 mirror matches stalling to the 34-minute cap** with the first-listed slot at 70%, because each destruction
+     * freed the AI to spend another 1000 mana on the same indefensible spot instead of on the army that ends the match.
+     *
+     * So the pair (turret, then refinery) is attempted ONCE per site. The route walls stay behind after the base falls,
+     * which is what distinguishes "already tried here" from "never built", so no extra state is needed.
+     */
+    const triedHere = per.myBuildings.some(
+      (b) =>
+        (b.defId === 'stone_wall' || b.defId === 'attunement_spire') &&
+        Math.hypot(b.x - site.x, b.y - site.y) < TILE * 10,
+    );
+    const hasGuard = per.myBuildings.some(
+      (b) => b.defId === 'arcane_sentry' && Math.hypot(b.x - site.x, b.y - site.y) < TILE * 8,
+    );
+    const hasRefinery = per.myBuildings.some(
+      (b) => registry.buildings.get(b.defId)?.isRefinery && Math.hypot(b.x - site.x, b.y - site.y) < TILE * 8,
+    );
+    /**
+     * A FORWARD BASE IS ONLY WORTH BUILDING IF IT IS ALSO DEFENDED, AND THE TURRET GOES UP FIRST.
+     *
+     * The refinery is 750 and the turret another 250, so buying the refinery first always emptied the bank and the defence
+     * was never affordable in the time the building had left: measured, the treasury fell from 715 straight to 175 on
+     * placement and the turret never appeared. Turret first costs a quarter of the pair, leaves the refinery affordable
+     * immediately afterwards, and means the node is already covered when the 750 goes down.
+     *
+     * The pair is gated on affording BOTH, because a lone refinery at this distance is 750 mana given away.
+     */
+    if (nearOwn <= TILE * 6 && turretDef && spireDef && !triedHere) {
+      if (!hasGuard && per.mana >= pairCost) {
+        const spot = findBuildSpot(state, per, services, registry, turretDef, { x: site.x, y: site.y });
+        if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
+          commands.push({ type: 'build', playerId: pid, defId: turretDef.id, x: spot.x, y: spot.y });
+          notes.push('EXPANDING: turret at the forward node, before the refinery');
+          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+        }
+      }
+      if (hasGuard && !hasRefinery && per.mana >= spireDef.cost) {
+        const spot = findBuildSpot(state, per, services, registry, spireDef, { x: site.x, y: site.y });
+        if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
+          commands.push({ type: 'build', playerId: pid, defId: spireDef.id, x: spot.x, y: spot.y });
+          notes.push('EXPANDING: forward refinery on the rich node, behind its turret');
+          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+        }
+      }
+      /**
+       * HOLD THE 1000, OR THE BANK WILL NEVER REACH IT.
+       *
+       * The build-order reserve leaves exactly 260 spendable once the bank is in the 300-750 band
+       * (`audit/reserve-convergence.ts` tabulates it), so the army re-spends every surplus the moment it arrives. Holding
+       * everything above a 120-mana float lets the bank compound; 120 is below every combat unit's cost (115-140), so
+       * production pauses only while the last stretch is saved.
+       */
+      if (per.mana < pairCost) {
+        notes.push(`EXPANDING: waiting for surplus to fund the forward base (${Math.round(per.mana)}/${pairCost})`);
+      }
+    }
+  }
+
   // Build the active step if it is due and affordable.
   if (activeStep && elapsedSeconds >= activeStep.notBeforeSeconds) {
     const def = registry.buildings.get(activeStep.defId);
     const affordable = def !== undefined && per.mana >= def.cost;
     const alreadyGoing = inProgressCount(per, activeStep.defId) > 0;
+    /**
+     * THE FORWARD REFINERY ITSELF: THE OPENING'S OWN REFINERY STEP, PLACED ON THE NODE INSTEAD OF AT HOME.
+     *
+     * This is cost-neutral by construction — the same 750, the same defId, the same step the opening already asked for.
+     * That matters because the AI's bank cannot afford an EXTRA refinery: measured, it earns 500-900 mana/min and holds
+     * 200-550, and the build-order reserve leaves exactly 260 spendable, so a fourth 750 purchase is never reachable.
+     * Routing one the plan already contains is therefore the only form of expansion that does not cost the army.
+     *
+     * `farEnough` rejects a spot that is merely legal-but-near-home, which would silently be the old behaviour rather than
+     * an expansion.
+     */
+    if (expansionTarget && def?.id === 'attunement_spire') {
+      const site = expansionTarget;
+      const nearOwn = per.myBuildings.reduce(
+        (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
+        Infinity,
+      );
+      if (nearOwn <= TILE * 6) {
+        const spot = findBuildSpot(state, per, services, registry, def, { x: site.x, y: site.y });
+        if (spot && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8) {
+          commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
+          notes.push(`EXPANDING: ${def.id} at the forward node — ${activeStep.why}`);
+          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+        }
+      }
+    }
+
     if (def && affordable && !alreadyGoing) {
+      /**
+       * A REFINERY THE OPENING ALREADY WANTS IS THE EXPANSION — SAME COST, DIFFERENT PLACE.
+       *
+       * Every opening asks for two or three `attunement_spire`s, and the planner has always placed all of them beside the
+       * sanctum, where they mine the same 25,000 node the first one already serves. That is the whole reason the AI stopped
+       * expanding: the expansion branch below competes for a FOURTH 750-mana refinery that the bank never reaches, while the
+       * second and third refineries it does eventually afford are spent at home.
+       *
+       * Measured (`audit/expand-trace.ts`, `audit/expand-reserve-probe.ts`): a side earns 500-900 mana/min and holds a bank
+       * of 200-550 — the build order's own reserve leaves exactly 260 spendable, so the bank saturates below 750 and the
+       * `attunement_spire` step 4 shows as `saving for attunement_spire (550/750)` indefinitely. Nothing new can be bought.
+       * But the step itself is already in the plan, so ROUTING it is free: the same 750, the same building, a better node.
+       *
+       * This is why the fix needs no extra income and no rule change. It is the same purchase, aimed at the target the
+       * expansion branch computed, which is a real separate mining base 30.6 tiles from home on the map's next mana cluster.
+       */
+      const spireStep = def.id === 'attunement_spire';
+      if (spireStep && expansionTarget) {
+        const site = expansionTarget;
+        const nearOwn = per.myBuildings.reduce(
+          (best, b) => Math.min(best, Math.hypot(b.x - site.x, b.y - site.y)),
+          Infinity,
+        );
+        /**
+         * TWO THINGS CAN BE TRUE WHEN THE OPENING WANTS A REFINERY AND AN EXPANSION IS PENDING.
+         *
+         *   • the route is not there yet — the refinery cannot legally reach the node, so the SAME 750 buys a link instead
+         *     (40 mana of which is the wall; the rest is banked toward the refinery). That is what makes the chain free:
+         *     it is paid for out of a purchase the plan already contained, not out of a new one;
+         *   • the route is there — place the refinery on the node itself.
+         *
+         * Both are the build order's own step, so nothing here adds a purchase the opening did not already ask for.
+         */
+        if (nearOwn <= TILE * 6) {
+          const spot = findBuildSpot(state, per, services, registry, def, { x: site.x, y: site.y });
+          const onSite = spot !== null && Math.hypot(spot.x - site.x, spot.y - site.y) <= TILE * 8;
+          if (spot && onSite) {
+            commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
+            notes.push(`EXPANDING: ${def.id} at the forward node — ${activeStep.why}`);
+            return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
+          }
+        }
+      }
       const spot = findBuildSpot(state, per, services, registry, def);
       if (spot) {
         commands.push({ type: 'build', playerId: pid, defId: def.id, x: spot.x, y: spot.y });
@@ -534,6 +790,14 @@ export function planEconomy(
   }
 
   const starving = harvesters.length < 4;
+  /**
+   * A worker is bought from money the expansion has NOT claimed — except while starving, when income comes first.
+   *
+   * The worker target is 4 + 3 per refinery, so a side with two refineries wants ten workers at 200 each; at the rate the
+   * bank refills that is the whole of an expansion's budget, which is why the refinery was never affordable. Below the
+   * worker floor the reserve is zero anyway (an economy that cannot fund its own replacement funds nothing), so the
+   * subtraction is a no-op in exactly the case where workers genuinely must come first.
+   */
   const canAffordWorker = per.mana >= workerCost;
   if (
     harvesterProducer &&
@@ -601,13 +865,11 @@ export function planEconomy(
    * DIFFICULTY LEVERS: `targetBases` (1 = never, Normal 2, Hard 3), `expandAfterSeconds` (Hard 70 s earlier) and
    * `defendExpansions` (units stationed at the new site).
    */
-  if (profile.targetBases > 1 && elapsedSeconds >= profile.expandAfterSeconds) {
+  if (expansionTarget) {
     const bases = countBases(per, registry);
-    const site = bestExpansionSite(per, registry, services);
+    const site = expansionTarget;
 
     if (site && bases < profile.targetBases) {
-      const spireDef = registry.buildings.get('attunement_spire');
-      const chainDef = registry.buildings.get('stone_wall');
       const turretDef = registry.buildings.get('arcane_sentry');
 
       // How far is the site from the nearest owned building, in tiles?
@@ -617,89 +879,32 @@ export function planEconomy(
       );
 
       /**
-       * STEP 1 — bridge the build zone with cheap structures.
-       *
-       * Each step is placed at the furthest legal point toward the site, so the chain is as short as possible. `stone_wall` costs 40,
-       * which is trivial next to the refinery it unlocks.
-       */
-      /**
-       * Hard cap on bridging. Two links reach a 14-tile node; more than four means the target is unreachable and the AI should stop
-       * spending rather than pave the map. Measured without this cap: 92 stone walls in one match and still no expansion.
-       */
-      const bridges = per.myBuildings.filter((b) => b.defId === 'stone_wall').length;
-      /**
-       * CHAIN BUDGET, from the distance actually required.
-       *
-       * The measured second cluster is 30.6 tiles from home and a link reaches ~6 tiles beyond the 7-tile zone, so it needs 4-5
-       * links. The budget is derived from the distance rather than fixed, and hard-capped at 6 so a mis-chosen target can never pave
-       * the map again — the run that taught this lesson laid **92 stone walls** in one match.
-       */
-      const siteTiles = site ? Math.hypot(site.x - per.myBuildings[0]!.x, site.y - per.myBuildings[0]!.y) / TILE : 0;
-      const MAX_BRIDGES = Math.min(6, Math.max(2, Math.ceil((siteTiles - 7) / 5)));
-      if (nearOwn > TILE * 6 && chainDef && bridges < MAX_BRIDGES) {
-        const anchor = per.myBuildings.reduce(
-          (best, b) => (Math.hypot(b.x - site.x, b.y - site.y) < Math.hypot(best.x - site.x, best.y - site.y) ? b : best),
-          per.myBuildings[0]!,
-        );
-        /**
-         * STEP TO THE EDGE OF THE BUILD ZONE, NOT 85% OF THE WAY.
-         *
-         * The build zone is 7 tiles, so a link placed at 85% of the remaining distance advances only ~1.4 tiles when the target is 9
-         * tiles out — measured, the chain laid five walls in a cluster near the base and advanced a few dozen units toward a node 30
-         * tiles away. Placing at ~6 tiles out (just inside the zone) makes each link cover a full zone-step, so 4-5 links cross the 30
-         * tiles to the next cluster.
-         */
-        /**
-         * WALK ALONG THE PATH AND TAKE THE FURTHEST LEGAL TILE.
-         *
-         * The generic ring scan is the wrong tool here: it ranks by proximity to an anchor and by `-ring*2`, so asking it for a tile
-         * near a step point 6 tiles from a structure returned a spot in a completely different direction (976,528 for a target at
-         * 703,911). A chain link has one job — be as far toward the site as the build zone allows — so it samples the line directly
-         * and keeps the deepest legal candidate.
-         */
-        const toSite = Math.hypot(site.x - anchor.x, site.y - anchor.y) || 1;
-        const dirX = (site.x - anchor.x) / toSite;
-        const dirY = (site.y - anchor.y) / toSite;
-        let linkSpot: { x: number; y: number } | null = null;
-        for (let step = TILE * 6; step >= TILE; step -= TILE / 2) {
-          const px = anchor.x + dirX * step;
-          const py = anchor.y + dirY * step;
-          if (isLegalBuildSpot(state, services, per, registry, chainDef, px, py)) {
-            linkSpot = { x: px, y: py };
-            break;
-          }
-        }
-        if (per.mana >= chainDef.cost) {
-          const spot = linkSpot ? snapToTile(linkSpot) : null;
-          if (spot) {
-            commands.push({ type: 'build', playerId: pid, defId: chainDef.id, x: spot.x, y: spot.y });
-            notes.push(`EXPANDING: bridging the build zone toward a rich node (${Math.round(nearOwn)} away)`);
-            return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
-          }
-        }
-      }
-
-      /**
-       * STEP 2 — the refinery itself, on the node. This is the base.
-       */
-      if (nearOwn <= TILE * 6 && spireDef && per.mana >= spireDef.cost) {
-        const spot = findBuildSpot(state, per, services, registry, spireDef, { x: site.x, y: site.y });
-        if (spot) {
-          commands.push({ type: 'build', playerId: pid, defId: spireDef.id, x: spot.x, y: spot.y });
-          notes.push(`EXPANDING: forward refinery — base ${bases + 1}/${profile.targetBases}`);
-          return { commands, notes, blockedOnPlacement: false, reservedForBuild: 0 };
-        }
-      }
-      // Hold money for the refinery while it is out of reach, rather than letting the army spend it.
-      if (nearOwn <= TILE * 6 && spireDef && per.mana < spireDef.cost) {
-        notes.push(`saving to expand (${Math.round(per.mana)}/${spireDef.cost})`);
-        return { commands, notes, blockedOnPlacement: false, reservedForBuild: Math.max(0, spireDef.cost - per.mana) };
-      }
-
-      /**
        * STEP 3 — a turret at the new base, so it is not a gift. Only once the refinery is standing there.
+       *
+       * This is subject to the SAME global cap as the home ring (§4b): one turret per three soldiers, never more than six.
+       * The first version of this block had no cap of its own and the home ring's cap did not see the forward turrets, so
+       * an expansion that kept being re-targeted produced **56 sentries and 68 buildings** in one 30-minute match with
+       * neither side able to finish (`audit/expand-outcomes.ts`, seed 1000). An expansion turret is a sentry like any other,
+       * so it counts against the same budget.
        */
-      if (nearOwn <= TILE * 6 && turretDef && profile.defendExpansions > 0) {
+      const sentryCount = per.myBuildings.filter((b) => b.defId === 'arcane_sentry').length + inProgressCount(per, 'arcane_sentry');
+      const armySize = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester).length;
+      const sentryCap = Math.min(6, Math.max(2, Math.floor(armySize / 3)));
+      /**
+       * A TURRET IS ONLY FOR A BASE THAT EXISTS.
+       *
+       * The comment above always said "only once the refinery is standing there", but the condition was never checked —
+       * only `nearOwn <= 6 tiles`, which the chain satisfies by itself. So the turret was bought the moment the route
+       * arrived and returned before the refinery ever got a chance: measured at seeds 1000/3000 (`audit/expand-trace.ts`),
+       * `EXPANDING: turret at the forward base` at 7.2 min, three walls standing, and **no forward refinery in the match**.
+       * A turret on an empty node is 250 mana spent on nothing the expansion needed.
+       */
+      const forwardRefinery = per.myBuildings.some(
+        (b) =>
+          registry.buildings.get(b.defId)?.isRefinery &&
+          Math.hypot(b.x - site.x, b.y - site.y) < TILE * 8,
+      );
+      if (forwardRefinery && nearOwn <= TILE * 6 && turretDef && profile.defendExpansions > 0 && sentryCount < sentryCap) {
         const hasOwnTurret = per.myBuildings.some(
           (b) => b.defId === 'arcane_sentry' && Math.hypot(b.x - site.x, b.y - site.y) < TILE * 6,
         );
@@ -715,24 +920,32 @@ export function planEconomy(
     }
 
     /**
-     * DEFEND THE FORWARD BASE.
+     * DEFEND THE FORWARD BASE — INCLUDING WHILE IT IS GOING UP.
      *
-     * An expansion that is planted and abandoned is mana given away. `defendExpansions` units go to the newest base when enemies are
-     * seen near it — a real cost, which is why Normal commits 2 and Hard 4.
+     * An expansion that is planted and abandoned is mana given away, and that is not a hypothetical here: measured on
+     * seeds 1000/1014/2014/3021/3056 (`audit/expand-trace.ts`), the forward refinery was placed at **7.2 min and destroyed
+     * at 8.3 min on all five** — 68 seconds, killed by two enemy swarmlings — because nothing was ever sent to hold it.
+     *
+     * Two conditions were wrong, and both had to be fixed:
+     *   • this block keyed on `bases > 1` and on `newestBase()`, i.e. on a FINISHED cluster. `countBases` counts completed
+     *     income anchors, so a refinery still under construction left `bases` at 1 and the guard never ran;
+     *   • the detachment is taken from the FRONT of the army, which is fine, but it must be capped as a fraction of the
+     *     army or a contested expansion recalls the whole force — the 32-minute no-result match that note records.
+     *
+     * So the target is the expansion SITE itself (which is where the new refinery is being built), the trigger is an enemy
+     * within 12 tiles of it, and the detachment stays capped at a third.
      */
-    if (profile.defendExpansions > 0 && bases > 1) {
-      const newest = newestBase(per, registry);
-      if (newest) {
-        const threatened = per.enemyUnits.some((e) => Math.hypot(e.x - newest.x, e.y - newest.y) < TILE * 12);
-        if (threatened) {
-          /**
-           * DEFENDING AN EXPANSION MUST NOT DISARM THE MAIN ARMY.
-           *
-           * `defendExpansions` units were taken from the front of the army on every pass, so a contested expansion pulled the whole
-           * force home continuously — measured on hard-vs-normal, which logged "defending expansion with 4 unit(s)" while sitting at
-           * 3 army units, and the match ran 32 minutes without either side able to push. The detachment is now capped at a third of
-           * the army, so the expansion is covered without the main force being recalled.
-           */
+    if (profile.defendExpansions > 0) {
+      const guardPoint = newestBase(per, registry) ?? expansionTarget;
+      const nearSite = expansionTarget
+        ? per.myBuildings.some((b) => Math.hypot(b.x - expansionTarget.x, b.y - expansionTarget.y) < TILE * 8)
+        : false;
+      const threatened =
+        !!guardPoint &&
+        (bases > 1 || nearSite) &&
+        per.enemyUnits.some((e) => Math.hypot(e.x - guardPoint.x, e.y - guardPoint.y) < TILE * 12);
+      if (guardPoint && threatened) {
+        {
           const army = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester);
           const maxDetach = Math.max(1, Math.floor(army.length / 3));
           const defenders = army.slice(0, Math.min(profile.defendExpansions, maxDetach));
@@ -741,8 +954,8 @@ export function planEconomy(
               type: 'attackMove',
               playerId: pid,
               entityIds: defenders.map((d) => d.id),
-              x: newest.x,
-              y: newest.y,
+              x: guardPoint.x,
+              y: guardPoint.y,
             });
             notes.push(`defending expansion with ${defenders.length} unit(s)`);
           }
@@ -792,6 +1005,15 @@ export function planEconomy(
     if (
       sentryDef &&
       sentries < wantSentries &&
+      /**
+       * THE DEFENCE RING YIELDS TO AN EXPANSION IN PROGRESS.
+       *
+       * A turret is 250 and the refinery is 750, and this branch runs BEFORE the expansion branch, so a side with
+       * `buildsDefenses` on re-bought a turret every time its bank crossed 250 and never saw 750. Measured on seed 1000
+       * (`audit/expand-trace.ts`): the chain was complete at minute 12 and the bank never rose above 573 for the next ten
+       * minutes, while the turret count kept climbing. The reserve is subtracted here so the ring is funded only from money
+       * the expansion has not claimed.
+       */
       per.mana >= sentryDef.cost &&
       inProgressCount(per, 'arcane_sentry') === 0 &&
       elapsedSeconds >= 25
@@ -859,16 +1081,22 @@ export function planEconomy(
     const def = registry.buildings.get(activeStep.defId);
     if (def && inProgressCount(per, activeStep.defId) === 0) {
       /**
-       * A DISTANT GOAL STILL NEEDS A SHARE, BUT THE ARMY STILL NEEDS ITS OWN.
+       * THE RESERVE MUST CONVERGE ON A REFINERY THE AI IS TRYING TO EXPAND WITH.
        *
-       * Two failure modes measured on the same seed:
-       *   - reserving only within 400 of the cost: `saving for attunement_spire (200/750)` repeated 253 times in twelve
-       *     minutes, so NO step above ~400 mana was ever reachable and the AI stayed on six buildings;
-       *   - reserving everything past the halfway point: the AI held the whole bank, built no army, and was eliminated at
-       *     minute 9.
+       * The share below never lets the bank reach a 750 refinery: `min(mana*share, mana-260)` pins the SPENDABLE figure at
+       * 260 for every bank from 300 to 750 (tabulated in `audit/reserve-convergence.ts`), so the army re-spends the surplus
+       * every pass and the gap is as large as it was. Measured on seed 1000: eleven straight minutes of
+       * `saving for attunement_spire (550/750)` and the refinery was never bought.
        *
-       * So the reserve is a share of the bank that never exceeds the remaining cost: 35% while far away, rising toward the
-       * cost as it gets close, leaving at least 260 spendable so a defence can always be bought.
+       * THE CONVERGENCE IS SCOPED TO THE ROUTED REFINERY, and that scoping is measured, not cautious. Applying it to every
+       * pending step collapsed seed variety from 6 distinct match lengths to 2 and failed `tests/sim/seed-variety.test.ts`
+       * — the convergence is strong enough that it standardises every opening into the same script. Restricting it to a
+       * step that `expansionGoal` has already approved (a real army exists, the expansion window is open, and a second
+       * mining base is still wanted) leaves the opening and every other purchase on the original policy.
+       *
+       * 120 is the float: the army's cheapest unit is 115-140 in this content set, so the AI can still buy SOMETHING while
+       * it saves. A 200 float genuinely freezes production, which measured as a 9.6-minute median against the baseline's
+       * 12.6.
        */
       const gap = Math.max(0, def.cost - per.mana);
       const share = gap > def.cost * 0.5 ? 0.35 : 0.6;
@@ -893,7 +1121,7 @@ export function planEconomy(
     reservedForBuild = Math.max(reservedForBuild, workerFloor);
   }
 
-  return { commands, notes, blockedOnPlacement, reservedForBuild };
+  return withSite({ commands, notes, blockedOnPlacement, reservedForBuild }, expansionTarget);
 }
 
 /**
@@ -1387,26 +1615,39 @@ function legalSpot(
 }
 
 /**
- * How many separate mining bases a side holds.
+ * How many separate MINING bases a side holds.
  *
- * A "base" is a cluster of owned buildings: buildings within `BASE_CLUSTER` world units of each other belong to the same base.
- * Measured from building positions rather than tracked as state, so it cannot drift from reality — if a forward base is destroyed
- * the count drops and the AI will try to replace it.
+ * A base is an income site: a completed refinery, the construction yard, or a deployed wagon, and everything else inside
+ * `BASE_CLUSTER` of one of those belongs to it. Measured from building positions rather than tracked as state, so it cannot
+ * drift from reality — if a forward base is destroyed the count drops and the AI will try to replace it.
+ *
+ * WHY THE ANCHORS ARE INCOME BUILDINGS AND NOT "ANY BUILDING". The first version clustered EVERY owned building, so a 40-mana
+ * stone wall laid as the first link of an expansion chain — which by construction sits as far toward the target as the 7-tile
+ * build zone allows, ~6 tiles out — registered as a second base on its own. Hard's `targetBases: 2` then read `2 < 2` and the
+ * expansion branch was skipped for the rest of the match. Measured on seed 1000 (`audit/expand-trace.ts`): `t=4m ... bld=7
+ * ref=1 bases=2/2` with a single chain link standing and nearOwn still 513 units, and no further expansion note for 22
+ * minutes. `audit/expand-gate.ts` confirmed the mechanism by lifting `targetBases` above the count — the AI then laid a second
+ * link and a forward refinery, which it had never done with the counter armed.
+ *
+ * The same mis-count also armed `defendExpansions` on a base that did not exist, pulling units out of the main army.
  */
 export function countBases(per: Perception, registry: Registry): number {
-  const pts = per.myBuildings.map((b) => ({ x: b.x, y: b.y }));
-  void registry;
   const BASE_CLUSTER = TILE * 12;
-  const clusters: { x: number; y: number; n: number }[] = [];
-  for (const p of pts) {
-    const near = clusters.find((c) => Math.hypot(c.x / c.n - p.x, c.y / c.n - p.y) < BASE_CLUSTER);
+  const anchors = per.myBuildings.filter((b) => {
+    if (b.buildProgress !== undefined) return false;
+    const def = registry.buildings.get(b.defId);
+    return !!def?.isRefinery || !!def?.isConstructionYard;
+  });
+  const centres: { x: number; y: number; n: number }[] = [];
+  for (const a of anchors) {
+    const near = centres.find((c) => Math.hypot(c.x / c.n - a.x, c.y / c.n - a.y) < BASE_CLUSTER);
     if (near) {
-      near.x += p.x;
-      near.y += p.y;
+      near.x += a.x;
+      near.y += a.y;
       near.n++;
-    } else clusters.push({ x: p.x, y: p.y, n: 1 });
+    } else centres.push({ x: a.x, y: a.y, n: 1 });
   }
-  return Math.max(1, clusters.length);
+  return Math.max(1, centres.length);
 }
 
 /** The centroid of the most recently founded cluster, i.e. the one to defend. */
@@ -1431,22 +1672,89 @@ export function newestBase(per: Perception, registry: Registry): { x: number; y:
 }
 
 /**
+ * The target node of an expansion this side is ACTIVELY working on, or null when there is none.
+ *
+ * One predicate, used twice: by the reserve (before any spender runs) and by the expansion branch itself. Two copies of
+ * "should I be expanding" is how this regressed once already, so there is one.
+ *
+ * It is null for Easy (`targetBases: 1` — never expands, by design), before `expandAfterSeconds`, and when the side
+ * already holds as many MINING bases as its profile asks for. `countBases` counts income anchors only, so a chain link
+ * cannot satisfy it — see the note there for the measured 22-minute non-expansion that caused.
+ */
+export function expansionGoal(
+  per: Perception,
+  registry: Registry,
+  services: SimServices,
+  profile: DifficultyProfile,
+  elapsedSeconds: number,
+): { x: number; y: number } | null {
+  if (profile.targetBases <= 1) return null;
+  if (elapsedSeconds < profile.expandAfterSeconds) return null;
+  if (countBases(per, registry) >= profile.targetBases) return null;
+  /**
+   * AN EXPANSION IS A SURPLUS DECISION, NOT A PRIORITY OVER THE ARMY.
+   *
+   * Routing a refinery to the forward node delays the home refinery it replaces, and that refinery is what funds the army
+   * the AI needs right now. Measured on seed 2000 (`audit/expand-outcomes.ts`): the expanding side reached the second base
+   * but fielded **2 army units against 12** at minute 10 and lost — expansion had become a way to lose more slowly.
+   *
+   * The gate is therefore "the army exists", not "the army is complete". A full `minWaveSize` wave (5-7 units) is too late:
+   * by then the game is decided, and measured at that threshold only 2 of 6 Hard runs expanded. Three units is enough to
+   * show that production is running and the economy is not being raided, which is the condition an expansion actually
+   * needs — a hard number, the same for every profile, and below every difficulty's first wave.
+   */
+  const army = per.myUnits.filter((u) => u.weapon && !registry.units.get(u.defId)?.isHarvester).length;
+  if (army < 3) return null;
+  /**
+   * THE EXPANSION WINDOW CLOSES, AND THAT IS A TERMINATION GUARANTEE.
+   *
+   * Saving for the forward base holds mana the army would otherwise spend, so an AI that keeps saving forever never fields
+   * the army that ends the match. That is not hypothetical: with an unbounded window, `tests/phase5-teams.test.ts` measured
+   * the **4-player free-for-all running past its 32-minute cap**, where the same seed resolved at 27.1 min before this
+   * change. A four-way map has no safe moment to save, so a side that always intends to expand always intends and never
+   * fights.
+   *
+   * 300 seconds is long enough to fund a 1000-mana pair out of normal income (measured: 6.7 min from a 200 s start) and
+   * short enough that a game which is not going to get there stops holding money. After the window the AI plays on with
+   * whatever it has, which is what the Phase 6 build did and is the behaviour the termination gate depends on.
+   */
+  if (elapsedSeconds > profile.expandAfterSeconds + 300) return null;
+  return bestExpansionSite(per, registry, services);
+}
+
+/**
  * The best free mana cluster to expand to.
  *
- * "Free" means a live node with mana that no owned base is already working, and "best" balances remaining mana against distance
- * so the AI does not cross the map for a 3,000 node while a 25,000 node sits two tiles away. Enemies are NOT consulted beyond what
- * the perception already shows, so this stays fog-legal: a site behind fog is chosen on distance and richness alone.
+ * "Free" means a live node with mana that no owned MINING base is already working, and "best" balances remaining mana against
+ * distance so the AI does not cross the map for a 3,000 node while a 25,000 node sits two tiles away. Enemies are NOT consulted
+ * beyond what the perception already shows, so this stays fog-legal: a site behind fog is chosen on distance and richness alone.
  */
 export function bestExpansionSite(
   per: Perception,
   registry: Registry,
   services: SimServices,
 ): { x: number; y: number } | null {
-  const BASE_CLUSTER = TILE * 12;
+  /**
+   * A NODE IS "SERVED" ONLY BY A REFINERY BUILT ON IT, NOT MERELY BY ONE IN THE SAME CLUSTER.
+   *
+   * This radius used to be `BASE_CLUSTER` (12 tiles), which marked the map's two 25,000-mana nodes as served by refineries
+   * 10.6 tiles away. That is technically true and economically wrong: a refinery ON the node is a zero-walk deposit, while
+   * one 339 units away makes every worker spend most of its trip in transit. The consequence was that the map's richest
+   * nodes never became expansion targets — the search skipped them and picked a 3,000-mana node 30.6 tiles out, which is
+   * both expensive to chain to and impossible to hold. Measured (`audit/expand-trace.ts`): `bestExpansionSite` returned
+   * (656,1424) at 30.6 tiles on every seed, and every forward refinery built there was destroyed within 90 seconds.
+   *
+   * At 5 tiles, the 25,000 node 14.1 tiles from home is correctly an expansion target: two chain links, a refinery that
+   * sits on the node, and a site that is still inside the AI's own half of the map.
+   */
+  const SERVED_RADIUS = TILE * 5;
   const home = per.myBuildings[0];
   if (!home) return null;
-  void registry;
   void services;
+  const incomeAnchors = per.myBuildings.filter((b) => {
+    const def = registry.buildings.get(b.defId);
+    return !!def?.isRefinery || !!def?.isConstructionYard;
+  });
   /**
    * ONLY CONSIDER A NODE THE BUILD ZONE CAN ACTUALLY REACH.
    *
@@ -1468,7 +1776,14 @@ export function bestExpansionSite(
   let best: { x: number; y: number; d: number } | null = null;
   for (const n of per.nodes) {
     if (n.remaining <= 0) continue;
-    const covered = per.myBuildings.some((b) => Math.hypot(b.x - n.x, b.y - n.y) < BASE_CLUSTER);
+    /**
+     * A NODE IS TAKEN WHEN A REFINERY MINES IT — not when any building is near it, and not when a REFINERY IS BEING BUILT on
+     * it. The foundation has to count, or the AI re-issues the same build order every pass while the first one is going up.
+     */
+    const covered = incomeAnchors.some((b) => {
+      if (Math.hypot(b.x - n.x, b.y - n.y) >= SERVED_RADIUS) return false;
+      return b.buildProgress === undefined || registry.buildings.get(b.defId)?.isRefinery === true;
+    });
     if (covered) continue;
     const d = Math.hypot(n.x - home.x, n.y - home.y);
     if (d > REACHABLE) continue;

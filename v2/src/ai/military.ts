@@ -198,6 +198,30 @@ export function planMilitary(
      * the wave it had just launched.
      */
     stuckLongEnough?: boolean;
+    /**
+     * THE FORWARD SITE TO GARRISON BEFORE IT IS BUILT.
+     *
+     * The previous pass recommended this and did not get to measure it: `planEconomy` can find a forward node and hold
+     * mana for it, but the site is then undefended for the 90-170 seconds it takes an enemy raider to arrive, and every
+     * forward refinery measured was destroyed inside that window. The recommended fix was to make the MILITARY planner
+     * responsible for the site — commit a small standing detachment that walks out and holds it BEFORE construction
+     * begins, so the mana being held for the base is not the only thing protecting it.
+     *
+     * It also has a second, larger effect. `src/ai/economy.ts` cannot reserve for the forward base without closing the
+     * production gate in `brain.ts` (a reserve raises `reservedForBuild` and lowers `spendable`), and that is what failed
+     * the committed activity floor. Garrisoning is the version that does not compete: the detachment is ordinary army
+     * units, ordered by ordinary military logic, so it produces ordinary military commands instead of suppressing them.
+     *
+     * `null` when the AI has no expansion site this pass.
+     */
+    garrisonSite?: { x: number; y: number } | null;
+    /**
+     * How many units the difficulty wants standing at a forward site.
+     *
+     * Comes from the difficulty profile's `defendExpansions`, so it is a measured lever rather than a new constant: Easy
+     * is 0 (it never expands) and Normal/Hard commit 2/4.
+     */
+    garrisonSize?: number;
   },
 ): MilitaryPlan & { committedWave: number; shouldAttack: boolean } {
   const prevPositions = opts.prevUnitPositions ?? new Map<number, { x: number; y: number }>();
@@ -246,6 +270,57 @@ export function planMilitary(
      * sim-minutes, with both sides at 11 buildings and neither able to finish. Defending now happens ALONGSIDE the wave:
      * the detachment holds the line and the rest of the army still marches.
      */
+  }
+
+  /**
+   * ------------------------------------------------------------------ 1b. GARRISON THE FORWARD SITE BEFORE IT EXISTS
+   *
+   * The forward refinery is placed ~14 tiles out and is 900 hp with nothing but itself for cover. Measured on five seeds
+   * (`audit/expand-trace.ts`), it went up at 7.2 min and was destroyed at 8.3 min on every one — 68 seconds, killed by
+   * two enemy swarmlings, with nothing ever sent to hold it. A site is not defensible by being affordable; it is
+   * defensible by having soldiers standing on it when the raiders arrive.
+   *
+   * So this runs BEFORE construction, not after. The detachment is a small standing force (the profile's
+   * `defendExpansions`, which is the same measured lever as before) permanently posted to the site for as long as a site
+   * is wanted. It is taken from the REAR of the army, so the units nearest the enemy stay in the wave, and the wave
+   * planner below is untouched: the remainder of the army still masses and launches normally.
+   *
+   * WHY THIS IS THE VERSION THAT DOES NOT COST ACTIVITY. Every alternative reserves MANA, and a reserve in `planEconomy`
+   * raises `reservedForBuild`, lowers `spendable`, and closes the production gate in `brain.ts` — measured: the reserving
+   * versions fielded ONE combat unit in fourteen minutes and failed the committed activity floor. This version spends
+   * units it already owns and issues an ordinary military order, so it produces activity rather than suppressing it.
+   */
+  const garrisonSize = opts.garrisonSize ?? 0;
+  const site = opts.garrisonSite ?? null;
+  if (site && garrisonSize > 0 && armySize > 0) {
+    /**
+     * ALREADY POSTED, OR ALREADY WALKING — then say nothing.
+     *
+     * Re-issuing this every pass is the defect documented at length in the economy planner's defend-expansion branch:
+     * re-ordering a unit that is already on its way restarts its path, so it never arrives, and it manufactures commands
+     * that read as activity. An `attackMove` to the same point a second later is not a decision.
+     *
+     * `activity` is the sim's own state machine and reports `busy` for any unit that is neither idle nor harvesting, which
+     * includes one standing still under a `hold` order as well as one mid-march. So the split is made on POSITION: inside
+     * the site's radius means posted, outside means travelling, and neither is re-ordered. Only a unit that is idle and
+     * short of the site is given the order, which is exactly the case that needs one.
+     */
+    const onStation = army.filter((a) => Math.hypot(a.seen.x - site.x, a.seen.y - site.y) < TILE * 5);
+    const enRoute = army.filter(
+      (a) => Math.hypot(a.seen.x - site.x, a.seen.y - site.y) >= TILE * 5 && a.seen.activity === 'busy',
+    );
+    const stillNeeded = garrisonSize - onStation.length - enRoute.length;
+    if (stillNeeded > 0) {
+      /**
+       * FROM THE REAR, so the main wave keeps the units closest to the front. The army is ordered the same way it is
+       * everywhere else in this file, so in a mirror both sides pick their own mirrored units.
+       */
+      const squad = army.slice(Math.max(0, army.length - stillNeeded)).map((a) => a.seen.id);
+      if (squad.length > 0) {
+        commands.push({ type: 'attackMove', playerId: pid, entityIds: squad, x: site.x, y: site.y });
+        notes.push(`garrisoning the forward site with ${squad.length} unit(s)`);
+      }
+    }
   }
 
   /**
