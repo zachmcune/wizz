@@ -275,14 +275,40 @@ export function planEconomy(
        * and the axis maps the distance onto itself. Ranking ascending by that distance puts each base's NEAREST wisp first,
        * so both bases get the short trip.
        */
-      const home = per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
+      const home =
+        per.myBuildings.find((b) => registry.buildings.get(b.defId)?.isConstructionYard) ?? per.myBuildings[0];
       const hx = home?.x ?? 0;
       const hy = home?.y ?? 0;
+      /**
+       * ORDER BY A SIGNED OFFSET THAT FLIPS WITH THE BASE'S OWN SIDE.
+       *
+       * Distance alone is not enough: on this map the two starting wisps are exactly equidistant from the sanctum (64
+       * units each way), so it ties and the tie-break decides. Every GLOBAL x-ordering is wrong here, and the arithmetic
+       * is worth writing down because it is the whole defect:
+       *
+       *   p1 wisps sit on tiles 12 and 16  -> ascending gives the wisp at x=400 first
+       *   p2 wisps sit on tiles 111 and 115 -> ascending gives the wisp at x=3696 first
+       *
+       * and the mirror of p1's x=400 wisp is p2's x=3696 wisp — so ascending-by-x hands first claim to the SAME physical
+       * wisp on one base and the OTHER physical wisp on its mirror. That is anti-covariant: it produced the exact
+       * opposite assignment at the two bases, `busyNodes` then forced the second wisp onto a different node, and the two
+       * economies diverged from tick 18. Measured on seed 8000 with `audit/symmetry-break.ts` at t=13s.
+       *
+       * Multiplying the x offset by the base's own side makes the key covariant: the left base ranks its left-hand wisp
+       * first, and the right base — whose left-hand wisp is at a LARGER x — ranks that same reflected wisp first too.
+       */
+      const sideSign = hx <= (per.mapW * TILE) / 2 ? 1 : -1;
       const order = [...idle].sort((a, b) => {
         const da = Math.hypot(a.x - hx, a.y - hy);
         const db = Math.hypot(b.x - hx, b.y - hy);
         if (da !== db) return da - db;
-        // An exact tie is broken by a reflection-invariant tile key, never by array order.
+        // Same distance: prefer the wisp on the base's outward side, then the smaller |dy|, then a tile key.
+        const oa = (a.x - hx) * sideSign;
+        const ob = (b.x - hx) * sideSign;
+        if (oa !== ob) return oa - ob;
+        const ya = Math.abs(a.y - hy);
+        const yb = Math.abs(b.y - hy);
+        if (ya !== yb) return ya - yb;
         return (
           mirrorRank(Math.floor(a.x / TILE), Math.floor(a.y / TILE), per.mapW, per.mapH) -
           mirrorRank(Math.floor(b.x / TILE), Math.floor(b.y / TILE), per.mapW, per.mapH)
