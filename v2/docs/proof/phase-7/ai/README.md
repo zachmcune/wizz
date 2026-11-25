@@ -162,6 +162,8 @@ without the corner row would be misleading, which is why both are here.
 
 ## 7. Gates, all run on this commit
 
+**Final commit: `a3863b1`** — all five CI checks green (quality, e2e, slow, v2, Cloudflare Pages).
+
 | Gate | Result |
 |---|---|
 | `npm run typecheck` | pass |
