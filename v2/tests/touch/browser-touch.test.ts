@@ -616,13 +616,28 @@ describe('touch: build a structure with a tile tap and a ground tap', () => {
                   camera: {
                     centerInSafeArea(x: number, y: number): void;
                     safeRect(): { x: number; y: number; w: number; h: number };
+                    worldToScreenPoint(x: number, y: number): { x: number; y: number };
                   };
                 };
               };
             }).__app.controller;
             c.camera.centerInSafeArea(wx!, wy!);
-            const r = c.camera.safeRect();
-            return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+            /**
+             * TAP WHERE THE GHOST ACTUALLY IS, NOT WHERE THE SAFE RECT'S CENTRE IS.
+             *
+             * These are not the same point. `centerInSafeArea` centres the camera, but the ghost was seeded against the
+             * pointer position at arm time, and `camera.safeRect()` is the HUD-free sub-rect — so the safe rect's centre
+             * maps to a DIFFERENT tile from the one the ghost validated. Tapping the centre therefore re-derives the ghost
+             * at a new position, and if that position happens to be illegal the placement is silently dropped.
+             *
+             * Measured: CI reported `chromebook-1366x768-touch: no attunement_spire structure was placed` on a commit
+             * that had just passed the same gate twice. The centre happened to land on an occupied/illegal tile that run.
+             *
+             * `worldToScreenPoint` gives the ghost's own tile centre, which is the position the ghost was validated at, so
+             * the tap re-derives the same valid ghost.
+             */
+            const p = c.camera.worldToScreenPoint(wx!, wy!);
+            return { x: p.x, y: p.y };
           },
           [world.x, world.y],
         );
