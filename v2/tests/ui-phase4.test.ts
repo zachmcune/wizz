@@ -993,7 +993,37 @@ describe('phase 4 polish: the research tree fits its viewport', () => {
           const w = window as unknown as { __app: { openResearchTree: () => void } };
           w.__app.openResearchTree();
         });
-        await page.waitForTimeout(600);
+        /**
+         * WAIT FOR THE TREE TO SETTLE, NOT FOR A FIXED NUMBER OF MILLISECONDS.
+         *
+         * The fixed 600 ms was a guess, and on a loaded CI runner it was not enough: measured, the desktop viewport
+         * reported "Mastery extends 362px past the graph viewport" — the whole width of the last tier — while the same
+         * commit passed on a quiet machine and passed on the previous CI run. A measurement taken while the WebGL canvas
+         * is still coming up and the display font is still loading reads the overlay at its pre-layout size.
+         *
+         * The settle is asserted instead: the scroll viewport's own width must be unchanged across two animation frames
+         * AND at least one tier column must already be laid out. That is a property of the finished layout, so it cannot
+         * pass early.
+         */
+        await page.waitForFunction(
+          () => {
+            const scroll = document.querySelector('.research-scroll') as HTMLElement | null;
+            if (!scroll) return false;
+            const cols = document.querySelectorAll('.research-col');
+            if (cols.length === 0) return false;
+            const w = scroll.getBoundingClientRect().width;
+            const w2 = window as unknown as { __treeW?: number; __treeStable?: number };
+            if (w2.__treeW === w) {
+              w2.__treeStable = (w2.__treeStable ?? 0) + 1;
+            } else {
+              w2.__treeW = w;
+              w2.__treeStable = 0;
+            }
+            return (w2.__treeStable ?? 0) >= 2;
+          },
+          undefined,
+          { timeout: 20_000, polling: 'raf' },
+        );
 
         const res = await page.evaluate(() => {
           const scroll = document.querySelector('.research-scroll') as HTMLElement | null;
